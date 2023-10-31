@@ -1,0 +1,11 @@
+[project]
+title = "rubin_scheduler"
+copyright = "2023 Association of Universities for Research in Astronomy, Inc. (AURA)"
+base_url = "https://rubin-scheduler.lsst.io"
+github_url = "https://github.com/lsst/rubin_scheduler"
+
+[project.python]
+package="rubin_scheduler"
+
+[sphinx]
+extensions = ["sphinx.ext.viewcode"]
