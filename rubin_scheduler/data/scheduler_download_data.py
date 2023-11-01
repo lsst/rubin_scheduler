@@ -32,7 +32,6 @@ def data_dict():
         "scheduler": "scheduler_2023_10_16.tgz",
         "site_models": "site_models_2023_10_02.tgz",
         "skybrightness_pre": "skybrightness_pre_2023_10_17.tgz",
-        "tests": "tests_2022_10_18.tgz",
     }
     return file_dict
 
@@ -72,13 +71,6 @@ def scheduler_download_data(file_dict=None):
         help="Root URL of download location",
     )
     parser.add_argument(
-        "--orbits_pre",
-        dest="orbits",
-        default=False,
-        action="store_true",
-        help="Include pre-computed orbit files.",
-    )
-    parser.add_argument(
         "--tdqm_disable",
         dest="tdqm_disable",
         default=False,
@@ -87,7 +79,37 @@ def scheduler_download_data(file_dict=None):
     )
     args = parser.parse_args()
 
-    dirs = args.dirs
+    download_rubin_data(
+        data_dict(),
+        dirs=args.dirs,
+        versions=args.versions,
+        force=args.force,
+        url_base=args.url_base,
+        tdqm_disable=args.tdqm_disable,
+    )
+
+
+def download_rubin_data(
+    file_dict, dirs=None, versions=False, force=False, url_base=DEFAULT_DATA_URL, tdqm_disable=False
+):
+    """Download external data blobs
+
+    Parameters
+    ----------
+    file_dict : dict
+        A dict with keys of directory names and values of remote filenames.
+    dirs : list of str
+        List of directories to download. Default (None) assumes they are in file_dict
+    versions : bool
+        If True, print the versions currently on disk. Default False.
+    force : bool
+        If True, do dowload even if data already seems to be on disk. Default False.
+    url_base : str
+        The URL to use, default to DEFAULT_DATA_URL
+    tdqm_disable : bool
+        If True, disable the tdqm progress bar. Default False.
+    """
+
     if dirs is None:
         dirs = file_dict.keys()
     else:
@@ -101,7 +123,7 @@ def scheduler_download_data(file_dict=None):
     if versions is None:
         versions = {}
 
-    if args.versions:
+    if versions:
         print("Versions on disk currently // versions expected for this release:")
         match = True
         for k in file_dict:
@@ -115,14 +137,11 @@ def scheduler_download_data(file_dict=None):
             print("Versions do not match")
             return 1
 
-    if not args.orbits:
-        dirs = [key for key in dirs if "orbits_precompute" not in key]
-
     # See if base URL is alive
-    url_base = args.url_base
+    url_base = url_base
     try:
         r = requests.get(url_base)
-        fail_message = f"Could not connect to {args.url_base} or {url_base}. Check sites are up?"
+        fail_message = f"Could not connect to {url_base} or {url_base}. Check sites are up?"
     except ConnectionError:
         print(fail_message)
         exit()
@@ -133,10 +152,10 @@ def scheduler_download_data(file_dict=None):
     for key in dirs:
         filename = file_dict[key]
         path = os.path.join(data_dir, key)
-        if os.path.isdir(path) and not args.force:
+        if os.path.isdir(path) and not force:
             warnings.warn("Directory %s already exists, skipping download" % path)
         else:
-            if os.path.isdir(path) and args.force:
+            if os.path.isdir(path) and force:
                 rmtree(path)
                 warnings.warn("Removed existing directory %s, downloading new copy" % path)
             # Download file
@@ -149,7 +168,7 @@ def scheduler_download_data(file_dict=None):
                 warnings.warn(f"{url} file size unexpectedly small.")
             # Download this size chunk at a time; reasonable guess
             block_size = 1024 * 1024
-            progress_bar = tqdm(total=file_size, unit="iB", unit_scale=True, disable=args.tdqm_disable)
+            progress_bar = tqdm(total=file_size, unit="iB", unit_scale=True, disable=tdqm_disable)
             print(f"Writing to {os.path.join(data_dir, filename)}")
             with open(os.path.join(data_dir, filename), "wb") as f:
                 for chunk in r.iter_content(chunk_size=block_size):

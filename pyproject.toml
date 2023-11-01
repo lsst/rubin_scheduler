@@ -123,7 +123,7 @@ extend-select = [
 ]
 
 [tool.ruff.pycodestyle]
-max-doc-length = 79
+max-doc-length = 110
 
 [tool.ruff.pydocstyle]
 convention = "numpy"
