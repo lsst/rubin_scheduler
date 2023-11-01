@@ -42,7 +42,7 @@ jobs:
         shell: bash -l {0}
         run: |
           export RUBIN_SIM_DATA_DIR=${{ github.workspace }}
-          rs_download_data --tdqm_disable -d 'scheduler'
+          scheduler_download_data --tdqm_disable -d 'scheduler'
 
       - name: check conda and documenteer
         shell: bash -l {0}

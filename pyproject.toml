@@ -21,7 +21,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Topic :: Scientific/Engineering :: Astronomy",
  ]
-urls = {documentation = "https://rubin-sim.lsst.io", repository = "https://github.com/lsst/rubin_sim" }
+urls = {documentation = "https://rubin-scheduler.lsst.io", repository = "https://github.com/lsst/rubin_scheduler" }
 dynamic = [ "version" ]
 dependencies = [
     "numpy",
@@ -52,7 +52,7 @@ dev = [
 ]
 
 [project.scripts]
-rs_download_data = "rubin_scheduler.data.rs_download_data:rs_download_data"
+scheduler_download_data = "rubin_scheduler.data.scheduler_download_data:scheduler_download_data"
 rs_download_sky = "rubin_scheduler.data.rs_download_sky:rs_download_sky"
 
 
