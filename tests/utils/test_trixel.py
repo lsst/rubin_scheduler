@@ -562,7 +562,7 @@ class TrixelFinderTest(unittest.TestCase):
         """
         dtype = np.dtype([("htmid", int), ("ra", float), ("dec", float)])
         data = np.genfromtxt(
-            os.path.join(get_data_dir(), "tests", "testData", "htmid_test_data.txt"),
+            os.path.join(get_data_dir(), "utils", "htmid_test_data.txt"),
             dtype=dtype,
         )
         self.assertGreater(len(data), 20)

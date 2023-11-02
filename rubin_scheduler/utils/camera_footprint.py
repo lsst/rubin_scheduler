@@ -35,7 +35,7 @@ class LsstCameraFootprint:
 
     def __init__(self, units="degrees", footprint_file=None):
         if footprint_file is None:
-            footprint_file = os.path.join(get_data_dir(), "maf", "fov_map.npz")
+            footprint_file = os.path.join(get_data_dir(), "utils", "fov_map.npz")
         _temp = np.load(footprint_file)
         # Units refers to the incoming ra/dec values in the _call__ method
         # Internally, radians are used to calculate the footprint

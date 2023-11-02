@@ -32,6 +32,7 @@ def data_dict():
         "scheduler": "scheduler_2023_10_16.tgz",
         "site_models": "site_models_2023_10_02.tgz",
         "skybrightness_pre": "skybrightness_pre_2023_10_17.tgz",
+        "utils": "utils_2023_11_02.tgz",
     }
     return file_dict
 
