@@ -1,4 +1,4 @@
-__all__ = ("data_dict", "scheduler_download_data")
+__all__ = ("data_dict", "scheduler_download_data", "download_rubin_data", "DEFAULT_DATA_URL")
 
 import argparse
 import os
