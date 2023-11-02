@@ -14,7 +14,6 @@ from .projections import *
 from .sampling_functions import *
 from .season_utils import *
 from .site import *
-from .spatial_bounds import *
 from .sys_eng_vals import *
 from .tree_utils import *
 from .zernike_module import *

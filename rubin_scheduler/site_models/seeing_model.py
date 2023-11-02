@@ -1,11 +1,10 @@
 __all__ = ("SeeingModel",)
 
-import os
 import warnings
 
 import numpy as np
 
-from rubin_scheduler.data import get_data_dir
+from rubin_scheduler.utils import SysEngVals
 
 
 class SeeingModel:
@@ -22,7 +21,8 @@ class SeeingModel:
         List of the filter bandpasses for which to calculate delivered FWHM_effective and FWHM_geometric
         Default ['u', 'g', 'r', 'i', 'z', 'y']
     eff_wavelens : `list` [`float`] or None, opt
-        Effective wavelengths for those bandpasses, in nanometers.
+        Effective wavelengths for those bandpasses, in nanometers. If None, loades from
+        rubin_scheduler.utils.SysEngVals
     telescope_seeing : `float`, opt
         The contribution to the delivered FWHM from the telescope, in arcseconds.
         Default 0.25"
@@ -43,7 +43,7 @@ class SeeingModel:
     def __init__(
         self,
         filter_list=["u", "g", "r", "i", "z", "y"],
-        eff_wavelens=[372.35, 480.69, 622.15, 755.90, 867.97, 975.34],
+        eff_wavelens=None,
         telescope_seeing=0.25,
         optical_design_seeing=0.08,
         camera_seeing=0.30,
@@ -52,12 +52,8 @@ class SeeingModel:
     ):
         self.filter_list = filter_list
         if eff_wavelens is None:
-            fdir = os.path.join(get_data_dir(), "throughputs/baseline")
-            eff_wavelens = []
-            for f in filter_list:
-                bp = Bandpass()
-                bp.read_throughput(os.path.join(fdir, "total_" + f + ".dat"))
-                eff_wavelens.append(bp.calc_eff_wavelen()[1])
+            sev = SysEngVals()
+            eff_wavelens = [sev.eff_wavelengths[f] for f in filter_list]
         self.eff_wavelens = np.array(eff_wavelens)
         self.telescope_seeing = telescope_seeing
         self.optical_design_seeing = optical_design_seeing
