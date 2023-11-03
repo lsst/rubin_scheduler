@@ -592,30 +592,7 @@ class TestCoordinateTransformations(unittest.TestCase):
         self.rng = np.random.RandomState(32)
         ntests = 100
         self.mjd = 57087.0 - 1000.0 * (self.rng.random_sample(ntests) - 0.5)
-        self.tolerance = 1.0e-5
-
-    def test_exceptions(self):
-        """
-        Test to make sure that methods complain when incorrect data types are passed.
-        """
-        mjd_float = 52000.0
-        mjd2 = np.array([52000.0, 53000.0])
-        mjd3 = np.array([53000.0, 53000.0, 54000.0])
-
-        long_float = 1.2
-        long_arr = np.array([1.2, 1.4])
-
-        self.assertRaises(RuntimeError, utils.calc_lmst_last, mjd_float, long_arr)
-        self.assertRaises(RuntimeError, utils.calc_lmst_last, mjd3, long_arr)
-        self.assertRaises(RuntimeError, utils.calc_lmst_last, list(mjd2), long_arr)
-        self.assertRaises(RuntimeError, utils.calc_lmst_last, mjd2, list(long_arr))
-        self.assertRaises(RuntimeError, utils.calc_lmst_last, mjd_float, long_arr)
-        utils.calc_lmst_last(mjd2, long_float)
-        utils.calc_lmst_last(mjd_float, long_float)
-        utils.calc_lmst_last(int(mjd_float), long_float)
-        utils.calc_lmst_last(mjd_float, int(long_float))
-        utils.calc_lmst_last(int(mjd_float), int(long_float))
-        utils.calc_lmst_last(mjd2, long_arr)
+        self.tolerance = 5.0e-3
 
     def test_equation_of_equinoxes(self):
         """
@@ -667,11 +644,9 @@ class TestCoordinateTransformations(unittest.TestCase):
             control_last = gast + hours
             control_lmst %= 24.0
             control_last %= 24.0
-            test_lmst, test_last = utils.calc_lmst_last(self.mjd, longitude)
+            test_lmst = utils.calc_lmst(self.mjd, longitude)
             self.assertLess(np.abs(test_lmst - control_lmst).max(), self.tolerance)
-            self.assertLess(np.abs(test_last - control_last).max(), self.tolerance)
             self.assertIsInstance(test_lmst, np.ndarray)
-            self.assertIsInstance(test_last, np.ndarray)
 
         # test passing two floats
         for longitude in ll:
@@ -684,21 +659,17 @@ class TestCoordinateTransformations(unittest.TestCase):
                 control_last = gast + hours
                 control_lmst %= 24.0
                 control_last %= 24.0
-                test_lmst, test_last = utils.calc_lmst_last(mm, longitude)
+                test_lmst = utils.calc_lmst(mm, longitude)
                 self.assertLess(np.abs(test_lmst - control_lmst), self.tolerance)
-                self.assertLess(np.abs(test_last - control_last), self.tolerance)
                 self.assertIsInstance(test_lmst, float)
-                self.assertIsInstance(test_last, float)
 
         # test passing two numpy arrays
         ll = self.rng.random_sample(len(self.mjd)) * 2.0 * np.pi
-        test_lmst, test_last = utils.calc_lmst_last(self.mjd, ll)
+        test_lmst = utils.calc_lmst(self.mjd, ll)
         self.assertIsInstance(test_lmst, np.ndarray)
-        self.assertIsInstance(test_last, np.ndarray)
         for ix, (longitude, mm) in enumerate(zip(ll, self.mjd)):
-            control_lmst, control_last = utils.calc_lmst_last(mm, longitude)
+            control_lmst = utils.calc_lmst(mm, longitude)
             self.assertAlmostEqual(control_lmst, test_lmst[ix], 10)
-            self.assertAlmostEqual(control_last, test_last[ix], 10)
 
     def test_galactic_from_equatorial(self):
         ra = np.zeros((3), dtype=float)

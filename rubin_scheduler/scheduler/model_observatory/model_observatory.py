@@ -28,7 +28,7 @@ from rubin_scheduler.utils import (
     _approx_altaz2pa,
     _approx_ra_dec2_alt_az,
     _ra_dec2_hpid,
-    calc_lmst_last,
+    calc_lmst,
     m5_flat_sed,
     survey_start_mjd,
 )
@@ -332,7 +332,7 @@ class ModelObservatory:
         self.conditions.sun_ra = sun_moon_info["sun_RA"]
         self.conditions.sun_dec = sun_moon_info["sun_dec"]
 
-        self.conditions.lmst, last = calc_lmst_last(self.mjd, self.site.longitude_rad)
+        self.conditions.lmst = calc_lmst(self.mjd, self.site.longitude_rad)
 
         self.conditions.tel_ra = self.observatory.current_ra_rad
         self.conditions.tel_dec = self.observatory.current_dec_rad
@@ -415,7 +415,7 @@ class ModelObservatory:
             nexp=observation["nexp"],
         )
 
-        lmst, last = calc_lmst_last(self.mjd, self.site.longitude_rad)
+        lmst = calc_lmst(self.mjd, self.site.longitude_rad)
         observation["lmst"] = lmst
 
         sun_moon_info = self.almanac.get_sun_moon_positions(self.mjd)

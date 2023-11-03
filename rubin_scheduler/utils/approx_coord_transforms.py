@@ -9,7 +9,7 @@ __all__ = (
 
 import numpy as np
 
-from .coordinate_transformations import calc_lmst_last
+from .coordinate_transformations import calc_lmst
 
 
 def _approx_altaz2pa(alt_rad, az_rad, latitude_rad):
@@ -122,7 +122,7 @@ def _approx_alt_az2_ra_dec(alt, az, lat, lon, mjd, lmst=None):
         Dec, in radians.
     """
     if lmst is None:
-        lmst, last = calc_lmst_last(mjd, lon)
+        lmst = calc_lmst(mjd, lon)
     lmst = lmst / 12.0 * np.pi  # convert to rad
     sindec = np.sin(lat) * np.sin(alt) + np.cos(lat) * np.cos(alt) * np.cos(az)
     sindec = np.clip(sindec, -1, 1)
@@ -209,7 +209,7 @@ def _approx_ra_dec2_alt_az(ra, dec, lat, lon, mjd, lmst=None, return_pa=False):
         Azimuth, same length as `ra` and `dec`. Radians.
     """
     if lmst is None:
-        lmst, last = calc_lmst_last(mjd, lon)
+        lmst = calc_lmst(mjd, lon)
     lmst = lmst / 12.0 * np.pi  # convert to rad
     ha = lmst - ra
     sindec = np.sin(dec)

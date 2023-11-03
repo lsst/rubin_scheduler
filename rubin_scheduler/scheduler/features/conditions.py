@@ -19,7 +19,7 @@ from rubin_scheduler.utils import (
     _approx_altaz2pa,
     _approx_ra_dec2_alt_az,
     _hpid2_ra_dec,
-    calc_lmst_last,
+    calc_lmst,
     m5_flat_sed,
 )
 
@@ -309,7 +309,7 @@ class Conditions:
     @property
     def lmst(self):
         if self._lmst is None:
-            self._lmst = calc_lmst_last(self.mjd, self.site.longitude_rad)[0]
+            self._lmst = calc_lmst(self.mjd, self.site.longitude_rad)
 
         return self._lmst
 

@@ -3,6 +3,8 @@ This file contains coordinate transformation methods that are very thin wrappers
 of palpy methods, or that have no dependence on palpy at all
 """
 __all__ = (
+    "alt_az_pa_from_ra_dec",
+    "_alt_az_pa_from_ra_dec",
     "_galactic_from_equatorial",
     "galactic_from_equatorial",
     "_equatorial_from_galactic",
@@ -21,7 +23,7 @@ __all__ = (
     "rot_about_x",
     "equation_of_equinoxes",
     "calc_gmst_gast",
-    "calc_lmst_last",
+    "calc_lmst",
     "angular_separation",
     "_angular_separation",
     "haversine",
@@ -35,77 +37,92 @@ import numbers
 
 import numpy as np
 import palpy
+from astropy import units as u
+from astropy.coordinates import AltAz, EarthLocation, SkyCoord
+from astropy.time import Time
+from astropy.utils.iers import conf
 
 from rubin_scheduler.utils.code_utilities import _validate_inputs
 
 
-def calc_lmst_last(mjd, long_rad):
+def _wrap_hour_angle(ha_rad):
+    """wrap hour angle to go between -pi and pi"""
+
+    if np.size(ha_rad) == 1:
+        if ha_rad > np.pi:
+            ha_rad -= 2.0 * np.pi
+    else:
+        over = np.where(ha_rad > np.pi)[0]
+        ha_rad[over] -= 2.0 * np.pi
+
+    return ha_rad
+
+
+def alt_az_pa_from_ra_dec(ra, dec, mjd, site_longitude, site_latitude):
+    """ """
+
+    alt, az, pa = _alt_az_pa_from_ra_dec(
+        np.radians(ra), np.radians(dec), mjd, np.radians(site_longitude), np.radians(site_latitude)
+    )
+
+    return np.degrees(alt), np.degrees(az), np.degrees(pa)
+
+
+def _alt_az_pa_from_ra_dec(ra, dec, mjd, site_longitude, site_latitude):
+    """ """
+
+    observing_location = EarthLocation(
+        lat=site_latitude * u.rad, lon=site_longitude * u.rad, height=100 * u.m
+    )
+    observing_time = Time(mjd, format="mjd", location=observing_location)
+    aa = AltAz(location=observing_location, obstime=observing_time)
+    coord = SkyCoord(ra * u.rad, dec * u.rad)
+    altaz = coord.transform_to(aa)
+
+    lmst = observing_time.sidereal_time("mean")
+
+    hour_angle = _wrap_hour_angle(lmst.rad - ra)
+
+    # Position Angle Equation from:
+    # http://www.gb.nrao.edu/~rcreager/GBTMetrology/140ft/l0058/gbtmemo52/memo52.html
+    # or
+    # http://www.gb.nrao.edu/GBT/DA/gbtidl/release2pt9/contrib/contrib/parangle.pro
+    pa = np.arctan2(
+        np.sin(hour_angle),
+        (np.cos(dec) * np.tan(site_latitude) - np.sin(dec) * np.cos(hour_angle)),
+    )
+
+    return altaz.alt.rad, altaz.az.rad, pa
+
+
+def calc_lmst(mjd, long_rad):
     """
     calculates local mean sidereal time and local apparent sidereal time
 
     Parameters
     ----------
-    mjd : `Unknown`
+    mjd : `float`
         is the universal time (ut1) expressed as an MJD.
         This can be a numpy array or a single value.
-    long_rad : `Unknown`
+    long_rad : `float`
         is the longitude in radians (positive east of the prime meridian)
         This can be numpy array or a single value.  If a numpy array, should have the same length as mjd.  In that
         case, each long_rad will be applied only to the corresponding mjd.
-    lmst : `Unknown`
+
+    Returns
+    -------
+    lmst : `float`
         is the local mean sidereal time in hours
-    last : `Unknown`
-        is the local apparent sideral time in hours
     """
-    mjd_is_array = False
-    long_rad_is_array = False
-    if isinstance(mjd, np.ndarray):
-        mjd_is_array = True
+    observing_location = EarthLocation(lat=0.0, lon=long_rad * u.rad, height=100 * u.m)
+    t = Time(mjd, format="mjd", location=observing_location)
+    # Ignore astropy if we wander too far into the future
+    with conf.set_temp("iers_degraded_accuracy", "warn"):
+        lmst = t.sidereal_time("mean").rad
 
-    if isinstance(long_rad, np.ndarray):
-        long_rad_is_array = True
-
-    if long_rad_is_array and mjd_is_array:
-        if len(long_rad) != len(mjd):
-            raise RuntimeError("In calc_lmst_last mjd and long_rad have different lengths")
-
-    valid_type = False
-    if isinstance(mjd, np.ndarray) and isinstance(long_rad, np.ndarray):
-        valid_type = True
-    elif isinstance(mjd, np.ndarray) and isinstance(long_rad, numbers.Number):
-        valid_type = True
-    elif isinstance(mjd, numbers.Number) and isinstance(long_rad, numbers.Number):
-        valid_type = True
-
-    if not valid_type:
-        msg = (
-            "Valid input types for calc_lmst_last are:\n"
-            "mjd and long_rad as numpy arrays of the same length\n"
-            "mjd as a numpy array and long_rad as a number\n"
-            "mjd as a number and long_rad as a number\n"
-            "You gave mjd: %s\n" % type(mjd) + "and long_rad: %s\n" % type(long_rad)
-        )
-
-        raise RuntimeError(msg)
-
-    long_deg0 = np.degrees(long_rad)
-    long_deg0 %= 360.0
-
-    if long_rad_is_array:
-        long_deg = np.where(long_deg0 > 180.0, long_deg0 - 360.0, long_deg0)
-    else:
-        if long_deg0 > 180.0:
-            long_deg = long_deg0 - 360.0
-        else:
-            long_deg = long_deg0
-
-    hrs = long_deg / 15.0
-    gmstgast = calc_gmst_gast(mjd)
-    lmst = gmstgast[0] + hrs
-    last = gmstgast[1] + hrs
-    lmst %= 24.0
-    last %= 24.0
-    return lmst, last
+    # convert to hours
+    lmst = lmst * 12 / np.pi
+    return lmst
 
 
 def galactic_from_equatorial(ra, dec):
