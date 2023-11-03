@@ -28,7 +28,6 @@ dependencies = [
     "matplotlib",
     "healpy",
     "numexpr",
-    "palpy",
     "scipy",
     "astropy",
     "tables",

@@ -5,10 +5,6 @@ of palpy methods, or that have no dependence on palpy at all
 __all__ = (
     "alt_az_pa_from_ra_dec",
     "_alt_az_pa_from_ra_dec",
-    "_galactic_from_equatorial",
-    "galactic_from_equatorial",
-    "_equatorial_from_galactic",
-    "equatorial_from_galactic",
     "spherical_from_cartesian",
     "cartesian_from_spherical",
     "xyz_from_ra_dec",
@@ -21,8 +17,6 @@ __all__ = (
     "rot_about_z",
     "rot_about_y",
     "rot_about_x",
-    "equation_of_equinoxes",
-    "calc_gmst_gast",
     "calc_lmst",
     "angular_separation",
     "_angular_separation",
@@ -36,7 +30,6 @@ __all__ = (
 import numbers
 
 import numpy as np
-import palpy
 from astropy import units as u
 from astropy.coordinates import AltAz, EarthLocation, SkyCoord
 from astropy.time import Time
@@ -123,96 +116,6 @@ def calc_lmst(mjd, long_rad):
     # convert to hours
     lmst = lmst * 12 / np.pi
     return lmst
-
-
-def galactic_from_equatorial(ra, dec):
-    """Convert RA,Dec (J2000) to Galactic Coordinates
-
-    Parameters
-    ----------
-    ra : `Unknown`
-        is right ascension in degrees, either a number or a numpy array
-    dec : `Unknown`
-        is declination in degrees, either a number or a numpy array
-    g_long : `Unknown`
-        is galactic longitude in degrees
-    g_lat : `Unknown`
-        is galactic latitude in degrees
-    """
-
-    g_long, g_lat = _galactic_from_equatorial(np.radians(ra), np.radians(dec))
-    return np.degrees(g_long), np.degrees(g_lat)
-
-
-def _galactic_from_equatorial(ra, dec):
-    """Convert RA,Dec (J2000) to Galactic Coordinates
-
-    All angles are in radians
-
-    Parameters
-    ----------
-    ra : `Unknown`
-        is right ascension in radians, either a number or a numpy array
-    dec : `Unknown`
-        is declination in radians, either a number or a numpy array
-    g_long : `Unknown`
-        is galactic longitude in radians
-    g_lat : `Unknown`
-        is galactic latitude in radians
-    """
-
-    if isinstance(ra, np.ndarray):
-        g_long, g_lat = palpy.eqgalVector(ra, dec)
-    else:
-        g_long, g_lat = palpy.eqgal(ra, dec)
-
-    return g_long, g_lat
-
-
-def equatorial_from_galactic(g_long, g_lat):
-    """Convert Galactic Coordinates to RA, dec (J2000)
-
-    Parameters
-    ----------
-    g_long : `Unknown`
-        is galactic longitude in degrees, either a number or a numpy array
-        (0 <= g_long <= 360.)
-    g_lat : `Unknown`
-        is galactic latitude in degrees, either a number or a numpy array
-        (-90. <= g_lat <= 90.)
-    ra : `Unknown`
-        is right ascension in degrees
-    dec : `Unknown`
-        is declination in degrees
-    """
-
-    ra, dec = _equatorial_from_galactic(np.radians(g_long), np.radians(g_lat))
-    return np.degrees(ra), np.degrees(dec)
-
-
-def _equatorial_from_galactic(g_long, g_lat):
-    """Convert Galactic Coordinates to RA, dec (J2000)
-
-    Parameters
-    ----------
-    g_long : `Unknown`
-        is galactic longitude in radians, either a number or a numpy array
-        (0 <= g_long <= 2*pi)
-    g_lat : `Unknown`
-        is galactic latitude in radians, either a number or a numpy array
-        (-pi/2 <= g_lat <= pi/2)
-    ra : `Unknown`
-        is right ascension in radians (J2000)
-    dec : `Unknown`
-        is declination in radians (J2000)
-    """
-
-    if isinstance(g_long, np.ndarray):
-        ra, dec = palpy.galeqVector(g_long, g_lat)
-    else:
-        ra, dec = palpy.galeq(g_long, g_lat)
-
-    return ra, dec
 
 
 def cartesian_from_spherical(longitude, latitude):
@@ -482,59 +385,6 @@ def rotation_matrix_from_vectors(v1, v2):
     ]
 
     return rot
-
-
-def equation_of_equinoxes(d):
-    """
-    The equation of equinoxes. See http://aa.usno.navy.mil/faq/docs/GAST.php
-
-    Parameters
-    ----------
-    d : `Unknown`
-        is either a numpy array or a number that is Terrestrial Time
-        expressed as an MJD
-    the : `Unknown`
-        equation of equinoxes in radians.
-    """
-
-    if isinstance(d, np.ndarray):
-        return palpy.eqeqxVector(d)
-    else:
-        return palpy.eqeqx(d)
-
-
-def calc_gmst_gast(mjd):
-    """
-    Compute Greenwich mean sidereal time and Greenwich apparent sidereal time
-    see: From http://aa.usno.navy.mil/faq/docs/GAST.php
-
-    Parameters
-    ----------
-    mjd : `Unknown`
-        is the universal time (ut1) expressed as an MJD
-    gmst : `Unknown`
-        Greenwich mean sidereal time in hours
-    gast : `Unknown`
-        Greenwich apparent sidereal time in hours
-    """
-
-    date = np.floor(mjd)
-    ut1 = mjd - date
-    if isinstance(mjd, np.ndarray):
-        gmst = palpy.gmstaVector(date, ut1)
-    else:
-        gmst = palpy.gmsta(date, ut1)
-
-    eqeq = equation_of_equinoxes(mjd)
-    gast = gmst + eqeq
-
-    gmst = gmst * 24.0 / (2.0 * np.pi)
-    gmst %= 24.0
-
-    gast = gast * 24.0 / (2.0 * np.pi)
-    gast %= 24.0
-
-    return gmst, gast
 
 
 def _angular_separation(long1, lat1, long2, lat2):
