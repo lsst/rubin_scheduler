@@ -4,11 +4,10 @@ import sys
 import h5py
 import healpy as hp
 import numpy as np
-from astropy.coordinates import AltAz, EarthLocation, get_sun
-from astropy.time import Time
-
 import rubin_sim.skybrightness as sb
 import rubin_sim.utils as utils
+from astropy.coordinates import AltAz, EarthLocation, get_sun
+from astropy.time import Time
 
 
 def generate_sky(

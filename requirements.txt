@@ -15,4 +15,5 @@ colorcet
 cycler
 scikit-learn
 requests
+shapely
 tqdm

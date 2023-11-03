@@ -3,7 +3,6 @@ import os
 
 import h5py
 import numpy as np
-
 from rubin_sim.data import get_data_dir
 
 if __name__ == "__main__":
