@@ -119,10 +119,6 @@ def download_rubin_data(
     data_dir = get_data_dir()
     if not os.path.isdir(data_dir):
         os.mkdir(data_dir)
-    version_file = os.path.join(data_dir, "versions.txt")
-    versions = data_versions()
-    if versions is None:
-        versions = {}
 
     if versions:
         print("Versions on disk currently // versions expected for this release:")
@@ -137,6 +133,11 @@ def download_rubin_data(
         else:
             print("Versions do not match")
             return 1
+
+    version_file = os.path.join(data_dir, "versions.txt")
+    versions = data_versions()
+    if versions is None:
+        versions = {}
 
     # See if base URL is alive
     url_base = url_base
