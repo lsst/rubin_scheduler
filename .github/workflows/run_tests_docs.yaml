@@ -50,7 +50,6 @@ jobs:
         run: |
           export RUBIN_SIM_DATA_DIR=${{ github.workspace }}/data_dir
           scheduler_download_data --tdqm_disable -d 'site_models,scheduler,skybrightness_pre,utils'
-          scheduler_download_data --tdqm_disable -d tests --force
 
       - name: conda list
         shell: bash -l {0}
