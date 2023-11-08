@@ -5,7 +5,6 @@ import sys
 
 import astropy.units as u
 import numpy as np
-from astroplan import Observer
 from astropy.time import Time
 
 from rubin_scheduler.data import get_data_dir
@@ -46,6 +45,7 @@ def generate_ddf_grid(
     # Technically this script should be over in rubin_sim, but here to be more
     # easily found. Burry import here so it's hopefully not a problem.
     import rubin_sim.skybrightness as sb
+    from astroplan import Observer
 
     dds = ddf_locations()
     delta_t = delta_t / 60.0 / 24.0  # to days
