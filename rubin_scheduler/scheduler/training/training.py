@@ -1,7 +1,8 @@
 import numpy as np
-import rubin_sim.scheduler as fs
-import rubin_sim.scheduler.Training as optional
-from rubin_sim.speedObservatory import Speed_observatory
+
+import rubin_scheduler.scheduler as fs
+import rubin_scheduler.scheduler.Training as optional
+from rubin_scheduler.model_observatory import ModelObservatory
 
 
 class BlackTraining:
@@ -52,7 +53,7 @@ class BlackTraining:
         for survey in self.surveys:
             survey.basis_weights = x
         scheduler = fs.Core_scheduler_cost(self.surveys)
-        observatory = Speed_observatory()
+        observatory = ModelObservatory()
         observatory, scheduler, observations = fs.sim_runner(
             observatory, scheduler, survey_length=self.survey_length
         )

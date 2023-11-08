@@ -3,12 +3,16 @@ import sys
 
 import astropy.units as u
 import numpy as np
+
+# Technically this script should be over in rubin_sim, but here to be more
+# easily found.
 import rubin_sim.skybrightness as sb
 from astroplan import Observer
 from astropy.time import Time
-from rubin_sim.data import get_data_dir
-from rubin_sim.site_models.seeing_model import SeeingModel
-from rubin_sim.utils import Site, ddf_locations, m5_flat_sed
+
+from rubin_scheduler.data import get_data_dir
+from rubin_scheduler.site_models.seeing_model import SeeingModel
+from rubin_scheduler.utils import Site, ddf_locations, m5_flat_sed
 
 if __name__ == "__main__":
     # Generate a grid of airmass skybrightness values

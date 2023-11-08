@@ -260,7 +260,7 @@ class BaseSurvey:
 
         Parameters
         ----------
-        conditions : `rubin_sim.scheduler.features.Conditions`
+        conditions : `rubin_scheduler.scheduler.features.Conditions`
             Conditions for which rewards are to be returned
         accum : `bool`
             Include accumulated reward (more compute intensive)
@@ -412,7 +412,7 @@ class BaseMarkovSurvey(BaseSurvey):
 
     Parameters
     ----------
-    basis_function : list of rubin_sim.schuler.basis_function objects
+    basis_function : list of rubin_scheduler.schuler.basis_function objects
 
     basis_weights : list of float
         Must be same length as basis_function

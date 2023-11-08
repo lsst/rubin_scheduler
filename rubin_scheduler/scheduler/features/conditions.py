@@ -71,7 +71,7 @@ class Conditions:
         -----------
         nside : int
             Healpix resolution. All maps are set to this reslution.
-        site : rubin_sim.Site object ('LSST')
+        site : rubin_scheduler.Site object ('LSST')
             Contains static site-specific data (lat, lon, altitude, etc). Defaults to 'LSST'.
         ra : np.array
             A healpix array with the RA of each healpixel center (radians). Automatically

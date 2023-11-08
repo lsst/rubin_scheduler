@@ -848,7 +848,7 @@ def run_info_table(observatory, extra_info=None):
     result[1]["Parameter"] = "hostname"
     result[1]["Value"] = socket.gethostname()
 
-    result[2]["Parameter"] = "rubin_sim.__version__"
+    result[2]["Parameter"] = "rubin_scheduler.__version__"
     result[2]["Value"] = rsVersion.__version__
 
     result[3:]["Parameter"] = observatory_info[:, 0]
