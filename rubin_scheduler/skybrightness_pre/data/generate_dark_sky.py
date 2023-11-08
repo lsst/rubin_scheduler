@@ -3,7 +3,7 @@ import os
 
 import h5py
 import numpy as np
-from rubin_sim.data import get_data_dir
+from rubin_scheduler.data import get_data_dir
 
 if __name__ == "__main__":
     # Gererate an sky map for each filters that is an estimate of how faint that part of sky

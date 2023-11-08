@@ -1,4 +1,4 @@
-__all__ = ("ModelObservatory", "NoClouds", "NominalSeeing")
+__all__ = ("ModelObservatory",)
 
 
 import healpy as hp
