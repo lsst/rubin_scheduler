@@ -28,13 +28,12 @@ dependencies = [
     "matplotlib",
     "healpy",
     "numexpr",
-    "palpy",
     "scipy",
     "astropy",
     "tables",
     "h5py",
-    "astroplan",
     "requests",
+    "shapely",
     "tqdm",
 ]
 
