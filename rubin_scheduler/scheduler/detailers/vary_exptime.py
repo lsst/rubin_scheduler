@@ -2,9 +2,11 @@ __all__ = ("VaryExptDetailer", "calc_target_m5s")
 
 import healpy as hp
 import numpy as np
+from scipy.stats import binned_statistic
 
 from rubin_scheduler.scheduler.detailers import BaseDetailer
-from rubin_scheduler.utils import m5_flat_sed, ra_dec2_hpid
+from rubin_scheduler.skybrightness_pre import dark_sky
+from rubin_scheduler.utils import Site, hpid2_ra_dec, m5_flat_sed, ra_dec2_hpid
 
 
 def calc_target_m5s(alt=65.0, fiducial_seeing=0.9, exptime=20.0):
@@ -24,11 +26,25 @@ def calc_target_m5s(alt=65.0, fiducial_seeing=0.9, exptime=20.0):
     goal_m5 : `dict` of `float`
         dictionary of expected m5 values keyed by filtername
     """
-    import rubin_sim.skybrightness as sb
 
-    sm = sb.SkyModel(moon=False, twilight=False, mags=True)
-    sm.set_ra_dec_mjd(np.array([0.0]), np.array([alt]), 49353.177645, degrees=True, azAlt=True)
-    sky_mags = sm.return_mags()
+    nside = 32
+    dark = dark_sky(nside=nside)
+    hpid = np.arange(dark.size, dtype=int)
+    ra, dec = hpid2_ra_dec(nside, hpid)
+    site = Site(name="LSST")
+    alts = site.latitude - dec + 90
+    alts[np.where(alts > 90)] -= 90
+    binsize = 5.0
+    alt_bins = np.arange(0, 90 + binsize, binsize)
+    alts_mid = (alt_bins[0:-1] + alt_bins[1:]) / 2
+    sky_mags = {}
+    high_alts = np.where(alts > 0)[0]
+    for filtername in dark.dtype.names:
+        sky_mags[filtername], _be, _binn = binned_statistic(
+            alts[high_alts], dark[filtername][high_alts], bins=alt_bins, statistic="mean"
+        )
+        sky_mags[filtername] = np.interp(alt, alts_mid, sky_mags[filtername])
+
     airmass = 1.0 / np.cos(np.pi / 2.0 - np.radians(alt))
 
     goal_m5 = {}
