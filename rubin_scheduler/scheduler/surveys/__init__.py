@@ -3,6 +3,7 @@ from .dd_surveys import *
 from .ddf_presched import *
 from .desc_ddf import *
 from .field_survey import *
+from .generate_ddf_grid import *
 from .long_gap_survey import *
 from .plan_night_survey import *
 from .scripted_surveys import *

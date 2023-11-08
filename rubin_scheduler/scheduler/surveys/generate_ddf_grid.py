@@ -1,12 +1,10 @@
+__all__ = ("generate_ddf_grid",)
+
 import os
 import sys
 
 import astropy.units as u
 import numpy as np
-
-# Technically this script should be over in rubin_sim, but here to be more
-# easily found.
-import rubin_sim.skybrightness as sb
 from astroplan import Observer
 from astropy.time import Time
 
@@ -14,21 +12,47 @@ from rubin_scheduler.data import get_data_dir
 from rubin_scheduler.site_models.seeing_model import SeeingModel
 from rubin_scheduler.utils import Site, ddf_locations, m5_flat_sed
 
-if __name__ == "__main__":
-    # Generate a grid of airmass skybrightness values
-    # for each DDF in 15 minute intervals.
 
-    verbose = True
+def generate_ddf_grid(
+    verbose=True,
+    mjd0=59560.2,
+    delta_t=15.0,
+    survey_length=40.0,
+    sun_limit=-12,
+    nominal_seeing=0.7,
+    filtername="g",
+    nominal_expt=30.0,
+):
+    """Pre-compute conditions for DDF locations over survey
+
+    Parameters
+    ----------
+    mjd0 : float
+        The start MJD of the grid
+    delta_t : float
+        Spacing of time steps in minutes. Default 15
+    survey_length : float
+        Full span of DDF grid (years). Default 40.
+    sun_limit : float
+        Ignore times with sun above sun limit in degrees. Default -12.
+    nominal_seeling : float
+        Nominal seeing in arcseconds to assume for depth calculations. Default 0.7
+    filtername : str
+        The filter to use for the grid, default g
+    nominal_expt : float
+        Nominal exposure time in seconds to use for depth visits. Default 30
+    """
+
+    # Technically this script should be over in rubin_sim, but here to be more
+    # easily found. Burry import here so it's hopefully not a problem.
+    import rubin_sim.skybrightness as sb
 
     dds = ddf_locations()
-    mjd0 = 59560.2
-    delta_t = 15.0 / 60.0 / 24.0  # to days
-    survey_length = 40.0 * 365.25
-    sun_limit = np.radians(-12.0)  # degrees
+    delta_t = delta_t / 60.0 / 24.0  # to days
+    survey_length = survey_length * 365.25
+    sun_limit = np.radians(sun_limit)  # degrees
 
     nominal_seeing = 0.7  # arcsec
-
-    filtername = "g"
 
     site = Site("LSST")
     observer = Observer(
@@ -96,6 +120,17 @@ if __name__ == "__main__":
 
         # now to compute the expected seeing if the zenith is nominal
         FWHMeff = seeing_model(nominal_seeing, airmasses[:, i])["fwhmEff"][seeing_indx, :]
-        result[survey_name + "_m5_g"] = m5_flat_sed("g", mags[:, i], FWHMeff, 30.0, airmasses[:, i], nexp=1)
+        result[survey_name + "_m5_g"] = m5_flat_sed(
+            "g", mags[:, i], FWHMeff, nominal_expt, airmasses[:, i], nexp=1
+        )
+
+    return result
+
+
+if __name__ == "__main__":
+    # Generate a grid of airmass skybrightness values
+    # for each DDF in 15 minute intervals.
+
+    result = generate_ddf_grid()
 
     np.savez(os.path.join(get_data_dir(), "scheduler", "ddf_grid.npz"), ddf_grid=result)
