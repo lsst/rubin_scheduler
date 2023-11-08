@@ -9,10 +9,6 @@ scipy
 astropy
 pytables
 h5py
-astroplan
-colorcet
-cycler
-scikit-learn
 requests
 shapely
 tqdm

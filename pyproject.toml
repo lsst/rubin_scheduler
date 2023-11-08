@@ -32,7 +32,6 @@ dependencies = [
     "astropy",
     "tables",
     "h5py",
-    "astroplan",
     "requests",
     "shapely",
     "tqdm",
