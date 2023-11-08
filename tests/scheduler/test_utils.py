@@ -161,7 +161,7 @@ class TestUtils(unittest.TestCase):
         # Update these if the value they're stored as changes
         # (either from run_info_table or observatory.info)
         need_keys = [
-            "rubin_sim.__version__",
+            "rubin_scheduler.__version__",
             "hostname",
             "Date, ymd",
             "site_models",
