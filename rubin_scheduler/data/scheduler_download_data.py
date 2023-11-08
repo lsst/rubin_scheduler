@@ -83,7 +83,7 @@ def scheduler_download_data(file_dict=None):
     download_rubin_data(
         data_dict(),
         dirs=args.dirs,
-        versions=args.versions,
+        print_versions_only=args.versions,
         force=args.force,
         url_base=args.url_base,
         tdqm_disable=args.tdqm_disable,
@@ -91,7 +91,12 @@ def scheduler_download_data(file_dict=None):
 
 
 def download_rubin_data(
-    file_dict, dirs=None, versions=False, force=False, url_base=DEFAULT_DATA_URL, tdqm_disable=False
+    file_dict,
+    dirs=None,
+    print_versions_only=False,
+    force=False,
+    url_base=DEFAULT_DATA_URL,
+    tdqm_disable=False,
 ):
     """Download external data blobs
 
@@ -120,7 +125,11 @@ def download_rubin_data(
     if not os.path.isdir(data_dir):
         os.mkdir(data_dir)
 
-    if versions:
+    versions = data_versions()
+    if versions is None:
+        versions = {}
+
+    if print_versions_only:
         print("Versions on disk currently // versions expected for this release:")
         match = True
         for k in file_dict:
@@ -135,9 +144,6 @@ def download_rubin_data(
             return 1
 
     version_file = os.path.join(data_dir, "versions.txt")
-    versions = data_versions()
-    if versions is None:
-        versions = {}
 
     # See if base URL is alive
     url_base = url_base
