@@ -18,6 +18,7 @@ __all__ = (
     "rot_about_y",
     "rot_about_x",
     "calc_lmst",
+    "calc_lmst_astropy",
     "angular_separation",
     "_angular_separation",
     "haversine",
@@ -88,9 +89,45 @@ def _alt_az_pa_from_ra_dec(ra, dec, mjd, site_longitude, site_latitude):
     return altaz.alt.rad, altaz.az.rad, pa
 
 
-def calc_lmst(mjd, long_rad):
+def calc_lmst(mjd, longitude_rad):
+    """Calculate the LMST for a location
+    based on:  https://github.com/jhaupt/Sidereal-Time-Calculator/blob/master/SiderealTimeCalculator.py
+    which uses:
+    http://aa.usno.navy.mil/faq/docs/JD_Formula.php
+    http://aa.usno.navy.mil/faq/docs/GAST.php and
+
+    Parameters
+    ----------
+    mjd : `float`
+        is the universal time (ut1) expressed as an MJD.
+        This can be a numpy array or a single value.
+    long_rad : `float`
+        is the longitude in radians (positive east of the prime meridian)
+        This can be numpy array or a single value.  If a numpy array,
+        should have the same length as mjd.  In that
+        case, each long_rad will be applied only to the corresponding mjd.
+
+    Returns
+    -------
+    lst : `float`
+        The local sidereal time in hours
+
     """
-    calculates local mean sidereal time and local apparent sidereal time
+    gmst = 18.697374558 + 24.06570982441908 * (mjd - 51544.5)
+    gmst = gmst % 24  # to hours
+    longitude = np.degrees(longitude_rad) / 15.0  # Convert longitude to hours
+    lst = gmst + longitude  # Fraction LST. If negative we want to add 24...
+    if np.size(lst) == 1:
+        if lst < 0:
+            lst += 24
+    else:
+        lst[np.where(lst < 0)] += 24
+    return lst
+
+
+def calc_lmst_astropy(mjd, long_rad):
+    """
+    calculates local mean sidereal time
 
     Parameters
     ----------
