@@ -49,6 +49,27 @@ def control_calc_gmst_gast(mjd):
     return gmst, gast
 
 
+class LMSTTest(unittest.TestCase):
+    def test_fast_lmst(self):
+        """Test that the fast LMST calculation is accurate enough"""
+
+        # test sending in array
+        mjds = np.arange(60796, 60796 + 500, 0.25)
+        longitude_rad = -1.2348
+        fast_lmst = utils.calc_lmst(mjds, longitude_rad)
+        slow_lmst = utils.calc_lmst_astropy(mjds, longitude_rad)
+        tol = 2 / 3600 / 24  # seconds to days
+        np.testing.assert_allclose(fast_lmst, slow_lmst, atol=tol)
+
+        # test sending scalar
+        indx = 100
+        mjds = np.max(mjds[indx])
+
+        fast_lmst = utils.calc_lmst(mjds, longitude_rad)
+        slow_lmst = utils.calc_lmst_astropy(mjds, longitude_rad)
+        np.testing.assert_allclose(fast_lmst, slow_lmst, atol=tol)
+
+
 class AngularSeparationTestCase(unittest.TestCase):
     def test_ang_sep_exceptions(self):
         """
