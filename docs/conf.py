@@ -6,4 +6,3 @@
 from documenteer.conf.guide import *  # noqa: F403, import *
 
 linkcheck_retries = 2
-
