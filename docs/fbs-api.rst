@@ -6,17 +6,26 @@
 FBS Scheduler API
 =================
 
-Example Survey
-^^^^^^^^^^^^^^^
-
-.. automodule:: rubin_scheduler.scheduler.example.example_scheduler
-    :members:
-    :show-inheritance:
-
 Sim Runner
 ^^^^^^^^^^
 
 .. automodule:: rubin_scheduler.scheduler.sim_runner
+    :members:
+    :show-inheritance:
+
+Example Scheduler
+^^^^^^^^^^^^^^^^^
+
+.. automodule:: rubin_scheduler.scheduler.example.example_scheduler
+    :imported-members:
+    :members:
+    :show-inheritance:
+
+Model Observatory
+^^^^^^^^^^^^^^^^^
+
+.. automodule:: rubin_scheduler.scheduler.model_observatory
+    :imported-members:
     :members:
     :show-inheritance:
 
@@ -68,10 +77,3 @@ Utils
     :members:
     :show-inheritance:
 
-Model Observatory
-^^^^^^^^^^^^^^^^^
-
-.. automodule:: rubin_scheduler.scheduler.model_observatory
-    :imported-members:
-    :members:
-    :show-inheritance:

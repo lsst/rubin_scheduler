@@ -11,7 +11,7 @@ User Guide
 
     FBS Scheduler <fbs>
     Site Models <site-models>
-    (Precalculated) Skybrightness  <skybrightness-pre>
+    Precalculated Skybrightness <skybrightness-pre>
     Utils <utils>
     Data Download Utilities <data-download>
  

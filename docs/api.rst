@@ -13,7 +13,7 @@ API
     Site Models <site-models-api>
 
     Skybrightness Pre <skybrightness-pre-api>
-       
+
     Utils <utils-api>
 
-    Data Download <data-api>
+    Data <data-api>
