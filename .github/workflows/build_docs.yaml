@@ -36,9 +36,9 @@ jobs:
         run: |
           echo `pwd`
           ls ${{ github.workspace }}
-          python -m pip install .
+          python -m pip install . --no-deps
 
-      - name: download rubin_sim_data components needed to set up metrics for metricList
+      - name: download data needed for scheduler docs
         shell: bash -l {0}
         run: |
           export RUBIN_SIM_DATA_DIR=${{ github.workspace }}
