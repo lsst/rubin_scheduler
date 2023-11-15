@@ -28,8 +28,9 @@ jobs:
       - name: configure conda and install requirements
         shell: bash -l {0}
         run: |
-          mamba install --quiet --file=requirements.txt
-          mamba install --quiet --file=test-requirements.txt
+          mamba install --quiet --file=requirements.txt          
+          mamba install --quiet pip
+          pip install "documenteer[guide]"
 
       - name: install rubin_scheduler
         shell: bash -l {0}
