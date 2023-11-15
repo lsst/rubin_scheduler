@@ -33,9 +33,9 @@ jobs:
       - name: configure conda and install requirements
         shell: bash -l {0}
         run: |
-          mamba config --set always_yes yes
-          mamba install --quiet --file=requirements.txt
-          mamba install --quiet --file=test-requirements.txt
+          conda config --set always_yes yes
+          conda install --quiet --file=requirements.txt
+          conda install --quiet --file=test-requirements.txt
 
       - name: install rubin_scheduler
         shell: bash -l {0}
