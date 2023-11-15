@@ -1,4 +1,4 @@
-name: Run Tests and Build Documentation
+name: Run Tests and Publish PyPI
 
 on:
   # Trigger the workflow on push (to main) or pull request
