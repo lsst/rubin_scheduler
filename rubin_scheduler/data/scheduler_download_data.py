@@ -51,6 +51,13 @@ def scheduler_download_data(file_dict=None):
         help="Report expected versions, then quit",
     )
     parser.add_argument(
+        "--update",
+        dest="update",
+        default=False,
+        action="store_true",
+        help="Update versions of data on disk to match current",
+    )
+    parser.add_argument(
         "-d",
         "--dirs",
         type=str,
@@ -84,6 +91,7 @@ def scheduler_download_data(file_dict=None):
         data_dict(),
         dirs=args.dirs,
         print_versions_only=args.versions,
+        update=args.update,
         force=args.force,
         url_base=args.url_base,
         tdqm_disable=args.tdqm_disable,
@@ -94,6 +102,7 @@ def download_rubin_data(
     file_dict,
     dirs=None,
     print_versions_only=False,
+    update=False,
     force=False,
     url_base=DEFAULT_DATA_URL,
     tdqm_disable=False,
@@ -102,45 +111,53 @@ def download_rubin_data(
 
     Parameters
     ----------
-    file_dict : dict
+    file_dict : `dict`
         A dict with keys of directory names and values of remote filenames.
-    dirs : list of str
+    dirs : `list` [`str`]
         List of directories to download. Default (None) assumes they are in file_dict
-    versions : bool
+    versions : `bool`
         If True, print the versions currently on disk. Default False.
-    force : bool
-        If True, do dowload even if data already seems to be on disk. Default False.
-    url_base : str
+    update : `bool`
+        If True, update versions on disk to match expected 'current'. Default False.
+    force : `bool`
+        If True, replace versions on disk with new download. Default False.
+    url_base : `str`
         The URL to use, default to DEFAULT_DATA_URL
-    tdqm_disable : bool
+    tdqm_disable : `bool`
         If True, disable the tdqm progress bar. Default False.
     """
-
+    # file_dict = dictionary of current versions
     if dirs is None:
         dirs = file_dict.keys()
     else:
         dirs = dirs.split(",")
 
+    # Figure out where the rubin_sim_data is or is going
     data_dir = get_data_dir()
     if not os.path.isdir(data_dir):
         os.mkdir(data_dir)
 
+    # Get dictionary of versions which are available on-disk
     versions = data_versions()
     if versions is None:
         versions = {}
 
+    # ONLY check versions and return exit code
     if print_versions_only:
         print("Versions on disk currently // versions expected for this release:")
+        mismatch_dict = {}
         match = True
         for k in file_dict:
             print(f"{k} : {versions.get(k, '')} // {file_dict[k]}")
             if versions.get(k, "") != file_dict[k]:
                 match = False
+                mismatch_dict[k] = False
         if match:
             print("Versions are in sync")
             return 0
         else:
-            print("Versions do not match")
+            print("Versions do not match. ")
+            print(f"{','.join([k for k in mismatch_dict])} are not matching.")
             return 1
 
     version_file = os.path.join(data_dir, "versions.txt")
@@ -157,15 +174,29 @@ def download_rubin_data(
         print(fail_message)
         exit()
 
+    # Now do downloading for "dirs"
     for key in dirs:
         filename = file_dict[key]
         path = os.path.join(data_dir, key)
-        if os.path.isdir(path) and not force:
-            warnings.warn("Directory %s already exists, skipping download" % path)
-        else:
-            if os.path.isdir(path) and force:
+        # Do some thinking to see if we should download new data for key
+        download_this_dir = True
+        if os.path.isdir(path):
+            if force:
+                # Remove and update, regardless
                 rmtree(path)
                 warnings.warn("Removed existing directory %s, downloading new copy" % path)
+            elif not update:
+                # Just see if it exists on-disk and keep it if it does
+                warnings.warn("Directory %s already exists, skipping download" % path)
+                download_this_dir = False
+            else:
+                # Update only if necessary
+                if versions.get(key, "") == file_dict[key]:
+                    download_this_dir = False
+                else:
+                    rmtree(path)
+                    warnings.warn("Removed existing directory %s, downloading updated version" % path)
+        if download_this_dir:
             # Download file
             url = url_base + filename
             print("Downloading file: %s" % url)
@@ -175,7 +206,7 @@ def download_rubin_data(
             if file_size < 245:
                 warnings.warn(f"{url} file size unexpectedly small.")
             # Download this size chunk at a time; reasonable guess
-            block_size = 1024 * 1024
+            block_size = 512 * 512
             progress_bar = tqdm(total=file_size, unit="iB", unit_scale=True, disable=tdqm_disable)
             print(f"Writing to {os.path.join(data_dir, filename)}")
             with open(os.path.join(data_dir, filename), "wb") as f:
