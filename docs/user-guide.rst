@@ -6,12 +6,12 @@
 User Guide
 ##########
 
-Software modules within rubin_scheduler:
 
 .. toctree::
 
-    Scheduler <fbs>
-    Site Models <site_models>
-    Skybrightness(Pre) <skybrightness_pre>
-    Data Download <data_download>
+    FBS Scheduler <fbs>
+    Site Models <site-models>
+    Precalculated Skybrightness <skybrightness-pre>
+    Utils <utils>
+    Data Download Utilities <data-download>
  

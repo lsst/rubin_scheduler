@@ -46,7 +46,8 @@ class BaseFeature:
 
 class BaseSurveyFeature(BaseFeature):
     """
-    Feature that tracks progreess of the survey. Takes observations and updates self.feature
+    Feature that tracks progreess of the survey.
+    Takes observations and updates self.feature
     """
 
     def add_observations_array(self, observations_array, observations_hpid):
@@ -59,8 +60,9 @@ class BaseSurveyFeature(BaseFeature):
         Parameters
         ----------
         obsevation : dict-like
-            Object that contains the information about the observation (ra, dec, filter, mjd, etc)
-        indx : ints (None)
+            Object that contains the information about the observation
+            (ra, dec, filter, mjd, etc)
+        indx : `list`-like of [`int`]
             The healpixel indices that the observation overlaps.
         """
         raise NotImplementedError
@@ -84,7 +86,7 @@ class SurveyInNight(BaseSurveyFeature):
 
 
 class NoteInNight(BaseSurveyFeature):
-    """How many times a matching note has executed in the current night"""
+    """How many times a matching note has executed in the current night."""
 
     def __init__(self, notes=[]):
         self.feature = 0
@@ -113,7 +115,7 @@ class NObsCount(BaseSurveyFeature):
 
     Parameters
     ----------
-    filtername : str (None)
+    filtername : `str` (None)
         The filter to count (if None, all filters counted)
     """
 
@@ -160,7 +162,7 @@ class NObsCountSeason(BaseSurveyFeature):
 
     Parameters
     ----------
-    filtername : str (None)
+    filtername : `str` (None)
         The filter to count (if None, all filters counted)
     """
 
@@ -223,9 +225,9 @@ class NObsCountSeason(BaseSurveyFeature):
 class NObsSurvey(BaseSurveyFeature):
     """Count the number of observations.
 
-     Parameters
+    Parameters
     ----------
-    note : str (None)
+    note : `str` (None)
         Only count observations that have str in their note field
     """
 
@@ -248,7 +250,7 @@ class LastObservation(BaseSurveyFeature):
 
     Parameters
     ----------
-    survey_name : str (None)
+    survey_name : `str` (None)
         Only records if the survey name matches (or survey_name set to None)
     """
 
@@ -309,9 +311,9 @@ class NObservations(BaseSurveyFeature):
 
     Parameters
     ----------
-    filtername : str ('r')
+    filtername : `str` ('r')
         String or list that has all the filters that can count.
-    nside : int (32)
+    nside : `int` (32)
         The nside of the healpixel map to use
 
     """
@@ -343,7 +345,7 @@ class NObservations(BaseSurveyFeature):
         """
         Parameters
         ----------
-        indx : ints
+        indx : `list`-like of [`int`]
             The indices of the healpixel map that have been observed by observation
         """
 
@@ -358,17 +360,16 @@ class NObservationsSeason(BaseSurveyFeature):
 
     Parameters
     ----------
-    season : int
+    season : `int`
         Only count observations in this season (year).
-    filtername : str ('r')
+    filtername : `str` ('r')
         String or list that has all the filters that can count.
-    nside : int (32)
+    nside : `int` (32)
         The nside of the healpixel map to use
-    offset : int (0)
+    offset : `int` (0)
         The offset to use when computing the season (days)
-    modulo : int (None)
+    modulo : `int` (None)
         How to mod the years when computing season
-
     """
 
     def __init__(
@@ -398,7 +399,7 @@ class NObservationsSeason(BaseSurveyFeature):
         """
         Parameters
         ----------
-        indx : ints
+        indx :`list`-like of [`int`]
             The indices of the healpixel map that have been observed by observation
         """
 
@@ -457,7 +458,9 @@ class LastNObsTimes(BaseSurveyFeature):
 
 
 class NObservationsCurrentSeason(BaseSurveyFeature):
-    """Track how many observations have been taken in the current season that meet criteria"""
+    """Track how many observations have been taken in the current season
+    that meet criteria.
+    """
 
     def __init__(
         self,
@@ -551,14 +554,14 @@ class NObservationsCurrentSeason(BaseSurveyFeature):
 
 
 class CoaddedDepth(BaseSurveyFeature):
-    """
-    Track the co-added depth that has been reached accross the sky
+    """Track the co-added depth that has been reached across the sky
 
     Parameters
     ----------
-    fwh_meff_limit : float (100)
-        The effective FWHM of the seeing (arcsecond). Images will only be added to the
-        coadded depth if the observation FWHM is less than or equal to the limit.  Default 100.
+    fwh_meff_limit : `float` (100)
+        The effective FWHM of the seeing (arcsecond).
+        Images will only be added to the coadded depth if the observation FWHM
+        is less than or equal to the limit.  Default 100.
     """
 
     def __init__(self, filtername="r", nside=None, fwh_meff_limit=100.0):
@@ -585,8 +588,8 @@ class CoaddedDepth(BaseSurveyFeature):
 
 class LastObserved(BaseSurveyFeature):
     """
-    Track when a pixel was last observed. Assumes observations are added in chronological
-    order.
+    Track when a pixel was last observed.
+    Assumes observations are added in chronological order.
     """
 
     def __init__(self, filtername="r", nside=None, fill=np.nan):
@@ -622,7 +625,7 @@ class NoteLastObserved(BaseSurveyFeature):
 
     Parameters
     ----------
-    note : str
+    note : `str`
         Substring to match an observation note field to keep track of.
     """
 
@@ -645,9 +648,9 @@ class NObsNight(BaseSurveyFeature):
 
     Parameters
     ----------
-    filtername : string ('r')
+    filtername : `str` ('r')
         Filter to track.
-    nside : int (32)
+    nside : `int` (32)
         Scale of the healpix map
 
     """
@@ -676,9 +679,9 @@ class PairInNight(BaseSurveyFeature):
 
     Parameters
     ----------
-    gap_min : float (25.)
+    gap_min : `float` (25.)
         The minimum time gap to consider a successful pair in minutes
-    gap_max : float (45.)
+    gap_max : `float` (45.)
         The maximum time gap to consider a successful pair (minutes)
     """
 

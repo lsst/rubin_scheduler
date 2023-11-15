@@ -1,4 +1,4 @@
-__all__ = ("example_scheduler", "sched_argparser", "set_run_info")
+__all__ = ("example_scheduler", "sched_argparser", "set_run_info", "run_sched")
 
 import argparse
 import os
@@ -34,6 +34,20 @@ iers.conf.auto_download = False
 
 
 def example_scheduler(nside=32, mjd_start=survey_start_mjd()):
+    """Provide an example baseline survey-strategy scheduler.
+
+    Parameters
+    ----------
+    nside : `int`
+        Nside for the scheduler maps and basis functions.
+    mjd_start : `float`
+        Start date for the survey (MJD).
+
+    Returns
+    -------
+    scheduler : `rubin_scheduler.scheduler.CoreScheduler`
+        A scheduler set up as the baseline survey strategy.
+    """
     parser = sched_argparser()
     args = parser.parse_args(args=[])
     args.setup_only = True
@@ -462,7 +476,7 @@ def gen_long_gaps_survey(
     g_template_weight=50.0,
 ):
     """
-    Paramterers
+    Parameters
     -----------
     HA_min(_max) : float
         The hour angle limits passed to the initial blob scheduler.
@@ -1442,6 +1456,9 @@ def main(args):
 
 
 def sched_argparser():
+    """Argparser as used for survey strategy simulations.
+    Defaults represent current baseline settings, but kwargs can be changed.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--verbose", dest="verbose", action="store_true")
     parser.set_defaults(verbose=False)
@@ -1474,6 +1491,9 @@ def sched_argparser():
 
 
 def set_run_info(dbroot=None, file_end="v3.3_", out_dir="."):
+    """Define a simulated output survey name and information about how
+    the scheduler was created (git hash, command line, etc.).
+    """
     extra_info = {}
     exec_command = ""
     for arg in sys.argv:
@@ -1511,6 +1531,7 @@ def run_sched(
     illum_limit=40.0,
     mjd_start=60796.0,
 ):
+    """Run the scheduler to get a simulated pointing history."""
     years = np.round(survey_length / 365.25)
     scheduler = CoreScheduler(surveys, nside=nside)
     n_visit_limit = None

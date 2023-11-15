@@ -41,11 +41,9 @@ def data_versions():
     Returns
     -------
     result : `dict`
-        Data directory filenames dictionary with keys:
-        ``"name"``
-            Data bucket name (`str`).
-        ``"version"``
-            Versioned file name (`str`).
+        Data directory filenames dictionary with keys/values:
+        "name" - Data bucket name (`str`).
+        "version" - Versioned file name (`str`).
     """
     data_dir = get_data_dir()
     result = None

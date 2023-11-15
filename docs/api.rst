@@ -1,16 +1,19 @@
+.. py:currentmodule:: rubin_scheduler
+
 .. _api:
 
 API
 ===
 
 .. toctree::
-    :maxdepth: 4
+    :maxdepth: 2
 
-.. automodule:: rubin_scheduler.scheduler
+    FBS Scheduler <fbs-api>
 
-.. automodule:: rubin_scheduler.site_models
+    Site Models <site-models-api>
 
-.. automodule:: rubin_scheduler.utils
+    Skybrightness Pre <skybrightness-pre-api>
 
-.. automodule:: rubin_scheduler.data
+    Utils <utils-api>
 
+    Data <data-api>

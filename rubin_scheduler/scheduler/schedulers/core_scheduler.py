@@ -37,7 +37,7 @@ class CoreScheduler:
     log : `logging.Logger`
         If None, a new logger is created.
     keep_rewards : `bool`
-        Flag as to whether to record the rewards and basis function values
+        Flag whether to record the rewards and basis function values
         (this can be useful for schedview).
     """
 
@@ -196,19 +196,19 @@ class CoreScheduler:
 
     def request_observation(self, mjd=None):
         """
-         Ask the scheduler what it wants to observe next
+        Ask the scheduler what it wants to observe next
 
-         Parameters
-         ----------
-         mjd : float (None)
-             The Modified Julian Date.
-             If None, it uses the MJD from the conditions from the
-             last conditions update.
+        Parameters
+        ----------
+        mjd : `float` (None)
+            The Modified Julian Date.
+            If None, it uses the MJD from the conditions from the
+            last conditions update.
 
-         Returns
-         -------
+        Returns
+        -------
         observations :  observation object (ra,dec,filter,rotangle)
-         Returns None if the queue fails to fill
+            Returns None if the queue fails to fill
         """
         if mjd is None:
             mjd = self.conditions.mjd
@@ -317,7 +317,7 @@ class CoreScheduler:
         Returns
         -------
         basis_funcs : `OrderedDict` ['str`,
-        `rubin_scheduler.scheduler.basis_functions.basis_functions.Base_basis_function`]
+        `~.scheduler.basis_functions.basis_functions.Base_basis_function`]
             A dictionary of the basis functions, where the keys are names for
             the basis functions and the values are the functions themselves.
         """
@@ -347,7 +347,7 @@ class CoreScheduler:
             A list with two elements: the survey list and the element within
             that survey list for which the maps that should be retrieved.
             If ``None``, use the latest survey which added to the queue.
-        conditions : `rubin_scheduler.scheduler.features.conditions.Conditions`, opt
+        conditions : `~.scheduler.features.conditions.Conditions`, opt
             The conditions for the maps to be returned. If ``None``, use
             the conditions associated with this sceduler. By default None.
 

@@ -10,7 +10,7 @@ two_pi = 2.0 * np.pi
 
 
 class Radec2altazpa:
-    """Class to make it easy to swap in different alt/az conversion if wanted"""
+    """Class to make it easy to swap in different alt/az conversion if wanted."""
 
     def __init__(self, location):
         self.location = location
@@ -24,7 +24,7 @@ class Radec2altazpa:
 
 def _get_rot_sky_pos(pa_rad, rot_tel_rad):
     """
-    Paramteres
+    Parameters
     ----------
     pa_rad : float or array
         The parallactic angle
@@ -40,13 +40,13 @@ def _get_rot_tel_pos(pa_rad, rot_sky_rad):
 
 
 class KinemModel:
-    """
-    A Kinematic model of the telescope.
+    """A Kinematic model of the telescope.
 
     Parameters
     ----------
     location : `astropy.coordinates.EarthLocation`
-        The location of the telescope. If None, defaults to rubin_scheduler.utils.Site info
+        The location of the telescope.
+        If None, defaults to rubin_scheduler.utils.Site info
     park_alt : `float` (86.5)
         The altitude the telescope gets parked at (degrees)
     park_az : `float` (0)
@@ -56,8 +56,11 @@ class KinemModel:
     mjd0 : `float` (0)
         The MJD to assume we are starting from
 
-    Note there are additional parameters in the methods setup_camera, setup_dome, setup_telescope,
-    and setup_optics. Just breaking it up a bit to make it more readable.
+    Note
+    ----
+    Note there are additional parameters in the methods setup_camera,
+    setup_dome, setup_telescope, and setup_optics.
+    Just breaking it up a bit to make it more readable.
     """
 
     def __init__(self, location=None, park_alt=86.5, park_az=0.0, start_filter="r", mjd0=0):
@@ -250,6 +253,8 @@ class KinemModel:
             The altitude limits (degrees) for performing closed optice loops.
             Should be one element longer than cl_delay.
 
+        Note
+        ----
         A given movement in altitude will cover X degrees; if X > cl_altlimit[i] there is
         an additional delay of cl_delay[i]
         """
@@ -292,27 +297,33 @@ class KinemModel:
             return alt_rad, az_rad, rot_tel_pos
 
     def _uam_slew_time(self, distance, vmax, accel):
-        """Compute slew time delay assuming uniform acceleration (for any component).
-        If you accelerate uniformly to vmax, then slow down uniformly to zero, distance traveled is
-        d  = vmax**2 / accel
-        To travel distance d while accelerating/decelerating at rate a, time required is t = 2 * sqrt(d / a)
-        If hit vmax, then time to acceleration to/from vmax is 2*vmax/a and distance in those
-        steps is vmax**2/a. The remaining distance is (d - vmax^2/a) and time needed is (d - vmax^2/a)/vmax
+        """Compute slew time delay assuming uniform acceleration
+        (for any component).
 
-        This method accepts arrays of distance, and assumes acceleration == deceleration.
+        If you accelerate uniformly to vmax, then slow down uniformly to zero,
+        distance traveled is  d  = vmax**2 / accel
+        To travel distance d while accelerating/decelerating at rate a,
+        time required is t = 2 * sqrt(d / a)
+        If hit vmax, then time to acceleration to/from vmax is 2*vmax/a and
+        distance in those steps is vmax**2/a.
+        The remaining distance is (d - vmax^2/a) and
+        time needed is (d - vmax^2/a)/vmax
+
+        This method accepts arrays of distance,
+        and assumes acceleration == deceleration.
 
         Parameters
         ----------
-        distance : numpy.ndarray
+        distance : `np.ndarray`, (N,)
             Distances to travel. Must be positive value.
-        vmax : float
+        vmax : `float`
             Max velocity
-        accel : float
+        accel : `float`
             Acceleration (and deceleration)
 
         Returns
         -------
-        numpy.ndarray
+        slew_time : `np.ndarray`, (N,)
         """
         dm = vmax**2 / accel
         slew_time = np.where(
@@ -338,8 +349,8 @@ class KinemModel:
         starting_rot_tel_pos_rad=None,
         update_tracking=False,
     ):
-        """Calculates ``slew'' time to a series of alt/az/filter positions from the current
-        position (stored internally).
+        """Calculates slew time to a series of alt/az/filter positions
+        from the current position (stored internally).
 
         Assumptions (currently):
         Assumes we have been tracking on ra,dec,rot_sky_pos position.
@@ -347,12 +358,14 @@ class KinemModel:
         (this approx should probably average out over time).
         No checks for if we have tracked beyond limits.
         (this assumes folks put telescope in park if there's a long gap.)
-        Assumes the camera rotator never needs to (or can't) do a slew over 180 degrees.
+        Assumes the camera rotator never needs to (or can't) do a slew
+        over 180 degrees.
 
-        Calculates the ``slew'' time necessary to get from current state
+        Calculates the slew time necessary to get from current state
         to alt2/az2/filter2. The time returned is actually the time between
-        the end of an exposure at current location and the beginning of an exposure
-        at alt2/az2, since it includes readout time in the ``slew'' time.
+        the end of an exposure at current location and the beginning of an
+        exposure at alt2/az2, since it includes readout time in
+        the slew time.
 
         Parameters
         ----------
@@ -363,9 +376,12 @@ class KinemModel:
         mjd : `float`
             The current moodified julian date (days)
         rot_sky_pos : `np.ndarray`
-            The desired rot_sky_pos(s) (radians). Angle between up on the chip and North. Note,
-            it is possible to set a rot_sky_pos outside the allowed camera rotator range, in which case
-            the slewtime will be np.inf. If both rot_sky_pos and rot_tel_pos are set, rot_tel_pos will be used.
+            The desired rot_sky_pos(s) (radians).
+            Angle between up on the chip and North.
+            Note, it is possible to set a rot_sky_pos outside the allowed
+            camera rotator range, in which case the slewtime will be np.inf.
+            If both rot_sky_pos and rot_tel_pos are set,
+            rot_tel_pos will be used.
         rot_tel_pos : `np.ndarray`
             The desired rot_tel_pos(s) (radians).
         filtername : `str`
@@ -380,7 +396,8 @@ class KinemModel:
         lax_dome : `bool`, default True
             If True, allow the dome to creep, model a dome slit, and don't
             require the dome to settle in azimuth. If False, adhere to the way
-            SOCS calculates slew times (as of June 21 2017) and do not allow dome creep.
+            SOCS calculates slew times (as of June 21 2017) and do not allow
+            dome creep.
         starting_alt_rad : `float` (None)
             The starting altitude for the slew (radians).
             If None, will use internally stored last pointing.
@@ -600,7 +617,7 @@ class KinemModel:
         return visit_time
 
     def shutter_stall(self, observation):
-        """Time we need to stall after shutter closes to let things cool down"""
+        """Time we need to stall after shutter closes to let things cool down."""
         result = 0.0
         delta_t = observation["exptime"] / observation["nexp"]
         if delta_t < self.shutter_2motion_min_time:
@@ -608,7 +625,8 @@ class KinemModel:
         return result
 
     def observe(self, observation, mjd, rot_tel_pos=None, lax_dome=True):
-        """observe a target, and return the slewtime and visit time for the action
+        """Observe a target, and return the slewtime and visit time for
+        the action
 
         If slew is not allowed, returns np.nan and does not update state.
         """
