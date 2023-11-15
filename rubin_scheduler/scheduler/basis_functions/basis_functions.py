@@ -47,7 +47,6 @@ __all__ = (
 import warnings
 
 import healpy as hp
-import matplotlib.pylab as plt
 import numpy as np
 from astropy import units as u
 from astropy.coordinates import SkyCoord
@@ -88,16 +87,20 @@ class BaseBasisFunction:
         self.filtername = filtername
 
     def add_observations_array(self, observations_array, observations_hpid):
-        """Like add_observation, but for loading a whole array of observations at a time
+        """Similar to add_observation, but for loading a whole
+        array of observations at a time.
 
         Parameters
         ----------
-        observations_array_in : np.array
-            An array of completed observations (with columns like rubin_scheduler.scheduler.utils.empty_observation).
+        observations_array_in : `np.array`
+            An array of completed observations (with columns like
+            rubin_scheduler.scheduler.utils.empty_observation).
             Should be sorted by MJD.
-        observations_hpid_in : np.array
-            Same as observations_array_in, but larger and with an additional column for HEALpix id. Each
-            observation is listed mulitple times, once for every HEALpix it overlaps.
+        observations_hpid_in : `np.array`
+            Same as observations_array_in, but larger and with an
+            additional column for HEALpix id.
+            Each observation is listed multiple times,
+            once for every HEALpix it overlaps.
         """
 
         for feature in self.survey_features:
@@ -161,7 +164,7 @@ class BaseBasisFunction:
         return self.value
 
     def label(self):
-        """Creata a label for this basis function.
+        """Create a label for this basis function.
 
         Returns
         -------
@@ -257,8 +260,8 @@ class DelayStartBasisFunction(BaseBasisFunction):
 
 
 class FilterDistBasisFunction(BaseBasisFunction):
-    """Track filter distribution, increase reward as fraction of observations in
-    specified filter drops.
+    """Track filter distribution, increase reward as fraction of observations
+    in specified filter drops.
     """
 
     def __init__(self, filtername="r"):
@@ -289,11 +292,14 @@ class NObsPerYearBasisFunction(BaseBasisFunction):
     n_obs : `int` (3)
         The number of observations to demand
     season : `float` (300)
-        The amount of time to allow pass before marking a region as "behind". Default 365.25 (days).
+        The amount of time to allow pass before marking a region as "behind".
+        Default 365.25 (days).
     season_start_hour : `float` (-2)
-        When to start the season relative to RA 180 degrees away from the sun (hours)
+        When to start the season relative to RA 180 degrees away from the sun
+        (hours)
     season_end_hour : `float` (2)
-        When to consider a season ending, the RA relative to the sun + 180 degrees. (hours)
+        When to consider a season ending, the RA relative to the sun + 180
+        degrees. (hours)
     night_max : float (365)
         Set value to zero after night_max is reached (days)
     """
@@ -331,7 +337,8 @@ class NObsPerYearBasisFunction(BaseBasisFunction):
         behind_pix = np.where((conditions.mjd - self.survey_features["last_n_mjds"].feature[0]) > self.season)
         result[behind_pix] = 1
 
-        # let's ramp up the weight depending on how far into the observing season the healpix is
+        # let's ramp up the weight depending on how far into the
+        # observing season the healpix is
         mid_season_ra = (conditions.sun_ra + np.pi) % (2.0 * np.pi)
         # relative RA
         relative_ra = (conditions.ra - mid_season_ra) % (2.0 * np.pi)
@@ -414,8 +421,8 @@ class NGoodSeeingBasisFunction(BaseBasisFunction):
 
 
 class AvoidLongGapsBasisFunction(BaseBasisFunction):
-    """Boost the reward on parts of the survey that haven't been observed for a
-    while.
+    """Boost the reward on parts of the survey that haven't been
+    observed for a while.
     """
 
     def __init__(
@@ -463,16 +470,17 @@ class TargetMapBasisFunction(BaseBasisFunction):
         The name of the filter for this target map.
     nside: `int` (default_nside)
         The healpix resolution.
-    target_map : numpy array (None)
+    target_map : `np.array` (None)
         A healpix map showing the ratio of observations desired for all points
         on the sky
     norm_factor : `float` (0.00010519)
-        for converting target map to number of observations. Should be the area
-        of the camera divided by the area of a healpixel divided by the sum of
-        all your goal maps. Default value assumes LSST foV has 1.75 degree
-        radius and the standard goal maps. If using mulitple filters, see
-        rubin_scheduler.scheduler.utils.calc_norm_factor for a utility that computes
-        norm_factor.
+        for converting target map to number of observations.
+        Should be the area of the camera divided by the area of a healpixel
+        divided by the sum of all your goal maps.
+        Default value assumes LSST foV has 1.75 degree radius and the
+        standard goal maps.
+        If using multiple filters, see rubin_scheduler.utils.calc_norm_factor
+        for a utility that computes norm_factor.
     out_of_bounds_val : `float` (-10.)
         Reward value to give regions where there are no observations requested
         (unitless).
@@ -588,8 +596,9 @@ class NObsHighAmBasisFunction(BaseBasisFunction):
                 self.recalc = True
 
     def check_feasibility(self, conditions):
-        """If there is logic to decide if something is feasible (e.g., only if moon is down),
-        it can be calculated here. Helps prevent full __call__ from being called more than needed.
+        """If there is logic to decide if something is feasible
+        (e.g., only if moon is down), it can be calculated here.
+        Helps prevent full __call__ from being called more than needed.
         """
         result = True
         reward = self._calc_value(conditions)
@@ -690,8 +699,8 @@ class SeasonCoverageBasisFunction(BaseBasisFunction):
     n_per_season : `int` (3)
         The number of observations to attempt to gather every season
     offset : healpix map
-        The offset to apply when computing the current season over the sky. utils.create_season_offset
-        is helpful for making this
+        The offset to apply when computing the current season over the sky.
+        rubin_scheduler.utils.create_season_offset is helpful for making this
     season_frac_start : `float` (0.5)
         Only start trying to gather observations after a season is fractionally this far over.
     """
@@ -732,8 +741,9 @@ class SeasonCoverageBasisFunction(BaseBasisFunction):
 
 
 class FootprintNvisBasisFunction(BaseBasisFunction):
-    """Basis function to drive observations of a given footprint. Good to target of opportunity targets
-    where one might want to observe a region 3 times.
+    """Basis function to drive observations of a given footprint.
+    Good to target of opportunity targets where one might want to observe
+    a region 3 times.
 
     Parameters
     ----------
@@ -775,7 +785,8 @@ class FootprintNvisBasisFunction(BaseBasisFunction):
 
 
 class ThirdObservationBasisFunction(BaseBasisFunction):
-    """If there have been observations in two filters long enough ago, go for a third
+    """If there have been observations in two filters long enough ago,
+    go for a third
 
     Parameters
     ----------
@@ -808,7 +819,8 @@ class ThirdObservationBasisFunction(BaseBasisFunction):
 
 
 class AvoidFastRevists(BaseBasisFunction):
-    """Marks targets as unseen if they are in a specified time window in order to avoid fast revisits.
+    """Marks targets as unseen if they are in a specified time window
+    in order to avoid fast revisits.
 
     Parameters
     ----------
@@ -819,7 +831,8 @@ class AvoidFastRevists(BaseBasisFunction):
     nside: `int` (default_nside)
         The healpix resolution.
     penalty_val : `float` (np.nan)
-        The reward value to use for regions to penalize. Will be masked if set to np.nan (default).
+        The reward value to use for regions to penalize.
+        Will be masked if set to np.nan (default).
     """
 
     def __init__(self, filtername="r", nside=None, gap_min=25.0, penalty_val=np.nan):
@@ -872,7 +885,8 @@ class NearSunTwilightBasisFunction(BaseBasisFunction):
 
 class VisitRepeatBasisFunction(BaseBasisFunction):
     """
-    Basis function to reward re-visiting an area on the sky. Looking for Solar System objects.
+    Basis function to reward re-visiting an area on the sky.
+    Looking for Solar System objects.
 
     Parameters
     ----------
@@ -965,20 +979,24 @@ class M5DiffAtHpixBasisFunction(HealpixLimitedBasisFunctionMixin, M5DiffBasisFun
 
 
 class StrictFilterBasisFunction(BaseBasisFunction):
-    """Remove the bonus for staying in the same filter if certain conditions are met.
+    """Remove the bonus for staying in the same filter
+    if certain conditions are met.
 
-    If the moon rises/sets or twilight starts/ends, it makes a lot of sense to consider
-    a filter change. This basis function rewards if it matches the current filter, the moon rises or sets,
-    twilight starts or stops, or there has been a large gap since the last observation.
+    If the moon rises/sets or twilight starts/ends, it makes a lot of sense
+    to consider a filter change. This basis function rewards if it matches
+    the current filter, the moon rises or sets, twilight starts or stops,
+    or there has been a large gap since the last observation.
 
     Parameters
     ----------
     time_lag : `float` (10.)
-        If there is a gap between observations longer than this, let the filter change (minutes)
+        If there is a gap between observations longer than this,
+        let the filter change (minutes)
     twi_change : `float` (-18.)
         The sun altitude to consider twilight starting/ending (degrees)
     note_free : `str` ('DD')
-        No penalty for changing filters if the last observation note field includes string.
+        No penalty for changing filters if the last observation note field
+        includes `note_free` string.
         Useful for giving a free filter change after deep drilling sequence
     """
 
@@ -1024,39 +1042,45 @@ class StrictFilterBasisFunction(BaseBasisFunction):
 
 
 class GoalStrictFilterBasisFunction(BaseBasisFunction):
-    """Remove the bonus for staying in the same filter if certain conditions are met.
+    """Remove the bonus for staying in the same filter
+    if certain conditions are met.
 
-    If the moon rises/sets or twilight starts/ends, it makes a lot of sense to consider
-    a filter change. This basis function rewards if it matches the current filter, the moon rises or sets,
-    twilight starts or stops, or there has been a large gap since the last observation.
+    If the moon rises/sets or twilight starts/ends, it makes a lot of sense
+    to consider a filter change. This basis function rewards if it matches
+    the current filter, the moon rises or sets, twilight starts or stops,
+    or there has been a large gap since the last observation.
 
     Parameters
     ----------
     time_lag_min : `float`
-        Minimum time after a filter change for which a new filter change will receive zero reward, or
-        be denied at all (see unseen_before_lag).
+        Minimum time after a filter change for which a new filter change
+        will receive zero reward, or be denied at all (see unseen_before_lag).
     time_lag_max : `float`
-        Time after a filter change where the reward for changing filters achieve its maximum.
+        Time after a filter change where the reward for changing filters
+        achieve its maximum.
     time_lag_boost : `float`
         Time after a filter change to apply a boost on the reward.
     boost_gain : `float`
         A multiplier factor for the reward after time_lag_boost.
     unseen_before_lag : `bool`
-        If True will make it impossible to switch filter before time_lag has passed.
+        If True will make it impossible to switch filter before time_lag
+        has passed.
     filtername : `str`
         The filter for which this basis function will be used.
     tag: `str` or None
-        When using filter proportion use only regions with this tag to count for observations.
+        When using filter proportion use only regions with this tag to
+        count for observations.
     twi_change : `float`
         Switch reward on when twilight changes.
     proportion : `float`
         The expected filter proportion distribution.
     aways_available: `bool`
-        If this is true the basis function will aways be computed regardless of the feasibility.
+        If this is true the basis function will aways be computed
+        regardless of the feasibility.
         If False a more detailed feasibility check is performed.
-        When set to False, it may speed up the computation process by avoiding to compute the
-        reward functions paired with this bf, when observation is not feasible.
-
+        When set to False, it may speed up the computation process by
+        avoiding the computation of the reward functions paired with this bf,
+        when observation is not feasible.
     """
 
     def __init__(
@@ -1120,7 +1144,8 @@ class GoalStrictFilterBasisFunction(BaseBasisFunction):
     def check_feasibility(self, conditions):
         """
         This method makes a pre-check of the feasibility of this basis function.
-        If a basis function returns False on the feasibility check, it won't computed at all.
+        If a basis function returns False on the feasibility check,
+        it won't computed at all.
 
         Returns
         -------
@@ -1223,8 +1248,8 @@ class SlewtimeBasisFunction(BaseBasisFunction):
     Parameters
     ----------
     max_time : `float` (135)
-         The estimated maximum slewtime (seconds). Used to normalize so the basis function
-         spans ~ -1-0 in reward units.
+         The estimated maximum slewtime (seconds).
+         Used to normalize so the basis function spans ~ -1-0 in reward units.
     """
 
     def __init__(self, max_time=135.0, filtername="r", nside=None):
@@ -1260,7 +1285,8 @@ class AggressiveSlewtimeBasisFunction(BaseBasisFunction):
     """Reward slews that take little time
 
     XXX--not sure how this is different from SlewtimeBasisFunction?
-    Looks like it's checking the slewtime to the field position rather than the healpix maybe?
+    Looks like it's checking the slewtime to the field position
+    rather than the healpix maybe?
     """
 
     def __init__(self, max_time=135.0, order=1.0, hard_max=None, filtername="r", nside=None):
@@ -1473,10 +1499,13 @@ class CadenceEnhanceBasisFunction(BaseBasisFunction):
     filtername : `str` ('gri')
         The filter(s) that should be grouped together
     supress_window : `list` of `float`
-        The start and stop window for when observations should be repressed (days)
+        The start and stop window for when observations should be repressed
+        (days)
     apply_area : healpix map
-        The area over which to try and drive the cadence. Good values as 1, no candece drive 0.
-        Probably works as a bool array too."""
+        The area over which to try and drive the cadence.
+        Good values as 1, no candece drive 0.
+        Probably works as a bool array too.
+    """
 
     def __init__(
         self,
@@ -1554,7 +1583,8 @@ def trapezoid(x, amplitude, x_0, width, slope):
 
 
 class CadenceEnhanceTrapezoidBasisFunction(BaseBasisFunction):
-    """Drive a certain cadence, like CadenceEnhanceBasisFunction but with smooth transitions
+    """Drive a certain cadence, like CadenceEnhanceBasisFunction
+    but with smooth transitions
 
     Parameters
     ----------
@@ -1646,8 +1676,8 @@ class CadenceEnhanceTrapezoidBasisFunction(BaseBasisFunction):
 
 class AzimuthBasisFunction(BaseBasisFunction):
     """Reward staying in the same azimuth range.
-    Possibly better than using slewtime, especially when selecting a large area of sky.
-
+    Possibly better than using slewtime, especially when selecting a
+    large area of sky.
     """
 
     def __init__(self, nside=None):
@@ -1664,7 +1694,8 @@ class AzimuthBasisFunction(BaseBasisFunction):
 
 
 class AzModuloBasisFunction(BaseBasisFunction):
-    """Try to replicate the Rothchild et al cadence forcing by only observing on limited az ranges per night.
+    """Try to replicate the Rothchild et al cadence forcing by only observing
+    on limited az ranges per night.
 
     Parameters
     ----------
@@ -1820,12 +1851,12 @@ class TemplateGenerateBasisFunction(BaseBasisFunction):
 
     Parameters
     ----------
-    day_gap : `float` (250.)
+    day_gap : `float`
         How long to wait before boosting the reward (days)
-    footprint : `np.array`(None)
-        The indices of the healpixels to apply the boost to. Uses the default footprint if None
+    footprint : `np.array`
+        The indices of the healpixels to apply the boost to.
+        Uses the default footprint if None
     """
-
     def __init__(self, nside=None, day_gap=250.0, filtername="r", footprint=None):
         super(TemplateGenerateBasisFunction, self).__init__(nside=nside)
         self.day_gap = day_gap
@@ -1954,7 +1985,7 @@ class AvoidDirectWind(BaseBasisFunction):
 
     Parameters
     ----------
-    wind_speed_maximum : float
+    wind_speed_maximum : `float`
         Wind speed to mark regions as unobservable (in m/s).
     """
 
@@ -1985,13 +2016,13 @@ class BalanceVisits(BaseBasisFunction):
 
     Parameters
     ----------
-    nobs_reference : int
+    nobs_reference : `int`
         Expected number of observations across all interested surveys.
-    note_survey : str
+    note_survey : `str`
         Note value for the current survey.
-    note_interest : str
+    note_interest : `str`
         Substring with the name of interested surveys to be accounted.
-    nside : int
+    nside : `int`
         Healpix map resolution.
 
     Notes
@@ -2002,7 +2033,7 @@ class BalanceVisits(BaseBasisFunction):
 
     For example, if you have 3 surveys (e.g. SURVEY_A_REGION_1,
     SURVEY_A_REGION_2, SURVEY_A_REGION_3), when one of them is observed once
-    (SURVEY_A_REGION_1) they all get a small reward boost proportianal to the
+    (SURVEY_A_REGION_1) they all get a small reward boost proportional to the
     collective number of observations (`nobs_reference`). Further observations
     of SURVEY_A_REGION_1 would now cause the other surveys to gain a reward
     boost in relative to it.
@@ -2030,16 +2061,16 @@ class RewardNObsSequence(BaseBasisFunction):
 
     Parameters
     ----------
-    n_obs_survey : int
+    n_obs_survey : `int`
         Number of observations to reward.
-    note_survey : str
+    note_survey : `str`
         The value of the observation note, to take into account.
-    nside : int, optional
+    nside : `int`, optional
         Healpix map resolution (ignored).
 
     Notes
     -----
-    This basis function is usefull when a survey is composed of more than one
+    This basis function is useful when a survey is composed of more than one
     observation (e.g. in different filters) and one wants to make sure they are
     all taken together.
     """

@@ -471,10 +471,11 @@ def empty_observation():
     target : `str` (optional)
         A note about what target is being observed.
 
-    Additional Fields
-    -----------------
-    Lots of additional fields that get filled in by the model observatory when the observation is completed.
-    See documentation at: https://rubin-sim.lsst.io/rs_scheduler/output_schema.html
+    Note
+    ----
+    Lots of additional fields that get filled in by the model observatory
+    when the observation is completed.
+    See documentation at: https://rubin-scheduler.lsst.io/output_schema.html
 
     """
 
@@ -585,8 +586,8 @@ def scheduled_observation(n=1):
     result : np.array
 
 
-    things to fill in
-    ------
+    Note
+    ----
     mjd_tol : `float`
         The tolerance on how early an observation can execute (days). Observation will be considered valid to attempt
         when mjd-mjd_tol < current MJD < flush_by_mjd (and other conditions below pass)
@@ -686,8 +687,8 @@ def hp_kd_tree(nside=None, leafsize=100, scale=1e5):
 
 class HpInLsstFov:
     """
-    Return the healpixels within a pointing. A very simple LSST camera model with
-    no chip/raft gaps.
+    Return the healpixels within a pointing.
+    A very simple LSST camera model with no chip/raft gaps.
     """
 
     def __init__(self, nside=None, fov_radius=1.75, scale=1e5):

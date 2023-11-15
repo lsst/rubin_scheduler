@@ -17,16 +17,14 @@ DEFAULT_DATA_URL = "https://s3df.slac.stanford.edu/data/rubin/sim-data/rubin_sim
 def data_dict():
     """Creates a `dict` for all data buckets and the tar file they map to.
     To create tar files and follow any sym links, run:
-        ``tar -chvzf maf_may_2021.tgz maf``
+    `tar -chvzf maf_may_2021.tgz maf`
 
     Returns
     -------
     result : `dict`
-        Data bucket filenames dictionary with keys:
-        ``"name"``
-            Data bucket name (`str`).
-        ``"version"``
-            Versioned file name (`str`).
+        Data bucket filenames dictionary with keys/values:
+        "name" - Data bucket name (`str`).
+        "version" - Versioned file name (`str`).
     """
     file_dict = {
         "scheduler": "scheduler_2023_10_16.tgz",
