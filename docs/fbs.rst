@@ -21,8 +21,8 @@ Running a typical simulation will take on the order of 6 hours to complete.
 The scheduler outputs a sqlite database containing the pointing history of
 the telescope, along with information about the conditions of each
 observation (visit).
-Description of the :doc:`schema for the output database <output_schema>`.
+Description of the :doc:`schema for the output database <output-schema>`.
 
 .. toctree::
 
-    Simulation output schema <output_schema>
+    Simulation output schema <output-schema>

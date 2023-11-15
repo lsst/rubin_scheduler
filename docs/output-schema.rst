@@ -1,3 +1,7 @@
+.. py:currentmodule:: rubin_scheduler
+
+.. _output-schema:
+
 =======================
 Scheduler Output Schema
 =======================
