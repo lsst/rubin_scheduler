@@ -1531,8 +1531,7 @@ def run_sched(
     illum_limit=40.0,
     mjd_start=60796.0,
 ):
-    """Run the scheduler to get a simulated pointing history.
-    """
+    """Run the scheduler to get a simulated pointing history."""
     years = np.round(survey_length / 365.25)
     scheduler = CoreScheduler(surveys, nside=nside)
     n_visit_limit = None

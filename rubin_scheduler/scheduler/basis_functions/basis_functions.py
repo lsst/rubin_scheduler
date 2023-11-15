@@ -1857,6 +1857,7 @@ class TemplateGenerateBasisFunction(BaseBasisFunction):
         The indices of the healpixels to apply the boost to.
         Uses the default footprint if None
     """
+
     def __init__(self, nside=None, day_gap=250.0, filtername="r", footprint=None):
         super(TemplateGenerateBasisFunction, self).__init__(nside=nside)
         self.day_gap = day_gap

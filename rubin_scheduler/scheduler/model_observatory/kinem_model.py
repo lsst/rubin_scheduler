@@ -10,8 +10,7 @@ two_pi = 2.0 * np.pi
 
 
 class Radec2altazpa:
-    """Class to make it easy to swap in different alt/az conversion if wanted.
-    """
+    """Class to make it easy to swap in different alt/az conversion if wanted."""
 
     def __init__(self, location):
         self.location = location
@@ -618,8 +617,7 @@ class KinemModel:
         return visit_time
 
     def shutter_stall(self, observation):
-        """Time we need to stall after shutter closes to let things cool down.
-        """
+        """Time we need to stall after shutter closes to let things cool down."""
         result = 0.0
         delta_t = observation["exptime"] / observation["nexp"]
         if delta_t < self.shutter_2motion_min_time:
