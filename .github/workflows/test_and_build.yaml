@@ -25,6 +25,7 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
+          miniforge-variant: Mambaforge
           channels: conda-forge,defaults
           use-mamba: true
           channel-priority: strict
@@ -33,9 +34,8 @@ jobs:
       - name: configure conda and install requirements
         shell: bash -l {0}
         run: |
-          conda config --set always_yes yes
-          conda install --quiet --file=requirements.txt
-          conda install --quiet --file=test-requirements.txt
+          mamba install --quiet --file=requirements.txt
+          mamba install --quiet --file=test-requirements.txt
 
       - name: install rubin_scheduler
         shell: bash -l {0}
@@ -44,11 +44,23 @@ jobs:
           ls ${{ github.workspace }}
           python -m pip install .
 
-      - name: download rubin_sim_data components needed for unit tests
+      - name: Access rubin-sim-data cache
+        id: cache-rs
+        uses: actions/cache@v3
+        env:
+          cache-name: cached-rubin-sim-data
+        with:
+          path: ~/rubin_sim_data
+          key: ${{ env.cache-name }}
+          restore-keys: |
+            ${{ env.cache-name }}
+
+      - name: Update rubin-sim-data if needed
         shell: bash -l {0}
         run: |
-          export RUBIN_SIM_DATA_DIR=${{ github.workspace }}/data_dir
-          scheduler_download_data --tdqm_disable -d 'site_models,scheduler,skybrightness_pre,utils'
+          export RUBIN_SIM_DATA_DIR=~/rubin_sim_data
+          # Download anything that is not current
+          scheduler_download_data --tdqm_disable --update
 
       - name: conda list
         shell: bash -l {0}
@@ -57,7 +69,8 @@ jobs:
       - name: run tests
         shell: bash -l {0}
         run: |
-          export RUBIN_SIM_DATA_DIR=${{ github.workspace }}/data_dir
+          export RUBIN_SIM_DATA_DIR=~/rubin_sim_data
+          #pytest -r a -v 
           pytest -r a -v --cov=rubin_scheduler --cov=tests --cov-report=xml --cov-report=term --cov-branch
 
   pypi:
