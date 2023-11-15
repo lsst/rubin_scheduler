@@ -1,0 +1,66 @@
+name: Cache rubin-sim-data
+on:
+  # Run job at the end of each day
+  schedule:
+      - cron: "0 0 * * *"
+  # and on manual workflow
+  workflow_dispatch:
+
+
+jobs:
+  make-cache:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+          python-version: ${{ matrix.python-version }}
+          miniforge-variant: Mambaforge
+          channels: conda-forge,defaults
+          use-mamba: true
+          channel-priority: strict
+          show-channel-urls: true
+
+      - name: configure conda and install requirements
+        shell: bash -l {0}
+        run: |
+          mamba install --quiet --file=requirements.txt
+          mamba install --quiet --file=test-requirements.txt
+
+      - name: install rubin_scheduler
+        shell: bash -l {0}
+        run: |
+          echo `pwd`
+          ls ${{ github.workspace }}
+          python -m pip install .       
+
+      - name: Access rubin-sim-data cache
+        id: cache-rs
+        uses: actions/cache@v3
+        env:
+          cache-name: cached-rubin-sim-data
+        with:
+          path: ~/rubin_sim_data
+          key: ${{ env.cache-name }}
+          restore-keys: |
+            ${{ env.cache-name }}
+
+      - name: Download data.
+        shell: bash -l {0}
+        run: |
+          export RUBIN_SIM_DATA_DIR=~/rubin_sim_data       
+          scheduler_download_data --force --tdqm_disable
+
+      - name: Check data
+        shell: bash -l {0}
+        run: |
+          export RUBIN_SIM_DATA_DIR=~/rubin_sim_data
+          echo $RUBIN_SIM_DATA_DIR contents
+          ls $RUBIN_SIM_DATA_DIR
+          echo "__contents of versions.txt__"
+          cat $RUBIN_SIM_DATA_DIR/versions.txt
+  
+  
+
