@@ -578,7 +578,7 @@ class KinemModel:
                     current_rot_tel_pos = self.last_rot_tel_pos_rad
                 else:
                     # We have been tracking, so rot_tel_pos needs to be updated
-                    current_rot_tel_pos = _get_rot_tel_pos(pa, self.current_rot_sky_pos_rad)
+                    current_rot_tel_pos = _get_rot_tel_pos(starting_pa, self.current_rot_sky_pos_rad)
             else:
                 # kwarg overrides if it was supplied
                 current_rot_tel_pos = starting_rot_tel_pos_rad
