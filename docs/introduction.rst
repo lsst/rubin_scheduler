@@ -19,7 +19,7 @@ These scheduling algorithms also need to be configured to best meet
 the LSST science goals. Short and long-term survey
 strategy choices must be evaluated using realistic simulations of the
 expected pointing history. The :ref:`site_models <site-models>` and
-:ref:`skybrightness_pre <skybrightness_pre>` modules support these simulations
+:ref:`skybrightness_pre <skybrightness-pre>` modules support these simulations
 by providing realistic weather telemetry, including seeing and cloud cover
 histories and pre-calculated skybrightness maps. The simulations also include
 a model of the observatory, providing accurate slew and settle times.

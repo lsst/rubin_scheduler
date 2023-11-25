@@ -8,12 +8,14 @@ API
 .. toctree::
     :maxdepth: 2
 
-    FBS Scheduler <fbs-api>
-
-    Site Models <site-models-api>
+    Data <data-api>
 
     Skybrightness Pre <skybrightness-pre-api>
 
+    Site Models <site-models-api>
+
     Utils <utils-api>
 
-    Data <data-api>
+    FBS Scheduler <fbs-api>
+
+
