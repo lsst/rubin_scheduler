@@ -11,6 +11,7 @@ Scheduling and simulating millions of observations for the Rubin C. Observatory'
 .. toctree::
     :maxdepth: 2
 
+    Introduction <introduction>
     Installation <installation>
     User Guide <user-guide>
     API <api>
