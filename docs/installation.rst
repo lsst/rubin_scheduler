@@ -10,10 +10,10 @@ Quick Installation
 ------------------
 
 Installation from PyPI:
-``pip install rubin_scheduler``
+``pip install rubin-scheduler``
 
 or from conda-forge:
-``conda install -c conda-forge rubin_scheduler``
+``conda install -c conda-forge rubin-scheduler``
 
 Please note that following either installation,
 additional data must be downloaded to use the software,
