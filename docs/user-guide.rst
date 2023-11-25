@@ -9,9 +9,10 @@ User Guide
 
 .. toctree::
 
-    FBS Scheduler <fbs>
-    Site Models <site-models>
-    Precalculated Skybrightness <skybrightness-pre>
-    Utils <utils>
     Data Download Utilities <data-download>
+    Precalculated Skybrightness <skybrightness-pre>
+    Site Models <site-models>
+    Utils <utils>
+    FBS Scheduler <fbs>
+
  
