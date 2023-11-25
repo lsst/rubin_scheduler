@@ -10,15 +10,16 @@ The `Legacy Survey of Space and Time <http://www.lsst.org>`_ (LSST) is anticipat
 to encompass around 2 million observations spanning a decade, averaging
 800 visits per night. To streamline the acquisition of these observations,
 we need a scheduler that is both fully automated and adaptable to weather conditions, observatory performance, and science priorities.
-The "Feature Based Scheduler" (FBS) `scheduler <fbs>`_  module in `rubin_scheduler <https://github.com/lsst/rubin_scheduler>`_ encodes our
+The "Feature Based Scheduler" (FBS) :ref:`scheduler <fbs>`  module in
+`rubin_scheduler <https://github.com/lsst/rubin_scheduler>`_ encodes our
 current best approach to achieving these objectives for
 our all-sky multi-year survey.
 
 These scheduling algorithms also need to be configured to best meet
 the LSST science goals. Short and long-term survey
 strategy choices must be evaluated using realistic simulations of the
-expected pointing history. The `site_models <site-models>`_ and
-`skybrightness_pre <skybrightness_pre>`_ modules support these simulations
+expected pointing history. The :ref:`site_models <site-models>` and
+:ref:`skybrightness_pre <skybrightness_pre>` modules support these simulations
 by providing realistic weather telemetry, including seeing and cloud cover
 histories and pre-calculated skybrightness maps. The simulations also include
 a model of the observatory, providing accurate slew and settle times.

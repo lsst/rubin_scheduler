@@ -32,7 +32,7 @@ These files are identified by the MJD range of data contained within each file (
 pre-calculated skybrightness data covering MJD = 60841 to 61054).
 Downloading individual files by hand, when only a limiting range of
 skybrightness files are of interest, also works -- place the resulting
-files in the $RUBIN_SIM_DATA_DIR/skybrightness_pre directory. 
+files in the $RUBIN_SIM_DATA_DIR/skybrightness_pre directory.
 
 A full download of the skybrightness data files requires
 approximately 75GB of disk space.
