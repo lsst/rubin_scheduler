@@ -10,16 +10,20 @@ Quick Installation
 ------------------
 
 Installation from PyPI:
-``pip install rubin_scheduler``
+``pip install rubin-scheduler``
 
 or from conda-forge:
-``conda install -c conda-forge rubin_scheduler``
+``conda install -c conda-forge rubin-scheduler``
 
+Please note that following either installation,
+additional data must be downloaded to use the software,
+following the instructions at
+:ref:`Data Download<data-download>`.
 
 For Developer Use
 -----------------
 
-First, clone the `rubin_scheduler` repository:
+First, clone the `rubin_scheduler <https://github.com/lsst/rubin_scheduler>`_ repository:
 
 ::
 
@@ -42,13 +46,16 @@ If you want to run tests, install the test requirements as well:
  conda install -c conda-forge --file=test-requirements.txt
 
 
-Install the `rubin_scheduler` project into this environment (from the rubin_scheduler directory):
+Install the ``rubin_scheduler`` project into this environment (from the rubin_scheduler directory):
 
 ::
 
  pip install -e .
 
-
+Please note that following installation,
+additional data must be downloaded to use the software,
+following the instructions at
+:ref:`Data Download<data-download>`.
 
 
 Building Documentation
@@ -64,5 +71,5 @@ however building a local copy can be done as follows:
  package-docs build
 
 
-The root of the local documentation will then be `docs/_build/html/index.html`.
+The root of the local documentation will then be ``docs/_build/html/index.html``.
 

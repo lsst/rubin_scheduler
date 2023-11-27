@@ -1,5 +1,11 @@
-[![DOI](https://zenodo.org/badge/712606243.svg)](https://zenodo.org/doi/10.5281/zenodo.10076770)
+[![pypi](https://img.shields.io/pypi/v/rubin-scheduler.svg)](https://pypi.org/project/rubin-scheduler/)
+ [![Conda Version](https://img.shields.io/conda/vn/conda-forge/rubin-scheduler.svg)](https://anaconda.org/conda-forge/rubin-scheduler) <br>
+[![Run CI](https://github.com/lsst/rubin_scheduler/actions/workflows/test_and_build.yaml/badge.svg)](https://github.com/lsst/rubin_scheduler/actions/workflows/test_and_build.yaml)
+[![Build and Upload Docs](https://github.com/lsst/rubin_scheduler/actions/workflows/build_docs.yaml/badge.svg)](https://github.com/lsst/rubin_scheduler/actions/workflows/build_docs.yaml)
+[![codecov](https://codecov.io/gh/lsst/rubin_scheduler/branch/main/graph/badge.svg?token=2BUBL8R9RH)](https://codecov.io/gh/lsst/rubin_scheduler)
 
+
+[![DOI](https://zenodo.org/badge/712606243.svg)](https://zenodo.org/doi/10.5281/zenodo.10076770)
 
 # rubin_scheduler
 
@@ -7,14 +13,4 @@ Feature Based Scheduler for Vera C. Rubin Observatory's Legacy Survey of Space a
 
 This repository contains the scheduling algorithms for the LSST, as implemented in the Feature Based Scheduler (FBS). More documentation on the FBS is available at https://rubin-scheduler.lsst.io and in jupyter notebooks available in our [tutorials repository](https://github.com/lsst/rubin_sim_notebooks/tree/main/scheduler). 
 
-# Install From Source
-
-```
-git clone https://github.com/lsst/rubin_scheduler.git ; cd rubin_scheduler  ## clone and cd into repo
-conda create -n rubin-sim ; conda activate rubin-sim   ## optional (but recommended) new conda env
-conda install -c conda-forge --file=requirements.txt  ## install dependencies
-conda install -c conda-forge --file=test-requirements.txt  ## for running unit tests
-pip install -e .
-scheduler_download_data  ## Downloads ~500 MB of data to $RUBIN_SIM_DATA_DIR (~/rubin_sim_data if unset)
-```
 
