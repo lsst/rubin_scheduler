@@ -436,8 +436,13 @@ class SchemaConverter:
         return final_result
 
 
-def empty_observation():
+def empty_observation(n=1):
     """Return a numpy array that could be a handy observation record
+
+    Parameters
+    ----------
+    n : `int`
+        Size of array to return. Default 1.
 
     Returns
     -------
@@ -574,7 +579,7 @@ def empty_observation():
         float,
         int,
     ]
-    result = np.zeros(1, dtype=list(zip(names, types)))
+    result = np.zeros(n, dtype=list(zip(names, types)))
     return result
 
 
