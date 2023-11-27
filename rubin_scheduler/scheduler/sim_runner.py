@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from rubin_scheduler.scheduler.schedulers import SimpleFilterSched
-from rubin_scheduler.scheduler.utils import SchemaConverter, run_info_table
+from rubin_scheduler.scheduler.utils import SchemaConverter, empty_observation, run_info_table
 
 
 def sim_runner(
@@ -26,6 +26,8 @@ def sim_runner(
     extra_info=None,
     event_table=None,
     record_rewards=False,
+    start_result_size=int(2e5),
+    append_result_size=int(2.5e6),
 ):
     """
     run a simulation
@@ -42,6 +44,11 @@ def sim_runner(
         Any ToO events that were included in the simulation
     record_rewards : bool (False)
         Save computed rewards
+    start_result_size : int
+        Size of observations array to pre-allocate at the start of the run. Default 2e5.
+    append_result_size : int
+        Size of observations array to append if start_result_size is too small.
+        Default 2.5e6.
     """
 
     if extra_info is None:
@@ -60,7 +67,7 @@ def sim_runner(
         observatory.mjd = mjd
 
     end_mjd = mjd + survey_length
-    observations = []
+    observations = empty_observation(n=start_result_size)
     mjd_track = mjd + 0
     step = 1.0 / 24.0
     step_none = step_none / 60.0 / 24.0  # to days
@@ -74,6 +81,7 @@ def sim_runner(
     obs_rewards = {}
     reward_dfs = []
 
+    counter = 0
     while mjd < end_mjd:
         if not scheduler._check_queue_mjd_only(observatory.mjd):
             scheduler.update_conditions(observatory.return_conditions())
@@ -93,8 +101,13 @@ def sim_runner(
         completed_obs, new_night = observatory.observe(desired_obs)
         if completed_obs is not None:
             scheduler.add_observation(completed_obs[0])
-            observations.append(completed_obs)
+            observations[counter] = completed_obs[0]
             filter_scheduler.add_observation(completed_obs[0])
+            counter += 1
+            if counter == observations.size:
+                add_observations = empty_observation(n=append_result_size)
+                observations = np.concatenate([observations, add_observations])
+
             if record_rewards:
                 obs_rewards[completed_obs[0]["mjd"]] = last_obs_queue_fill_mjd_ns
         else:
@@ -119,11 +132,15 @@ def sim_runner(
                 sys.stdout.flush()
                 mjd_track = mjd + 0
         if n_visit_limit is not None:
-            if len(observations) == n_visit_limit:
+            if counter == n_visit_limit:
                 break
         # XXX--handy place to interupt and debug
         # if len(observations) > 25:
         #    import pdb ; pdb.set_trace()
+
+    # trim off any observations that were pre-allocated but not used
+    observations = observations[0:counter]
+
     runtime = time.time() - t0
     print("Skipped %i observations" % nskip)
     print("Flushed %i observations from queue for being stale" % scheduler.flushed)
@@ -132,7 +149,6 @@ def sim_runner(
     if len(observations) > 0:
         if filename is not None:
             print("Writing results to ", filename)
-        observations = np.array(observations)[:, 0]
         if filename is not None:
             info = run_info_table(observatory, extra_info=extra_info)
             converter = SchemaConverter()
