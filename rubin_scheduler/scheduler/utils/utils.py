@@ -21,6 +21,8 @@ __all__ = (
     "inrange",
     "season_calc",
     "create_season_offset",
+    "thetaphi2xyz",
+    "xyz2thetaphi",
 )
 
 import datetime
@@ -50,6 +52,19 @@ def smallest_signed_angle(a1, a2):
     alb = np.where(a < b)[0]
     result[alb] = -1.0 * a[alb]
     return result
+
+
+def thetaphi2xyz(theta, phi):
+    x = np.sin(phi) * np.cos(theta)
+    y = np.sin(phi) * np.sin(theta)
+    z = np.cos(phi)
+    return x, y, z
+
+
+def xyz2thetaphi(x, y, z):
+    phi = np.arccos(z)
+    theta = np.arctan2(y, x)
+    return theta, phi
 
 
 class IntRounded:

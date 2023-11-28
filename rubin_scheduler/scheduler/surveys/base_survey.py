@@ -8,13 +8,14 @@ import numpy as np
 import pandas as pd
 
 from rubin_scheduler.scheduler.detailers import ZeroRotDetailer
-from rubin_scheduler.scheduler.thomson import thetaphi2xyz, xyz2thetaphi
 from rubin_scheduler.scheduler.utils import (
     HpInComcamFov,
     HpInLsstFov,
     comcam_tessellate,
     empty_observation,
     set_default_nside,
+    thetaphi2xyz,
+    xyz2thetaphi,
 )
 from rubin_scheduler.site_models import _read_fields
 
