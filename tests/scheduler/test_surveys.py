@@ -62,6 +62,10 @@ class TestSurveys(unittest.TestCase):
         survey.add_observations_array(fields, None)
         assert np.sum(survey.n_obs) == 11
 
+        # Check error gets raised if "note" not unique
+        fields = empty_observation(n=10)
+        self.assertRaises(ValueError, surveys.PointingsSurvey, fields)
+
     def test_roi(self):
         random_seed = 6563
         infeasible_hpix = 123

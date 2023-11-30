@@ -49,6 +49,11 @@ class PointingsSurvey(BaseSurvey):
     ):
         # Not doing a super here, don't want to even have an nside defined.
 
+        # Check that observations["note"] are unique, otherwise incoming
+        # observations will get double-counted
+        if np.size(np.unique(observations["note"])) != np.size(observations):
+            raise ValueError("observations['note'] values are not unique")
+
         self.observations = observations
         self.gap_min = gap_min / 60.0 / 24.0  # to days
         self.moon_dist_limit = np.radians(moon_dist_limit)
