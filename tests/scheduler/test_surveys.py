@@ -62,6 +62,14 @@ class TestSurveys(unittest.TestCase):
         survey.add_observations_array(fields, None)
         assert np.sum(survey.n_obs) == 11
 
+        # Check we can get display things out
+        rc = survey.reward_changes(conditions)
+        assert len(rc) == len(survey.weights)
+
+        # Check we get a dataFrame
+        df = survey.make_reward_df(conditions)
+        assert len(df) == len(survey.weights)
+
         # Check error gets raised if "note" not unique
         fields = empty_observation(n=10)
         self.assertRaises(ValueError, surveys.PointingsSurvey, fields)

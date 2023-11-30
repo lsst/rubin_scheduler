@@ -2,9 +2,10 @@ __all__ = ["PointingsSurvey"]
 
 import healpy as hp
 import numpy as np
+import pandas as pd
 
 from rubin_scheduler.scheduler.detailers import ParallacticRotationDetailer
-from rubin_scheduler.utils import _angular_separation, _approx_ra_dec2_alt_az, healbin
+from rubin_scheduler.utils import _angular_separation, _approx_ra_dec2_alt_az
 
 from .base_survey import BaseSurvey
 
@@ -28,10 +29,11 @@ class PointingsSurvey(BaseSurvey):
     weights : dict
         Dictionary with keys of method names and values of floats.
         Default of None uses {"visit_gap": 1.0, "balance_revisit": 1.0,
-                              "wind_limit": 1.0, "slew_time": -1.0}
-    cuts : list of str
-        List with the method names to run which apply hard cuts to observations.
-        Default of None uses ["ha_limit", "alt_limit", "moon_limit"]
+                              "wind_limit": 1.0, "slew_time": -1.0,
+                              "ha_limit": 0, "alt_limit": 0, "moon_limit": 0}
+    wind_speed_maximum : float
+        The maximum wind (m/s), mask any targets that would take more wind than that.
+        Default 100 m/s.
     """
 
     def __init__(
@@ -40,12 +42,12 @@ class PointingsSurvey(BaseSurvey):
         gap_min=25.0,
         moon_dist_limit=30.0,
         weights=None,
-        cuts=None,
         alt_max=85.0,
         alt_min=20.0,
         detailers=None,
         ha_max=4,
         ha_min=-4,
+        wind_speed_maximum=100,
     ):
         # Not doing a super here, don't want to even have an nside defined.
 
@@ -60,6 +62,7 @@ class PointingsSurvey(BaseSurvey):
         self.alt_max = np.radians(alt_max)
         self.alt_min = np.radians(alt_min)
         self.zeros = self.observations["RA"] * 0.0
+        self.wind_speed_maximum = wind_speed_maximum
 
         # convert hour angle limits to radians and 0-2pi
         self.ha_max = (np.radians(ha_max * 360 / 24) + 2 * np.pi) % (2 * np.pi)
@@ -72,14 +75,17 @@ class PointingsSurvey(BaseSurvey):
         self.last_computed_reward = -1.0
 
         if weights is None:
-            self.weights = {"visit_gap": 1.0, "balance_revisit": 1.0, "wind_limit": 1.0, "slew_time": -1.0}
+            self.weights = {
+                "visit_gap": 1.0,
+                "balance_revisit": 1.0,
+                "slew_time": -1.0,
+                "wind_limit": 0.0,
+                "ha_limit": 0,
+                "alt_limit": 0,
+                "moon_limit": 0,
+            }
         else:
             self.weights = weights
-
-        if cuts is None:
-            self.cuts = ["ha_limit", "alt_limit", "moon_limit"]
-        else:
-            self.cuts = cuts
 
         self.scheduled_obs = None
         # If there's no detailers, add one to set rotation to near zero
@@ -111,9 +117,6 @@ class PointingsSurvey(BaseSurvey):
             self.ha[np.where(self.ha < 0)] += 2.0 * np.pi
 
             self.reward = np.zeros(self.observations.size, dtype=float)
-            # go through and apply cuts
-            for cut in self.cuts:
-                self.reward += getattr(self, cut)(conditions)
             # Apply all the weights to the reward
             # In theory, could track where the reward is already
             # NaN and not bother doing extra computations.
@@ -203,8 +206,119 @@ class PointingsSurvey(BaseSurvey):
         )
         return result
 
-    def viz(self, nside=128):
-        # if we wanted to vizulize what's going on, we could do something like
-        result = healbin(self.ra, self.dec, self.reward, nside=nside, reduceFunc=np.max)
-        # or just plot color-coded points for each reward. Maybe empty circles at the NaN points
-        return result
+    def _reward_to_scalars(self, reward):
+        scalar_reward = np.nanmax(reward)
+        n_unmasked = np.sum(np.isfinite(reward))
+
+        return scalar_reward, n_unmasked
+
+    def make_reward_df(self, conditions, accum=True):
+        """Create a pandas.DataFrame describing the reward from the survey.
+
+        Parameters
+        ----------
+        conditions : `rubin_scheduler.scheduler.features.Conditions`
+            Conditions for which rewards are to be returned
+        accum : `bool`
+            Include accumulated reward (more compute intensive)
+            Defaults to True
+
+        Returns
+        -------
+        reward_df : `pandas.DataFrame`
+            A table of surveys listing the rewards.
+        """
+
+        feasibility = []
+        max_rewards = []
+        n_possibles = []
+        accum_rewards = []
+        accum_areas = []
+        bf_label = []
+        bf_class = []
+        basis_weights = self.weights.values()
+
+        short_labels = self.bf_short_labels
+
+        tracking_reward = np.zeros(self.observations.size, dtype=float)
+
+        for method_name in self.weights:
+            bf_label.append(short_labels[method_name])
+            bf_class.append(None)
+            bf_reward = self.weights[method_name] * getattr(self, method_name)(conditions)
+            max_reward, n_possible = self._reward_to_scalars(bf_reward)
+
+            if np.isnan(max_reward) | (n_possible == 0):
+                this_feasibility = False
+            else:
+                this_feasibility = True
+
+            feasibility.append(this_feasibility)
+            max_rewards.append(max_reward)
+            n_possibles.append(n_possible)
+
+            if accum:
+                tracking_reward += bf_reward
+                accum_reward, accum_area = self._reward_to_scalars(tracking_reward)
+                accum_rewards.append(accum_reward)
+                accum_areas.append(accum_area)
+
+        reward_data = {
+            "method": bf_label,
+            "blank": bf_class,
+            "feasible": feasibility,
+            "max_reward": max_rewards,
+            "n_possibles": n_possibles,
+            "weight": basis_weights,
+        }
+        if accum:
+            reward_data["max_accum_reward"] = accum_rewards
+            reward_data["accum_n"] = accum_areas
+
+        reward_df = pd.DataFrame(reward_data)
+
+        return reward_df
+
+    def reward_changes(self, conditions):
+        """List the rewards for each basis function used by the survey.
+
+        Parameters
+        ----------
+        conditions : `rubin_scheduler.scheduler.features.Conditions`
+            Conditions for which rewards are to be returned
+
+        Returns
+        -------
+        rewards : `list`
+            A list of tuples, each with a basis function name and the
+            maximum reward returned by that basis function for the
+            provided conditions.
+        """
+
+        reward_values = []
+
+        for key in self.weights:
+            reward_values.append(np.nanmax(getattr(self, key)(conditions)))
+
+        names = list(self.weights.keys())
+
+        return list(zip(names, reward_values))
+
+    @property
+    def bf_short_labels(self):
+        long_labels = list(self.weights.keys())
+
+        label_bases = [label.split(" @")[0] for label in long_labels]
+        duplicated_labels = set([label for label in label_bases if label_bases.count(label) > 1])
+        short_labels = []
+        label_count = {k: 0 for k in duplicated_labels}
+        for label_base in label_bases:
+            if label_base in duplicated_labels:
+                label_count[label_base] += 1
+                short_labels.append(f"{label_base} {label_count[label_base]}")
+            else:
+                short_labels.append(label_base)
+
+        label_map = dict(zip(long_labels, short_labels))
+
+        return label_map
