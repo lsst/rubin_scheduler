@@ -1,4 +1,4 @@
-__all__ = ("dark_sky",)
+__all__ = ("dark_sky", "dark_m5")
 
 import os
 
@@ -6,6 +6,8 @@ import healpy as hp
 import numpy as np
 
 from rubin_scheduler.data import get_data_dir
+from rubin_scheduler.site_models import SeeingModel
+from rubin_scheduler.utils import m5_flat_sed
 
 
 def dark_sky(nside=32):
@@ -35,3 +37,24 @@ def dark_sky(nside=32):
         dark_sky_data[band] = hp.pixelfunc.ud_grade(dark_sky.data[band], nside_out=nside)
 
     return dark_sky_data
+
+
+def dark_m5(decs, filtername, latitude_rad, fiducial_FWHMEff, exptime=30.0, nexp=1):
+    """Return a nominal best-depth map of the sky"""
+    nside = hp.npix2nside(np.size(decs))
+    ds = dark_sky(nside)[filtername]
+    min_z = np.abs(decs - latitude_rad)
+    airmass_min = 1 / np.cos(min_z)
+    airmass_min = np.where(airmass_min < 0, np.nan, airmass_min)
+    sm = SeeingModel(filter_list=[filtername])
+    fwhm_eff = sm(fiducial_FWHMEff, airmass_min)["fwhmEff"][0]
+    dark_m5_map = m5_flat_sed(
+        filtername,
+        musky=ds,
+        fwhm_eff=fwhm_eff,
+        exp_time=exptime,
+        airmass=airmass_min,
+        nexp=nexp,
+        tau_cloud=0,
+    )
+    return dark_m5_map

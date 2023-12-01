@@ -45,6 +45,7 @@ class TestSurveys(unittest.TestCase):
         fields["RA"] = np.arange(0, fields.size) / fields.size * 2.0 * np.pi
         fields["dec"] = -0.01
         fields["note"] = ["test%i" % ind for ind in range(fields.size)]
+        fields["filter"] = "r"
         survey = surveys.PointingsSurvey(fields)
 
         reward = survey.calc_reward_function(conditions)

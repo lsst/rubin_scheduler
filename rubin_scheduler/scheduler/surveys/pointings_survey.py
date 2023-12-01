@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 
 from rubin_scheduler.scheduler.detailers import ParallacticRotationDetailer
+from rubin_scheduler.skybrightness_pre import dark_m5
 from rubin_scheduler.utils import _angular_separation, _approx_ra_dec2_alt_az
 
 from .base_survey import BaseSurvey
@@ -34,6 +35,9 @@ class PointingsSurvey(BaseSurvey):
     wind_speed_maximum : float
         The maximum wind (m/s), mask any targets that would take more wind than that.
         Default 100 m/s.
+    fiducial_FWHMEff : float
+        A fiducial seeing value to use when computing dark sky depth.
+        Default 0.7 arcsec.
     """
 
     def __init__(
@@ -48,6 +52,7 @@ class PointingsSurvey(BaseSurvey):
         ha_max=4,
         ha_min=-4,
         wind_speed_maximum=100,
+        fiducial_FWHMEff=0.7,
     ):
         # Not doing a super here, don't want to even have an nside defined.
 
@@ -63,6 +68,8 @@ class PointingsSurvey(BaseSurvey):
         self.alt_min = np.radians(alt_min)
         self.zeros = self.observations["RA"] * 0.0
         self.wind_speed_maximum = wind_speed_maximum
+        self.dark_map = None
+        self.fiducial_FWHMEff = fiducial_FWHMEff
 
         # convert hour angle limits to radians and 0-2pi
         self.ha_max = (np.radians(ha_max * 360 / 24) + 2 * np.pi) % (2 * np.pi)
@@ -78,6 +85,7 @@ class PointingsSurvey(BaseSurvey):
             self.weights = {
                 "visit_gap": 1.0,
                 "balance_revisit": 1.0,
+                "m5diff": 1.0,
                 "slew_time": -1.0,
                 "wind_limit": 0.0,
                 "ha_limit": 0,
@@ -88,13 +96,16 @@ class PointingsSurvey(BaseSurvey):
             self.weights = weights
 
         self.scheduled_obs = None
-        # If there's no detailers, add one to set rotation to near zero
+        # If there's no detailers, add one to set rotation to
+        # Parallactic angle
         if detailers is None:
             self.detailers = [ParallacticRotationDetailer()]
         else:
             self.detailers = detailers
 
     def _check_feasibility(self, conditions):
+        # Simple feasability check.
+        # Could add more logic here if desired (e.g., don't execute in twilight)
         result = True
         reward = self.calc_reward_function(conditions)
         if not np.isfinite(reward):
@@ -102,7 +113,6 @@ class PointingsSurvey(BaseSurvey):
         return result
 
     def calc_reward_function(self, conditions):
-        #
         if self.last_computed_reward != conditions.mjd:
             self.alt, self.az = _approx_ra_dec2_alt_az(
                 self.observations["RA"],
@@ -130,13 +140,14 @@ class PointingsSurvey(BaseSurvey):
         """ """
         max_reward = self.calc_reward_function(conditions)
         # take the first one in the array if there's a tie
+        # Could change logic to return multiple pointings
         winner = np.min(np.where(self.reward == max_reward)[0])
         return [self.observations[winner].copy().reshape(1)]
 
     def add_observation(self, observation, indx=None):
         # Check if we have the same note. Maybe also check other things like exptime?
         indx = np.where(observation["note"] == self.observations["note"])[0]
-        # Probably need to add a check that note is unique
+        # Tracking arrays
         self.n_obs[indx] += 1
         self.last_observed[indx] = observation["mjd"]
 
@@ -206,6 +217,36 @@ class PointingsSurvey(BaseSurvey):
         )
         return result
 
+    def _dark_map(self, conditions):
+        """generate the dark map if needed
+
+        Constructs self.dark_map which is a dict with
+        keys of filtername and values of HEALpix arrays
+        that are the darkest expected 5-sigma limiting depth
+        expected for that region of sky
+        """
+        self.dark_map = {}
+        for filtername in np.unique(self.observations["filter"]):
+            self.dark_map[filtername] = dark_m5(
+                conditions.dec, filtername, conditions.site.latitude_rad, self.fiducial_FWHMEff
+            )
+
+    def m5diff(self, conditions):
+        if self.dark_map is None:
+            self._dark_map(conditions)
+        result = np.zeros(self.observations.size)
+        for filtername in np.unique(self.observations["filter"]):
+            indx = np.where(self.observations["filter"] == filtername)[0]
+            diff_map = conditions.m5_depth[filtername] - self.dark_map[filtername]
+            result[indx] = hp.get_interp_val(
+                diff_map,
+                np.degrees(self.observations["RA"][indx]),
+                np.degrees(self.observations["dec"][indx]),
+                lonlat=True,
+            )
+
+        return result
+
     def _reward_to_scalars(self, reward):
         scalar_reward = np.nanmax(reward)
         n_unmasked = np.sum(np.isfinite(reward))
@@ -213,21 +254,7 @@ class PointingsSurvey(BaseSurvey):
         return scalar_reward, n_unmasked
 
     def make_reward_df(self, conditions, accum=True):
-        """Create a pandas.DataFrame describing the reward from the survey.
-
-        Parameters
-        ----------
-        conditions : `rubin_scheduler.scheduler.features.Conditions`
-            Conditions for which rewards are to be returned
-        accum : `bool`
-            Include accumulated reward (more compute intensive)
-            Defaults to True
-
-        Returns
-        -------
-        reward_df : `pandas.DataFrame`
-            A table of surveys listing the rewards.
-        """
+        """Create a pandas.DataFrame describing the reward from the survey."""
 
         feasibility = []
         max_rewards = []
@@ -280,20 +307,7 @@ class PointingsSurvey(BaseSurvey):
         return reward_df
 
     def reward_changes(self, conditions):
-        """List the rewards for each basis function used by the survey.
-
-        Parameters
-        ----------
-        conditions : `rubin_scheduler.scheduler.features.Conditions`
-            Conditions for which rewards are to be returned
-
-        Returns
-        -------
-        rewards : `list`
-            A list of tuples, each with a basis function name and the
-            maximum reward returned by that basis function for the
-            provided conditions.
-        """
+        """List the rewards for each basis function used by the survey."""
 
         reward_values = []
 
