@@ -1,13 +1,15 @@
 .. py:currentmodule:: rubin_scheduler
 
-.. _output-schema:
+.. _fbs-output-schema:
 
 =======================
 Scheduler Output Schema
 =======================
 
-The scheduler simulations output a sqlite database with the following columns in the
-`observations` table.
+The scheduler outputs a sqlite database containing the pointing history of
+the telescope, along with information about the conditions of each
+observation (visit).
+The table below describes the columns in the `observations` table.
 
 All values are for the center of the field of view (e.g., airmass, altitude, etc)
 
