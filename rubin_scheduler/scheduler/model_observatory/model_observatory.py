@@ -57,6 +57,8 @@ class ModelObservatory:
         downtimes=None,
         no_sky=False,
         wind_data=None,
+        starting_time_key="sun_n12_setting",
+        ending_time_key="sun_n12_rising",
     ):
         """
         Parameters
@@ -106,6 +108,14 @@ class ModelObservatory:
             object with a __call__ method that takes the time and returns a
             tuple with the wind speed (m/s) and originating direction (radians
             east of north)
+        starting_time_key : str
+            What key in the almanac to use to determine the start of observing on a night.
+            Default "sun_n12_setting", e.g., sun at -12 degrees and setting. Other
+            options are "sun_n18_setting" and "sunset"
+        ending_time_key : str
+            What key in the almanac to use to signify it is time to skip to the next night.
+            Default "sun_n12_rising", e.g., sun at -12 degrees and rising. Other
+            options are "sun_n18_rising" and "sunrise"
         """
 
         if nside is None:
@@ -120,6 +130,8 @@ class ModelObservatory:
         self.alt_min = np.radians(alt_min)
         self.lax_dome = lax_dome
         self.mjd_start = survey_start_mjd() if mjd_start is None else mjd_start
+        self.starting_time_key = starting_time_key
+        self.ending_time_key = ending_time_key
 
         self.sim__to_o = sim_to_o
 
@@ -486,18 +498,18 @@ class ModelObservatory:
             while clouds > self.cloud_limit:
                 new_mjd = new_mjd + cloud_skip / 60.0 / 24.0
                 clouds = self.cloud_data(Time(new_mjd, format="mjd"))
-        alm_indx = np.searchsorted(self.almanac.sunsets["sunset"], mjd) - 1
+        alm_indx = np.searchsorted(self.almanac.sunsets["sunset"], mjd, side="right") - 1
         # at the end of the night, advance to the next setting twilight
-        if mjd > self.almanac.sunsets["sun_n12_rising"][alm_indx]:
+        if mjd > self.almanac.sunsets[self.ending_time_key][alm_indx]:
             passed = False
-            new_mjd = self.almanac.sunsets["sun_n12_setting"][alm_indx + 1]
-        if mjd < self.almanac.sunsets["sun_n12_setting"][alm_indx]:
+            new_mjd = self.almanac.sunsets[self.starting_time_key][alm_indx + 1]
+        if mjd < self.almanac.sunsets[self.starting_time_key][alm_indx]:
             passed = False
-            new_mjd = self.almanac.sunsets["sun_n12_setting"][alm_indx + 1]
+            new_mjd = self.almanac.sunsets[self.starting_time_key][alm_indx + 1]
         # We're in a down night, advance to next night
         if not self.check_up(mjd):
             passed = False
-            new_mjd = self.almanac.sunsets["sun_n12_setting"][alm_indx + 1]
+            new_mjd = self.almanac.sunsets[self.starting_time_key][alm_indx + 1]
         # recursive call to make sure we skip far enough ahead
         if not passed:
             while not passed:
