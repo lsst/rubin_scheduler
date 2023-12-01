@@ -13,7 +13,7 @@ via the ``feature based scheduler`` (FBS).
 
 .. toctree::
 
-    Description of the scheduler <fbs-arch>
+    Scheduler Overview <fbs-arch>
 
     Running a simulation <fbs-running>
 
