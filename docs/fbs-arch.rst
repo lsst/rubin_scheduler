@@ -21,8 +21,7 @@ observation (or observations) (`request_observation()`) by polling its lists of 
 It also accepts updates of completed observations (`add_observation()`) and
 when desired, can flush its internal queue of awaiting observations
 (`flush_queue()`).
-The `CoreScheduler`, once configured, is the primary interaction point
-for running the scheduler.
+The `CoreScheduler` is the primary interaction point when running the scheduler.
 
 The `CoreScheduler <fbs-api.html#rubin_scheduler.scheduler.schedulers.CoreScheduler>`_ itself however, does not determine what are useful or
 desireable observations. That job belongs to the `Surveys <fbs-api.html#module-rubin_scheduler.scheduler.surveys>`_. While there could be only a
@@ -142,11 +141,11 @@ the overall reward for that `Survey`. Each `BasisFunction` for a `Survey` has
 an associated weight; the total reward for the `Survey` is simply the weighted
 sum of the `BasisFunction` values.
 
-Some `Surveys` do not use `BasisFunctions`. A `ScriptedSurvey`, for example,
-might not have any `BasisFunctions`, just a list of desired observations and
-time windows for those observations. The feasibility check in that case would
-simply see if the current time matches the time window and if the observation
-has already been acquired or not.
+A few `Surveys` do not use `BasisFunctions`. A `ScriptedSurvey`, for example,
+might just have a list of desired observations and
+time windows for those observations. The reward in that case might simply be
+a constant value if there are any desired observations with time windows that
+overlap the current time.
 
 A `Survey` is considered infeasible if `check_feasibility()` returns False.
 It is also infeasible if the final reward value is `-Infinity`. The final
