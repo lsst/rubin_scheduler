@@ -6,9 +6,9 @@
 Scheduler Output Schema
 =======================
 
-The scheduler outputs a sqlite database containing the pointing history of
-the telescope, along with information about the conditions of each
-observation (visit).
+When running in simulation mode, the scheduler outputs a sqlite database
+containing the pointing history of the telescope, along with information
+about the conditions of each observation (visit).
 The table below describes the columns in the `observations` table.
 
 All values are for the center of the field of view (e.g., airmass, altitude, etc)
