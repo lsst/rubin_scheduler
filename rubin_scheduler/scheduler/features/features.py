@@ -694,8 +694,8 @@ class PairInNight(BaseSurveyFeature):
         self.feature = np.zeros(hp.nside2npix(nside), dtype=float)
         self.indx = np.arange(self.feature.size)
         self.last_observed = LastObserved(filtername=filtername)
-        self.gap_min = gap_min / (24.0 * 60)  # Days
-        self.gap_max = gap_max / (24.0 * 60)  # Days
+        self.gap_min = IntRounded(gap_min / (24.0 * 60))  # Days
+        self.gap_max = IntRounded(gap_max / (24.0 * 60))  # Days
         self.night = 0
         # Need to keep a full record of times and healpixels observed in a night.
         self.mjd_log = []
@@ -726,21 +726,22 @@ class PairInNight(BaseSurveyFeature):
                 self.mjd_log = []
                 self.hpid_log = []
 
+            # Look for the mjds that could possibly pair with observation
+            mjd_diff = IntRounded(observation["mjd"] - np.array(self.mjd_log))
+            # normally would use np.searchsorted, but need to use IntRounded
+            # to be sure we are cross-platform repeatable.
+            in_range_indx = np.where((mjd_diff > self.gap_min) & (mjd_diff < self.gap_max))[0]
+            # Now check if any of the healpixels taken in the time gap
+            # match the healpixels of the observation.
+            if in_range_indx.size > 0:
+                left = in_range_indx.min()
+                right = in_range_indx.max() + 1
+                matches = np.in1d(indx, self.hpid_log[left:right])
+                self.feature[np.array(indx)[matches]] += 1
+
             # record the mjds and healpixels that were observed
             self.mjd_log.extend([np.max(observation["mjd"])] * np.size(indx))
             self.hpid_log.extend(list(indx))
-
-            # Look for the mjds that could possibly pair with observation
-            tmin = observation["mjd"] - self.gap_max
-            tmax = observation["mjd"] - self.gap_min
-            mjd_log = np.array(self.mjd_log)
-            left = np.searchsorted(mjd_log, tmin).max()
-            right = np.searchsorted(mjd_log, tmax, side="right").max()
-            # Now check if any of the healpixels taken in the time gap
-            # match the healpixels of the observation.
-            matches = np.in1d(indx, self.hpid_log[int(left) : int(right)])
-            # XXX--should think if this is the correct (fastest) order to check things in.
-            self.feature[np.array(indx)[matches]] += 1
 
 
 class RotatorAngle(BaseSurveyFeature):
