@@ -265,7 +265,8 @@ class LastObservation(BaseSurveyFeature):
             if np.size(good) < 0:
                 self.feature = observations_array[good[-1]]
         else:
-            self.feature = observations_array[-1]
+            if len(observations_array) > 0:
+                self.feature = observations_array[-1]
 
     def add_observation(self, observation, indx=None):
         if self.survey_name is not None:
