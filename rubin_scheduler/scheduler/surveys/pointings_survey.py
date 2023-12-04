@@ -12,24 +12,26 @@ from .base_survey import BaseSurvey
 
 
 class PointingsSurvey(BaseSurvey):
-    """Survey object for managing a set list of potential pointings.
+    """Survey object for managing a set list of potential pointings
+    without specified observing times
 
     Parameters
     ----------
     observations : np.array
         An array of observations, from e.g. rubin_scheduler.scheduler.utils.empty_observation
         expect "RA", "dec", and "note" to be filled, other columns ignored.
-    gap_min : `float` (25.)
+    gap_min : `float`
         The minimum gap to force between observations of the same spot (minutes)
     alt_min : `float`
         Altitude limit of the telescope (degrees). Default 20.
     alt_max : `float`
         Altitude limit of the telescope (degrees). Default 85.
     ha_max, ha_min : float (4,-4)
-        hour angle limits (hours)
+        hour angle limits (hours). Applied to all observations. Default 4,-4.
     weights : dict
         Dictionary with keys of method names and values of floats.
         Default of None uses {"visit_gap": 1.0, "balance_revisit": 1.0,
+                              "m5diff": 1.0,
                               "wind_limit": 1.0, "slew_time": -1.0,
                               "ha_limit": 0, "alt_limit": 0, "moon_limit": 0}
     wind_speed_maximum : float
@@ -137,7 +139,6 @@ class PointingsSurvey(BaseSurvey):
         return np.nanmax(self.reward)
 
     def generate_observations_rough(self, conditions):
-        """ """
         max_reward = self.calc_reward_function(conditions)
         # take the first one in the array if there's a tie
         # Could change logic to return multiple pointings
@@ -159,18 +160,21 @@ class PointingsSurvey(BaseSurvey):
             self.last_observed[indx] = observations_array_in["mjd"][matching].max()
 
     def ha_limit(self, conditions):
+        """Apply hour angle limits."""
         result = self.zeros.copy()
         # apply hour angle limits
         result[np.where((self.ha > self.ha_max) & (self.ha < self.ha_min))] = np.nan
         return result
 
     def alt_limit(self, conditions):
+        """Apply altitude limits."""
         result = self.zeros.copy()
         result[np.where(self.alt > self.alt_max)] = np.nan
         result[np.where(self.alt < self.alt_min)] = np.nan
         return result
 
     def moon_limit(self, conditions):
+        """Apply moon distanve limit."""
         result = self.zeros.copy()
         dists = _angular_separation(
             self.observations["RA"], self.observations["dec"], conditions.moon_ra, conditions.moon_dec
@@ -179,7 +183,7 @@ class PointingsSurvey(BaseSurvey):
         return result
 
     def wind_limit(self, conditions):
-        # Apply the wind limit
+        """Apply the wind limit."""
         result = self.zeros.copy()
         if conditions.wind_speed is None or conditions.wind_direction is None:
             return result
@@ -191,7 +195,7 @@ class PointingsSurvey(BaseSurvey):
         return result
 
     def visit_gap(self, conditions):
-        """Enforce a minimum visit gap"""
+        """Enforce a minimum visit gap."""
         diff = conditions.mjd - self.last_observed
         too_soon = np.where(diff < self.gap_min)[0]
         result = self.zeros.copy()
@@ -201,6 +205,7 @@ class PointingsSurvey(BaseSurvey):
         return result
 
     def balance_revisit(self, conditions):
+        """Code to balance revisiting different targets."""
         sum_obs = np.sum(self.n_obs)
         result = np.floor(1.0 + self.n_obs / sum_obs)
         result[np.where(self.n_obs == 0)] = 1
@@ -218,7 +223,7 @@ class PointingsSurvey(BaseSurvey):
         return result
 
     def _dark_map(self, conditions):
-        """generate the dark map if needed
+        """Generate the dark map if needed
 
         Constructs self.dark_map which is a dict with
         keys of filtername and values of HEALpix arrays
@@ -232,6 +237,9 @@ class PointingsSurvey(BaseSurvey):
             )
 
     def m5diff(self, conditions):
+        """Compute difference between current 5-sigma limiting depth and
+        the depth at the same coordinates in "ideal" conditions.
+        """
         if self.dark_map is None:
             self._dark_map(conditions)
         result = np.zeros(self.observations.size)
