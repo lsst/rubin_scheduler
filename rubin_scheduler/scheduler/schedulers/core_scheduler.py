@@ -240,12 +240,13 @@ class CoreScheduler:
                 )
                 obs_pa = _approx_altaz2pa(alt, az, self.conditions.site.latitude_rad)
                 rot_tel_pos_expected = (obs_pa - observation["rotSkyPos"]) % (2.0 * np.pi)
-                if (IntRounded(rot_tel_pos_expected) > IntRounded(self.rotator_limits[0])) & (
-                    IntRounded(rot_tel_pos_expected) < IntRounded(self.rotator_limits[1])
-                ):
-                    diff = np.abs(self.rotator_limits - rot_tel_pos_expected)
-                    limit_indx = np.min(np.where(diff == np.min(diff))[0])
-                    observation["rotSkyPos"] = (obs_pa - self.rotator_limits[limit_indx]) % (2.0 * np.pi)
+                if np.isfinite(observation["rotSkyPos"]):
+                    if (IntRounded(rot_tel_pos_expected) > IntRounded(self.rotator_limits[0])) & (
+                        IntRounded(rot_tel_pos_expected) < IntRounded(self.rotator_limits[1])
+                    ):
+                        diff = np.abs(self.rotator_limits - rot_tel_pos_expected)
+                        limit_indx = np.min(np.where(diff == np.min(diff))[0])
+                        observation["rotSkyPos"] = (obs_pa - self.rotator_limits[limit_indx]) % (2.0 * np.pi)
             return observation
 
     def _fill_queue(self):
