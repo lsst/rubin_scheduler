@@ -906,12 +906,12 @@ class VisitRepeatBasisFunction(BaseBasisFunction):
         self.gap_min = IntRounded(gap_min / 60.0 / 24.0)
         self.gap_max = IntRounded(gap_max / 60.0 / 24.0)
         self.npairs = npairs
-
         self.survey_features = {}
         # Track the number of pairs that have been taken in a night
         self.survey_features["Pair_in_night"] = features.PairInNight(
             filtername=filtername, gap_min=gap_min, gap_max=gap_max, nside=nside
         )
+
         # When was it last observed
         # XXX--since this feature is also in Pair_in_night, I should just access that one!
         self.survey_features["Last_observed"] = features.LastObserved(filtername=filtername, nside=nside)
@@ -920,11 +920,16 @@ class VisitRepeatBasisFunction(BaseBasisFunction):
         result = np.zeros(hp.nside2npix(self.nside), dtype=float)
         if indx is None:
             indx = np.arange(result.size)
-        diff = IntRounded(conditions.mjd - self.survey_features["Last_observed"].feature[indx])
+        diff = conditions.mjd - self.survey_features["Last_observed"].feature[indx]
+        ir_diff = IntRounded(diff)
+        # Note! There is something afoot where different platforms evaluate
+        # nan's differently. Thus adding in the (~np.isnan(diff) term
+        # to make sure things are evaluated correctly.
         good = np.where(
-            (diff >= self.gap_min)
-            & (diff <= self.gap_max)
+            (ir_diff >= self.gap_min)
+            & (ir_diff <= self.gap_max)
             & (self.survey_features["Pair_in_night"].feature[indx] < self.npairs)
+            & (~np.isnan(diff))
         )[0]
         result[indx[good]] += 1.0
         return result
