@@ -40,6 +40,11 @@ class PointingsSurvey(BaseSurvey):
     fiducial_FWHMEff : float
         A fiducial seeing value to use when computing dark sky depth.
         Default 0.7 arcsec.
+    sun_alt_limit : float
+        Have survey as infeasible when sun altitude is above the limit. default -12 (degrees).
+    track_notes_ngoal : dict
+        If there are observations that should be tracked together (e.g., a sequence that
+        should be observed together). Dict with keys if str and values of int.
     """
 
     def __init__(
@@ -55,6 +60,8 @@ class PointingsSurvey(BaseSurvey):
         ha_min=-4,
         wind_speed_maximum=100,
         fiducial_FWHMEff=0.7,
+        sun_alt_limit=-12.0,
+        track_notes_ngoal=None,
     ):
         # Not doing a super here, don't want to even have an nside defined.
 
@@ -72,6 +79,21 @@ class PointingsSurvey(BaseSurvey):
         self.wind_speed_maximum = wind_speed_maximum
         self.dark_map = None
         self.fiducial_FWHMEff = fiducial_FWHMEff
+        self.sun_alt_limit = np.radians(sun_alt_limit)
+        self.tracking_notes = {}
+        self.track_notes_ngoal = track_notes_ngoal
+        if track_notes_ngoal is not None:
+            for key in track_notes_ngoal:
+                self.tracking_notes[key] = 0
+        # Make mapping so it's fast to compute reward later
+        # Note that user must be careful to keep sequence names unique
+        self.sequence_mapping = {}
+        for key in self.tracking_notes:
+            self.sequence_mapping[key] = []
+        for i, obs in enumerate(observations):
+            for key in self.sequence_mapping:
+                if key in obs["note"]:
+                    self.sequence_mapping[key].append(i)
 
         # convert hour angle limits to radians and 0-2pi
         self.ha_max = (np.radians(ha_max * 360 / 24) + 2 * np.pi) % (2 * np.pi)
@@ -107,8 +129,12 @@ class PointingsSurvey(BaseSurvey):
 
     def _check_feasibility(self, conditions):
         # Simple feasability check.
-        # Could add more logic here if desired (e.g., don't execute in twilight)
         result = True
+
+        # if the sun is too high
+        if conditions.sun_alt > self.sun_alt_limit:
+            return False
+
         reward = self.calc_reward_function(conditions)
         if not np.isfinite(reward):
             result = False
@@ -146,11 +172,16 @@ class PointingsSurvey(BaseSurvey):
         return [self.observations[winner].copy().reshape(1)]
 
     def add_observation(self, observation, indx=None):
-        # Check if we have the same note. Maybe also check other things like exptime?
+        # Check for a nore match
         indx = np.where(observation["note"] == self.observations["note"])[0]
         # Tracking arrays
         self.n_obs[indx] += 1
         self.last_observed[indx] = observation["mjd"]
+
+        # If we are tracking n observations of some type:
+        for key in self.tracking_notes:
+            if key in observation["note"]:
+                self.tracking_notes[key] += 1
 
     def add_observations_array(self, observations_array_in, observations_hpid_in):
         for unote in np.unique(observations_array_in["note"]):
@@ -158,6 +189,10 @@ class PointingsSurvey(BaseSurvey):
             indx = np.where(self.observations["note"] == unote)[0]
             self.n_obs[indx] += np.size(matching)
             self.last_observed[indx] = observations_array_in["mjd"][matching].max()
+
+            for key in self.tracking_notes:
+                if key in unote:
+                    self.tracking_notes[key] += np.size(matching)
 
     def ha_limit(self, conditions):
         """Apply hour angle limits."""
@@ -220,6 +255,17 @@ class PointingsSurvey(BaseSurvey):
             np.degrees(self.observations["dec"]),
             lonlat=True,
         )
+
+        # Could do a filter check here and add a penalty for changing filters
+
+        return result
+
+    def sequence_boost(self, conditions):
+        """Boost the reward if a sequence is incomplete."""
+        result = self.zeros.copy()
+        for key in self.sequence_mapping:
+            result[self.sequence_mapping[key]] = self.tracking_notes[key] % self.track_notes_ngoal[key]
+
         return result
 
     def _dark_map(self, conditions):
