@@ -874,12 +874,15 @@ class NearSunTwilightBasisFunction(BaseBasisFunction):
 
     def _calc_value(self, conditions, indx=None):
         result = self.result.copy()
+        valid_airmass = np.isfinite(conditions.airmass)
         good_pix = np.where(
-            (conditions.airmass >= 1.0)
-            & (IntRounded(conditions.airmass) < self.max_airmass)
-            & (IntRounded(np.abs(conditions.az_to_sun)) < IntRounded(np.pi / 2.0))
+            (conditions.airmass[valid_airmass] >= 1.0)
+            & (IntRounded(conditions.airmass[valid_airmass]) < self.max_airmass)
+            & (IntRounded(np.abs(conditions.az_to_sun[valid_airmass])) < IntRounded(np.pi / 2.0))
         )
-        result[good_pix] = conditions.airmass[good_pix] / self.max_airmass.initial
+        result[valid_airmass][good_pix] = (
+            conditions.airmass[valid_airmass][good_pix] / self.max_airmass.initial
+        )
         return result
 
 
@@ -921,15 +924,15 @@ class VisitRepeatBasisFunction(BaseBasisFunction):
         if indx is None:
             indx = np.arange(result.size)
         diff = conditions.mjd - self.survey_features["Last_observed"].feature[indx]
+        mask = np.isnan(diff)
+        # remove NaNs from diff, but save mask so we exclude those values later.
+        diff[mask] = 0.0
         ir_diff = IntRounded(diff)
-        # Note! There is something afoot where different platforms evaluate
-        # nan's differently. Thus adding in the (~np.isnan(diff) term
-        # to make sure things are evaluated correctly.
         good = np.where(
             (ir_diff >= self.gap_min)
             & (ir_diff <= self.gap_max)
             & (self.survey_features["Pair_in_night"].feature[indx] < self.npairs)
-            & (~np.isnan(diff))
+            & (~mask)
         )[0]
         result[indx[good]] += 1.0
         return result

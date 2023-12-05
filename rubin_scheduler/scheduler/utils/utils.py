@@ -72,6 +72,9 @@ class IntRounded:
     Class to help force comparisons be made on scaled up integers,
     preventing machine precision issues cross-platforms
 
+    Note that casting a NaN to an int can have different behaviours
+    cross-platforms, so will throw an error if attempted.
+
     Parameters
     ----------
     inval : number-like thing
@@ -81,6 +84,8 @@ class IntRounded:
     """
 
     def __init__(self, inval, scale=1e5):
+        if np.any(~np.isfinite(inval)):
+            raise ValueError("IntRounded can only take finite values.")
         self.initial = inval
         self.value = np.round(inval * scale).astype(int)
         self.scale = scale
