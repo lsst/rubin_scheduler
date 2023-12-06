@@ -874,12 +874,15 @@ class NearSunTwilightBasisFunction(BaseBasisFunction):
 
     def _calc_value(self, conditions, indx=None):
         result = self.result.copy()
+        valid_airmass = np.isfinite(conditions.airmass)
         good_pix = np.where(
-            (conditions.airmass >= 1.0)
-            & (IntRounded(conditions.airmass) < self.max_airmass)
-            & (IntRounded(np.abs(conditions.az_to_sun)) < IntRounded(np.pi / 2.0))
+            (conditions.airmass[valid_airmass] >= 1.0)
+            & (IntRounded(conditions.airmass[valid_airmass]) < self.max_airmass)
+            & (IntRounded(np.abs(conditions.az_to_sun[valid_airmass])) < IntRounded(np.pi / 2.0))
         )
-        result[good_pix] = conditions.airmass[good_pix] / self.max_airmass.initial
+        result[valid_airmass][good_pix] = (
+            conditions.airmass[valid_airmass][good_pix] / self.max_airmass.initial
+        )
         return result
 
 
@@ -906,12 +909,12 @@ class VisitRepeatBasisFunction(BaseBasisFunction):
         self.gap_min = IntRounded(gap_min / 60.0 / 24.0)
         self.gap_max = IntRounded(gap_max / 60.0 / 24.0)
         self.npairs = npairs
-
         self.survey_features = {}
         # Track the number of pairs that have been taken in a night
         self.survey_features["Pair_in_night"] = features.PairInNight(
             filtername=filtername, gap_min=gap_min, gap_max=gap_max, nside=nside
         )
+
         # When was it last observed
         # XXX--since this feature is also in Pair_in_night, I should just access that one!
         self.survey_features["Last_observed"] = features.LastObserved(filtername=filtername, nside=nside)
@@ -920,11 +923,16 @@ class VisitRepeatBasisFunction(BaseBasisFunction):
         result = np.zeros(hp.nside2npix(self.nside), dtype=float)
         if indx is None:
             indx = np.arange(result.size)
-        diff = IntRounded(conditions.mjd - self.survey_features["Last_observed"].feature[indx])
+        diff = conditions.mjd - self.survey_features["Last_observed"].feature[indx]
+        mask = np.isnan(diff)
+        # remove NaNs from diff, but save mask so we exclude those values later.
+        diff[mask] = 0.0
+        ir_diff = IntRounded(diff)
         good = np.where(
-            (diff >= self.gap_min)
-            & (diff <= self.gap_max)
+            (ir_diff >= self.gap_min)
+            & (ir_diff <= self.gap_max)
             & (self.survey_features["Pair_in_night"].feature[indx] < self.npairs)
+            & (~mask)
         )[0]
         result[indx[good]] += 1.0
         return result
