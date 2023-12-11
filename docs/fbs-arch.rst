@@ -156,7 +156,7 @@ depending on the intended use of the `Survey`.
 
 A `ScriptedSurvey <fbs-api.html#rubin_scheduler.scheduler.surveys.ScriptedSurvey>`_
 or one derived from this class may just have a
-single constsant reward value, but determine feasibility depending on whether
+single constant reward value, but determine feasibility depending on whether
 any of its list of desired observations (which contain possible
 time windows) overlap the current time.
 
