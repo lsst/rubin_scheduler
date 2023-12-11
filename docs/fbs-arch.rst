@@ -127,10 +127,49 @@ Each `Survey` can `check_feasibility()`, which provides a quick check on
 whether the current conditions meet the `Survey` requirements as well as
 `calc_reward_function()`, which calculates the desirability of an
 observation under the current conditions.
-The calculation of the feasibility or reward for a given survey is governed by
-its
+The calculation of the feasibility or reward for a given survey is governed
+entirely by how these functions are implemented within the `Survey` class.
+
+A `Survey` is considered infeasible if `check_feasibility()` returns False.
+It is also infeasible if the maximum final reward value is `-Infinity`.
+The final reward value of a `Survey` is typically an array,
+but can be a scalar in the case of `Surveys` defined only at a single point
+(such as a `FieldSurvey`).
+
+If chosen to generate an observation request, the `Survey` will return
+either a single requested observation or a series of requested observations,
+using `generate_observations()`. The specific choice of these observations
+(whether single or a series) is determined by the specific `Survey`'s
+`generation_observations_rough` method.
+The specifics of these requested observations include details added by its
+`Detailers <fbs-api.html#module-rubin_scheduler.scheduler.detailers>`_)
+which can add requested rotation angle or dithering positions, if
+applicable.
+
+
+Calculating Feasibility and Rewards
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The calculation of feasibility or reward is entirely dependant on how
+these methods are implemented in the `Survey` class, and this can vary
+depending on the intended use of the `Survey`.
+
+A `ScriptedSurvey <fbs-api.html#rubin_scheduler.scheduler.surveys.ScriptedSurvey>`_
+or one derived from this class may just have a
+single constsant reward value, but determine feasibility depending on whether
+any of its list of desired observations (which contain possible
+time windows) overlap the current time.
+
+Most `Surveys` do contain a list of
 `BasisFunctions <fbs-api.html#module-rubin_scheduler.scheduler.basis_functions>`_
-and `Features <fbs-api.html#module-rubin_scheduler.scheduler.features>`_.
+which combine to calculate the overall reward for that `Survey` under
+the current conditions. If so, each `BasisFunction` will also have
+an associated weight; the total reward for the `Survey` is
+simply the weighted sum of the `BasisFunction` values. These `Surveys` will
+generally also have their own
+`Features <fbs-api.html#module-rubin_scheduler.scheduler.features>`_, which
+track relevant information for that `Survey` over time.
+
 The `BasisFunctions` calculate values to contribute to the reward that
 consider some aspect of the current conditions: a simple example is
 the `SlewtimeBasisFunction` which calculates its `value` based on the slewtime
@@ -140,30 +179,13 @@ such as how many observations have already been obtained or when the last
 observation at a given pointing was acquired, and can be used by the
 `BasisFunctions` for that `Survey`.
 
-Most `Survey` contain a list of `BasisFunctions`, which are combined to
-determine the overall reward for that `Survey`. Each `BasisFunction` for a
-`Survey` has an associated weight; the total reward for the `Survey` is
-simply the weighted sum of the `BasisFunction` values.
+Typically `Survey` classes which are intended to be used for large areas of
+sky contain `BasisFunctions` and inherit from the
+`BaseMarkovSurvey <fbs-api.html#rubin_scheduler.scheduler.surveys.BaseMarkovSurvey>`_.
+Most of the observations in the current baseline come from a `Survey` class
+in this category, the
+`BlobSurvey <fbs-api.html#rubin_scheduler.scheduler.surveys.BlobSurvey>`_.
 
-A few `Surveys` do not use `BasisFunctions`. A `ScriptedSurvey`, for example,
-might just have a list of desired observations and
-time windows for those observations. The reward in that case might simply be
-a constant value, triggered only if there are any desired observations
-with time windows that overlap the current time.
-
-A `Survey` is considered infeasible if `check_feasibility()` returns False.
-It is also infeasible if the maximum final reward value is `-Infinity`.
-The final reward value of a `Survey` is typically an array,
-but can be a scalar in the case of `Surveys` defined only at a single point
-(such as a `FieldSurvey`).
-
-If chosen to generate an observation request, the `Survey` will return
-either a single or a series of requested observations,
-using `generate_observations()`. The specifics of these requested observations
-include details added by its
-`Detailers <fbs-api.html#module-rubin_scheduler.scheduler.detailers>`_)
-which can add requested rotation angle or dithering positions, if
-applicable.
 
 Basis Functions
 ^^^^^^^^^^^^^^^
