@@ -2,7 +2,6 @@
  [![Conda Version](https://img.shields.io/conda/vn/conda-forge/rubin-scheduler.svg)](https://anaconda.org/conda-forge/rubin-scheduler) <br>
 [![Run CI](https://github.com/lsst/rubin_scheduler/actions/workflows/test_and_build.yaml/badge.svg)](https://github.com/lsst/rubin_scheduler/actions/workflows/test_and_build.yaml)
 [![Build and Upload Docs](https://github.com/lsst/rubin_scheduler/actions/workflows/build_docs.yaml/badge.svg)](https://github.com/lsst/rubin_scheduler/actions/workflows/build_docs.yaml)
-[![codecov](https://codecov.io/gh/lsst/rubin_scheduler/branch/main/graph/badge.svg?token=2BUBL8R9RH)](https://codecov.io/gh/lsst/rubin_scheduler)
 
 
 [![DOI](https://zenodo.org/badge/712606243.svg)](https://zenodo.org/doi/10.5281/zenodo.10076770)
