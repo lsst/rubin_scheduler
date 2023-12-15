@@ -2,8 +2,8 @@ __all__ = ("ScriptedSurvey",)
 
 import logging
 
-import numpy as np
 import healpy as hp
+import numpy as np
 
 from rubin_scheduler.scheduler.surveys import BaseSurvey
 from rubin_scheduler.scheduler.utils import empty_observation, set_default_nside
@@ -30,6 +30,7 @@ class ScriptedSurvey(BaseSurvey):
         self,
         basis_functions,
         basis_weights=None,
+        reward=1e6,
         ignore_obs="dummy",
         nside=None,
         detailers=None,
@@ -43,6 +44,7 @@ class ScriptedSurvey(BaseSurvey):
 
         self.extra_features = {}
         self.nside = nside
+        self.reward_val = reward
         self.reward = -np.inf
         self.id_start = id_start
         self.return_n_limit = return_n_limit
@@ -124,30 +126,7 @@ class ScriptedSurvey(BaseSurvey):
             if observation is None:
                 self.reward = -np.inf
             else:
-                reward = 0
-                for bf, weight in zip(self.basis_functions, self.basis_weights):
-                    basis_value = bf(conditions)
-                    reward += basis_value * weight
-                # If reward is an array, then it's a HEALpy map and we
-                # need to interpolate to the actual positions we want.
-                if np.size(reward) > 1:
-                    # now to interpolate to the reward positions
-                    reward_interp = hp.get_interp_val(reward,
-                                                      np.degrees(observation["RA"]),
-                                                      np.degrees(observation["dec"]),
-                                                      lonlat=True,
-                                                      )
-                    valid_reward = np.isfinite(reward_interp)
-                    if np.size(valid_reward) > 0:
-                        # so now we are setting the reward to an array
-                        # may want to also save the observation["RA"] and 
-                        # observation["dec"] values so those can be passed 
-                        # on for display.
-                        self.reward = reward_interp
-                    else:
-                        self.reward = -np.inf
-                else:
-                    self.reward = reward
+                self.reward = self.reward_val
         else:
             self.reward = -np.inf
         return self.reward
@@ -226,6 +205,24 @@ class ScriptedSurvey(BaseSurvey):
                 if np.size(matches) > self.return_n_limit:
                     matches = matches[0 : self.return_n_limit]
                 observations = self.obs_wanted[matches]
+
+                # Need to check that none of these are masked by basis functions
+                reward = 0
+                for bf, weight in zip(self.basis_functions, self.basis_weights):
+                    basis_value = bf(conditions)
+                    reward += basis_value * weight
+                # If reward is an array, then it's a HEALpy map and we
+                # need to interpolate to the actual positions we want.
+                # now to interpolate to the reward positions
+                if np.size(reward) > 1:
+                    reward_interp = hp.get_interp_val(
+                        reward,
+                        np.degrees(observations["RA"]),
+                        np.degrees(observations["dec"]),
+                        lonlat=True,
+                    )
+                    valid_reward = np.isfinite(reward_interp)
+                    observations = observations[valid_reward]
 
         return observations
 
