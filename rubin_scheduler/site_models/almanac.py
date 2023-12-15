@@ -85,11 +85,11 @@ class Almanac:
         Returns a numpy array with mjds for various events (sunset, moonrise, sun at -12 degrees alt, etc.).
         Also the integer night number.
         """
-        indx = np.searchsorted(self.sunsets["sunset"], mjd) - 1
+        indx = np.searchsorted(self.sunsets["sunset"], mjd, side="right") - 1
         return self.sunsets[indx]
 
     def mjd_indx(self, mjd):
-        indx = np.searchsorted(self.sunsets["sunset"], mjd) - 1
+        indx = np.searchsorted(self.sunsets["sunset"], mjd, side="right") - 1
         return indx
 
     def get_sun_moon_positions(self, mjd):
