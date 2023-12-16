@@ -60,6 +60,8 @@ class DitherDetailer(BaseDetailer):
         return offsets
 
     def __call__(self, observation_list, conditions):
+        if len(observation_list) == 0:
+            return observation_list
         # Generate offsets in RA and Dec
         offsets = self._generate_offsets(len(observation_list), conditions.night)
 

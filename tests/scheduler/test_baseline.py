@@ -164,6 +164,8 @@ def gen_blob_surveys(nside):
             survey_name = "blob, %s%s" % (filtername, filtername2)
         if filtername2 is not None:
             detailer_list.append(detailers.TakeAsPairsDetailer(filtername=filtername2))
+
+        detailer_list.append(detailers.FlushByDetailer())
         pair_surveys.append(
             BlobSurvey(
                 bfs,
@@ -275,7 +277,7 @@ class TestFeatures(unittest.TestCase):
         """
         mjd_start = utils.survey_start_mjd()
         nside = 32
-        survey_length = 2.0  # days
+        survey_length = 4.0  # days
 
         surveys = []
         # Set up the DD

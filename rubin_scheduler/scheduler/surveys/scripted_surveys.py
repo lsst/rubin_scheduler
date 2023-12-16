@@ -18,6 +18,10 @@ class ScriptedSurvey(BaseSurvey):
 
     Parameters
     ----------
+    basis_functions : list of rubin_scheduler.scheduler.BasisFunction objects
+        Basis functions to use. These are only used for masking regions of the sky and
+        computing survey feasibility. They do not contribute to the logic of how
+        observations are selected.
     id_start : `int` (1)
         The integer to start the "scripted id" field with. Bad things could happen
         if you have multiple scripted survey objects with the same scripted IDs.
@@ -51,6 +55,10 @@ class ScriptedSurvey(BaseSurvey):
         if basis_weights is None:
             self.basis_weights = np.zeros(len(basis_functions))
         else:
+            if np.max(np.abs(basis_weights)) > 0:
+                raise ValueError("Basis function weights should be zero for ScriptedSurvey objects.")
+            if len(basis_weights) != len(basis_functions):
+                raise ValueError("Length of Basis function weights should match length of basis_functions.")
             self.basis_weights = basis_weights
         super(ScriptedSurvey, self).__init__(
             basis_functions=basis_functions,

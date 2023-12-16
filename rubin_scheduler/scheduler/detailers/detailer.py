@@ -11,6 +11,7 @@ __all__ = (
     "FilterNexp",
     "FixedSkyAngleDetailer",
     "ParallacticRotationDetailer",
+    "FlushByDetailer",
 )
 
 import copy
@@ -71,6 +72,25 @@ class BaseDetailer:
         return observation_list
 
 
+class FlushByDetailer(BaseDetailer):
+    """
+    Parameters
+    ----------
+    flush_time : float
+        The time to flush after the current MJD. Default 60 minutes
+    """
+
+    def __init__(self, flush_time=60, nside=32):
+        self.survey_features = {}
+        self.nside = nside
+        self.flush_time = flush_time / 60 / 24.0
+
+    def __call__(self, observation_list, conditions):
+        for obs in observation_list:
+            obs["flush_by_mjd"] = conditions.mjd + self.flush_time
+        return observation_list
+
+
 class ParallacticRotationDetailer(BaseDetailer):
     """Set the rotator to near the parallactic angle"""
 
@@ -110,6 +130,8 @@ class Rottep2RotspDesiredDetailer(BaseDetailer):
     """Convert all the rotTelPos values to rotSkyPos_desired"""
 
     def __call__(self, observation_list, conditions):
+        if len(observation_list) == 0:
+            return observation_list
         obs_array = np.concatenate(observation_list)
 
         alt, az = _approx_ra_dec2_alt_az(
