@@ -5,19 +5,18 @@ import os
 import shutil
 import socket
 import sys
+from contextlib import redirect_stdout
 from numbers import Number
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from contextlib import redirect_stdout
 
-import lsst.resources
 import numpy as np
 import yaml
 from astropy.time import Time
-
+from conda.cli.main_list import print_packages
 from conda.exceptions import EnvironmentLocationNotFound
 from conda.gateways.disk.test import is_conda_environment
-from conda.cli.main_list import print_packages
+from lsst.resources import ResourcePath
 
 import rubin_scheduler
 from rubin_scheduler.scheduler.utils import SchemaConverter
@@ -83,26 +82,25 @@ def make_sim_archive_dir(
     with open(stats_fname, "w") as stats_io:
         print(SchemaConverter().obs2opsim(observations).describe().T.to_csv(sep="\t"), file=stats_io)
 
-
     # Save the conda environment
     conda_prefix = Path(sys.executable).parent.parent.as_posix()
     if not is_conda_environment(conda_prefix):
         raise EnvironmentLocationNotFound(conda_prefix)
 
-    environment_fname = data_path.joinpath('environment.txt').as_posix()
+    environment_fname = data_path.joinpath("environment.txt").as_posix()
 
     # Python equivilest of conda list --export -p $conda_prefix > $environment_fname
-    with open(environment_fname, 'w') as environment_io:
+    with open(environment_fname, "w") as environment_io:
         with redirect_stdout(environment_io):
-            print_packages(conda_prefix, format='export')
+            print_packages(conda_prefix, format="export")
 
     # Save pypi packages
-    pypi_fname = data_path.joinpath('pypi.json').as_posix()
+    pypi_fname = data_path.joinpath("pypi.json").as_posix()
 
-    pip_json_output = os.popen('pip list --format json')
+    pip_json_output = os.popen("pip list --format json")
     pip_list = json.loads(pip_json_output.read())
 
-    with open(pypi_fname, 'w') as pypi_io:
+    with open(pypi_fname, "w") as pypi_io:
         print(json.dumps(pip_list, indent=4), file=pypi_io)
 
     # Add supplied files
@@ -186,7 +184,7 @@ def transfer_archive_dir(archive_dir, archive_base_uri="s3://rubin-scheduler-pre
 
     Returns:
     -------
-    resource_rpath : `lsst.resources.ResourcePath`
+    resource_rpath : `ResourcePath`
         The destination resource.
     """
 
@@ -195,7 +193,7 @@ def transfer_archive_dir(archive_dir, archive_base_uri="s3://rubin-scheduler-pre
         sim_metadata = yaml.safe_load(metadata_io)
 
     insert_date = datetime.datetime.utcnow().date().isoformat()
-    insert_date_rpath = lsst.resources.ResourcePath(archive_base_uri).join(insert_date, forceDirectory=True)
+    insert_date_rpath = ResourcePath(archive_base_uri).join(insert_date, forceDirectory=True)
     if not insert_date_rpath.exists():
         insert_date_rpath.mkdir()
 
@@ -228,3 +226,31 @@ def transfer_archive_dir(archive_dir, archive_base_uri="s3://rubin-scheduler-pre
         print(f"Copied {source_fname} to {destination_rpath}")
 
     return resource_rpath
+
+
+def check_opsim_archive_resource(archive_uri):
+    """Check the contents of an opsim archive resource.
+
+    Parameters:
+    ----------
+    archive_uri : `str`
+        The URI of the archive resource to be checked.
+
+    Returns:
+    -------
+    validity: `dict`
+        A dictionary of files checked, and their validity.
+    """
+    metadata_path = ResourcePath(archive_uri).join("sim_metadata.yaml")
+    with metadata_path.open(mode="r") as metadata_io:
+        sim_metadata = yaml.safe_load(metadata_io)
+
+    results = {}
+
+    for file_info in sim_metadata["files"].values():
+        resource_path = ResourcePath(archive_uri).join(file_info["name"])
+        content = resource_path.read()
+
+        results[file_info["name"]] = file_info["md5"] == hashlib.md5(content).hexdigest()
+
+    return results
