@@ -63,7 +63,17 @@ class TestSimArchive(unittest.TestCase):
         # Check the saved archive
         archive_check = check_opsim_archive_resource(sim_archive_uri)
         self.assertEqual(
-            archive_check.keys(), set(["opsim.db", "rewards.h5", "scheduler.pickle.xz", "obs_stats.txt"])
+            archive_check.keys(),
+            set(
+                [
+                    "opsim.db",
+                    "rewards.h5",
+                    "scheduler.pickle.xz",
+                    "obs_stats.txt",
+                    "environment.txt",
+                    "pypi.json",
+                ]
+            ),
         )
         for value in archive_check.values():
             self.assertTrue(value)

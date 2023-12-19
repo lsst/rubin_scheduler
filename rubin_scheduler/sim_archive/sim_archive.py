@@ -14,7 +14,6 @@ import numpy as np
 import yaml
 from astropy.time import Time
 from conda.cli.main_list import print_packages
-from conda.exceptions import EnvironmentLocationNotFound
 from conda.gateways.disk.test import is_conda_environment
 from lsst.resources import ResourcePath
 
@@ -84,24 +83,28 @@ def make_sim_archive_dir(
 
     # Save the conda environment
     conda_prefix = Path(sys.executable).parent.parent.as_posix()
-    if not is_conda_environment(conda_prefix):
-        raise EnvironmentLocationNotFound(conda_prefix)
+    if is_conda_environment(conda_prefix):
+        conda_base_fname = 'environment.txt'
+        environment_fname = data_path.joinpath(conda_base_fname).as_posix()
 
-    environment_fname = data_path.joinpath("environment.txt").as_posix()
+        # Python equivilest of conda list --export -p $conda_prefix > $environment_fname
+        with open(environment_fname, "w") as environment_io:
+            with redirect_stdout(environment_io):
+                print_packages(conda_prefix, format="export")
 
-    # Python equivilest of conda list --export -p $conda_prefix > $environment_fname
-    with open(environment_fname, "w") as environment_io:
-        with redirect_stdout(environment_io):
-            print_packages(conda_prefix, format="export")
+        files['environment'] = {'name': conda_base_fname}
 
     # Save pypi packages
-    pypi_fname = data_path.joinpath("pypi.json").as_posix()
+    pypi_base_fname = 'pypi.json'
+    pypi_fname = data_path.joinpath(pypi_base_fname).as_posix()
 
     pip_json_output = os.popen("pip list --format json")
     pip_list = json.loads(pip_json_output.read())
 
     with open(pypi_fname, "w") as pypi_io:
         print(json.dumps(pip_list, indent=4), file=pypi_io)
+
+    files['pypi'] = {'name': pypi_base_fname}
 
     # Add supplied files
     for file_type, fname in in_files.items():
