@@ -7,10 +7,12 @@ from tempfile import TemporaryDirectory
 from rubin_scheduler.scheduler import sim_runner
 from rubin_scheduler.scheduler.example import example_scheduler
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
-from rubin_scheduler.sim_archive.sim_archive import make_sim_archive_dir, transfer_archive_dir
+from rubin_scheduler.sim_archive.sim_archive import (
+    check_opsim_archive_resource,
+    make_sim_archive_dir,
+    transfer_archive_dir,
+)
 from rubin_scheduler.utils import survey_start_mjd
-
-TEST_SIM_DATE = "2025-01-01"
 
 
 class TestSimArchive(unittest.TestCase):
@@ -56,4 +58,12 @@ class TestSimArchive(unittest.TestCase):
         # Move the scratch sim archive to a test resource
         test_resource_dir = TemporaryDirectory()
         test_resource_uri = "file://" + test_resource_dir.name
-        transfer_archive_dir(data_dir.name, test_resource_uri)
+        sim_archive_uri = transfer_archive_dir(data_dir.name, test_resource_uri)
+
+        # Check the saved archive
+        archive_check = check_opsim_archive_resource(sim_archive_uri)
+        self.assertEqual(
+            archive_check.keys(), set(["opsim.db", "rewards.h5", "scheduler.pickle.xz", "obs_stats.txt"])
+        )
+        for value in archive_check.values():
+            self.assertTrue(value)
