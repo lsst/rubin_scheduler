@@ -1,6 +1,7 @@
 import datetime
 import hashlib
 import json
+import logging
 import os
 import shutil
 import socket
@@ -22,6 +23,7 @@ from rubin_scheduler.scheduler.utils import SchemaConverter
 from rubin_scheduler.utils import Site
 
 SITE = None
+LOGGER = logging.getLogger(__name__)
 
 
 def make_sim_archive_dir(
@@ -246,7 +248,7 @@ def transfer_archive_dir(archive_dir, archive_base_uri="s3://rubin-scheduler-pre
         destination_rpath = resource_rpath.join(file_info["name"])
         destination_rpath.write(content)
 
-        print(f"Copied {source_fname} to {destination_rpath}")
+        LOGGER.info(f"Copied {source_fname} to {destination_rpath}")
 
     return resource_rpath
 
