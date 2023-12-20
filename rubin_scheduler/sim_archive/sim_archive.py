@@ -277,3 +277,68 @@ def check_opsim_archive_resource(archive_uri):
         results[file_info["name"]] = file_info["md5"] == hashlib.md5(content).hexdigest()
 
     return results
+
+
+def _build_archived_sim_label(base_uri, metadata_resource, metadata):
+    label_base = metadata_resource.dirname().geturl().removeprefix(base_uri).rstrip("/").lstrip("/")
+
+    # If a label is supplied by the metadata, use it
+    if "label" in metadata:
+        label = f"{label_base} {metadata['label']}"
+        return label
+
+    try:
+        sim_dates = metadata["simulated_dates"]
+        start_date = sim_dates["start"]
+        end_date = sim_dates["end"]
+        label = f"{label_base} of {start_date}"
+        if end_date != start_date:
+            label = f"{label} to {end_date}"
+    except KeyError:
+        label = label_base
+
+    if "scheduler_version" in metadata:
+        label = f"{label} with {metadata['scheduler_version']}"
+
+    return label
+
+
+def read_archived_sim_metadata(base_uri, latest=None, num_nights=5):
+    """Read metadata for a time range of archived opsim output.
+
+    Parameters:
+    ----------
+    base_uri : `str`
+        The base URI of the archive resource to be checked.
+    latest : `str`, optional
+        The date of the latest simulation whose metadata should be loaded.
+        This is the date on which the simulations was added to the archive,
+        not necessarily the date on which the simulation was run, or any
+        of the dates simulated.
+        Default is today.
+    num_nights : `int`
+        The number of nights of the date window to load.
+
+    Returns:
+    -------
+    sim_metadata: `dict`
+        A dictionary of metadata for simulations in the date range.
+    """
+    latest_mjd = int(Time.now().mjd if latest is None else Time(latest).mjd)
+    earliest_mjd = int(latest_mjd - num_nights)
+
+    all_metadata = {}
+    for mjd in range(earliest_mjd, latest_mjd + 1):
+        iso_date = Time(mjd, format="mjd").iso[:10]
+        date_resource = ResourcePath(base_uri).join(iso_date, forceDirectory=True)
+        if date_resource.exists():
+            for base_dir, found_dirs, found_files in date_resource.walk(file_filter=r".*sim_metadata.yaml"):
+                for found_file in found_files:
+                    found_resource = ResourcePath(base_dir).join(found_file)
+                    these_metadata = yaml.safe_load(found_resource.read().decode("utf-8"))
+                    these_metadata["label"] = _build_archived_sim_label(
+                        base_uri, found_resource, these_metadata
+                    )
+                    all_metadata[str(found_resource.dirname())] = these_metadata
+
+    return all_metadata

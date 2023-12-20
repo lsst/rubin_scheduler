@@ -10,6 +10,7 @@ from rubin_scheduler.scheduler.model_observatory import ModelObservatory
 from rubin_scheduler.sim_archive.sim_archive import (
     check_opsim_archive_resource,
     make_sim_archive_dir,
+    read_archived_sim_metadata,
     transfer_archive_dir,
 )
 from rubin_scheduler.utils import survey_start_mjd
@@ -79,3 +80,9 @@ class TestSimArchive(unittest.TestCase):
         )
         for value in archive_check.values():
             self.assertTrue(value)
+
+        # Read back the metadata
+        archive_metadata = read_archived_sim_metadata(test_resource_uri)
+        base = sim_archive_uri.dirname().geturl().removeprefix(test_resource_uri).rstrip("/").lstrip("/")
+        expected_label = f"{base} test"
+        self.assertEqual(archive_metadata[sim_archive_uri.geturl()]["label"], expected_label)
