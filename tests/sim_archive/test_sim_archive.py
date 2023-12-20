@@ -52,6 +52,8 @@ class TestSimArchive(unittest.TestCase):
             obs_rewards=obs_rewards,
             in_files=files_to_archive,
             sim_runner_kwargs=sim_runner_kwargs,
+            tags=["test"],
+            label="test",
             data_path=data_path,
         )
 

@@ -25,7 +25,14 @@ SITE = None
 
 
 def make_sim_archive_dir(
-    observations, reward_df=None, obs_rewards=None, in_files={}, sim_runner_kwargs={}, data_path=None
+    observations,
+    reward_df=None,
+    obs_rewards=None,
+    in_files={},
+    sim_runner_kwargs={},
+    tags=[],
+    label=None,
+    data_path=None,
 ):
     """Create or fill a local simulation archive directory.
 
@@ -42,6 +49,10 @@ def make_sim_archive_dir(
         Additional input files to be included in the archive, by default {}.
     sim_runner_kwargs : `dict`, optional
         Additional simulation runner keyword arguments, by default {}.
+    tags : `list` [`str`], optional
+        A list of tags/keywords to be included in the metadata, by default [].
+    label : `str`, optional
+        A label to be included in the metadata, by default None.
     data_path : `str` or `pathlib.Path`, optional
         The path to the simulation archive directory, by default None.
 
@@ -84,7 +95,7 @@ def make_sim_archive_dir(
     # Save the conda environment
     conda_prefix = Path(sys.executable).parent.parent.as_posix()
     if is_conda_environment(conda_prefix):
-        conda_base_fname = 'environment.txt'
+        conda_base_fname = "environment.txt"
         environment_fname = data_path.joinpath(conda_base_fname).as_posix()
 
         # Python equivilest of conda list --export -p $conda_prefix > $environment_fname
@@ -92,10 +103,10 @@ def make_sim_archive_dir(
             with redirect_stdout(environment_io):
                 print_packages(conda_prefix, format="export")
 
-        files['environment'] = {'name': conda_base_fname}
+        files["environment"] = {"name": conda_base_fname}
 
     # Save pypi packages
-    pypi_base_fname = 'pypi.json'
+    pypi_base_fname = "pypi.json"
     pypi_fname = data_path.joinpath(pypi_base_fname).as_posix()
 
     pip_json_output = os.popen("pip list --format json")
@@ -104,7 +115,7 @@ def make_sim_archive_dir(
     with open(pypi_fname, "w") as pypi_io:
         print(json.dumps(pip_list, indent=4), file=pypi_io)
 
-    files['pypi'] = {'name': pypi_base_fname}
+    files["pypi"] = {"name": pypi_base_fname}
 
     # Add supplied files
     for file_type, fname in in_files.items():
@@ -159,6 +170,15 @@ def make_sim_archive_dir(
 
     opsim_metadata["simulated_dates"] = simulation_dates
     opsim_metadata["files"] = files
+
+    if len(tags) > 0:
+        for tag in tags:
+            assert isinstance(tag, str), "Tags must be strings."
+        opsim_metadata["tags"] = tags
+
+    if label is not None:
+        assert isinstance(label, str), "The sim label must be a string."
+        opsim_metadata["label"] = label
 
     sim_metadata_fname = data_path.joinpath("sim_metadata.yaml")
     with open(sim_metadata_fname, "w") as sim_metadata_io:
