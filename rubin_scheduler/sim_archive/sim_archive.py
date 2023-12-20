@@ -1,3 +1,13 @@
+"""Tools for maintaining an archive of opsim output and metadata.
+"""
+
+__all__ = [
+    "make_sim_archive_dir",
+    "transfer_archive_dir",
+    "check_opsim_archive_resource",
+    "read_archived_sim_metadata",
+]
+
 import datetime
 import hashlib
 import json
