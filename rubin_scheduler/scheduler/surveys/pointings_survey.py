@@ -86,7 +86,15 @@ class PointingsSurvey(BaseSurvey):
             self.detailers = detailers
 
     def set_observations(self, observations):
-        """ """
+        """Set the list of potential observations that can be used.
+
+        Parameters
+        ----------
+        observations : np.array
+            Array of observations as from rubin_scheduler.scheduler.utils.empty_observation.
+            Fields should include RA, dec, filter, exptime. The "note" column
+            must be filled and unique for each pointing.
+        """
         if len(np.unique(observations["note"])) < len(observations):
             raise ValueError("observations['note'] values are not unique")
 
@@ -172,7 +180,6 @@ class PointingsSurvey(BaseSurvey):
         return np.nanmax(self.reward)
 
     def generate_observations_rough(self, conditions):
-        """ """
         # If the reward function hasn't been updated with the
         # latest info, calculate it
         if not self.reward_checked:
