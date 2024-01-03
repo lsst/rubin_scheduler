@@ -7,6 +7,7 @@ __all__ = [
     "check_opsim_archive_resource",
     "read_archived_sim_metadata",
     "make_sim_archive_cli",
+    "drive_sim",
 ]
 
 import argparse
@@ -14,12 +15,14 @@ import datetime
 import hashlib
 import json
 import logging
+import lzma
+import pickle
 import os
 import shutil
 import socket
 import sys
 from contextlib import redirect_stdout
-from numbers import Number
+from numbers import Number, Real, Integral
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -33,6 +36,7 @@ from lsst.resources import ResourcePath
 
 import rubin_scheduler
 from rubin_scheduler.scheduler.utils import SchemaConverter
+from rubin_scheduler.scheduler import sim_runner
 from rubin_scheduler.utils import Site
 
 SITE = None
@@ -171,22 +175,28 @@ def make_sim_archive_dir(
 
     simulation_dates = {}
     if "mjd_start" in sim_runner_kwargs:
-        simulation_dates["start"] = evening_local_date(sim_runner_kwargs["mjd_start"])
+        simulation_dates["first"] = evening_local_date(sim_runner_kwargs["mjd_start"])
 
         if "survey_length" in sim_runner_kwargs:
-            simulation_dates["end"] = evening_local_date(
+            simulation_dates["last"] = evening_local_date(
                 sim_runner_kwargs["mjd_start"] + sim_runner_kwargs["survey_length"]
             )
     else:
-        simulation_dates["start"] = evening_local_date(observations["mjd"].min())
-        simulation_dates["end"] = evening_local_date(observations["mjd"].max())
+        simulation_dates["first"] = evening_local_date(observations["mjd"].min())
+        simulation_dates["last"] = evening_local_date(observations["mjd"].max())
 
     if len(sim_runner_kwargs) > 0:
         opsim_metadata["sim_runner_kwargs"] = {}
         for key, value in sim_runner_kwargs.items():
+            # Cast numpy number types to ints, floats, and reals to avoid
+            # confusing the yaml module.
             match value:
-                case bool() | Number() | str():
+                case bool():
                     opsim_metadata["sim_runner_kwargs"][key] = value
+                case Integral():
+                    opsim_metadata["sim_runner_kwargs"][key] = int(value)
+                case Number():
+                    opsim_metadata["sim_runner_kwargs"][key] = float(value)
                 case _:
                     opsim_metadata["sim_runner_kwargs"][key] = str(value)
 
@@ -311,11 +321,11 @@ def _build_archived_sim_label(base_uri, metadata_resource, metadata):
 
     try:
         sim_dates = metadata["simulated_dates"]
-        start_date = sim_dates["start"]
-        end_date = sim_dates["end"]
-        label = f"{label_base} of {start_date}"
-        if end_date != start_date:
-            label = f"{label} to {end_date}"
+        first_date = sim_dates["first"]
+        last_date = sim_dates["last"]
+        label = f"{label_base} of {first_date}"
+        if last_date != first_date:
+            label = f"{label} through {last_date}"
     except KeyError:
         label = label_base
 
@@ -439,3 +449,44 @@ def make_sim_archive_cli(*args):
     sim_archive_uri = transfer_archive_dir(data_path.name, arg_values.archive_base_uri)
 
     return sim_archive_uri
+
+
+def drive_sim(label, observatory, scheduler, archive_uri=None, tags=[], script=None, notebook=None, **kwargs):
+    in_files = {}
+    if script is not None:
+        in_files["script"] = script
+
+    if notebook is not None:
+        in_files["notebook"] = notebook
+
+    with TemporaryDirectory() as local_data_dir:
+        # We want to store the state of the scheduler at the start of the sim,
+        # so we need to save it now before we run the simulation.
+        scheduler_path = Path(local_data_dir).joinpath("scheduler.pickle.xz")
+        with lzma.open(scheduler_path, "wb", format=lzma.FORMAT_XZ) as pio:
+            pickle.dump(scheduler, pio)
+            in_files["scheduler"] = scheduler_path.name
+
+        sim_results = sim_runner(observatory, scheduler, **kwargs)
+
+        observations = sim_results[2]
+        reward_df = sim_results[3] if scheduler.keep_rewards else None
+        obs_rewards = sim_results[4] if scheduler.keep_rewards else None
+
+        data_dir = make_sim_archive_dir(
+            observations,
+            reward_df=reward_df,
+            obs_rewards=obs_rewards,
+            in_files=in_files,
+            sim_runner_kwargs=kwargs,
+            tags=tags,
+            label=label,
+            capture_env=True,
+        )
+
+    if archive_uri is not None:
+        resource_path = transfer_archive_dir(data_dir.name, archive_uri)
+    else:
+        resource_path = ResourcePath(data_dir.name, forceDirctory=True)
+
+    return resource_path
