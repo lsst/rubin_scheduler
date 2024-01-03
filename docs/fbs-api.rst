@@ -6,74 +6,25 @@
 FBS Scheduler API
 =================
 
-Sim Runner
-^^^^^^^^^^
+.. toctree::
 
-.. automodule:: rubin_scheduler.scheduler.sim_runner
-    :members:
-    :show-inheritance:
+    Sim Runner <fbs-api-sim-runner>
 
-Example Scheduler
-^^^^^^^^^^^^^^^^^
+    Example Scheduler <fbs-api-example-scheduler>
 
-.. automodule:: rubin_scheduler.scheduler.example.example_scheduler
-    :imported-members:
-    :members:
-    :show-inheritance:
+    Model Observatory <fbs-api-model-observatory>
 
-Model Observatory
-^^^^^^^^^^^^^^^^^
+    Schedulers <fbs-api-schedulers>
 
-.. automodule:: rubin_scheduler.scheduler.model_observatory
-    :imported-members:
-    :members:
-    :show-inheritance:
+    Surveys <fbs-api-surveys>
 
-Schedulers
-^^^^^^^^^^
+    Basis Functions <fbs-api-basis-functions>
 
-.. automodule:: rubin_scheduler.scheduler.schedulers
-    :imported-members:
-    :members:
-    :show-inheritance:
+    Features <fbs-api-features>
 
-Surveys
-^^^^^^^
+    Detailers <fbs-api-detailers>
 
-.. automodule:: rubin_scheduler.scheduler.surveys
-    :imported-members:
-    :members:
-    :show-inheritance:
+    Utils <fbs-api-utils>
 
-Basis Functions
-^^^^^^^^^^^^^^^
 
-.. automodule:: rubin_scheduler.scheduler.basis_functions
-    :imported-members:
-    :members:
-    :show-inheritance:
-
-Features
-^^^^^^^^
-
-.. automodule:: rubin_scheduler.scheduler.features
-    :imported-members:
-    :members:
-    :show-inheritance:
-
-Detailers
-^^^^^^^^^
-
-.. automodule:: rubin_scheduler.scheduler.detailers
-    :imported-members:
-    :members:
-    :show-inheritance:
-
-Utils
-^^^^^^
-
-.. automodule:: rubin_scheduler.scheduler.utils
-    :imported-members:
-    :members:
-    :show-inheritance:
 
