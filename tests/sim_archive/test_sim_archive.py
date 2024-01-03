@@ -1,14 +1,18 @@
 import lzma
 import pickle
 import unittest
+import urllib
 from pathlib import Path
 from tempfile import TemporaryDirectory
+
+import lsst.resources
 
 from rubin_scheduler.scheduler import sim_runner
 from rubin_scheduler.scheduler.example import example_scheduler
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
 from rubin_scheduler.sim_archive.sim_archive import (
     check_opsim_archive_resource,
+    make_sim_archive_cli,
     make_sim_archive_dir,
     read_archived_sim_metadata,
     transfer_archive_dir,
@@ -86,3 +90,27 @@ class TestSimArchive(unittest.TestCase):
         base = sim_archive_uri.dirname().geturl().removeprefix(test_resource_uri).rstrip("/").lstrip("/")
         expected_label = f"{base} test"
         self.assertEqual(archive_metadata[sim_archive_uri.geturl()]["label"], expected_label)
+
+    def test_cli(self):
+        test_resource_path = lsst.resources.ResourcePath("resource://schedview/data/")
+        with test_resource_path.join("sample_opsim.db").as_local() as local_rp:
+            opsim = urllib.parse.urlparse(local_rp.geturl()).path
+
+        with test_resource_path.join("sample_rewards.h5").as_local() as local_rp:
+            rewards = urllib.parse.urlparse(local_rp.geturl()).path
+
+        with test_resource_path.join("sample_scheduler.pickle.xz").as_local() as local_rp:
+            scheduler = urllib.parse.urlparse(local_rp.geturl()).path
+
+        with TemporaryDirectory() as test_archive_dir:
+            test_archive_uri = f"file://{test_archive_dir}/"
+            make_sim_archive_cli(
+                "Test",
+                opsim,
+                "--rewards",
+                rewards,
+                "--scheduler",
+                scheduler,
+                "--archive_base_uri",
+                test_archive_uri,
+            )

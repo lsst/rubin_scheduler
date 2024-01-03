@@ -6,8 +6,10 @@ __all__ = [
     "transfer_archive_dir",
     "check_opsim_archive_resource",
     "read_archived_sim_metadata",
+    "make_sim_archive_cli",
 ]
 
+import argparse
 import datetime
 import hashlib
 import json
@@ -22,6 +24,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import numpy as np
+import pandas as pd
 import yaml
 from astropy.time import Time
 from conda.cli.main_list import print_packages
@@ -45,6 +48,7 @@ def make_sim_archive_dir(
     tags=[],
     label=None,
     data_path=None,
+    capture_env=True,
 ):
     """Create or fill a local simulation archive directory.
 
@@ -67,6 +71,9 @@ def make_sim_archive_dir(
         A label to be included in the metadata, by default None.
     data_path : `str` or `pathlib.Path`, optional
         The path to the simulation archive directory, by default None.
+    capture_env : `bool`
+        Use the current environment as the sim environment.
+        Defaults to True.
 
     Returns
     -------
@@ -104,30 +111,31 @@ def make_sim_archive_dir(
     with open(stats_fname, "w") as stats_io:
         print(SchemaConverter().obs2opsim(observations).describe().T.to_csv(sep="\t"), file=stats_io)
 
-    # Save the conda environment
-    conda_prefix = Path(sys.executable).parent.parent.as_posix()
-    if is_conda_environment(conda_prefix):
-        conda_base_fname = "environment.txt"
-        environment_fname = data_path.joinpath(conda_base_fname).as_posix()
+    if capture_env:
+        # Save the conda environment
+        conda_prefix = Path(sys.executable).parent.parent.as_posix()
+        if is_conda_environment(conda_prefix):
+            conda_base_fname = "environment.txt"
+            environment_fname = data_path.joinpath(conda_base_fname).as_posix()
 
-        # Python equivilest of conda list --export -p $conda_prefix > $environment_fname
-        with open(environment_fname, "w") as environment_io:
-            with redirect_stdout(environment_io):
-                print_packages(conda_prefix, format="export")
+            # Python equivilest of conda list --export -p $conda_prefix > $environment_fname
+            with open(environment_fname, "w") as environment_io:
+                with redirect_stdout(environment_io):
+                    print_packages(conda_prefix, format="export")
 
-        files["environment"] = {"name": conda_base_fname}
+            files["environment"] = {"name": conda_base_fname}
 
-    # Save pypi packages
-    pypi_base_fname = "pypi.json"
-    pypi_fname = data_path.joinpath(pypi_base_fname).as_posix()
+        # Save pypi packages
+        pypi_base_fname = "pypi.json"
+        pypi_fname = data_path.joinpath(pypi_base_fname).as_posix()
 
-    pip_json_output = os.popen("pip list --format json")
-    pip_list = json.loads(pip_json_output.read())
+        pip_json_output = os.popen("pip list --format json")
+        pip_list = json.loads(pip_json_output.read())
 
-    with open(pypi_fname, "w") as pypi_io:
-        print(json.dumps(pip_list, indent=4), file=pypi_io)
+        with open(pypi_fname, "w") as pypi_io:
+            print(json.dumps(pip_list, indent=4), file=pypi_io)
 
-    files["pypi"] = {"name": pypi_base_fname}
+        files["pypi"] = {"name": pypi_base_fname}
 
     # Add supplied files
     for file_type, fname in in_files.items():
@@ -155,8 +163,10 @@ def make_sim_archive_dir(
         return evening_local_iso
 
     opsim_metadata = {}
-    opsim_metadata["scheduler_version"] = rubin_scheduler.__version__
-    opsim_metadata["host"] = socket.getfqdn()
+    if capture_env:
+        opsim_metadata["scheduler_version"] = rubin_scheduler.__version__
+        opsim_metadata["host"] = socket.getfqdn()
+
     opsim_metadata["username"] = os.environ["USER"]
 
     simulation_dates = {}
@@ -354,3 +364,78 @@ def read_archived_sim_metadata(base_uri, latest=None, num_nights=5):
                     all_metadata[str(found_resource.dirname())] = these_metadata
 
     return all_metadata
+
+
+def make_sim_archive_cli(*args):
+    parser = argparse.ArgumentParser(description="Add files to sim archive")
+    parser.add_argument(
+        "label",
+        type=str,
+        help="A label for the simulation.",
+    )
+    parser.add_argument(
+        "opsim",
+        type=str,
+        help="File name of opsim database.",
+    )
+    parser.add_argument("--rewards", type=str, default=None, help="A rewards HDF5 file.")
+    parser.add_argument(
+        "--scheduler_version",
+        type=str,
+        help="The version of the scheduler run.",
+    )
+    parser.add_argument("--scheduler", type=str, default=None, help="A snapshot of the scheduler.")
+    parser.add_argument("--script", type=str, default=None, help="The script run to create the simulation.")
+    parser.add_argument(
+        "--notebook", type=str, default=None, help="The notebook run to create the simulation."
+    )
+    parser.add_argument(
+        "--current_env",
+        action="store_true",
+        help="Record the current environment as the simulation environment.",
+    )
+    parser.add_argument(
+        "--archive_base_uri",
+        type=str,
+        default="s3://rubin-scheduler-prenight/opsim/",
+        help="Base URI for the archive",
+    )
+    parser.add_argument("--tags", type=str, default=[], nargs="*", help="The tags on the simulation.")
+    arg_values = parser.parse_args() if len(args) == 0 else parser.parse_args(args)
+
+    observations = SchemaConverter().opsim2obs(arg_values.opsim)
+
+    if arg_values.rewards is not None:
+        try:
+            reward_df = pd.read_hdf(arg_values.rewards, "reward_df")
+        except KeyError:
+            reward_df = None
+
+        try:
+            obs_rewards = pd.read_hdf(arg_values.rewards, "obs_rewards")
+        except KeyError:
+            obs_rewards = None
+
+    filename_args = ["scheduler", "script", "notebook"]
+    in_files = {}
+    for filename_arg in filename_args:
+        try:
+            filename = getattr(arg_values, filename_arg)
+            if filename is not None:
+                in_files[filename] = filename
+        except AttributeError:
+            pass
+
+    data_path = make_sim_archive_dir(
+        observations,
+        reward_df,
+        obs_rewards,
+        in_files,
+        tags=arg_values.tags,
+        label=arg_values.label,
+        capture_env=arg_values.current_env,
+    )
+
+    sim_archive_uri = transfer_archive_dir(data_path.name, arg_values.archive_base_uri)
+
+    return sim_archive_uri
