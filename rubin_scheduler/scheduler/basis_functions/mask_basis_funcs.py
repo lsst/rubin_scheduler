@@ -54,20 +54,16 @@ class HaMaskBasisFunction(BaseBasisFunction):
 
     def __init__(self, ha_min=None, ha_max=None, nside=32):
         super(HaMaskBasisFunction, self).__init__(nside=nside)
-        self.ha_max = ha_max
-        self.ha_min = ha_min
+        # convert hour angle limits to radians and 0-2pi
+        self.ha_max = (np.radians(ha_max * 360 / 24) + 2 * np.pi) % (2 * np.pi)
+        self.ha_min = (np.radians(ha_min * 360 / 24) + 2 * np.pi) % (2 * np.pi)
+
         self.result = np.zeros(hp.nside2npix(self.nside), dtype=float)
 
     def _calc_value(self, conditions, **kwargs):
         result = self.result.copy()
 
-        if self.ha_min is not None:
-            good = np.where(conditions.HA < (self.ha_min / 12.0 * np.pi))[0]
-            result[good] = np.nan
-        if self.ha_max is not None:
-            good = np.where(conditions.HA > (self.ha_max / 12.0 * np.pi))[0]
-            result[good] = np.nan
-
+        result[np.where((conditions.HA > self.ha_max) & (conditions.HA < self.ha_min))] = np.nan
         return result
 
 

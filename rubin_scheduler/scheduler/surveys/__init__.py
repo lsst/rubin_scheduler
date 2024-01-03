@@ -5,6 +5,7 @@ from .desc_ddf import *
 from .field_survey import *
 from .generate_ddf_grid import *
 from .long_gap_survey import *
+from .no_bf_pointings_survey import *
 from .plan_night_survey import *
 from .pointings_survey import *
 from .scripted_surveys import *

@@ -46,7 +46,8 @@ class TestSurveys(unittest.TestCase):
         fields["dec"] = -0.01
         fields["note"] = ["test%i" % ind for ind in range(fields.size)]
         fields["filter"] = "r"
-        survey = surveys.PointingsSurvey(fields)
+        survey = surveys.PointingsSurvey([])
+        survey.set_observations(fields)
 
         reward = survey.calc_reward_function(conditions)
         assert np.isfinite(reward)
@@ -65,15 +66,11 @@ class TestSurveys(unittest.TestCase):
 
         # Check we can get display things out
         rc = survey.reward_changes(conditions)
-        assert len(rc) == len(survey.weights)
+        assert len(rc) == len(survey.basis_weights)
 
         # Check we get a dataFrame
         df = survey.make_reward_df(conditions)
-        assert len(df) == len(survey.weights)
-
-        # Check error gets raised if "note" not unique
-        fields = empty_observation(n=10)
-        self.assertRaises(ValueError, surveys.PointingsSurvey, fields)
+        assert len(df) == len(survey.basis_weights)
 
     def test_roi(self):
         random_seed = 6563
