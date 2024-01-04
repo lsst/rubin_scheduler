@@ -392,12 +392,24 @@ def make_sim_archive_cli(*args):
     parser.add_argument(
         "--scheduler_version",
         type=str,
-        help="The version of the scheduler run.",
+        default=None,
+        help="The version of the scheduler that producte the opsim database.",
     )
-    parser.add_argument("--scheduler", type=str, default=None, help="A snapshot of the scheduler.")
-    parser.add_argument("--script", type=str, default=None, help="The script run to create the simulation.")
     parser.add_argument(
-        "--notebook", type=str, default=None, help="The notebook run to create the simulation."
+        "--scheduler",
+        type=str,
+        default=None,
+        help="A snapshot of the scheduler used to produce the database, at the start of the simulation.",
+    )
+    parser.add_argument(
+        "--script", type=str, default=None, help="The file name of the script run to create the simulation."
+    )
+    parser.add_argument(
+        "--notebook",
+        type=str,
+        default=None,
+        help="""The file name of the notebook run to create the simulation.
+        This can be produced using the %notebook magic.""",
     )
     parser.add_argument(
         "--current_env",
@@ -508,11 +520,11 @@ def drive_sim(
     holding the filename for the notebook) in the cell prior to calling
     `drive_sim`.
     """
-    if 'record_rewards' in kwargs:
-        if kwargs['record_rewards'] and not scheduler.keep_rewards:
+    if "record_rewards" in kwargs:
+        if kwargs["record_rewards"] and not scheduler.keep_rewards:
             raise ValueError("To keep rewards, scheduler.keep_rewards must be True")
     else:
-        kwargs['record_rewards'] = scheduler.keep_rewards
+        kwargs["record_rewards"] = scheduler.keep_rewards
 
     in_files = {}
     if script is not None:
