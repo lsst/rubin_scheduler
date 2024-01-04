@@ -27,6 +27,7 @@ from rubin_scheduler.scheduler.surveys import (
     generate_ddf_scheduled_obs,
 )
 from rubin_scheduler.scheduler.utils import ConstantFootprint, EuclidOverlapFootprint, make_rolling_footprints
+from rubin_scheduler.site_models import Almanac
 from rubin_scheduler.utils import _hpid2_ra_dec, survey_start_mjd
 
 iers.conf.auto_download = False
@@ -125,7 +126,7 @@ def standard_bf(
     -------
     basis_functions_weights : `list`
         list of tuple pairs (basis function, weight) that is
-        (rubin_sim.scheduler.BasisFunction object, float)
+        (rubin_scheduler.scheduler.BasisFunction object, float)
 
     """
     template_weights = {
@@ -523,8 +524,8 @@ def gen_greedy_surveys(
     """
     Make a quick set of greedy surveys
 
-    This is a convienence function to generate a list of survey objects that can be used with
-    rubin_sim.scheduler.schedulers.Core_scheduler.
+    This is a convenience function to generate a list of survey objects that can be used with
+    rubin_scheduler.scheduler.schedulers.Core_scheduler.
     To ensure we are robust against changes in the sims_featureScheduler codebase, all kwargs are
     explicitly set.
 
@@ -1398,13 +1399,15 @@ def gen_scheduler(args):
 
     repeat_night_weight = None
 
-    observatory = ModelObservatory(nside=nside, mjd_start=mjd_start)
-    conditions = observatory.return_conditions()
+    # Use the Almanac to find the position of the sun at the start of survey
+    almanac = Almanac(mjd_start=mjd_start)
+    sun_moon_info = almanac.get_sun_moon_positions(mjd_start)
+    sun_ra_start = sun_moon_info["sun_RA"].copy()
 
     footprints = make_rolling_footprints(
         fp_hp=footprints_hp,
-        mjd_start=conditions.mjd_start,
-        sun_ra_start=conditions.sun_ra_start,
+        mjd_start=mjd_start,
+        sun_ra_start=sun_ra_start,
         nslice=nslice,
         scale=rolling_scale,
         nside=nside,
@@ -1458,7 +1461,7 @@ def gen_scheduler(args):
         nside,
         nexp=nexp,
         footprints=footprints,
-        mjd_start=conditions.mjd_start,
+        mjd_start=mjd_start,
     )
     twi_blobs = generate_twi_blobs(
         nside,
@@ -1490,10 +1493,10 @@ def gen_scheduler(args):
 
 def sched_argparser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--verbose", dest="verbose", action="store_true")
+    parser.add_argument("--verbose", dest="verbose", action="store_true", help="Print more output")
     parser.set_defaults(verbose=False)
-    parser.add_argument("--survey_length", type=float, default=365.25 * 10)
-    parser.add_argument("--out_dir", type=str, default="")
+    parser.add_argument("--survey_length", type=float, default=365.25 * 10, help="Survey length in days")
+    parser.add_argument("--out_dir", type=str, default="", help="Output directory")
     parser.add_argument("--maxDither", type=float, default=0.7, help="Dither size for DDFs (deg)")
     parser.add_argument(
         "--moon_illum_limit",
@@ -1501,19 +1504,38 @@ def sched_argparser():
         default=40.0,
         help="illumination limit to remove u-band",
     )
-    parser.add_argument("--nexp", type=int, default=2)
-    parser.add_argument("--rolling_nslice", type=int, default=2)
-    parser.add_argument("--rolling_strength", type=float, default=0.9)
-    parser.add_argument("--dbroot", type=str)
-    parser.add_argument("--ddf_season_frac", type=float, default=0.2)
+    parser.add_argument("--nexp", type=int, default=2, help="Number of exposures per visit")
+    parser.add_argument("--rolling_nslice", type=int, default=2, help="Number of independent rolling stripes")
+    parser.add_argument("--rolling_strength", type=float, default=0.9, help="Rolling strength between 0-1")
+    parser.add_argument("--dbroot", type=str, help="Database root")
+    parser.add_argument(
+        "--ddf_season_frac", type=float, default=0.2, help="How much of season to use for DDFs"
+    )
     parser.add_argument("--nights_off", type=int, default=3, help="For long gaps")
-    parser.add_argument("--neo_night_pattern", type=int, default=4)
-    parser.add_argument("--neo_filters", type=str, default="riz")
-    parser.add_argument("--neo_repeat", type=int, default=4)
-    parser.add_argument("--neo_am", type=float, default=2.5)
-    parser.add_argument("--neo_elong_req", type=float, default=45.0)
-    parser.add_argument("--neo_area_req", type=float, default=0.0)
-    parser.add_argument("--setup_only", dest="setup_only", default=False, action="store_true")
+    parser.add_argument(
+        "--neo_night_pattern", type=int, default=4, help="Which night pattern to use for inner solar system"
+    )
+    parser.add_argument("--neo_filters", type=str, default="riz", help="Filters for inner solar system")
+    parser.add_argument(
+        "--neo_repeat", type=int, default=4, help="Number of repeat visits for inner solar system"
+    )
+    parser.add_argument("--neo_am", type=float, default=2.5, help="Airmass limit for twilight NEO visits")
+    parser.add_argument(
+        "--neo_elong_req", type=float, default=45.0, help="Solar elongation required for inner solar system"
+    )
+    parser.add_argument(
+        "--neo_area_req",
+        type=float,
+        default=0.0,
+        help="Sky area required before attempting inner solar system",
+    )
+    parser.add_argument(
+        "--setup_only",
+        dest="setup_only",
+        default=False,
+        action="store_true",
+        help="Only construct scheduler, do not simulate",
+    )
     parser.add_argument(
         "--nside", type=int, default=32, help="Nside should be set to default (32) except for tests."
     )
