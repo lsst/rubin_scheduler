@@ -451,7 +451,69 @@ def make_sim_archive_cli(*args):
     return sim_archive_uri
 
 
-def drive_sim(label, observatory, scheduler, archive_uri=None, tags=[], script=None, notebook=None, **kwargs):
+def drive_sim(
+    observatory, scheduler, archive_uri=None, label=None, tags=[], script=None, notebook=None, **kwargs
+):
+    """Run a simulation and archive the results.
+
+    Parameters
+    ----------
+    observatory : `ModelObservatory`
+        The model for the observatory.
+    scheduler : `CoreScheduler`
+        The scheduler to use.
+    archive_uri : `str`, optional
+        The root URI of the archive resource into which the results should
+        be stored. Defaults to None.
+    label : `str`, optional
+        The label for the simulation in the archive. Defaults to None.
+    tags : `list` of `str`, optional
+        The tags for the simulation in the archive. Defaults to an empty list.
+    script : `str`
+        The filename of the script producing this simulation.
+        Defaults to None.
+    notebook : `str`, optional
+        The filename of the notebook producing the simulation.
+        Defaults to None.
+
+    Returns
+    -------
+    observatory : `ModelObservatory`
+        The model for the observatory.
+    scheduler : `CoreScheduler`
+        The scheduler used.
+    observations : `foo`
+        The observations produced.
+    reward_df : `pandas.DataFrame`, optional
+        The table of rewards. Present if `record_rewards`
+        or `scheduler.keep_rewards` is True.
+    obs_rewards : `pandas.Series`, optional
+        The mapping of entries in reward_df to observations. Present if
+        `record_rewards` or `scheduler.keep_rewards` is True.
+    resource_path : `ResourcePath`, optional
+        The resource path to the archive of the simulation. Present if
+        `archive_uri` was set.
+
+    Notes
+    -----
+    Additional parameters not described above will be passed into
+    `sim_runner`.
+
+    If the `archive_uri` parameter is not supplied, `sim_runner` is run
+    directly, so that `drive_sim` can act as a drop-in replacement of
+    `sim-runner`.
+
+    In a jupyter notebook, the notebook can be saved for the notebook paramater
+    using `%notebook $notebook_fname` (where `notebook_fname` is variable
+    holding the filename for the notebook) in the cell prior to calling
+    `drive_sim`.
+    """
+    if 'record_rewards' in kwargs:
+        if kwargs['record_rewards'] and not scheduler.keep_rewards:
+            raise ValueError("To keep rewards, scheduler.keep_rewards must be True")
+    else:
+        kwargs['record_rewards'] = scheduler.keep_rewards
+
     in_files = {}
     if script is not None:
         in_files["script"] = script
@@ -489,4 +551,5 @@ def drive_sim(label, observatory, scheduler, archive_uri=None, tags=[], script=N
     else:
         resource_path = ResourcePath(data_dir.name, forceDirctory=True)
 
-    return resource_path
+    results = sim_results + (resource_path,)
+    return results
