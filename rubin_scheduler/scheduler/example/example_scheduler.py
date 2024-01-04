@@ -18,7 +18,7 @@ import rubin_scheduler.scheduler.basis_functions as bf
 import rubin_scheduler.scheduler.detailers as detailers
 from rubin_scheduler.scheduler import sim_runner
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
-from rubin_scheduler.scheduler.schedulers import CoreScheduler, FilterSchedUzy
+from rubin_scheduler.scheduler.schedulers import CoreScheduler, SimpleFilterSched
 from rubin_scheduler.scheduler.surveys import (
     BlobSurvey,
     GreedySurvey,
@@ -55,12 +55,8 @@ def example_scheduler(nside=32, mjd_start=survey_start_mjd()):
     args.outDir = "."
     args.nside = nside
     args.mjd_start = mjd_start
-    scheduler = main(args)
+    scheduler = gen_scheduler(args)
     return scheduler
-
-
-### From here down should match updated baseline survey files
-### TODO - add sched_argparser / setup_only to new baseline files
 
 
 def standard_bf(
@@ -81,6 +77,7 @@ def standard_bf(
     season_end_hour=2.0,
     moon_distance=30.0,
     strict=True,
+    wind_speed_maximum=20.0,
 ):
     """Generate the standard basis functions that are shared by blob surveys
 
@@ -101,11 +98,9 @@ def standard_bf(
     season : float (300)
         The length of season (i.e., how long before templates expire) (days)
     season_start_hour : float (-4.)
-        For weighting how strongly a template image needs to be observed
-        (hours)
+        For weighting how strongly a template image needs to be observed (hours)
     sesason_end_hour : float (2.)
-        For weighting how strongly a template image needs to be observed
-        (hours)
+        For weighting how strongly a template image needs to be observed (hours)
     moon_distance : float (30.)
         The mask radius to apply around the moon (degrees)
     m5_weight : float (3.)
@@ -120,12 +115,12 @@ def standard_bf(
         The weight to place on getting image templates every season
     u_template_weight : float (24.)
         The weight to place on getting image templates in u-band. Since there
-        are so few u-visits, it can be helpful to turn this up a little higher
-        than the standard template_weight kwarg.
+        are so few u-visits, it can be helpful to turn this up a little higher than
+        the standard template_weight kwarg.
     g_template_weight : float (24.)
         The weight to place on getting image templates in g-band. Since there
-        are so few g-visits, it can be helpful to turn this up a little higher
-        than the standard template_weight kwarg.
+        are so few g-visits, it can be helpful to turn this up a little higher than
+        the standard template_weight kwarg.
 
     Returns
     -------
@@ -262,6 +257,7 @@ def standard_bf(
             0.0,
         )
     )
+    bfs.append((bf.AvoidDirectWind(nside=nside, wind_speed_maximum=wind_speed_maximum), 0))
     filternames = [fn for fn in [filtername, filtername2] if fn is not None]
     bfs.append((bf.FilterLoadedBasisFunction(filternames=filternames), 0))
     bfs.append((bf.PlanetMaskBasisFunction(nside=nside), 0.0))
@@ -320,16 +316,13 @@ def blob_for_long(
     camera_rot_limits : list of float ([-80., 80.])
         The limits to impose when rotationally dithering the camera (degrees).
     n_obs_template : dict (None)
-        The number of observations to take every season in each filter.
-        If None, sets to 3 each.
+        The number of observations to take every season in each filter. If None, sets to 3 each.
     season : float (300)
         The length of season (i.e., how long before templates expire) (days)
     season_start_hour : float (-4.)
-        For weighting how strongly a template image needs to be observed
-        (hours)
+        For weighting how strongly a template image needs to be observed (hours)
     sesason_end_hour : float (2.)
-        For weighting how strongly a template image needs to be observed
-        (hours)
+        For weighting how strongly a template image needs to be observed (hours)
     shadow_minutes : float (60.)
         Used to mask regions around zenith (minutes)
     max_alt : float (76.
@@ -350,11 +343,10 @@ def blob_for_long(
         The weight to place on getting image templates every season
     u_template_weight : float (24.)
         The weight to place on getting image templates in u-band. Since there
-        are so few u-visits, it can be helpful to turn this up a little higher
-        than the standard template_weight kwarg.
+        are so few u-visits, it can be helpful to turn this up a little higher than
+        the standard template_weight kwarg.
     u_nexp1 : bool (True)
-        Add a detailer to make sure the number of expossures in a visit is
-        always 1 for u observations.
+        Add a detailer to make sure the number of expossures in a visit is always 1 for u observations.
     """
 
     BlobSurvey_params = {
@@ -476,7 +468,7 @@ def gen_long_gaps_survey(
     g_template_weight=50.0,
 ):
     """
-    Parameters
+    Paramterers
     -----------
     HA_min(_max) : float
         The hour angle limits passed to the initial blob scheduler.
@@ -504,7 +496,9 @@ def gen_long_gaps_survey(
             g_template_weight=g_template_weight,
             blob_names=blob_names,
         )
-        scripted = ScriptedSurvey([], nside=nside, ignore_obs=["blob", "DDF", "twi", "pair"])
+        scripted = ScriptedSurvey(
+            [bf.AvoidDirectWind(nside=nside)], nside=nside, ignore_obs=["blob", "DDF", "twi", "pair"]
+        )
         surveys.append(LongGapSurvey(blob[0], scripted, gap_range=gap_range, avoid_zenith=True))
 
     return surveys
@@ -530,10 +524,10 @@ def gen_greedy_surveys(
     """
     Make a quick set of greedy surveys
 
-    This is a convenience function to generate a list of survey objects
-    that can be used with rubin_scheduler.scheduler.schedulers.Core_scheduler.
-    To ensure we are robust against changes in the sims_featureScheduler
-    codebase, all kwargs are explicitly set.
+    This is a convenience function to generate a list of survey objects that can be used with
+    rubin_scheduler.scheduler.schedulers.Core_scheduler.
+    To ensure we are robust against changes in the sims_featureScheduler codebase, all kwargs are
+    explicitly set.
 
     Parameters
     ----------
@@ -686,16 +680,13 @@ def generate_blobs(
     camera_rot_limits : list of float ([-80., 80.])
         The limits to impose when rotationally dithering the camera (degrees).
     n_obs_template : Dict (None)
-        The number of observations to take every season in each filter.
-        If None, sets to 3 each.
+        The number of observations to take every season in each filter. If None, sets to 3 each.
     season : float (300)
         The length of season (i.e., how long before templates expire) (days)
     season_start_hour : float (-4.)
-        For weighting how strongly a template image needs to be observed
-        (hours)
+        For weighting how strongly a template image needs to be observed (hours)
     sesason_end_hour : float (2.)
-        For weighting how strongly a template image needs to be observed
-        (hours)
+        For weighting how strongly a template image needs to be observed (hours)
     shadow_minutes : float (60.)
         Used to mask regions around zenith (minutes)
     max_alt : float (76.
@@ -716,14 +707,12 @@ def generate_blobs(
         The weight to place on getting image templates every season
     u_template_weight : float (24.)
         The weight to place on getting image templates in u-band. Since there
-        are so few u-visits, it can be helpful to turn this up a little higher
-        than the standard template_weight kwarg.
+        are so few u-visits, it can be helpful to turn this up a little higher than
+        the standard template_weight kwarg.
     u_nexp1 : bool (True)
-        Add a detailer to make sure the number of expossures in a visit is
-        always 1 for u observations.
+        Add a detailer to make sure the number of expossures in a visit is always 1 for u observations.
     scheduled_respect : float (45)
-        How much time to require there be before a pre-scheduled observation
-        (minutes)
+        How much time to require there be before a pre-scheduled observation (minutes)
     """
 
     BlobSurvey_params = {
@@ -931,16 +920,13 @@ def generate_twi_blobs(
     camera_rot_limits : list of float ([-80., 80.])
         The limits to impose when rotationally dithering the camera (degrees).
     n_obs_template : dict (None)
-        The number of observations to take every season in each filter.
-        If None, sets to 3 each.
+        The number of observations to take every season in each filter. If None, sets to 3 each.
     season : float (300)
         The length of season (i.e., how long before templates expire) (days)
     season_start_hour : float (-4.)
-        For weighting how strongly a template image needs to be observed
-        (hours)
+        For weighting how strongly a template image needs to be observed (hours)
     sesason_end_hour : float (2.)
-        For weighting how strongly a template image needs to be observed
-        (hours)
+        For weighting how strongly a template image needs to be observed (hours)
     shadow_minutes : float (60.)
         Used to mask regions around zenith (minutes)
     max_alt : float (76.
@@ -961,8 +947,8 @@ def generate_twi_blobs(
         The weight to place on getting image templates every season
     u_template_weight : float (24.)
         The weight to place on getting image templates in u-band. Since there
-        are so few u-visits, it can be helpful to turn this up a little higher
-        than the standard template_weight kwarg.
+        are so few u-visits, it can be helpful to turn this up a little higher than
+        the standard template_weight kwarg.
     """
 
     BlobSurvey_params = {
@@ -1095,16 +1081,16 @@ def generate_twi_blobs(
     return surveys
 
 
-def ddf_surveys(detailers=None, season_unobs_frac=0.2, euclid_detailers=None):
+def ddf_surveys(detailers=None, season_unobs_frac=0.2, euclid_detailers=None, nside=None):
     obs_array = generate_ddf_scheduled_obs(season_unobs_frac=season_unobs_frac)
 
     euclid_obs = np.where((obs_array["note"] == "DD:EDFS_b") | (obs_array["note"] == "DD:EDFS_a"))[0]
     all_other = np.where((obs_array["note"] != "DD:EDFS_b") & (obs_array["note"] != "DD:EDFS_a"))[0]
 
-    survey1 = ScriptedSurvey([], detailers=detailers)
+    survey1 = ScriptedSurvey([bf.AvoidDirectWind(nside=nside)], detailers=detailers)
     survey1.set_script(obs_array[all_other])
 
-    survey2 = ScriptedSurvey([], detailers=euclid_detailers)
+    survey2 = ScriptedSurvey([bf.AvoidDirectWind(nside=nside)], detailers=euclid_detailers)
     survey2.set_script(obs_array[euclid_obs])
 
     return [survey1, survey2]
@@ -1122,8 +1108,7 @@ def ecliptic_target(nside=32, dist_to_eclip=40.0, dec_max=30.0, mask=None):
     dec_max : float (30)
         The max declination to alow (degrees).
     mask : np.array (None)
-        Any additional mask to apply, should be a HEALpix mask with
-        matching nside.
+        Any additional mask to apply, should be a HEALpix mask with matching nside.
     """
 
     ra, dec = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(nside)))
@@ -1171,9 +1156,8 @@ def generate_twilight_near_sun(
     Parameters
     ----------
     night_pattern : list of bool (None)
-        A list of bools that set when the survey will be active. e.g.,
-        [True, False] for every-other night,
-        [True, False, False] for every third night.
+        A list of bools that set when the survey will be active. e.g., [True, False]
+        for every-other night, [True, False, False] for every third night.
     nexp : int (1)
         Number of snaps in a visit
     exptime : float (15)
@@ -1185,8 +1169,7 @@ def generate_twilight_near_sun(
     camera_rot_limits : list of float ([-80, 80])
         The camera rotation limits to use (degrees).
     time_needed : float (10)
-        How much time should be available (e.g., before twilight ends)
-        (minutes).
+        How much time should be available (e.g., before twilight ends) (minutes).
     footprint_mask : np.array (None)
         Mask to apply to the constructed ecliptic target mask (None).
     footprint_weight : float (0.1)
@@ -1196,8 +1179,7 @@ def generate_twilight_near_sun(
     stayfilter_weight : float (3.)
         Weight for staying in the same filter basis function
     area_required : float (None)
-        The area that needs to be available before the survey will return
-        observations (sq degrees?)
+        The area that needs to be available before the survey will return observations (sq degrees?)
     filters : str ('riz')
         The filters to use, default 'riz'
     n_repeat : int (4)
@@ -1205,8 +1187,7 @@ def generate_twilight_near_sun(
     sun_alt_limit : float (-14.8)
         Do not start unless sun is higher than this limit (degrees)
     slew_estimate : float (4.5)
-        An estimate of how long it takes to slew between neighboring
-        fields (seconds).
+        An estimate of how long it takes to slew between neighboring fields (seconds).
     time_to_sunrise : float (25.)
         Do not execute if time to sunrise is greater than (minutes).
     """
@@ -1247,8 +1228,7 @@ def generate_twilight_near_sun(
         )
         bfs.append((bf.StrictFilterBasisFunction(filtername=filtername), stayfilter_weight))
         bfs.append((bf.FilterDistBasisFunction(filtername=filtername), filter_dist_weight))
-        # Need a toward the sun, reward high airmass,
-        # with an airmass cutoff basis function.
+        # Need a toward the sun, reward high airmass, with an airmass cutoff basis function.
         bfs.append((bf.NearSunTwilightBasisFunction(nside=nside, max_airmass=max_airmass), 0))
         bfs.append(
             (
@@ -1279,8 +1259,7 @@ def generate_twilight_near_sun(
         weights = [val[1] for val in bfs]
         basis_functions = [val[0] for val in bfs]
 
-        # Set huge ideal pair time and use the detailer to cut down the
-        # list of observations to fit twilight?
+        # Set huge ideal pair time and use the detailer to cut down the list of observations to fit twilight?
         surveys.append(
             BlobSurvey(
                 basis_functions,
@@ -1303,9 +1282,67 @@ def generate_twilight_near_sun(
     return surveys
 
 
-def main(args):
+def set_run_info(dbroot=None, file_end="v3.4_", out_dir="."):
+    """Gather versions of software used to record"""
+    extra_info = {}
+    exec_command = ""
+    for arg in sys.argv:
+        exec_command += " " + arg
+    extra_info["exec command"] = exec_command
+    try:
+        extra_info["git hash"] = subprocess.check_output(["git", "rev-parse", "HEAD"])
+    except subprocess.CalledProcessError:
+        extra_info["git hash"] = "Not in git repo"
+
+    extra_info["file executed"] = os.path.realpath(__file__)
+    try:
+        rs_path = rubin_scheduler.__path__[0]
+        hash_file = os.path.join(rs_path, "../", ".git/refs/heads/main")
+        extra_info["rubin_scheduler git hash"] = subprocess.check_output(["cat", hash_file])
+    except subprocess.CalledProcessError:
+        pass
+
+    # Use the filename of the script to name the output database
+    if dbroot is None:
+        fileroot = os.path.basename(sys.argv[0]).replace(".py", "") + "_"
+    else:
+        fileroot = dbroot + "_"
+    fileroot = os.path.join(out_dir, fileroot + file_end)
+    return fileroot, extra_info
+
+
+def run_sched(
+    scheduler,
+    survey_length=365.25,
+    nside=32,
+    filename=None,
+    verbose=False,
+    extra_info=None,
+    illum_limit=40.0,
+    mjd_start=60796.0,
+):
+    """Run survey"""
+    n_visit_limit = None
+    fs = SimpleFilterSched(illum_limit=illum_limit)
+    observatory = ModelObservatory(nside=nside, mjd_start=mjd_start)
+    observatory, scheduler, observations = sim_runner(
+        observatory,
+        scheduler,
+        survey_length=survey_length,
+        filename=filename,
+        delete_past=True,
+        n_visit_limit=n_visit_limit,
+        verbose=verbose,
+        extra_info=extra_info,
+        filter_scheduler=fs,
+    )
+
+    return observatory, scheduler, observations
+
+
+def gen_scheduler(args):
     survey_length = args.survey_length  # Days
-    outDir = args.outDir
+    out_dir = args.out_dir
     verbose = args.verbose
     max_dither = args.maxDither
     illum_limit = args.moon_illum_limit
@@ -1323,14 +1360,13 @@ def main(args):
     neo_area_req = args.neo_area_req
     nside = args.nside
 
-    # Be sure to also update and regenerate DDF grid save file
-    # if changing mjd_start
+    # Be sure to also update and regenerate DDF grid save file if changing mjd_start
     mjd_start = 60796.0
     per_night = True  # Dither DDF per night
 
     camera_ddf_rot_limit = 75.0  # degrees
 
-    fileroot, extra_info = set_run_info(dbroot=dbroot, file_end="v3.3_", out_dir=outDir)
+    fileroot, extra_info = set_run_info(dbroot=dbroot, file_end="v3.4_", out_dir=out_dir)
 
     pattern_dict = {
         1: [True],
@@ -1346,8 +1382,8 @@ def main(args):
     neo_night_pattern = pattern_dict[neo_night_pattern]
     reverse_neo_night_pattern = [not val for val in neo_night_pattern]
 
-    # Generate the rolling footprint for this start of survey
-    sky = EuclidOverlapFootprint(nside=nside)
+    # Modify the footprint
+    sky = EuclidOverlapFootprint(nside=nside, smc_radius=4, lmc_radius=6)
     footprints_hp_array, labels = sky.return_maps()
 
     wfd_indx = np.where((labels == "lowdust") | (labels == "LMC_SMC") | (labels == "virgo"))[0]
@@ -1407,6 +1443,7 @@ def main(args):
         detailers=details,
         season_unobs_frac=ddf_season_frac,
         euclid_detailers=euclid_detailers,
+        nside=nside,
     )
 
     greedy = gen_greedy_surveys(nside, nexp=nexp, footprints=footprints)
@@ -1426,7 +1463,6 @@ def main(args):
         footprints=footprints,
         mjd_start=mjd_start,
     )
-
     twi_blobs = generate_twi_blobs(
         nside,
         nexp=nexp,
@@ -1436,34 +1472,31 @@ def main(args):
         night_pattern=reverse_neo_night_pattern,
     )
     surveys = [ddfs, long_gaps, blobs, twi_blobs, neo, greedy]
-    if args.setup_only:
-        scheduler = CoreScheduler(surveys, nside=nside)
-        return scheduler
 
+    scheduler = CoreScheduler(surveys, nside=nside)
+
+    if args.setup_only:
+        return scheduler
     else:
         observatory, scheduler, observations = run_sched(
-            surveys,
+            scheduler,
             survey_length=survey_length,
             verbose=verbose,
-            fileroot=fileroot,
+            fileroot=os.path.join(out_dir, fileroot),
             extra_info=extra_info,
             nside=nside,
             illum_limit=illum_limit,
             mjd_start=mjd_start,
         )
-
         return observatory, scheduler, observations
 
 
 def sched_argparser():
-    """Argparser as used for survey strategy simulations.
-    Defaults represent current baseline settings, but kwargs can be changed.
-    """
     parser = argparse.ArgumentParser()
-    parser.add_argument("--verbose", dest="verbose", action="store_true")
+    parser.add_argument("--verbose", dest="verbose", action="store_true", help="Print more output")
     parser.set_defaults(verbose=False)
-    parser.add_argument("--survey_length", type=float, default=365.25 * 10)
-    parser.add_argument("--outDir", type=str, default="")
+    parser.add_argument("--survey_length", type=float, default=365.25 * 10, help="Survey length in days")
+    parser.add_argument("--out_dir", type=str, default="", help="Output directory")
     parser.add_argument("--maxDither", type=float, default=0.7, help="Dither size for DDFs (deg)")
     parser.add_argument(
         "--moon_illum_limit",
@@ -1471,88 +1504,46 @@ def sched_argparser():
         default=40.0,
         help="illumination limit to remove u-band",
     )
-    parser.add_argument("--nexp", type=int, default=2)
-    parser.add_argument("--rolling_nslice", type=int, default=2)
-    parser.add_argument("--rolling_strength", type=float, default=0.9)
-    parser.add_argument("--dbroot", type=str, default=None)
-    parser.add_argument("--ddf_season_frac", type=float, default=0.2)
+    parser.add_argument("--nexp", type=int, default=2, help="Number of exposures per visit")
+    parser.add_argument("--rolling_nslice", type=int, default=2, help="Number of independent rolling stripes")
+    parser.add_argument("--rolling_strength", type=float, default=0.9, help="Rolling strength between 0-1")
+    parser.add_argument("--dbroot", type=str, help="Database root")
+    parser.add_argument(
+        "--ddf_season_frac", type=float, default=0.2, help="How much of season to use for DDFs"
+    )
     parser.add_argument("--nights_off", type=int, default=3, help="For long gaps")
-    parser.add_argument("--neo_night_pattern", type=int, default=4)
-    parser.add_argument("--neo_filters", type=str, default="riz")
-    parser.add_argument("--neo_repeat", type=int, default=4)
-    parser.add_argument("--neo_am", type=float, default=2.5, help="airmass limit for twilight NEO visits")
-    parser.add_argument("--neo_elong_req", type=float, default=45.0)
-    parser.add_argument("--neo_area_req", type=float, default=0.0)
-    parser.add_argument("--setup_only", dest="setup_only", default=False, action="store_true")
+    parser.add_argument(
+        "--neo_night_pattern", type=int, default=4, help="Which night pattern to use for inner solar system"
+    )
+    parser.add_argument("--neo_filters", type=str, default="riz", help="Filters for inner solar system")
+    parser.add_argument(
+        "--neo_repeat", type=int, default=4, help="Number of repeat visits for inner solar system"
+    )
+    parser.add_argument("--neo_am", type=float, default=2.5, help="Airmass limit for twilight NEO visits")
+    parser.add_argument(
+        "--neo_elong_req", type=float, default=45.0, help="Solar elongation required for inner solar system"
+    )
+    parser.add_argument(
+        "--neo_area_req",
+        type=float,
+        default=0.0,
+        help="Sky area required before attempting inner solar system",
+    )
+    parser.add_argument(
+        "--setup_only",
+        dest="setup_only",
+        default=False,
+        action="store_true",
+        help="Only construct scheduler, do not simulate",
+    )
     parser.add_argument(
         "--nside", type=int, default=32, help="Nside should be set to default (32) except for tests."
     )
+
     return parser
-
-
-def set_run_info(dbroot=None, file_end="v3.3_", out_dir="."):
-    """Define a simulated output survey name and information about how
-    the scheduler was created (git hash, command line, etc.).
-    """
-    extra_info = {}
-    exec_command = ""
-    for arg in sys.argv:
-        exec_command += " " + arg
-    extra_info["exec command"] = exec_command
-    try:
-        extra_info["git hash"] = subprocess.check_output(["git", "rev-parse", "HEAD"])
-    except subprocess.CalledProcessError:
-        extra_info["git hash"] = "Not in git repo"
-
-    extra_info["file executed"] = os.path.realpath(__file__)
-    try:
-        rs_path = rubin_scheduler.__path__[0]
-        hash_file = os.path.join(rs_path, "../", ".git/refs/heads/main")
-        extra_info["rubin_scheduler git hash"] = subprocess.check_output(["cat", hash_file])
-    except subprocess.CalledProcessError:
-        pass
-
-    # Use the filename of the script to name the output database
-    if dbroot is None:
-        fileroot = os.path.basename(sys.argv[0]).replace(".py", "") + "_"
-    else:
-        fileroot = dbroot + "_"
-    fileroot = os.path.join(out_dir, fileroot + file_end)
-    return fileroot, extra_info
-
-
-def run_sched(
-    surveys,
-    survey_length=365.25,
-    nside=32,
-    fileroot="baseline_",
-    verbose=False,
-    extra_info=None,
-    illum_limit=40.0,
-    mjd_start=60796.0,
-):
-    """Run the scheduler to get a simulated pointing history."""
-    years = np.round(survey_length / 365.25)
-    scheduler = CoreScheduler(surveys, nside=nside)
-    n_visit_limit = None
-    fs = FilterSchedUzy(illum_limit=illum_limit)
-    observatory = ModelObservatory(nside=nside, mjd_start=mjd_start)
-    observatory, scheduler, observations = sim_runner(
-        observatory,
-        scheduler,
-        survey_length=survey_length,
-        filename=fileroot + "%iyrs.db" % years,
-        delete_past=True,
-        n_visit_limit=n_visit_limit,
-        verbose=verbose,
-        extra_info=extra_info,
-        filter_scheduler=fs,
-    )
-
-    return observatory, scheduler, observations
 
 
 if __name__ == "__main__":
     parser = sched_argparser()
     args = parser.parse_args()
-    main(args)
+    gen_scheduler(args)

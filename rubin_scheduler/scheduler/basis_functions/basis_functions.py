@@ -874,13 +874,13 @@ class NearSunTwilightBasisFunction(BaseBasisFunction):
 
     def _calc_value(self, conditions, indx=None):
         result = self.result.copy()
-        valid_airmass = np.isfinite(conditions.airmass)
+        valid_airmass = np.where(np.isfinite(conditions.airmass) == True)[0]
         good_pix = np.where(
             (conditions.airmass[valid_airmass] >= 1.0)
             & (IntRounded(conditions.airmass[valid_airmass]) < self.max_airmass)
             & (IntRounded(np.abs(conditions.az_to_sun[valid_airmass])) < IntRounded(np.pi / 2.0))
         )
-        result[valid_airmass][good_pix] = (
+        result[valid_airmass[good_pix]] = (
             conditions.airmass[valid_airmass][good_pix] / self.max_airmass.initial
         )
         return result
