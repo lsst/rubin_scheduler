@@ -1,3 +1,4 @@
+import importlib
 import lzma
 import pickle
 import unittest
@@ -91,6 +92,7 @@ class TestSimArchive(unittest.TestCase):
         expected_label = f"{base} test"
         self.assertEqual(archive_metadata[sim_archive_uri.geturl()]["label"], expected_label)
 
+    @unittest.skipIf(importlib.util.find_spec("schedview") is None, "No schedview")
     def test_cli(self):
         test_resource_path = lsst.resources.ResourcePath("resource://schedview/data/")
         with test_resource_path.join("sample_opsim.db").as_local() as local_rp:
