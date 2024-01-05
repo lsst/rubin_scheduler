@@ -1,5 +1,6 @@
 __all__ = ("Almanac",)
 
+import datetime
 import os
 
 import numpy as np
@@ -80,17 +81,96 @@ class Almanac:
             result[pn + "_RA"] = temp_result
         return result
 
-    def get_sunset_info(self, mjd):
+    def get_sunset_info(self, mjd=None, evening_date=None, longitude=None):
+        """Returns a numpy array with mjds for various events
+        (sunset, moonrise, sun at -12 degrees alt, etc.).
+
+        Parameters
+        ----------
+        mjd : `float`
+            A UTC MJD that occurs during the desired night.
+            Defaults to None.
+        evening_date : `str` or `datetime.date`
+            The local date of the evening of the night whose index is desired,
+            in ISO8601 format (YYYY-MM-DD). Defaults to None.
+        longitude : `float` or  `astropy.coordinates.angles.core.Angle`
+            If a float, then the value is interpreted as being in radians.
+            Defaults to None.
+
+        Returns
+        -------
+        sunset_info : `numpy.void`
+            A numpy object with dtype([
+                ('night', '<i8'),
+                ('sunset', '<f8'),
+                ('sun_n12_setting', '<f8'),
+                ('sun_n18_setting', '<f8'),
+                ('sun_n18_rising', '<f8'),
+                ('sun_n12_rising', '<f8'),
+                ('sunrise', '<f8'),
+                ('moonrise', '<f8'),
+                ('moonset', '<f8')
+            ])
         """
-        Returns a numpy array with mjds for various events (sunset, moonrise, sun at -12 degrees alt, etc.).
-        Also the integer night number.
-        """
-        indx = np.searchsorted(self.sunsets["sunset"], mjd, side="right") - 1
+        if mjd is not None and evening_date is not None:
+            raise ValueError("At most one of mjd and evening_date can be set")
+
+        # Default to now
+        if mjd is None and evening_date is None:
+            mjd = 40587 + datetime.datetime.now().timestamp() / (24 * 60 * 60)
+
+        if mjd is not None:
+            indx = np.searchsorted(self.sunsets["sunset"], mjd, side="right") - 1
+        elif evening_date is not None:
+            if longitude is None:
+                raise ValueError("If evening_date is set, longitude is needed as well")
+            indx = self.index_for_local_evening(evening_date, longitude)
+
         return self.sunsets[indx]
 
     def mjd_indx(self, mjd):
         indx = np.searchsorted(self.sunsets["sunset"], mjd, side="right") - 1
         return indx
+
+    def index_for_local_evening(self, evening_date, longitude):
+        """The index of the night with sunset at a given local date.
+
+        Parameters
+        ----------
+        evening_date : `str` or `datetime.date`
+            The local date of the evening of the night whose index is desired,
+            in ISO8601 format (YYYY-MM-DD).
+        longitude : `float` or  `astropy.coordinates.angles.core.Angle`
+            If a float, then the value is interpreted as being in radians.
+
+        Returns
+        -------
+        night_index : `int`
+            The index of the requested night.
+        """
+        try:
+            longitude = longitude.radian
+        except AttributeError:
+            pass
+
+        if isinstance(evening_date, str):
+            evening_date = datetime.date.fromisoformat(evening_date)
+
+        evening_datetime = datetime.datetime(evening_date.year, evening_date.month, evening_date.day)
+        evening_mjd = np.floor(evening_datetime.timestamp() / (24 * 60 * 60) + 40587)
+
+        # Depending on the time of year, the UTC date rollover might not
+        # always be on the same side of local sunset. Shift by the longitude
+        # to make sure the rollover is always near midnight, far from sunset.
+        matching_nights = np.argwhere(
+            np.floor(self.sunsets["sunset"] + longitude / (2 * np.pi)) == evening_mjd
+        )
+        if len(matching_nights) < 1:
+            raise ValueError(f"Requested night {evening_date} outside of almanac date range")
+
+        night_index = matching_nights.item()
+
+        return night_index
 
     def get_sun_moon_positions(self, mjd):
         """
