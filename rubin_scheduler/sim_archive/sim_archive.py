@@ -22,7 +22,7 @@ import shutil
 import socket
 import sys
 from contextlib import redirect_stdout
-from numbers import Number, Real, Integral
+from numbers import Number, Integral
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -404,12 +404,14 @@ def make_sim_archive_cli(*args):
     parser.add_argument(
         "--script", type=str, default=None, help="The file name of the script run to create the simulation."
     )
+
+    notebook_help = "The file name of the notebook run to create the simulation."
+    notebook_help = notebook_help + " This can be produced using the %%notebook magic."
     parser.add_argument(
         "--notebook",
         type=str,
         default=None,
-        help="""The file name of the notebook run to create the simulation.
-        This can be produced using the %notebook magic.""",
+        help=notebook_help,
     )
     parser.add_argument(
         "--current_env",
@@ -437,6 +439,9 @@ def make_sim_archive_cli(*args):
             obs_rewards = pd.read_hdf(arg_values.rewards, "obs_rewards")
         except KeyError:
             obs_rewards = None
+    else:
+        reward_df = None
+        obs_rewards = None
 
     filename_args = ["scheduler", "script", "notebook"]
     in_files = {}
