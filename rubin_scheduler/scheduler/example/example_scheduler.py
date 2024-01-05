@@ -1087,10 +1087,10 @@ def ddf_surveys(detailers=None, season_unobs_frac=0.2, euclid_detailers=None, ns
     euclid_obs = np.where((obs_array["note"] == "DD:EDFS_b") | (obs_array["note"] == "DD:EDFS_a"))[0]
     all_other = np.where((obs_array["note"] != "DD:EDFS_b") & (obs_array["note"] != "DD:EDFS_a"))[0]
 
-    survey1 = ScriptedSurvey([bf.AvoidDirectWind(nside=nside)], detailers=detailers)
+    survey1 = ScriptedSurvey([bf.AvoidDirectWind(nside=nside)], nside=nside, detailers=detailers)
     survey1.set_script(obs_array[all_other])
 
-    survey2 = ScriptedSurvey([bf.AvoidDirectWind(nside=nside)], detailers=euclid_detailers)
+    survey2 = ScriptedSurvey([bf.AvoidDirectWind(nside=nside)], nside=nside, detailers=euclid_detailers)
     survey2.set_script(obs_array[euclid_obs])
 
     return [survey1, survey2]
