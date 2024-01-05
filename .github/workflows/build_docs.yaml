@@ -30,6 +30,7 @@ jobs:
         run: |
           mamba install --quiet --file=requirements.txt          
           mamba install --quiet pip
+          pip install lsst.resources
           pip install "documenteer[guide]"
 
       - name: install rubin_scheduler

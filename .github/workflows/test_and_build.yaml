@@ -39,6 +39,7 @@ jobs:
         run: |
           mamba install --quiet --file=requirements.txt
           mamba install --quiet --file=test-requirements.txt
+          pip install lsst.resources
 
       - name: install rubin_scheduler
         shell: bash -l {0}
