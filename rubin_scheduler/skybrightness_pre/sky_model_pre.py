@@ -1,15 +1,25 @@
 __all__ = ("SkyModelPre", "interp_angle")
 
+import abc
 import glob
 import os
+import urllib
 import warnings
+from pathlib import Path
 
 import h5py
 import healpy as hp
 import numpy as np
+import requests
 
+import rubin_scheduler.data.rs_download_sky
 from rubin_scheduler.data import get_data_dir
 from rubin_scheduler.utils import _angular_separation, _hpid2_ra_dec, survey_start_mjd
+
+try:
+    from lsst.resources import ResourcePath
+except ImportError:
+    pass
 
 
 def short_angle_dist(a0, a1):
@@ -63,10 +73,21 @@ def interp_angle(x_out, xp, anglep, degrees=False):
     return result
 
 
-class SkyModelPre:
-    """
-    Load pre-computed sky brighntess maps for the LSST site and use them to interpolate to
-    arbitrary dates.
+class SkyModelPreBase(abc.ABC):
+    """Load pre-computed sky brighntess maps for the LSST site
+    and use them to interpolate to arbitrary dates.
+
+    Parameters
+    ----------
+    data_path : `str`, opt
+        path to the numpy save files. Looks in standard SIMS_SKYBRIGHTNESS_DATA or RUBIN_SIM_DATA_DIR
+        if set to default (None).
+    init_load_length : `int` (10)
+        The length of time (days) to load from disk initially. Set to something small for fast reads.
+    load_length : `int` (365)
+        The number of days to load after the initial load.
+    mjd0 : `float` (None)
+        The starting MJD to load on initilization (days). Uses util to lookup default if None.
     """
 
     def __init__(
@@ -77,20 +98,6 @@ class SkyModelPre:
         verbose=False,
         mjd0=None,
     ):
-        """
-        Parameters
-        ----------
-        data_path : `str`, opt
-            path to the numpy save files. Looks in standard SIMS_SKYBRIGHTNESS_DATA or RUBIN_SIM_DATA_DIR
-            if set to default (None).
-        init_load_length : `int` (10)
-            The length of time (days) to load from disk initially. Set to something small for fast reads.
-        load_length : `int` (365)
-            The number of days to load after the initial load.
-        mjd0 : `float` (None)
-            The starting MJD to load on initilization (days). Uses util to lookup default if None.
-        """
-
         self.info = None
         self.sb = None
         self.header = None
@@ -98,30 +105,23 @@ class SkyModelPre:
         self.verbose = verbose
 
         # Look in default location for .npz files to load
-        if "SIMS_SKYBRIGHTNESS_DATA" in os.environ:
-            data_path = os.environ["SIMS_SKYBRIGHTNESS_DATA"]
+        if data_path is not None:
+            self.data_path = data_path
+        elif "SIMS_SKYBRIGHTNESS_DATA" in os.environ:
+            self.data_path = os.environ["SIMS_SKYBRIGHTNESS_DATA"]
         else:
-            data_path = os.path.join(get_data_dir(), "skybrightness_pre")
+            self.data_path = os.path.join(get_data_dir(), "skybrightness_pre")
 
-        # Expect filenames of the form mjd1_mjd2.npz, e.g., 59632.155_59633.2.npz
-        self.files = glob.glob(os.path.join(data_path, "*.h5"))
+        self._init_files()
+
         if len(self.files) == 0:
             errmssg = "Failed to find pre-computed .h5 files. "
             errmssg += "Copy data from NCSA with sims_skybrightness_pre/data/data_down.sh \n"
             errmssg += "or build by running sims_skybrightness_pre/data/generate_hdf5.py"
             warnings.warn(errmssg)
-        self.filesizes = np.array([os.path.getsize(filename) for filename in self.files])
-        mjd_left = []
-        mjd_right = []
-        # glob does not always order things I guess?
-        self.files.sort()
-        for filename in self.files:
-            temp = os.path.split(filename)[-1].replace(".h5", "").split("_")
-            mjd_left.append(float(temp[0]))
-            mjd_right.append(float(temp[1]))
 
-        self.mjd_left = np.array(mjd_left)
-        self.mjd_right = np.array(mjd_right)
+        self._init_filesizes()
+        self._init_file_mjd_ranges()
 
         # Set that nothing is loaded at this point
         self.loaded_range = np.array([-1])
@@ -141,9 +141,7 @@ class SkyModelPre:
         self.ra, self.dec = _hpid2_ra_dec(self.nside, hpid)
 
     def _load_data(self, mjd, filename=None, npyfile=None):
-        """
-        Load up the .npz file to interpolate things. After python 3 upgrade, numpy.savez refused
-        to write large .npz files, so data is split between .npz and .npy files.
+        """Load up the h5 file to interpolate things.
 
         Parameters
         ----------
@@ -190,7 +188,7 @@ class SkyModelPre:
 
         if self.verbose:
             print("Loading file %s" % filename)
-        h5 = h5py.File(filename, "r")
+        h5 = self._create_h5(filename, "r")
         mjds = h5["mjds"][:]
         indxs = np.where((mjds >= mjd) & (mjds <= (mjd + self.load_length)))
         indxs = [np.min(indxs), np.max(indxs)]
@@ -219,8 +217,7 @@ class SkyModelPre:
         filters=["u", "g", "r", "i", "z", "y"],
         extrapolate=False,
     ):
-        """
-        Return a full sky map or individual pixels for the input mjd
+        """Return a full sky map or individual pixels for the input mjd.
 
         Parameters
         ----------
@@ -328,3 +325,99 @@ class SkyModelPre:
                         sbs[filtername].ravel()[mi] = np.min(full_sky_sb[filtername][closest])
 
         return sbs
+
+    @abc.abstractmethod
+    def _init_files(self):
+        pass
+
+    @abc.abstractmethod
+    def _init_filesizes(self):
+        pass
+
+    @abc.abstractmethod
+    def _init_file_mjd_ranges(self):
+        pass
+
+    @abc.abstractmethod
+    def _create_h5(self, filename, *args, **kwargs):
+        pass
+
+
+class SkyModelPreWithLocalFilesOnly(SkyModelPreBase):
+    def _init_files(self):
+        self.files = glob.glob(os.path.join(self.data_path, "*.h5"))
+        self.files.sort()
+
+    def _init_filesizes(self):
+        self.filesizes = np.array([os.path.getsize(filename) for filename in self.files])
+
+    def _init_file_mjd_ranges(self):
+        mjd_left = []
+        mjd_right = []
+        for filename in self.files:
+            temp = os.path.split(filename)[-1].replace(".h5", "").split("_")
+            mjd_left.append(float(temp[0]))
+            mjd_right.append(float(temp[1]))
+
+        self.mjd_left = np.array(mjd_left)
+        self.mjd_right = np.array(mjd_right)
+
+    def _create_h5(self, filename, *args, **kwargs):
+        # This method exists so it can be overriden in a subclass
+        h5 = h5py.File(filename, *args, **kwargs)
+        return h5
+
+
+class SkyModelPreWithResources(SkyModelPreBase):
+    def _init_files(self):
+        data_resource = ResourcePath(self.data_path, forceDirectory=True)
+
+        try:
+            self.files = list(ResourcePath.findFileResources([data_resource], file_filter=r".*\.h5"))
+        except NotImplementedError:
+            # lsst.requests does not implement walk for plain html, so do it manually here.
+            # Unlike the method above, however, this simple approach does not
+            # descend into subdirectories.
+            self.files = []
+            if urllib.parse.urlparse(data_resource.geturl()).scheme in ("http", "https"):
+                request_content = requests.get(data_resource.geturl()).text
+                html_parser = rubin_scheduler.data.rs_download_sky.MyHTMLParser()
+                html_parser.feed(request_content)
+                html_parser.close()
+                for file_name in html_parser.filenames:
+                    if file_name.endswith(".h5"):
+                        self.files.append(data_resource.join(file_name))
+            else:
+                raise
+
+        self.files.sort()
+
+    def _init_filesizes(self):
+        self.filesizes = np.array([file_path.size() for file_path in self.files])
+
+    def _init_file_mjd_ranges(self):
+        mjd_left = []
+        mjd_right = []
+        for file_resource_path in self.files:
+            temp = Path(file_resource_path.split()[1]).stem.split("_")
+            mjd_left.append(float(temp[0]))
+            mjd_right.append(float(temp[1]))
+
+        self.mjd_left = np.array(mjd_left)
+        self.mjd_right = np.array(mjd_right)
+
+    def _create_h5(self, filename, *args, **kwargs):
+        with filename.as_local() as local_file_resource_path:
+            h5 = h5py.File(local_file_resource_path.ospath, *args, **kwargs)
+        return h5
+
+
+if "ResourcePath" in dir():
+
+    class SkyModelPre(SkyModelPreWithResources):
+        pass
+
+else:
+
+    class SkyModelPre(SkyModelPreWithLocalFilesOnly):
+        pass
