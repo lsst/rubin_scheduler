@@ -135,7 +135,6 @@ class SkyModelPre:
             errmssg += "or build by running sims_skybrightness_pre/data/generate_hdf5.py"
             warnings.warn(errmssg)
         self.filesizes = np.array([file_path.size() for file_path in self.files])
-        print(self.filesizes)
         mjd_left = []
         mjd_right = []
         # glob does not always order things I guess?
