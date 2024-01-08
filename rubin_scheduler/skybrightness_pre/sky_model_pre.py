@@ -1,13 +1,18 @@
 __all__ = ("SkyModelPre", "interp_angle")
 
-import glob
 import os
+import urllib
 import warnings
+from pathlib import Path
+from tempfile import TemporaryFile
 
 import h5py
 import healpy as hp
+import lsst.resources
 import numpy as np
+import requests
 
+import rubin_scheduler.data.rs_download_sky
 from rubin_scheduler.data import get_data_dir
 from rubin_scheduler.utils import _angular_separation, _hpid2_ra_dec, survey_start_mjd
 
@@ -98,25 +103,46 @@ class SkyModelPre:
         self.verbose = verbose
 
         # Look in default location for .npz files to load
-        if "SIMS_SKYBRIGHTNESS_DATA" in os.environ:
-            data_path = os.environ["SIMS_SKYBRIGHTNESS_DATA"]
-        else:
-            data_path = os.path.join(get_data_dir(), "skybrightness_pre")
+        if data_path is None:
+            if "SIMS_SKYBRIGHTNESS_DATA" in os.environ:
+                data_path = os.environ["SIMS_SKYBRIGHTNESS_DATA"]
+            else:
+                data_path = os.path.join(get_data_dir(), "skybrightness_pre")
 
-        # Expect filenames of the form mjd1_mjd2.npz, e.g., 59632.155_59633.2.npz
-        self.files = glob.glob(os.path.join(data_path, "*.h5"))
+        data_resource = lsst.resources.ResourcePath(data_path, forceDirectory=True)
+        self.files = []
+
+        try:
+            for dir_path, dir_names, file_names in data_resource.walk(file_filter=r".*\.h5"):
+                self.files += [dir_path.join(fn) for fn in file_names]
+        except NotImplementedError:
+            # lsst.requests does not implement walk for plain html, so do it manually here.
+            # Unlike the method above, however, this simple approach does not
+            # descend into subdirectories.
+            if urllib.parse.urlparse(data_resource.geturl()).scheme in ("http", "https"):
+                request_content = requests.get(data_resource.geturl()).text
+                html_parser = rubin_scheduler.data.rs_download_sky.MyHTMLParser()
+                html_parser.feed(request_content)
+                html_parser.close()
+                for file_name in html_parser.filenames:
+                    if file_name.endswith(".h5"):
+                        self.files.append(data_resource.join(file_name))
+            else:
+                raise
+
         if len(self.files) == 0:
             errmssg = "Failed to find pre-computed .h5 files. "
             errmssg += "Copy data from NCSA with sims_skybrightness_pre/data/data_down.sh \n"
             errmssg += "or build by running sims_skybrightness_pre/data/generate_hdf5.py"
             warnings.warn(errmssg)
-        self.filesizes = np.array([os.path.getsize(filename) for filename in self.files])
+        self.filesizes = np.array([file_path.size() for file_path in self.files])
+        print(self.filesizes)
         mjd_left = []
         mjd_right = []
         # glob does not always order things I guess?
         self.files.sort()
-        for filename in self.files:
-            temp = os.path.split(filename)[-1].replace(".h5", "").split("_")
+        for file_resource_path in self.files:
+            temp = Path(file_resource_path.split()[1]).stem.split("_")
             mjd_left.append(float(temp[0]))
             mjd_right.append(float(temp[1]))
 
@@ -190,7 +216,18 @@ class SkyModelPre:
 
         if self.verbose:
             print("Loading file %s" % filename)
-        h5 = h5py.File(filename, "r")
+
+        if urllib.parse.urlparse(filename.geturl()).scheme == "s3":
+            # as_local on an s3 uri can fail due to threading issues
+            # when run in panel server. So, just grab the content
+            # and put it in a temporary file here.
+            local_data = TemporaryFile()
+            local_data.write(filename.read())
+            h5 = h5py.File(local_data)
+        else:
+            with filename.as_local() as local_file_resource_path:
+                h5 = h5py.File(local_file_resource_path.ospath, "r")
+
         mjds = h5["mjds"][:]
         indxs = np.where((mjds >= mjd) & (mjds <= (mjd + self.load_length)))
         indxs = [np.min(indxs), np.max(indxs)]
