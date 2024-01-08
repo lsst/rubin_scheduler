@@ -69,9 +69,20 @@ def interp_angle(x_out, xp, anglep, degrees=False):
 
 
 class SkyModelPre:
-    """
-    Load pre-computed sky brighntess maps for the LSST site and use them to interpolate to
-    arbitrary dates.
+    """Load pre-computed sky brighntess maps for the LSST site
+    and use them to interpolate to arbitrary dates.
+
+    Parameters
+    ----------
+    data_path : `str`, opt
+        path to the numpy save files. Looks in standard SIMS_SKYBRIGHTNESS_DATA or RUBIN_SIM_DATA_DIR
+        if set to default (None).
+    init_load_length : `int` (10)
+        The length of time (days) to load from disk initially. Set to something small for fast reads.
+    load_length : `int` (365)
+        The number of days to load after the initial load.
+    mjd0 : `float` (None)
+        The starting MJD to load on initilization (days). Uses util to lookup default if None.
     """
 
     def __init__(
@@ -82,19 +93,7 @@ class SkyModelPre:
         verbose=False,
         mjd0=None,
     ):
-        """
-        Parameters
-        ----------
-        data_path : `str`, opt
-            path to the numpy save files. Looks in standard SIMS_SKYBRIGHTNESS_DATA or RUBIN_SIM_DATA_DIR
-            if set to default (None).
-        init_load_length : `int` (10)
-            The length of time (days) to load from disk initially. Set to something small for fast reads.
-        load_length : `int` (365)
-            The number of days to load after the initial load.
-        mjd0 : `float` (None)
-            The starting MJD to load on initilization (days). Uses util to lookup default if None.
-        """
+        """ """
 
         self.info = None
         self.sb = None
@@ -167,9 +166,7 @@ class SkyModelPre:
         self.ra, self.dec = _hpid2_ra_dec(self.nside, hpid)
 
     def _load_data(self, mjd, filename=None, npyfile=None):
-        """
-        Load up the .npz file to interpolate things. After python 3 upgrade, numpy.savez refused
-        to write large .npz files, so data is split between .npz and .npy files.
+        """Load up the h5 file to interpolate things.
 
         Parameters
         ----------
@@ -256,8 +253,7 @@ class SkyModelPre:
         filters=["u", "g", "r", "i", "z", "y"],
         extrapolate=False,
     ):
-        """
-        Return a full sky map or individual pixels for the input mjd
+        """Return a full sky map or individual pixels for the input mjd.
 
         Parameters
         ----------
