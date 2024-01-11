@@ -9,6 +9,7 @@ __all__ = (
     "MaskAzimuthBasisFunction",
     "SolarElongationMaskBasisFunction",
     "AreaCheckMaskBasisFunction",
+    "AltAzShadowMaskBasisFunction",
 )
 
 import healpy as hp
@@ -190,6 +191,77 @@ class PlanetMaskBasisFunction(BaseBasisFunction):
                 np.max(conditions.planet_positions[pn + "_dec"]),
             )
             result[indices] = np.nan
+
+        return result
+
+
+class AltAzShadowMaskBasisFunction(BaseBasisFunction):
+    """Mask any out of range altitudes and azimuths, then extend the
+    mask so if observations are taken in pairs, the second in the pair will
+    not have moved into a masked region.
+    """
+
+    def __init__(
+        self,
+        nside=None,
+        min_alt=20.0,
+        max_alt=82.0,
+        shadow_minutes=40.0,
+    ):
+        super(AltAzShadowMaskBasisFunction, self).__init__(nside=nside)
+        self.min_alt = np.radians(min_alt)
+        self.max_alt = np.radians(max_alt)
+        self.shadow_time = shadow_minutes / 60.0 / 24.0  # To days
+        self.result = np.zeros(hp.nside2npix(self.nside), dtype=float)
+        self.in_range = np.zeros(hp.nside2npix(self.nside), dtype=int)
+
+    def _calc_value(self, conditions, indx=None):
+        # Mask everything to start
+        result = self.result.copy() + np.nan
+
+        in_range_alt = self.in_range.copy()
+        in_range_az = self.in_range.copy()
+
+        # Compute the alt,az values in the future. Use the conditions object
+        # so the results are cached and can be used by other surveys is needed.
+        # Technically this could fail if the masked region is very narrow or shadow time
+        # is very large.
+        future_alt, future_az = conditions.future_alt_az(np.max(conditions.mjd + self.shadow_time))
+
+        # apply limits from the conditions object
+        for limits in conditions.alt_limits:
+            good = np.where(
+                (IntRounded(conditions.alt) >= IntRounded(np.min(limits)))
+                & (IntRounded(conditions.alt) <= IntRounded(np.max(limits)))
+            )[0]
+            in_range_alt[good] += 1
+            good = np.where(
+                (IntRounded(future_alt) >= IntRounded(np.min(limits)))
+                & (IntRounded(future_alt) <= IntRounded(np.max(limits)))
+            )[0]
+            in_range_alt[good] += 1
+
+        for limits in conditions.az_limits:
+            good = np.where(
+                (IntRounded(conditions.az) >= IntRounded(np.min(limits)))
+                & (IntRounded(conditions.az) <= IntRounded(np.max(limits)))
+            )[0]
+            in_range_az[good] += 1
+            good = np.where(
+                (IntRounded(future_az) >= IntRounded(np.min(limits)))
+                & (IntRounded(future_az) <= IntRounded(np.max(limits)))
+            )[0]
+            in_range_az[good] += 1
+
+        passed_all = np.where((in_range_alt > 1) & (in_range_az > 1))[0]
+        result[passed_all] = 0
+
+        # Apply additional alt constraint in case we want to be more conservative than the limit
+        result[np.where(IntRounded(conditions.alt) < IntRounded(self.min_alt))] = np.nan
+        result[np.where(IntRounded(conditions.alt) > IntRounded(self.max_alt))] = np.nan
+
+        result[np.where(IntRounded(future_alt) < IntRounded(self.min_alt))] = np.nan
+        result[np.where(IntRounded(future_alt) > IntRounded(self.max_alt))] = np.nan
 
         return result
 

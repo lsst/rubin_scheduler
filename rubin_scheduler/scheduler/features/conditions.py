@@ -1,5 +1,6 @@
 __all__ = ("Conditions",)
 
+import functools
 import warnings
 from io import StringIO
 
@@ -169,6 +170,12 @@ class Conditions:
             Dictionary of planet name and coordinate e.g., 'venus_RA', 'mars_dec'
         scheduled_observations : np.array
             A list of MJD times when there are scheduled observations. Defaults to empty array.
+        tel_az_limits : list of float pairs
+            A list of lists giving valid azimuth ranges. e.g., [0, 2*np.pi] would
+            mean all azimuth values are valid, while [[0, np.pi/2], [3*np.pi/2, 2*np.pi]]
+            would mean anywhere in the south is invalid.  Radians.
+        tel_alt_limits : list of float pairs
+            A list of lists giving valid altitude ranges. Radians.
 
         Attributes (calculated on demand and cached)
         ------------------------------------------
@@ -283,6 +290,10 @@ class Conditions:
         self.tel_az = None
         self.cumulative_azimuth_rad = None
 
+        # Telescope limits
+        self.tel_az_limits = None
+        self.tel_alt_limits = None
+
         # Full sky cloud map
         self._cloud_map = None
         self._HA = None
@@ -386,6 +397,26 @@ class Conditions:
             self.site.longitude_rad,
             self._mjd,
         )
+
+    @functools.lru_cache(maxsize=10)
+    def future_alt_az(self, mjd):
+        """Compute the altitude and azimuth for a future time.
+
+        Returns
+        -------
+        altitude : `np.array`
+            The altutude of each healpix at MJD (radians)
+        azimuth : : `np.array`
+            The azimuth of each healpix at MJD (radians)
+        """
+        alt, az = _approx_ra_dec2_alt_az(
+            self.ra,
+            self.dec,
+            self.site.latitude_rad,
+            self.site.longitude_rad,
+            mjd,
+        )
+        return alt, az
 
     @property
     def mjd(self):

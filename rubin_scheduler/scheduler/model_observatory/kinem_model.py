@@ -201,6 +201,8 @@ class KinemModel:
         azimuth_accel=7.0,
         azimuth_decel=7.0,
         settle_time=3.0,
+        az_limits=None,
+        alt_limits=None,
     ):
         """Parameters to define the TELESCOPE movement and position.
 
@@ -240,6 +242,10 @@ class KinemModel:
         self.telaz_accel_rad = np.radians(azimuth_accel)
         self.telaz_decel_rad = np.radians(azimuth_decel)
         self.mount_settletime = settle_time
+        if alt_limits is None:
+            self.alt_limits = [[self.telalt_minpos_rad, self.telalt_maxpos_rad]]
+        if az_limits is None:
+            self.az_limits = [[0, 2.0 * np.pi]]
 
     def setup_optics(self, ol_slope=1.0 / 3.5, cl_delay=[0.0, 36.0], cl_altlimit=[0.0, 9.0, 90.0]):
         """
