@@ -10,6 +10,8 @@ __all__ = (
     "FlushForSchedDetailer",
     "FilterNexp",
     "FixedSkyAngleDetailer",
+    "ParallacticRotationDetailer",
+    "FlushByDetailer",
 )
 
 import copy
@@ -66,6 +68,60 @@ class BaseDetailer:
         -------
         List of observations.
         """
+
+        return observation_list
+
+
+class FlushByDetailer(BaseDetailer):
+    """
+    Parameters
+    ----------
+    flush_time : float
+        The time to flush after the current MJD. Default 60 minutes
+    """
+
+    def __init__(self, flush_time=60, nside=32):
+        self.survey_features = {}
+        self.nside = nside
+        self.flush_time = flush_time / 60 / 24.0
+
+    def __call__(self, observation_list, conditions):
+        for obs in observation_list:
+            obs["flush_by_mjd"] = conditions.mjd + self.flush_time
+        return observation_list
+
+
+class ParallacticRotationDetailer(BaseDetailer):
+    """Set the rotator to near the parallactic angle"""
+
+    def __call__(self, observation_list, conditions, limits=[-270, 270]):
+        limits = np.radians(limits)
+        for obs in observation_list:
+            alt, az = _approx_ra_dec2_alt_az(
+                obs["RA"],
+                obs["dec"],
+                conditions.site.latitude_rad,
+                conditions.site.longitude_rad,
+                conditions.mjd,
+            )
+            obs_pa = _approx_altaz2pa(alt, az, conditions.site.latitude_rad)
+            obs["rotSkyPos_desired"] = obs_pa
+
+            resulting_rot_tel_pos = obs["rotSkyPos_desired"] + obs_pa
+
+            if resulting_rot_tel_pos > np.max(limits):
+                resulting_rot_tel_pos -= 2 * np.pi
+            if resulting_rot_tel_pos < np.min(limits):
+                resulting_rot_tel_pos += 2 * np.pi
+
+            # If those corrections still leave us bad, just pull it back 180.
+            if resulting_rot_tel_pos > np.max(limits):
+                resulting_rot_tel_pos -= np.pi
+
+            # The rotTelPos overides everything else.
+            obs["rotTelPos"] = resulting_rot_tel_pos
+            # if the rotSkyPos_desired isn't possible, fall back to this.
+            obs["rotTelPos_backup"] = 0
 
         return observation_list
 

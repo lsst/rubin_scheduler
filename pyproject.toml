@@ -30,6 +30,7 @@ dependencies = [
     "numexpr",
     "scipy",
     "astropy",
+    "astroplan",
     "tables",
     "h5py",
     "requests",

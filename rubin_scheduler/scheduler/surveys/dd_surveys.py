@@ -183,6 +183,8 @@ def dd_bfs(
     aggressive_frac=0.011 / 2.0,
     delays=[0.0, 0.5, 1.5],
     time_needed=62.0,
+    wind_speed_maximum=20.0,
+    nside=None,
 ):
     """
     Convienence function to generate all the feasibility basis functions
@@ -192,6 +194,7 @@ def dd_bfs(
     bfs = []
     bfs.append(basis_functions.NotTwilightBasisFunction(sun_alt_limit=sun_alt_limit))
     bfs.append(basis_functions.TimeToTwilightBasisFunction(time_needed=time_needed))
+    bfs.append(basis_functions.AvoidDirectWind(wind_speed_maximum=wind_speed_maximum, nside=nside))
     bfs.append(basis_functions.HourAngleLimitBasisFunction(RA=RA, ha_limits=ha_limits))
     bfs.append(basis_functions.MoonDownBasisFunction())
     bfs.append(basis_functions.FractionOfObsBasisFunction(frac_total=frac_total, survey_name=survey_name))
@@ -253,6 +256,7 @@ def generate_dd_surveys(
         frac_total=frac_total,
         aggressive_frac=aggressive_frac,
         delays=delays,
+        nside=nside,
     )
     surveys.append(
         DeepDrillingSurvey(
@@ -284,6 +288,7 @@ def generate_dd_surveys(
         frac_total=frac_total,
         aggressive_frac=aggressive_frac,
         delays=delays,
+        nside=nside
     )
 
     surveys.append(
@@ -316,6 +321,7 @@ def generate_dd_surveys(
         frac_total=frac_total,
         aggressive_frac=aggressive_frac,
         delays=delays,
+        nside=nside
     )
     surveys.append(
         DeepDrillingSurvey(
@@ -347,6 +353,7 @@ def generate_dd_surveys(
         frac_total=frac_total,
         aggressive_frac=aggressive_frac,
         delays=delays,
+        nside=nside,
     )
     surveys.append(
         DeepDrillingSurvey(
