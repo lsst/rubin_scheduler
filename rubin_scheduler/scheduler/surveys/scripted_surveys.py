@@ -6,7 +6,7 @@ import healpy as hp
 import numpy as np
 
 from rubin_scheduler.scheduler.surveys import BaseSurvey
-from rubin_scheduler.scheduler.utils import empty_observation, set_default_nside, IntRounded
+from rubin_scheduler.scheduler.utils import IntRounded, empty_observation, set_default_nside
 from rubin_scheduler.utils import _approx_ra_dec2_alt_az
 
 log = logging.getLogger(__name__)

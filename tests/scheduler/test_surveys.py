@@ -8,7 +8,7 @@ import rubin_scheduler.scheduler.basis_functions as basis_functions
 import rubin_scheduler.scheduler.surveys as surveys
 from rubin_scheduler.scheduler.basis_functions import SimpleArrayBasisFunction
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
-from rubin_scheduler.scheduler.utils import set_default_nside
+from rubin_scheduler.scheduler.utils import empty_observation, set_default_nside
 
 
 class TestSurveys(unittest.TestCase):
@@ -33,6 +33,43 @@ class TestSurveys(unittest.TestCase):
         reward_df = survey.make_reward_df(conditions)
         self.assertIsInstance(reward_df, pd.DataFrame)
         reward_df = survey.make_reward_df(conditions, accum=False)
+
+    def test_pointings_survey(self):
+        """Test the pointing survey."""
+        mo = ModelObservatory()
+        conditions = mo.return_conditions()
+
+        # Make a ring of points near the equator so
+        # some should always be visible
+        fields = empty_observation(n=10)
+        fields["RA"] = np.arange(0, fields.size) / fields.size * 2.0 * np.pi
+        fields["dec"] = -0.01
+        fields["note"] = ["test%i" % ind for ind in range(fields.size)]
+        fields["filter"] = "r"
+        survey = surveys.PointingsSurvey(fields)
+
+        reward = survey.calc_reward_function(conditions)
+        assert np.isfinite(reward)
+
+        obs = survey.generate_observations(conditions)
+        # Confirm that our desired input values got passed through
+        assert obs[0]["dec"] < 0
+        assert obs[0]["note"][0][0:4] == "test"
+
+        # Adding observations
+        assert np.sum(survey.n_obs) == 0
+        survey.add_observation(obs[0])
+        assert np.sum(survey.n_obs) == 1
+        survey.add_observations_array(fields, None)
+        assert np.sum(survey.n_obs) == 11
+
+        # Check we can get display things out
+        rc = survey.reward_changes(conditions)
+        assert len(rc) == len(survey.weights)
+
+        # Check we get a dataFrame
+        df = survey.make_reward_df(conditions)
+        assert len(df) == len(survey.weights)
 
     def test_roi(self):
         random_seed = 6563

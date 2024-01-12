@@ -5,9 +5,9 @@ import numpy as np
 import pandas as pd
 
 from rubin_scheduler.scheduler.detailers import ParallacticRotationDetailer
+from rubin_scheduler.scheduler.utils import IntRounded
 from rubin_scheduler.skybrightness_pre import dark_m5
 from rubin_scheduler.utils import _angular_separation, _approx_ra_dec2_alt_az
-from rubin_scheduler.scheduler.utils import IntRounded
 
 from .base_survey import BaseSurvey
 
@@ -200,7 +200,12 @@ class PointingsSurvey(BaseSurvey):
         """Apply hour angle limits."""
         result = self.zeros.copy()
         # apply hour angle limits
-        result[np.where((IntRounded(self.ha) > IntRounded(self.ha_max)) & (IntRounded(self.ha) < IntRounded(self.ha_min)))] = np.nan
+        result[
+            np.where(
+                (IntRounded(self.ha) > IntRounded(self.ha_max))
+                & (IntRounded(self.ha) < IntRounded(self.ha_min))
+            )
+        ] = np.nan
         return result
 
     def alt_limit(self, conditions):

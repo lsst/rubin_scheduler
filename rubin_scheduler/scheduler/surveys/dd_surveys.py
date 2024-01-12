@@ -288,7 +288,7 @@ def generate_dd_surveys(
         frac_total=frac_total,
         aggressive_frac=aggressive_frac,
         delays=delays,
-        nside=nside
+        nside=nside,
     )
 
     surveys.append(
@@ -321,7 +321,7 @@ def generate_dd_surveys(
         frac_total=frac_total,
         aggressive_frac=aggressive_frac,
         delays=delays,
-        nside=nside
+        nside=nside,
     )
     surveys.append(
         DeepDrillingSurvey(
