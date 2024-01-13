@@ -6,7 +6,7 @@ import numpy as np
 from rubin_scheduler.data import get_data_dir
 from rubin_scheduler.scheduler import sim_runner
 from rubin_scheduler.scheduler.example import example_scheduler, run_sched
-from rubin_scheduler.scheduler.model_observatory import ModelObservatory
+from rubin_scheduler.scheduler.model_observatory import KinemModel, ModelObservatory
 from rubin_scheduler.scheduler.utils import restore_scheduler, run_info_table, season_calc
 from rubin_scheduler.utils import survey_start_mjd
 
@@ -30,7 +30,7 @@ class TestUtils(unittest.TestCase):
         """Test the example scheduler executes all the expected surveys"""
         mjd_start = survey_start_mjd()
         scheduler = example_scheduler(mjd_start=mjd_start)
-        observatory, scheduler, observations = run_sched(scheduler, mjd_start=mjd_start, survey_length=5)
+        observatory, scheduler, observations = run_sched(scheduler, mjd_start=mjd_start, survey_length=7)
         u_notes = np.unique(observations["note"])
 
         # Note that some of these may change and need to be updated if survey
@@ -60,7 +60,7 @@ class TestUtils(unittest.TestCase):
             "twilight_near_sun, 2",
             "twilight_near_sun, 3",
         ]
-
+        
         for note in notes_to_check:
             assert note in u_notes
 
@@ -84,6 +84,47 @@ class TestUtils(unittest.TestCase):
         os.path.isfile(os.path.join(get_data_dir(), "scheduler/dust_maps/dust_nside_32.npz")),
         "Test data not available.",
     )
+    def test_altaz_limit(self):
+        """Test that setting some azimuth limits via the kinematic model works"""
+        mjd_start = survey_start_mjd()
+        scheduler = example_scheduler(mjd_start=mjd_start)
+        km = KinemModel(mjd0=mjd_start)
+        km.setup_telescope(az_limits=[[0.0, 90.0], [270.0, 360.0]])
+        mo = ModelObservatory(mjd_start=mjd_start, kinem_model=km)
+
+        mo, scheduler, observations = sim_runner(
+            mo,
+            scheduler,
+            survey_length=3.0,
+            verbose=False,
+            filename=None,
+        )
+
+        az = np.degrees(observations["az"])
+        forbidden = np.where((az > 90) & (az < 270))[0]
+        # Let a few pairs try to complete since by default we don't use an agressive shadow_minutes
+        n_forbidden = np.size(
+            [obs for obs in observations[forbidden]["note"] if (("pair_33" not in obs) | (", b" not in obs))]
+        )
+
+        assert n_forbidden == 0
+
+        km = KinemModel(mjd0=mjd_start)
+        km.setup_telescope(alt_limits=[[40.0, 70.0]])
+        mo = ModelObservatory(mjd_start=mjd_start, kinem_model=km)
+
+        mo, scheduler, observations = sim_runner(
+            mo,
+            scheduler,
+            survey_length=3.0,
+            verbose=False,
+            filename=None,
+        )
+        alt = np.degrees(observations["alt"])
+        n_forbidden = np.size(np.where((alt > 70) & (alt < 40))[0])
+
+        assert n_forbidden == 0
+
     def test_restore(self):
         """Test we can restore a scheduler properly"""
         # MJD set so it's in test data range

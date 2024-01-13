@@ -244,8 +244,12 @@ class KinemModel:
         self.mount_settletime = settle_time
         if alt_limits is None:
             self.alt_limits = [[self.telalt_minpos_rad, self.telalt_maxpos_rad]]
+        else:
+            self.alt_limits = np.radians(alt_limits)
         if az_limits is None:
             self.az_limits = [[0, 2.0 * np.pi]]
+        else:
+            self.az_limits = np.radians(az_limits)
 
     def setup_optics(self, ol_slope=1.0 / 3.5, cl_delay=[0.0, 36.0], cl_altlimit=[0.0, 9.0, 90.0]):
         """

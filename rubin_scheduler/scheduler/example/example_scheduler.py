@@ -402,12 +402,10 @@ def blob_for_long(
         # Masks, give these 0 weight
         bfs.append(
             (
-                bf.ZenithShadowMaskBasisFunction(
+                bf.AltAzShadowMaskBasisFunction(
                     nside=nside,
                     shadow_minutes=shadow_minutes,
                     max_alt=max_alt,
-                    penalty=np.nan,
-                    site="LSST",
                 ),
                 0.0,
             )
@@ -606,7 +604,7 @@ def gen_greedy_surveys(
         # Masks, give these 0 weight
         bfs.append(
             (
-                bf.ZenithShadowMaskBasisFunction(nside=nside, shadow_minutes=shadow_minutes, max_alt=max_alt),
+                bf.AltAzShadowMaskBasisFunction(nside=nside, shadow_minutes=shadow_minutes, max_alt=max_alt),
                 0,
             )
         )
@@ -824,12 +822,10 @@ def generate_blobs(
         # Masks, give these 0 weight
         bfs.append(
             (
-                bf.ZenithShadowMaskBasisFunction(
+                bf.AltAzShadowMaskBasisFunction(
                     nside=nside,
                     shadow_minutes=shadow_minutes,
                     max_alt=max_alt,
-                    penalty=np.nan,
-                    site="LSST",
                 ),
                 0.0,
             )
@@ -1033,12 +1029,10 @@ def generate_twi_blobs(
         # Masks, give these 0 weight
         bfs.append(
             (
-                bf.ZenithShadowMaskBasisFunction(
+                bf.AltAzShadowMaskBasisFunction(
                     nside=nside,
                     shadow_minutes=shadow_minutes,
                     max_alt=max_alt,
-                    penalty=np.nan,
-                    site="LSST",
                 ),
                 0.0,
             )
@@ -1232,7 +1226,7 @@ def generate_twilight_near_sun(
         bfs.append((bf.NearSunTwilightBasisFunction(nside=nside, max_airmass=max_airmass), 0))
         bfs.append(
             (
-                bf.ZenithShadowMaskBasisFunction(nside=nside, shadow_minutes=shadow_minutes, max_alt=max_alt),
+                bf.AltAzShadowMaskBasisFunction(nside=nside, shadow_minutes=shadow_minutes, max_alt=max_alt),
                 0,
             )
         )
