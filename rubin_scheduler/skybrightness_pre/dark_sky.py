@@ -40,7 +40,25 @@ def dark_sky(nside=32):
 
 
 def dark_m5(decs, filtername, latitude_rad, fiducial_FWHMEff, exptime=30.0, nexp=1):
-    """Return a nominal best-depth map of the sky"""
+    """Return a nominal best-depth map of the sky
+
+    Parameters
+    ----------
+    decs : `float`
+        The declinations for the desired points. Float or adday-like. (radians)
+    filtername : `str`
+        Name of filter, one of ugrizy.
+    latitude_rad : `float`
+        Latitude of the observatory (radians)
+    fiducial_FWHMEff : `float`
+        The fiducial seeing FWHMeff to use (arcsec).
+    exptime : `float`
+        The fiducial exposure time to assume (seconds). Default 30.
+    nexp : `int`
+        The number of exposures per visit. Default 1.
+
+
+    """
     nside = hp.npix2nside(np.size(decs))
     ds = dark_sky(nside)[filtername]
     min_z = np.abs(decs - latitude_rad)

@@ -73,7 +73,8 @@ class BaseDetailer:
 
 
 class FlushByDetailer(BaseDetailer):
-    """
+    """Set the MJD an observation should be flushed from the scheduler queue if not yet completed.
+
     Parameters
     ----------
     flush_time : float
