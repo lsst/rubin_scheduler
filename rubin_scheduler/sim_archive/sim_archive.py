@@ -16,13 +16,13 @@ import hashlib
 import json
 import logging
 import lzma
-import pickle
 import os
+import pickle
 import shutil
 import socket
 import sys
 from contextlib import redirect_stdout
-from numbers import Number, Integral
+from numbers import Integral, Number
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -35,8 +35,8 @@ from conda.gateways.disk.test import is_conda_environment
 from lsst.resources import ResourcePath
 
 import rubin_scheduler
-from rubin_scheduler.scheduler.utils import SchemaConverter
 from rubin_scheduler.scheduler import sim_runner
+from rubin_scheduler.scheduler.utils import SchemaConverter
 from rubin_scheduler.utils import Site
 
 SITE = None
