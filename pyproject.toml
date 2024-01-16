@@ -35,6 +35,7 @@ dependencies = [
     "requests",
     "shapely",
     "tqdm",
+    "lsst.resources",
 ]
 
 [project.optional-dependencies]
@@ -53,6 +54,7 @@ dev = [
 [project.scripts]
 scheduler_download_data = "rubin_scheduler.data.scheduler_download_data:scheduler_download_data"
 rs_download_sky = "rubin_scheduler.data.rs_download_sky:rs_download_sky"
+archive_sim = "rubin_scheduler.sim_archive:make_sim_archive_cli"
 
 
 [tool.setuptools.dynamic]
