@@ -156,3 +156,81 @@ Optional (for debugging or speculative future uses only) file types listed above
 ``statistics``
   Basic statistics for the visit database.
 
+Automatic archiving of generated data
+-------------------------------------
+
+Script::
+
+  from astropy.time import Time
+
+  from rubin_scheduler.scheduler.example import example_scheduler
+  from rubin_scheduler.scheduler.model_observatory import ModelObservatory
+  from rubin_scheduler.sim_archive import drive_sim
+
+  sim_mjd_start = Time("2025-05-05").mjd + 0.5
+  # The start date of the simualtion.
+  # Offset by 0.5 to avoid starting late when the MJD rollover occurs during or
+  # after twilight. See dayObs in SITCOMTN-32: https://sitcomtn-032.lsst.io/ .
+
+  sim_length = 1.0
+  # Passed to sum_runner, in units of days.
+
+  archive_uri = "file:///sdf/data/rubin/user/neilsen/data/test_sim_archive/"
+  # The URI of the root of the archive. The trailing "/" is required.
+
+  observatory = ModelObservatory()
+  scheduler = example_scheduler()
+  scheduler.keep_rewards = True
+
+  results = drive_sim(
+      observatory=observatory,
+      scheduler=scheduler,
+      archive_uri=archive_uri,
+      label=f"Example simulation started at {Time.now().iso}.",
+      script=__file__,
+      tags=["example"],
+      mjd_start=sim_mjd_start,
+      survey_length=sim_length,
+      record_rewards=True,
+  )
+
+result::
+
+  bash$ ls /sdf/data/rubin/user/neilsen/data/test_sim_archive/2024-01-18/1
+  environment.txt  example_archived_sim_driver.py  obs_stats.txt  opsim.db  pypi.json  rewards.h5  scheduler.pickle.xz  sim_metadata.yaml
+  bash$ cat /sdf/data/rubin/user/neilsen/data/test_sim_archive/2024-01-18/1/sim_metadata.yaml
+  files:
+      environment:
+          md5: 33f94ddf8975f9641a1f524fd22e362e
+          name: environment.txt
+      observations:
+          md5: 8b1ee9a604a88d2708d2bfd924ac3cd9
+          name: opsim.db
+      pypi:
+          md5: 51a8deee5018f59f20d5741fd1a64778
+          name: pypi.json
+      rewards:
+          md5: 10e4ab9397382bfa108fa21354da3526
+          name: rewards.h5
+      scheduler:
+          md5: 35713860dc9ba7a425500f63939d0e02
+          name: scheduler.pickle.xz
+      script:
+          md5: b4a476a4fd1231ea1ca44149784f1c3f
+          name: example_archived_sim_driver.py
+      statistics:
+          md5: 7c6a6af38aff3ce4145146e35f929b47
+          name: obs_stats.txt
+  host: sdfrome002.sdf.slac.stanford.edu
+  label: Example simulation started at 2024-01-18 15:46:27.758.
+  scheduler_version: 1.0.1.dev25+gba1ca4d.d20240102
+  sim_runner_kwargs:
+      mjd_start: 60800.5
+      record_rewards: true
+      survey_length: 1.0
+  simulated_dates:
+      first: '2025-05-04'
+      last: '2025-05-04'
+  tags:
+  - example
+  username: neilsen
