@@ -545,7 +545,7 @@ def drive_sim(
         scheduler_path = Path(local_data_dir).joinpath("scheduler.pickle.xz")
         with lzma.open(scheduler_path, "wb", format=lzma.FORMAT_XZ) as pio:
             pickle.dump(scheduler, pio)
-            in_files["scheduler"] = scheduler_path.name
+            in_files["scheduler"] = scheduler_path.as_posix()
 
         sim_results = sim_runner(observatory, scheduler, **kwargs)
 
