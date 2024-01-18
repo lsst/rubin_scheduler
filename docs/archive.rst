@@ -159,7 +159,13 @@ Optional (for debugging or speculative future uses only) file types listed above
 Automatic archiving of generated data
 -------------------------------------
 
-Script::
+The ``rubin_scheduler`` package provides a tool to combine running a simulation and adding the results to an archive, including any metadata that can be derived automatically.
+The ``rubin_scheduler.sim_archive.drive_sim`` function is wrapper around ``rubin_scheduler.scheduler.sim_runner`` that incorporates this metadata collection and the creation of the entry in an archive.
+It takes all of the same arguments that ``sim_runner`` does, and passes them directly to ``sim_runner``.
+In addition, it takes a few arguments that specify the archive into which it is to be added (``archive_uri``), the label to be included in the metadata (``label``), and the code used to run the simulation (ethier ``script`` or ``notebook``).
+Details are available in the ``drive_sim`` docstring.
+
+For example, if this code is put into a file and run as a script, it will run the specificed simulation and add it to the specified archive::
 
   from astropy.time import Time
 
@@ -194,7 +200,7 @@ Script::
       record_rewards=True,
   )
 
-result::
+The result looks like this::
 
   bash$ ls /sdf/data/rubin/user/neilsen/data/test_sim_archive/2024-01-18/1
   environment.txt  example_archived_sim_driver.py  obs_stats.txt  opsim.db  pypi.json  rewards.h5  scheduler.pickle.xz  sim_metadata.yaml
@@ -234,3 +240,4 @@ result::
   tags:
   - example
   username: neilsen
+
