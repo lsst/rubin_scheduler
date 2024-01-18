@@ -259,7 +259,8 @@ def transfer_archive_dir(archive_dir, archive_base_uri="s3://rubin-scheduler-pre
         if base_dir == insert_date_rpath:
             for found_dir in found_dirs:
                 try:
-                    found_ids.append(int(found_dir[:-1]))
+                    found_dir_index = found_dir[:-1] if found_dir.endswith("/") else found_dir
+                    found_ids.append(int(found_dir_index))
                 except ValueError:
                     pass
 
