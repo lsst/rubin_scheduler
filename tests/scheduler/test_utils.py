@@ -60,7 +60,7 @@ class TestUtils(unittest.TestCase):
             "twilight_near_sun, 2",
             "twilight_near_sun, 3",
         ]
-        
+
         for note in notes_to_check:
             assert note in u_notes
 

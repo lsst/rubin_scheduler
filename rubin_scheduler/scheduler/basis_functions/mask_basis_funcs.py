@@ -12,6 +12,8 @@ __all__ = (
     "AltAzShadowMaskBasisFunction",
 )
 
+from warnings import warn
+
 import healpy as hp
 import matplotlib.pylab as plt
 import numpy as np
@@ -196,9 +198,24 @@ class PlanetMaskBasisFunction(BaseBasisFunction):
 
 
 class AltAzShadowMaskBasisFunction(BaseBasisFunction):
-    """Mask any out of range altitudes and azimuths, then extend the
+    """Mask out range altitudes and azimuths, then extend the
     mask so if observations are taken in pairs, the second in the pair will
     not have moved into a masked region.
+
+    Masks any alt/az regions as specified by the conditions object, then
+    applies any additional altitude masking as suppied by the kwargs.
+    This mask is then extended using `shadow minutes`.
+
+    Parameters
+    ----------
+    nside : `int`
+        HEALpix nside. Default None will look up the package-wide default.
+    min_alt : `float`
+        Minimum altitude to apply to the mask. Default 20 (degrees).
+    max_alt : `float`
+        Maximum altitude to allow. Default 82 (degrees).
+    shadow_minutes : `float`
+        How long to extend masked area in longitude. Default 40 (minutes).
     """
 
     def __init__(
@@ -212,15 +229,13 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         self.min_alt = np.radians(min_alt)
         self.max_alt = np.radians(max_alt)
         self.shadow_time = shadow_minutes / 60.0 / 24.0  # To days
-        self.result = np.zeros(hp.nside2npix(self.nside), dtype=float)
-        self.in_range = np.zeros(hp.nside2npix(self.nside), dtype=int)
 
     def _calc_value(self, conditions, indx=None):
         # Mask everything to start
-        result = self.result.copy() + np.nan
+        result = np.zeros(hp.nside2npix(self.nside), dtype=float) + np.nan
 
-        in_range_alt = self.in_range.copy()
-        in_range_az = self.in_range.copy()
+        in_range_alt = np.zeros(hp.nside2npix(self.nside), dtype=int)
+        in_range_az = np.zeros(hp.nside2npix(self.nside), dtype=int)
 
         # Compute the alt,az values in the future. Use the conditions object
         # so the results are cached and can be used by other surveys is needed.
@@ -229,7 +244,7 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         future_alt, future_az = conditions.future_alt_az(np.max(conditions.mjd + self.shadow_time))
 
         # apply limits from the conditions object
-        for limits in conditions.alt_limits:
+        for limits in conditions.tel_alt_limits:
             good = np.where(
                 (IntRounded(conditions.alt) >= IntRounded(np.min(limits)))
                 & (IntRounded(conditions.alt) <= IntRounded(np.max(limits)))
@@ -241,7 +256,7 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
             )[0]
             in_range_alt[good] += 1
 
-        for limits in conditions.az_limits:
+        for limits in conditions.tel_az_limits:
             good = np.where(
                 (IntRounded(conditions.az) >= IntRounded(np.min(limits)))
                 & (IntRounded(conditions.az) <= IntRounded(np.max(limits)))
@@ -289,6 +304,10 @@ class ZenithShadowMaskBasisFunction(BaseBasisFunction):
         penalty=np.nan,
         site="LSST",
     ):
+        warn.DeprecationWarning(
+            "Deprecating ZenithShadowMaskBasisFunction in favor of AltAzShadowMaskBasisFunction."
+        )
+
         super(ZenithShadowMaskBasisFunction, self).__init__(nside=nside)
         self.update_on_newobs = False
 

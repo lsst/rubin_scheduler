@@ -367,8 +367,8 @@ class ModelObservatory:
         self.conditions.mjd_start = self.mjd_start
 
         # Telescope limits
-        self.conditions.az_limits = self.observatory.az_limits
-        self.conditions.alt_limits = self.observatory.alt_limits
+        self.conditions.tel_az_limits = self.observatory.az_limits
+        self.conditions.tel_alt_limits = self.observatory.alt_limits
 
         # Planet positions from almanac
         self.conditions.planet_positions = self.almanac.get_planet_positions(self.mjd)
