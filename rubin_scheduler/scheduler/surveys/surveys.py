@@ -308,7 +308,7 @@ class BlobSurvey(GreedySurvey):
             at2 = conditions.sun_n18_setting - conditions.mjd
             times = np.array([at1, at2])
             times = times[np.where(times > 0)]
-            available_time = np.min(times)
+            available_time = np.min(times) if len(times) > 0 else 0.0
             available_time *= 24.0 * 60.0  # to minutes
             n_blocks = available_time / self.ideal_pair_time
             if n_blocks < n_ideal_blocks:
