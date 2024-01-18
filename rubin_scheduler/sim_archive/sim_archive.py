@@ -179,7 +179,7 @@ def make_sim_archive_dir(
 
         if "survey_length" in sim_runner_kwargs:
             simulation_dates["last"] = evening_local_date(
-                sim_runner_kwargs["mjd_start"] + sim_runner_kwargs["survey_length"]
+                sim_runner_kwargs["mjd_start"] + sim_runner_kwargs["survey_length"] - 1
             )
     else:
         simulation_dates["first"] = evening_local_date(observations["mjd"].min())
