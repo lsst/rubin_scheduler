@@ -216,8 +216,9 @@ class BaseSurvey:
 
     def generate_observations(self, conditions):
         observations = self.generate_observations_rough(conditions)
-        for detailer in self.detailers:
-            observations = detailer(observations, conditions)
+        if np.size(observations) > 0:
+            for detailer in self.detailers:
+                observations = detailer(observations, conditions)
         return observations
 
     def viz_config(self):

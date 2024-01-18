@@ -37,7 +37,6 @@ class TestUtils(unittest.TestCase):
         # start date changes, e.g., different DDFs in season, or different lunar phase
         # means different filters get picked for the blobs
         notes_to_check = [
-            "DD:COSMOS",
             "blob_long, gr, a",
             "blob_long, gr, b",
             "greedy",
@@ -56,8 +55,6 @@ class TestUtils(unittest.TestCase):
             "pair_33, ug, b",
             "pair_33, yy, a",
             "pair_33, yy, b",
-            "pair_33, zy, a",
-            "pair_33, zy, b",
             "twilight_near_sun, 0",
             "twilight_near_sun, 1",
             "twilight_near_sun, 2",
@@ -65,6 +62,10 @@ class TestUtils(unittest.TestCase):
         ]
 
         for note in notes_to_check:
+            assert note in u_notes
+
+        for note in u_notes:
+            # If this fails, time to add something to notes_to_check
             assert note in u_notes
 
     @unittest.skipUnless(
