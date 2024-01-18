@@ -1,13 +1,13 @@
-__all__ = ("ScriptedSurvey", "PairsSurveyScripted")
+__all__ = ("ScriptedSurvey",)
 
 import logging
 
+import healpy as hp
 import numpy as np
 
-import rubin_scheduler.scheduler.features as features
 from rubin_scheduler.scheduler.surveys import BaseSurvey
-from rubin_scheduler.scheduler.utils import empty_observation, set_default_nside
-from rubin_scheduler.utils import _approx_ra_dec2_alt_az, ra_dec2_hpid
+from rubin_scheduler.scheduler.utils import IntRounded, empty_observation, set_default_nside
+from rubin_scheduler.utils import _approx_ra_dec2_alt_az
 
 log = logging.getLogger(__name__)
 
@@ -18,6 +18,10 @@ class ScriptedSurvey(BaseSurvey):
 
     Parameters
     ----------
+    basis_functions : list of rubin_scheduler.scheduler.BasisFunction objects
+        Basis functions to use. These are only used for masking regions of the sky and
+        computing survey feasibility. They do not contribute to the logic of how
+        observations are selected.
     id_start : `int` (1)
         The integer to start the "scripted id" field with. Bad things could happen
         if you have multiple scripted survey objects with the same scripted IDs.
@@ -29,6 +33,7 @@ class ScriptedSurvey(BaseSurvey):
     def __init__(
         self,
         basis_functions,
+        basis_weights=None,
         reward=1e6,
         ignore_obs="dummy",
         nside=None,
@@ -47,6 +52,14 @@ class ScriptedSurvey(BaseSurvey):
         self.reward = -np.inf
         self.id_start = id_start
         self.return_n_limit = return_n_limit
+        if basis_weights is None:
+            self.basis_weights = np.zeros(len(basis_functions))
+        else:
+            if np.max(np.abs(basis_weights)) > 0:
+                raise ValueError("Basis function weights should be zero for ScriptedSurvey objects.")
+            if len(basis_weights) != len(basis_functions):
+                raise ValueError("Length of Basis function weights should match length of basis_functions.")
+            self.basis_weights = basis_weights
         super(ScriptedSurvey, self).__init__(
             basis_functions=basis_functions,
             ignore_obs=ignore_obs,
@@ -116,11 +129,14 @@ class ScriptedSurvey(BaseSurvey):
 
     def calc_reward_function(self, conditions):
         """If there is an observation ready to go, execute it, otherwise, -inf"""
-        observation = self._check_list(conditions)
-        if observation is None:
-            self.reward = -np.inf
+        if self._check_feasibility(conditions):
+            observation = self._check_list(conditions)
+            if observation is None:
+                self.reward = -np.inf
+            else:
+                self.reward = self.reward_val
         else:
-            self.reward = self.reward_val
+            self.reward = -np.inf
         return self.reward
 
     def _slice2obs(self, obs_row):
@@ -197,6 +213,23 @@ class ScriptedSurvey(BaseSurvey):
                 if np.size(matches) > self.return_n_limit:
                     matches = matches[0 : self.return_n_limit]
                 observations = self.obs_wanted[matches]
+                # Need to check that none of these are masked by basis functions
+                reward = 0
+                for bf, weight in zip(self.basis_functions, self.basis_weights):
+                    basis_value = bf(conditions)
+                    reward += basis_value * weight
+                # If reward is an array, then it's a HEALpy map and we
+                # need to interpolate to the actual positions we want.
+                # now to interpolate to the reward positions
+                if np.size(reward) > 1:
+                    reward_interp = hp.get_interp_val(
+                        reward,
+                        np.degrees(observations["RA"]),
+                        np.degrees(observations["dec"]),
+                        lonlat=True,
+                    )
+                    valid_reward = np.isfinite(reward_interp)
+                    observations = observations[valid_reward]
 
         return observations
 
@@ -238,234 +271,3 @@ class ScriptedSurvey(BaseSurvey):
         observations = [self._slice2obs(obs) for obs in observations]
 
         return observations
-
-
-class PairsSurveyScripted(ScriptedSurvey):
-    """Check if incoming observations will need a pair in 30 minutes. If so, add to the queue"""
-
-    def __init__(
-        self,
-        basis_functions,
-        filt_to_pair="griz",
-        dt=40.0,
-        ttol=10.0,
-        reward_val=101.0,
-        note="scripted",
-        ignore_obs="ack",
-        min_alt=30.0,
-        max_alt=85.0,
-        lat=-30.2444,
-        moon_distance=30.0,
-        max_slew_to_pair=15.0,
-        nside=None,
-        survey_name=None,
-    ):
-        """
-        Parameters
-        ----------
-        filt_to_pair : str (griz)
-            Which filters to try and get pairs of
-        dt : float (40.)
-            The ideal gap between pairs (minutes)
-        ttol : float (10.)
-            The time tolerance when gathering a pair (minutes)
-        """
-        if nside is None:
-            nside = set_default_nside()
-
-        super(PairsSurveyScripted, self).__init__(
-            basis_functions=basis_functions,
-            ignore_obs=ignore_obs,
-            min_alt=min_alt,
-            max_alt=max_alt,
-            nside=nside,
-            survey_name=survey_name,
-        )
-
-        self.lat = np.radians(lat)
-        self.note = note
-        self.ttol = ttol / 60.0 / 24.0
-        self.dt = dt / 60.0 / 24.0  # To days
-        self.max_slew_to_pair = max_slew_to_pair  # in seconds
-        self._moon_distance = np.radians(moon_distance)
-
-        self.extra_features = {}
-        self.extra_features["Pair_map"] = features.Pair_in_night(filtername=filt_to_pair)
-
-        self.reward_val = reward_val
-        self.filt_to_pair = filt_to_pair
-        # list to hold observations
-        self.observing_queue = []
-        # make ignore_obs a list
-        if type(self.ignore_obs) is str:
-            self.ignore_obs = [self.ignore_obs]
-
-    def add_observation(self, observation, indx=None, **kwargs):
-        """Add an observed observation"""
-        # self.ignore_obs not in str(observation['note'])
-        to_ignore = np.any([ignore in str(observation["note"]) for ignore in self.ignore_obs])
-        log.debug(
-            "[Pairs.add_observation]: %s: %s: %s",
-            to_ignore,
-            str(observation["note"]),
-            self.ignore_obs,
-        )
-        log.debug("[Pairs.add_observation.queue]: %s", self.observing_queue)
-        if not to_ignore:
-            # Update my extra features:
-            for feature in self.extra_features:
-                if hasattr(self.extra_features[feature], "add_observation"):
-                    self.extra_features[feature].add_observation(observation, indx=indx)
-            self.reward_checked = False
-
-            # Check if this observation needs a pair
-            # XXX--only supporting single pairs now. Just start up another scripted survey
-            # to grab triples, etc? Or add two observations to queue at a time?
-            # keys_to_copy = ['RA', 'dec', 'filter', 'exptime', 'nexp']
-            if (observation["filter"][0] in self.filt_to_pair) and (
-                np.max(self.extra_features["Pair_map"].feature[indx]) < 1
-            ):
-                obs_to_queue = empty_observation()
-                for key in observation.dtype.names:
-                    obs_to_queue[key] = observation[key]
-                # Fill in the ideal time we would like this observed
-                log.debug("Observation MJD: %.4f (dt=%.4f)", obs_to_queue["mjd"], self.dt)
-                obs_to_queue["mjd"] += self.dt
-                self.observing_queue.append(obs_to_queue)
-        log.debug("[Pairs.add_observation.queue.size]: %i", len(self.observing_queue))
-        for obs in self.observing_queue:
-            log.debug("[Pairs.add_observation.queue]: %s", obs)
-
-    def _purge_queue(self, conditions):
-        """Remove any pair where it's too late to observe it"""
-        # Assuming self.observing_queue is sorted by MJD.
-        if len(self.observing_queue) > 0:
-            stale = True
-            in_window = np.abs(self.observing_queue[0]["mjd"] - conditions.mjd) < self.ttol
-            log.debug("Purging queue")
-            while stale:
-                # If the next observation in queue is past the window, drop it
-                if (self.observing_queue[0]["mjd"] < conditions.mjd) & (~in_window):
-                    log.debug(
-                        "Past the window: obs_mjd=%.4f (current_mjd=%.4f)",
-                        self.observing_queue[0]["mjd"],
-                        conditions.mjd,
-                    )
-                    del self.observing_queue[0]
-                # If we are in the window, but masked, drop it
-                elif (in_window) & (~self._check_mask(self.observing_queue[0], conditions)):
-                    log.debug("Masked")
-                    del self.observing_queue[0]
-                # If in time window, but in alt exclusion zone
-                elif (in_window) & (~self._check_alts(self.observing_queue[0], conditions)):
-                    log.debug("in alt exclusion zone")
-                    del self.observing_queue[0]
-                else:
-                    stale = False
-                # If we have deleted everything, break out of where
-                if len(self.observing_queue) == 0:
-                    stale = False
-
-    def _check_alts(self, observation, conditions):
-        result = False
-        # Just do a fast ra,dec to alt,az conversion. Can use LMST from a feature.
-
-        alt, az = _approx_ra_dec2_alt_az(
-            observation["RA"],
-            observation["dec"],
-            self.lat,
-            None,
-            conditions.mjd,
-            lmst=conditions.lmst,
-        )
-        in_range = np.where((alt < self.max_alt) & (alt > self.min_alt))[0]
-        if np.size(in_range) > 0:
-            result = True
-        return result
-
-    def _check_mask(self, observation, conditions):
-        """Check that the proposed observation is not currently masked for some reason on the sky map.
-        True if the observation is good to observe
-        False if the proposed observation is masked
-        """
-
-        hpid = np.max(ra_dec2_hpid(self.nside, observation["RA"], observation["dec"]))
-        skyval = conditions.M5Depth[observation["filter"][0]][hpid]
-
-        if skyval > 0:
-            return True
-        else:
-            return False
-
-    def calc_reward_function(self, conditions):
-        self._purge_queue(conditions)
-        result = -np.inf
-        self.reward = result
-        log.debug("Pair - calc_reward_func")
-        for indx in range(len(self.observing_queue)):
-            check = self._check_observation(self.observing_queue[indx], conditions)
-            log.debug("%s: %s", check, self.observing_queue[indx])
-            if check[0]:
-                result = self.reward_val
-                self.reward = self.reward_val
-                break
-            elif not check[1]:
-                break
-
-        self.reward_checked = True
-        return result
-
-    def _check_observation(self, observation, conditions):
-        delta_t = observation["mjd"] - conditions.mjd
-        log.debug(
-            "Check_observation: obs_mjd=%.4f (current_mjd=%.4f, delta=%.4f, tol=%.4f)",
-            observation["mjd"],
-            conditions.mjd,
-            delta_t,
-            self.ttol,
-        )
-        obs_hp = ra_dec2_hpid(self.nside, observation["RA"], observation["dec"])
-        slewtime = conditions.slewtime[obs_hp[0]]
-        in_slew_window = slewtime <= self.max_slew_to_pair or delta_t < 0.0
-        in_time_window = np.abs(delta_t) < self.ttol
-
-        if conditions.current_filter is None:
-            infilt = True
-        else:
-            infilt = conditions.current_filter in self.filt_to_pair
-
-        is_observable = self._check_mask(observation, conditions)
-        valid = in_time_window & infilt & in_slew_window & is_observable
-        log.debug("Pair - observation: %s " % observation)
-        log.debug(
-            "Pair - check[%s]: in_time_window[%s] infilt[%s] in_slew_window[%s] is_observable[%s]"
-            % (valid, in_time_window, infilt, in_slew_window, is_observable)
-        )
-
-        return (valid, in_time_window, infilt, in_slew_window, is_observable)
-
-    def generate_observations(self, conditions):
-        # Toss anything in the queue that is too old to pair up:
-        self._purge_queue(conditions)
-        # Check for something I want a pair of
-        result = []
-        # if len(self.observing_queue) > 0:
-        log.debug("Pair - call")
-        for indx in range(len(self.observing_queue)):
-            check = self._check_observation(self.observing_queue[indx], conditions)
-
-            if check[0]:
-                result = self.observing_queue.pop(indx)
-                result["note"] = "pair(%s)" % self.note
-                # Make sure we don't change filter if we don't have to.
-                if conditions.current_filter is not None:
-                    result["filter"] = conditions.current_filter
-                # Make sure it is observable!
-                # if self._check_mask(result):
-                result = [result]
-                break
-            elif not check[1]:
-                # If this is not in time window and queue is chronological, none will be...
-                break
-
-        return result

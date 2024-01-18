@@ -53,9 +53,8 @@ from astropy.coordinates import SkyCoord
 
 from rubin_scheduler.scheduler import features, utils
 from rubin_scheduler.scheduler.utils import IntRounded
-from rubin_scheduler.site_models import SeeingModel
-from rubin_scheduler.skybrightness_pre import dark_sky
-from rubin_scheduler.utils import _hpid2_ra_dec, m5_flat_sed
+from rubin_scheduler.skybrightness_pre import dark_m5
+from rubin_scheduler.utils import _hpid2_ra_dec
 
 
 class BaseBasisFunction:
@@ -397,11 +396,15 @@ class NGoodSeeingBasisFunction(BaseBasisFunction):
             nside=nside,
         )
         self.result = np.zeros(hp.nside2npix(self.nside))
-        if self.filtername is not None:
-            self.dark_map = dark_sky(nside)[filtername]
+        self.dark_map = None
         self.footprint = footprint
 
     def _calc_value(self, conditions, indx=None):
+        if self.filtername is not None:
+            if self.dark_map is None:
+                self.dark_map = dark_m5(
+                    conditions.dec, self.filtername, conditions.site.latitude_rad, fiducial_FWHMEff=0.7
+                )
         result = 0
         # Need to update the feature to the current season
         self.survey_features["N_good_seeing"].season_update(conditions=conditions)
@@ -952,29 +955,14 @@ class M5DiffBasisFunction(BaseBasisFunction):
     def __init__(self, filtername="r", fiducial_FWHMEff=0.7, nside=None):
         super().__init__(nside=nside, filtername=filtername)
         # The dark sky surface brightness values
-        self.dark_sky = dark_sky(nside)[filtername]
         self.dark_map = None
         self.fiducial_FWHMEff = fiducial_FWHMEff
         self.filtername = filtername
 
     def _calc_value(self, conditions, indx=None):
         if self.dark_map is None:
-            # compute the maximum altitude each HEALpix reaches,
-            # this lets us determine the dark sky values with appropriate seeing
-            # for each declination.
-            min_z = np.abs(conditions.dec - conditions.site.latitude_rad)
-            airmass_min = 1 / np.cos(min_z)
-            airmass_min = np.where(airmass_min < 0, np.nan, airmass_min)
-            sm = SeeingModel(filter_list=[self.filtername])
-            fwhm_eff = sm(self.fiducial_FWHMEff, airmass_min)["fwhmEff"][0]
-            self.dark_map = m5_flat_sed(
-                self.filtername,
-                musky=self.dark_sky,
-                fwhm_eff=fwhm_eff,
-                exp_time=30.0,
-                airmass=airmass_min,
-                nexp=1,
-                tau_cloud=0,
+            self.dark_map = dark_m5(
+                conditions.dec, self.filtername, conditions.site.latitude_rad, self.fiducial_FWHMEff
             )
 
         # No way to get the sign on this right the first time.
