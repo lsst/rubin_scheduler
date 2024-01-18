@@ -564,10 +564,10 @@ def drive_sim(
             capture_env=True,
         )
 
-    if archive_uri is not None:
-        resource_path = transfer_archive_dir(data_dir.name, archive_uri)
-    else:
-        resource_path = ResourcePath(data_dir.name, forceDirctory=True)
+        if archive_uri is not None:
+            resource_path = transfer_archive_dir(data_dir.name, archive_uri)
+        else:
+            resource_path = ResourcePath(data_dir.name, forceDirctory=True)
 
     results = sim_results + (resource_path,)
     return results
