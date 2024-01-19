@@ -37,9 +37,7 @@ from lsst.resources import ResourcePath
 import rubin_scheduler
 from rubin_scheduler.scheduler import sim_runner
 from rubin_scheduler.scheduler.utils import SchemaConverter
-from rubin_scheduler.utils import Site
 
-SITE = None
 LOGGER = logging.getLogger(__name__)
 
 
@@ -157,12 +155,9 @@ def make_sim_archive_dir(
 
         files[file_type]["md5"] = hashlib.md5(content).hexdigest()
 
-    # Metadata
-    # To use a different site, a user can set the global variable SITE.
-    site = Site(name="LSST") if SITE is None else SITE
-
-    def evening_local_date(mjd, longitude=site.longitude):
-        evening_local_mjd = np.floor(mjd + longitude / 360 - 0.5).astype(int)
+    def evening_local_date(mjd):
+        # Use dayObs defn. from SITCOMTN-32: https://sitcomtn-032.lsst.io/
+        evening_local_mjd = np.floor(mjd - 0.5).astype(int)
         evening_local_iso = Time(evening_local_mjd, format="mjd").iso[:10]
         return evening_local_iso
 
