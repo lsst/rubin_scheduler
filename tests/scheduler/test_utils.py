@@ -71,6 +71,18 @@ class TestUtils(unittest.TestCase):
         os.path.isfile(os.path.join(get_data_dir(), "scheduler/dust_maps/dust_nside_32.npz")),
         "Test data not available.",
     )
+    def test_start_of_night_example(self):
+        """Test the example scheduler starting at the beginnig of a night."""
+        mjd_start = survey_start_mjd()
+        scheduler = example_scheduler(mjd_start=mjd_start)
+        observatory, scheduler, observations = run_sched(
+            scheduler, mjd_start=mjd_start - 0.5, survey_length=5
+        )
+
+    @unittest.skipUnless(
+        os.path.isfile(os.path.join(get_data_dir(), "scheduler/dust_maps/dust_nside_32.npz")),
+        "Test data not available.",
+    )
     def test_restore(self):
         """Test we can restore a scheduler properly"""
         # MJD set so it's in test data range
