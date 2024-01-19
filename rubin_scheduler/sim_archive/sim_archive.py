@@ -155,7 +155,7 @@ def make_sim_archive_dir(
 
         files[file_type]["md5"] = hashlib.md5(content).hexdigest()
 
-    def evening_local_date(mjd):
+    def convert_mjd_to_dayobs(mjd):
         # Use dayObs defn. from SITCOMTN-32: https://sitcomtn-032.lsst.io/
         evening_local_mjd = np.floor(mjd - 0.5).astype(int)
         evening_local_iso = Time(evening_local_mjd, format="mjd").iso[:10]
@@ -170,15 +170,15 @@ def make_sim_archive_dir(
 
     simulation_dates = {}
     if "mjd_start" in sim_runner_kwargs:
-        simulation_dates["first"] = evening_local_date(sim_runner_kwargs["mjd_start"])
+        simulation_dates["first"] = convert_mjd_to_dayobs(sim_runner_kwargs["mjd_start"])
 
         if "survey_length" in sim_runner_kwargs:
-            simulation_dates["last"] = evening_local_date(
+            simulation_dates["last"] = convert_mjd_to_dayobs(
                 sim_runner_kwargs["mjd_start"] + sim_runner_kwargs["survey_length"] - 1
             )
     else:
-        simulation_dates["first"] = evening_local_date(observations["mjd"].min())
-        simulation_dates["last"] = evening_local_date(observations["mjd"].max())
+        simulation_dates["first"] = convert_mjd_to_dayobs(observations["mjd"].min())
+        simulation_dates["last"] = convert_mjd_to_dayobs(observations["mjd"].max())
 
     if len(sim_runner_kwargs) > 0:
         opsim_metadata["sim_runner_kwargs"] = {}
