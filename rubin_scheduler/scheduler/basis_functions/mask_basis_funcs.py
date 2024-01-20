@@ -12,7 +12,7 @@ __all__ = (
     "AltAzShadowMaskBasisFunction",
 )
 
-from warnings import warn
+import warnings
 
 import healpy as hp
 import matplotlib.pylab as plt
@@ -304,8 +304,9 @@ class ZenithShadowMaskBasisFunction(BaseBasisFunction):
         penalty=np.nan,
         site="LSST",
     ):
-        warn.DeprecationWarning(
-            "Deprecating ZenithShadowMaskBasisFunction in favor of AltAzShadowMaskBasisFunction."
+        warnings.warn(
+            "Deprecating ZenithShadowMaskBasisFunction in favor of AltAzShadowMaskBasisFunction.",
+            DeprecationWarning,
         )
 
         super(ZenithShadowMaskBasisFunction, self).__init__(nside=nside)

@@ -81,7 +81,7 @@ def gen_greedy_surveys(nside):
         bfs.append(bf.StrictFilterBasisFunction(filtername=filtername))
         # Masks, give these 0 weight
         bfs.append(bf.AvoidDirectWind(nside=nside))
-        bfs.append(bf.ZenithShadowMaskBasisFunction(nside=nside, shadow_minutes=60.0, max_alt=76.0))
+        bfs.append(bf.AltAzShadowMaskBasisFunction(nside=nside, shadow_minutes=60.0, max_alt=76.0))
         bfs.append(bf.MoonAvoidanceBasisFunction(nside=nside, moon_distance=30.0))
         bfs.append(bf.CloudedOutBasisFunction())
 
@@ -144,7 +144,7 @@ def gen_blob_surveys(nside):
         bfs.append(bf.StrictFilterBasisFunction(filtername=filtername))
         # Masks, give these 0 weight
         bfs.append(bf.AvoidDirectWind(nside=nside))
-        bfs.append(bf.ZenithShadowMaskBasisFunction(nside=nside, shadow_minutes=60.0, max_alt=76.0))
+        bfs.append(bf.AltAzShadowMaskBasisFunction(nside=nside, shadow_minutes=60.0, max_alt=76.0))
         bfs.append(bf.MoonAvoidanceBasisFunction(nside=nside, moon_distance=30.0))
         bfs.append(bf.CloudedOutBasisFunction())
         # feasibility basis fucntions. Also give zero weight.
