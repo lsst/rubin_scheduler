@@ -9,7 +9,10 @@ __all__ = (
     "MaskAzimuthBasisFunction",
     "SolarElongationMaskBasisFunction",
     "AreaCheckMaskBasisFunction",
+    "AltAzShadowMaskBasisFunction",
 )
+
+import warnings
 
 import healpy as hp
 import matplotlib.pylab as plt
@@ -194,6 +197,90 @@ class PlanetMaskBasisFunction(BaseBasisFunction):
         return result
 
 
+class AltAzShadowMaskBasisFunction(BaseBasisFunction):
+    """Mask out range altitudes and azimuths, then extend the
+    mask so if observations are taken in pairs, the second in the pair will
+    not have moved into a masked region.
+
+    Masks any alt/az regions as specified by the conditions object, then
+    applies any additional altitude masking as suppied by the kwargs.
+    This mask is then extended using `shadow minutes`.
+
+    Parameters
+    ----------
+    nside : `int`
+        HEALpix nside. Default None will look up the package-wide default.
+    min_alt : `float`
+        Minimum altitude to apply to the mask. Default 20 (degrees).
+    max_alt : `float`
+        Maximum altitude to allow. Default 82 (degrees).
+    shadow_minutes : `float`
+        How long to extend masked area in longitude. Default 40 (minutes).
+    """
+
+    def __init__(
+        self,
+        nside=None,
+        min_alt=20.0,
+        max_alt=82.0,
+        shadow_minutes=40.0,
+    ):
+        super(AltAzShadowMaskBasisFunction, self).__init__(nside=nside)
+        self.min_alt = np.radians(min_alt)
+        self.max_alt = np.radians(max_alt)
+        self.shadow_time = shadow_minutes / 60.0 / 24.0  # To days
+
+    def _calc_value(self, conditions, indx=None):
+        # Mask everything to start
+        result = np.zeros(hp.nside2npix(self.nside), dtype=float) + np.nan
+
+        in_range_alt = np.zeros(hp.nside2npix(self.nside), dtype=int)
+        in_range_az = np.zeros(hp.nside2npix(self.nside), dtype=int)
+
+        # Compute the alt,az values in the future. Use the conditions object
+        # so the results are cached and can be used by other surveys is needed.
+        # Technically this could fail if the masked region is very narrow or shadow time
+        # is very large.
+        future_alt, future_az = conditions.future_alt_az(np.max(conditions.mjd + self.shadow_time))
+
+        # apply limits from the conditions object
+        for limits in conditions.tel_alt_limits:
+            good = np.where(
+                (IntRounded(conditions.alt) >= IntRounded(np.min(limits)))
+                & (IntRounded(conditions.alt) <= IntRounded(np.max(limits)))
+            )[0]
+            in_range_alt[good] += 1
+            good = np.where(
+                (IntRounded(future_alt) >= IntRounded(np.min(limits)))
+                & (IntRounded(future_alt) <= IntRounded(np.max(limits)))
+            )[0]
+            in_range_alt[good] += 1
+
+        for limits in conditions.tel_az_limits:
+            good = np.where(
+                (IntRounded(conditions.az) >= IntRounded(np.min(limits)))
+                & (IntRounded(conditions.az) <= IntRounded(np.max(limits)))
+            )[0]
+            in_range_az[good] += 1
+            good = np.where(
+                (IntRounded(future_az) >= IntRounded(np.min(limits)))
+                & (IntRounded(future_az) <= IntRounded(np.max(limits)))
+            )[0]
+            in_range_az[good] += 1
+
+        passed_all = np.where((in_range_alt > 1) & (in_range_az > 1))[0]
+        result[passed_all] = 0
+
+        # Apply additional alt constraint in case we want to be more conservative than the limit
+        result[np.where(IntRounded(conditions.alt) < IntRounded(self.min_alt))] = np.nan
+        result[np.where(IntRounded(conditions.alt) > IntRounded(self.max_alt))] = np.nan
+
+        result[np.where(IntRounded(future_alt) < IntRounded(self.min_alt))] = np.nan
+        result[np.where(IntRounded(future_alt) > IntRounded(self.max_alt))] = np.nan
+
+        return result
+
+
 class ZenithShadowMaskBasisFunction(BaseBasisFunction):
     """Mask the zenith, and things that will soon pass near zenith. Useful for making sure
     observations will not be too close to zenith when they need to be observed again (e.g. for a pair).
@@ -217,6 +304,11 @@ class ZenithShadowMaskBasisFunction(BaseBasisFunction):
         penalty=np.nan,
         site="LSST",
     ):
+        warnings.warn(
+            "Deprecating ZenithShadowMaskBasisFunction in favor of AltAzShadowMaskBasisFunction.",
+            DeprecationWarning,
+        )
+
         super(ZenithShadowMaskBasisFunction, self).__init__(nside=nside)
         self.update_on_newobs = False
 
