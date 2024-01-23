@@ -171,7 +171,7 @@ def optimize_ddf_times(
     ddf_RA,
     ddf_grid,
     sun_limit=-18,
-    sequence_time=60.,
+    sequence_time=60.0,
     airmass_limit=2.5,
     sky_limit=None,
     g_depth_limit=23.5,
@@ -191,7 +191,7 @@ def optimize_ddf_times(
         How long a sequence is expected to be (minutes). Used to make sure things are not scheduled too close to twilight.
     """
     sun_limit = np.radians(sun_limit)
-    sequence_time = sequence_time / 60. / 24.  # to days
+    sequence_time = sequence_time / 60.0 / 24.0  # to days
 
     # XXX-- double check that I got this right
     ack = ddf_grid["sun_alt"][0:-1] * ddf_grid["sun_alt"][1:]
@@ -282,7 +282,7 @@ def generate_ddf_scheduled_obs(
     nsnaps=[1, 2, 2, 2, 2, 2],
     mjd_start=None,
     survey_length=10.0,
-    sequence_time=60.,
+    sequence_time=60.0,
 ):
     """
 
