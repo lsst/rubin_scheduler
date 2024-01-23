@@ -37,9 +37,7 @@ from lsst.resources import ResourcePath
 import rubin_scheduler
 from rubin_scheduler.scheduler import sim_runner
 from rubin_scheduler.scheduler.utils import SchemaConverter
-from rubin_scheduler.utils import Site
 
-SITE = None
 LOGGER = logging.getLogger(__name__)
 
 
@@ -157,12 +155,9 @@ def make_sim_archive_dir(
 
         files[file_type]["md5"] = hashlib.md5(content).hexdigest()
 
-    # Metadata
-    # To use a different site, a user can set the global variable SITE.
-    site = Site(name="LSST") if SITE is None else SITE
-
-    def evening_local_date(mjd, longitude=site.longitude):
-        evening_local_mjd = np.floor(mjd + longitude / 360 - 0.5).astype(int)
+    def convert_mjd_to_dayobs(mjd):
+        # Use dayObs defn. from SITCOMTN-32: https://sitcomtn-032.lsst.io/
+        evening_local_mjd = np.floor(mjd - 0.5).astype(int)
         evening_local_iso = Time(evening_local_mjd, format="mjd").iso[:10]
         return evening_local_iso
 
@@ -175,15 +170,15 @@ def make_sim_archive_dir(
 
     simulation_dates = {}
     if "mjd_start" in sim_runner_kwargs:
-        simulation_dates["first"] = evening_local_date(sim_runner_kwargs["mjd_start"])
+        simulation_dates["first"] = convert_mjd_to_dayobs(sim_runner_kwargs["mjd_start"])
 
         if "survey_length" in sim_runner_kwargs:
-            simulation_dates["last"] = evening_local_date(
+            simulation_dates["last"] = convert_mjd_to_dayobs(
                 sim_runner_kwargs["mjd_start"] + sim_runner_kwargs["survey_length"] - 1
             )
     else:
-        simulation_dates["first"] = evening_local_date(observations["mjd"].min())
-        simulation_dates["last"] = evening_local_date(observations["mjd"].max())
+        simulation_dates["first"] = convert_mjd_to_dayobs(observations["mjd"].min())
+        simulation_dates["last"] = convert_mjd_to_dayobs(observations["mjd"].max())
 
     if len(sim_runner_kwargs) > 0:
         opsim_metadata["sim_runner_kwargs"] = {}
