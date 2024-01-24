@@ -20,7 +20,7 @@ def jerk_time(distance, v_max, acc_max, jerk_max):
     acc_max : `float`
         The maximum acceleration. Units of length or angle per unit of time squared.
     jerk_max : `float`
-        The maximum jerk. Units of length or angle per unit of time cubed. If 
+        The maximum jerk. Units of length or angle per unit of time cubed. If
         set to None, assumes jerk is infinite and defaults to use acc_time.
     """
 
@@ -31,14 +31,12 @@ def jerk_time(distance, v_max, acc_max, jerk_max):
     if jerk_max is None:
         return acc_time(distance, v_max, acc_max)
 
-    trajectory_instance_case = get_trajectory_instance_case(
-        distance, v_max, acc_max, jerk_max
-    )
+    trajectory_instance_case = _get_trajectory_instance_case(distance, v_max, acc_max, jerk_max)
 
     unique_trag = np.unique(trajectory_instance_case)
 
     if np.size(unique_trag) == 1:
-        tj, ta, tv = calculate_times(
+        tj, ta, tv = _calculate_times(
             distance,
             v_max,
             acc_max,
@@ -50,7 +48,7 @@ def jerk_time(distance, v_max, acc_max, jerk_max):
         result = np.zeros(np.size(distance))
         for tic in unique_trag:
             indx = np.where(trajectory_instance_case == tic)[0]
-            tj, ta, tv = calculate_times(
+            tj, ta, tv = _calculate_times(
                 distance[indx],
                 v_max,
                 acc_max,
@@ -88,7 +86,11 @@ def acc_time(distance, v_max, acc_max):
     return slew_time
 
 
-def calculate_times(distance, v_max, acc_max, jerk_max, trajectory_instance_case=1):
+def _calculate_times(distance, v_max, acc_max, jerk_max, trajectory_instance_case=1):
+    """Calculate travel time including jerk.
+
+    Modified from https://github.com/mdhom/py_constant_jerk/blob/main/constantJerk.py
+    """
     if trajectory_instance_case == 1 or trajectory_instance_case == 3:
         tj = np.sqrt(v_max / jerk_max)
         ta = tj
@@ -119,8 +121,23 @@ def calculate_times(distance, v_max, acc_max, jerk_max, trajectory_instance_case
         raise Exception("TrajectoryInstance must be between 1 and 6")
 
 
-def get_trajectory_instance_case(distance, v_max, acc_max, jerk_max):
-    """
+def _get_trajectory_instance_case(distance, v_max, acc_max, jerk_max):
+    """Determine which motion profile to use.
+
+    Modified from https://github.com/mdhom/py_constant_jerk/blob/main/constantJerk.py
+
+    Parameters
+    ----------
+    distance : `float`
+        The distance to travel. Could be units of length or angle as long as other
+        parameters match.
+    v_max : `float`
+        The maximum velocity. Units of length or angle per unit of time.
+    acc_max : `float`
+        The maximum acceleration. Units of length or angle per unit of time squared.
+    jerk_max : `float`
+        The maximum jerk. Units of length or angle per unit of time cubed.
+
     """
     # Case 1: a_max reached, v_max reached and constant for a time
     #          (s = 100,   j = 2000, a = 500,  vMax = 120)

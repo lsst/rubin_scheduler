@@ -4,6 +4,7 @@ import numpy as np
 
 from rubin_scheduler.scheduler.utils import smallest_signed_angle
 from rubin_scheduler.utils import Site, _approx_altaz2pa, _approx_ra_dec2_alt_az, approx_alt_az2_ra_dec
+
 from .jerk import jerk_time
 
 __all__ = ("KinemModel",)
@@ -167,7 +168,7 @@ class KinemModel:
         altitude_accel : `float` (0.875)
             Maximum acceleration for altitude movement (degrees/second**2)
         altitude_jerk : `float`
-            The jerk for the altitude movement (degrees/second**3). Default 
+            The jerk for the altitude movement (degrees/second**3). Default
             of None treats jerk as infinite.
         altitude_freerange : `float` (0)
             The range over which there is 0 delay
@@ -176,7 +177,7 @@ class KinemModel:
         azimuth_accel : `float` (0.75)
             Maximum acceleration for azimuth movement (degrees/second**2)
         azimuth_jerk : `float`
-            The jerk of the azimuth movement (degrees/second**3). Default 
+            The jerk of the azimuth movement (degrees/second**3). Default
             of None treats jerk as infinite.
         azimuth_freerange : `float` (4.0)
             The range in which there is 0 delay
@@ -447,7 +448,9 @@ class KinemModel:
         )
 
         # Calculate how long the telescope will take to slew to this position.
-        tel_alt_slew_time = jerk_time(delta_alt, self.telalt_maxspeed_rad, self.telalt_accel_rad, self.telalt_jerk_rad)
+        tel_alt_slew_time = jerk_time(
+            delta_alt, self.telalt_maxspeed_rad, self.telalt_accel_rad, self.telalt_jerk_rad
+        )
         tel_az_slew_time = jerk_time(
             np.abs(delta_aztel), self.telaz_maxspeed_rad, self.telaz_accel_rad, self.telaz_jerk_rad
         )
@@ -508,8 +511,10 @@ class KinemModel:
             dom_alt_slew_time = jerk_time(
                 delta_alt, self.domalt_maxspeed_rad, self.domalt_accel_rad, self.domalt_jerk_rad
             )
-            dom_az_slew_time = jerk_time(delta_az, self.domaz_maxspeed_rad, self.domaz_accel_rad, self.domaz_jerk_rad)
-            
+            dom_az_slew_time = jerk_time(
+                delta_az, self.domaz_maxspeed_rad, self.domaz_accel_rad, self.domaz_jerk_rad
+            )
+
             # Dome takes 1 second to settle in az
             dom_az_slew_time = np.where(
                 dom_az_slew_time > 0,

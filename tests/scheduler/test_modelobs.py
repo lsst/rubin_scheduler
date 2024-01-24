@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 
 import rubin_scheduler.utils as utils
-from rubin_scheduler.scheduler.model_observatory import ModelObservatory
+from rubin_scheduler.scheduler.model_observatory import ModelObservatory, acc_time, jerk_time
 
 
 class KindaClouds:
@@ -58,6 +58,39 @@ class TestModelObservatory(unittest.TestCase):
 
         # Make sure cloudyness level is not the same
         assert cond_default.bulk_cloud != cond_new.bulk_cloud
+
+    def test_jerk(self):
+        """Test that motion times using jerk are reasonable"""
+
+        distance = 4.5  # degrees
+        v_max = 1.75  # deg/s
+        acc_max = 0.875  # deg/s/s
+        jerk_max = 5.0  # deg/s/s/s
+
+        # Test that adding jerk increases travel time
+        t1 = jerk_time(distance, v_max, acc_max, jerk_max)
+        t2 = acc_time(distance, v_max, acc_max)
+
+        assert t1 > t2
+
+        # Test that jerk of None reverts properly
+        t1 = jerk_time(distance, v_max, acc_max, None)
+        t2 = acc_time(distance, v_max, acc_max)
+
+        assert t1 == t2
+
+        # Test that large jerk is close to acceleration only time
+
+        t1 = jerk_time(distance, v_max, acc_max, 1e9)
+        t2 = acc_time(distance, v_max, acc_max)
+
+        assert np.allclose(t1, t2, atol=1e-5)
+
+        # Test that degrees or radians are the same
+        t1 = jerk_time(distance, v_max, acc_max, jerk_max)
+        t2 = jerk_time(np.radians(distance), np.radians(v_max), np.radians(acc_max), np.radians(jerk_max))
+
+        assert np.allclose(t1, t2, atol=1e-7)
 
 
 if __name__ == "__main__":
