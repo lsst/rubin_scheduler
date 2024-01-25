@@ -6,22 +6,26 @@ import urllib
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-import lsst.resources
-
 from rubin_scheduler.scheduler import sim_runner
 from rubin_scheduler.scheduler.example import example_scheduler
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
-from rubin_scheduler.sim_archive.sim_archive import (
-    check_opsim_archive_resource,
-    make_sim_archive_cli,
-    make_sim_archive_dir,
-    read_archived_sim_metadata,
-    transfer_archive_dir,
-)
 from rubin_scheduler.utils import survey_start_mjd
+
+HAVE_LSST_RESOURCES = importlib.util.find_spec("lsst") and importlib.util.find_spec("lsst.resources")
+if HAVE_LSST_RESOURCES:
+    from lsst.resources import ResourcePath
+
+    from rubin_scheduler.sim_archive.sim_archive import (
+        check_opsim_archive_resource,
+        make_sim_archive_cli,
+        make_sim_archive_dir,
+        read_archived_sim_metadata,
+        transfer_archive_dir,
+    )
 
 
 class TestSimArchive(unittest.TestCase):
+    @unittest.skipIf(not HAVE_LSST_RESOURCES, "No lsst.resources")
     def test_sim_archive(self):
         # Begin by running a short simulation
         mjd_start = survey_start_mjd()
@@ -92,9 +96,10 @@ class TestSimArchive(unittest.TestCase):
         expected_label = f"{base} test"
         self.assertEqual(archive_metadata[sim_archive_uri.geturl()]["label"], expected_label)
 
+    @unittest.skipIf(not HAVE_LSST_RESOURCES, "No lsst.resources")
     @unittest.skipIf(importlib.util.find_spec("schedview") is None, "No schedview")
     def test_cli(self):
-        test_resource_path = lsst.resources.ResourcePath("resource://schedview/data/")
+        test_resource_path = ResourcePath("resource://schedview/data/")
         with test_resource_path.join("sample_opsim.db").as_local() as local_rp:
             opsim = urllib.parse.urlparse(local_rp.geturl()).path
 

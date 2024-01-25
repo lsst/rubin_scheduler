@@ -36,7 +36,6 @@ dependencies = [
     "requests",
     "shapely",
     "tqdm",
-    "lsst.resources",
 ]
 
 [project.optional-dependencies]
@@ -47,6 +46,7 @@ test = [
      "isort",
      "pytest-cov",
      "pytest-black",
+     "lsst.resources",
 ]
 dev = [
   "documenteer[guide]",

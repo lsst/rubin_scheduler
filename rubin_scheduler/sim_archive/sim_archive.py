@@ -32,13 +32,17 @@ import yaml
 from astropy.time import Time
 from conda.cli.main_list import print_packages
 from conda.gateways.disk.test import is_conda_environment
-from lsst.resources import ResourcePath
 
 import rubin_scheduler
 from rubin_scheduler.scheduler import sim_runner
 from rubin_scheduler.scheduler.utils import SchemaConverter
 
 LOGGER = logging.getLogger(__name__)
+
+try:
+    from lsst.resources import ResourcePath
+except ModuleNotFoundError:
+    LOGGER.error("Module lsst.resources required to use rubin_scheduler.sim_archive.")
 
 
 def make_sim_archive_dir(
