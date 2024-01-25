@@ -241,3 +241,5 @@ The result looks like this::
   - example
   username: neilsen
 
+Alternately, the simulation can be run from a ``jupyter`` notebook similarly, excepet that instead of saving the script that generated the simulation, a notebook with the cells of notebook that created the simulation up to the cell that runs the simulation can be stored instead.
+An example can be found in the ``archive/sim_and_archive.ipynb`` in the `rubin_sim_notebook github repository <https://github.com/lsst/rubin_sim_notebooks>`_.
