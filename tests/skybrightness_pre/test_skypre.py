@@ -6,6 +6,10 @@ import numpy as np
 
 import rubin_scheduler.skybrightness_pre as sbp
 
+REMOTE_SKY_URL = (
+    "https://s3df.slac.stanford.edu/groups/rubin/static/sim-data/sims_skybrightness_pre/h5_2023_09_12/"
+)
+
 
 class TestSkyPre(unittest.TestCase):
     @classmethod
@@ -65,6 +69,22 @@ class TestSkyPre(unittest.TestCase):
         mjd = self.sm.mjds[10] + 0.1
         mags = sm.return_mags(mjd)
         assert mags is not None
+
+    @unittest.skip("Skipping remote sky test (too slow)")
+    def test_remote_sky(self):
+        sm = sbp.SkyModelPre(init_load_length=3, data_path=REMOTE_SKY_URL)
+        min_mjd = np.min(sm.mjds)
+        self.assertTrue(40000 < min_mjd < 80000)
+        test_mjd = np.ceil(min_mjd) + 0.2
+        mags = sm.return_mags(test_mjd)
+        for band in mags.keys():
+            npix = mags[band].shape[0]
+            try:
+                hp.npix2nside(npix)
+                valid_npix = True
+            except ValueError:
+                valid_npix = False
+            self.assertTrue(valid_npix)
 
 
 if __name__ == "__main__":
