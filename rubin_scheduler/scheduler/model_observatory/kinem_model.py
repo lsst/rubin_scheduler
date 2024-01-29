@@ -5,6 +5,8 @@ import numpy as np
 from rubin_scheduler.scheduler.utils import smallest_signed_angle
 from rubin_scheduler.utils import Site, _approx_altaz2pa, _approx_ra_dec2_alt_az, approx_alt_az2_ra_dec
 
+from .jerk import jerk_time
+
 __all__ = ("KinemModel",)
 two_pi = 2.0 * np.pi
 
@@ -104,8 +106,8 @@ class KinemModel:
         rotator_max=90,
         maxspeed=3.5,
         accel=1.0,
-        decel=1.0,
         shutter_2motion_min_time=15.0,
+        jerk=None,
     ):
         """
         Parameters
@@ -126,6 +128,8 @@ class KinemModel:
             The maximum speed of the rotator (degrees/s)
         accel : `float` (1.0)
             The acceleration of the rotator (degrees/s^2)
+        jerk : `float`
+            The jerk of the rotator (degrees/s^3). Default of None treats jerk as infinite
         shutter_2motion_min_time : `float` (15.)
             The time required for two shutter motions (seconds). If one takes
             a 1-snap 10s exposure, there will be a 5s of overhead before the next exposure can start.
@@ -139,7 +143,7 @@ class KinemModel:
         self.telrot_maxpos_rad = np.radians(rotator_max)
         self.telrot_maxspeed_rad = np.radians(maxspeed)
         self.telrot_accel_rad = np.radians(accel)
-        self.telrot_decel_rad = np.radians(decel)
+        self.telrot_jerk_rad = np.radians(jerk) if jerk is not None else None
         self.shutter_2motion_min_time = shutter_2motion_min_time
         self.mounted_filters = ["u", "g", "r", "i", "y"]
 
@@ -147,11 +151,11 @@ class KinemModel:
         self,
         altitude_maxspeed=1.75,
         altitude_accel=0.875,
-        altitude_decel=0.875,
+        altitude_jerk=None,
         altitude_freerange=0.0,
         azimuth_maxspeed=1.5,
         azimuth_accel=0.75,
-        azimuth_decel=0.75,
+        azimuth_jerk=None,
         azimuth_freerange=4.0,
         settle_time=1.0,
     ):
@@ -163,16 +167,18 @@ class KinemModel:
             Maximum speed for altitude movement (degrees/second)
         altitude_accel : `float` (0.875)
             Maximum acceleration for altitude movement (degrees/second**2)
-        altitude_decel : `float` (0.875)
-            Maximum deceleration for altitude movement (degrees/second**2)
+        altitude_jerk : `float`
+            The jerk for the altitude movement (degrees/second**3). Default
+            of None treats jerk as infinite.
         altitude_freerange : `float` (0)
             The range over which there is 0 delay
         azimuth_maxspeed : `float` (1.5)
             Maximum speed for azimuth movement (degrees/second)
         azimuth_accel : `float` (0.75)
             Maximum acceleration for azimuth movement (degrees/second**2)
-        azimuth_decel : `float` (0.75)
-            Maximum deceleration for azimuth movement (degrees/second**2)
+        azimuth_jerk : `float`
+            The jerk of the azimuth movement (degrees/second**3). Default
+            of None treats jerk as infinite.
         azimuth_freerange : `float` (4.0)
             The range in which there is 0 delay
         settle_time : `float` (1.0)
@@ -180,11 +186,11 @@ class KinemModel:
         """
         self.domalt_maxspeed_rad = np.radians(altitude_maxspeed)
         self.domalt_accel_rad = np.radians(altitude_accel)
-        self.domalt_decel_rad = np.radians(altitude_decel)
+        self.domalt_jerk_rad = np.radians(altitude_jerk) if altitude_jerk is not None else None
         self.domalt_free_range = np.radians(altitude_freerange)
         self.domaz_maxspeed_rad = np.radians(azimuth_maxspeed)
         self.domaz_accel_rad = np.radians(azimuth_accel)
-        self.domaz_decel_rad = np.radians(azimuth_decel)
+        self.domaz_jerk_rad = np.radians(azimuth_jerk) if azimuth_jerk is not None else None
         self.domaz_free_range = np.radians(azimuth_freerange)
         self.domaz_settletime = settle_time
 
@@ -196,10 +202,10 @@ class KinemModel:
         azimuth_maxpos=250.0,
         altitude_maxspeed=3.5,
         altitude_accel=3.5,
-        altitude_decel=3.5,
+        altitude_jerk=None,
         azimuth_maxspeed=7.0,
         azimuth_accel=7.0,
-        azimuth_decel=7.0,
+        azimuth_jerk=None,
         settle_time=3.0,
         az_limits=None,
         alt_limits=None,
@@ -220,14 +226,10 @@ class KinemModel:
             Maximum speed for altitude movement (degrees/second)
         altitude_accel : `float` (3.5)
             Maximum acceleration for altitude movement (degrees/second**2)
-        altitude_decel : `float` (3.5)
-            Maximum deceleration for altitude movement (degrees/second**2)
         azimuth_maxspeed : `float` (7.0)
             Maximum speed for azimuth movement (degrees/second)
         azimuth_accel : `float` (7.0)
             Maximum acceleration for azimuth movement (degrees/second**2)
-        azimuth_decel : `float` (7.0)
-            Maximum deceleration for azimuth movement (degrees/second**2)
         settle_time : `float` (3.0)
             Settle time required for telescope after movement (seconds)
         """
@@ -237,10 +239,10 @@ class KinemModel:
         self.telaz_maxpos_rad = np.radians(azimuth_maxpos)
         self.telalt_maxspeed_rad = np.radians(altitude_maxspeed)
         self.telalt_accel_rad = np.radians(altitude_accel)
-        self.telalt_decel_rad = np.radians(altitude_decel)
+        self.telalt_jerk_rad = np.radians(altitude_jerk) if altitude_jerk is not None else None
         self.telaz_maxspeed_rad = np.radians(azimuth_maxspeed)
         self.telaz_accel_rad = np.radians(azimuth_accel)
-        self.telaz_decel_rad = np.radians(azimuth_decel)
+        self.telaz_jerk_rad = np.radians(azimuth_jerk) if azimuth_jerk is not None else None
         self.mount_settletime = settle_time
         if alt_limits is None:
             self.alt_limits = [[self.telalt_minpos_rad, self.telalt_maxpos_rad]]
@@ -305,43 +307,6 @@ class KinemModel:
             alt_rad, az_rad, pa = self.radec2altaz(self.current_ra_rad, self.current_dec_rad, mjd)
             rot_tel_pos = _get_rot_tel_pos(pa, self.last_rot_tel_pos_rad)
             return alt_rad, az_rad, rot_tel_pos
-
-    def _uam_slew_time(self, distance, vmax, accel):
-        """Compute slew time delay assuming uniform acceleration
-        (for any component).
-
-        If you accelerate uniformly to vmax, then slow down uniformly to zero,
-        distance traveled is  d  = vmax**2 / accel
-        To travel distance d while accelerating/decelerating at rate a,
-        time required is t = 2 * sqrt(d / a)
-        If hit vmax, then time to acceleration to/from vmax is 2*vmax/a and
-        distance in those steps is vmax**2/a.
-        The remaining distance is (d - vmax^2/a) and
-        time needed is (d - vmax^2/a)/vmax
-
-        This method accepts arrays of distance,
-        and assumes acceleration == deceleration.
-
-        Parameters
-        ----------
-        distance : `np.ndarray`, (N,)
-            Distances to travel. Must be positive value.
-        vmax : `float`
-            Max velocity
-        accel : `float`
-            Acceleration (and deceleration)
-
-        Returns
-        -------
-        slew_time : `np.ndarray`, (N,)
-        """
-        dm = vmax**2 / accel
-        slew_time = np.where(
-            distance < dm,
-            2 * np.sqrt(distance / accel),
-            2 * vmax / accel + (distance - dm) / vmax,
-        )
-        return slew_time
 
     def slew_times(
         self,
@@ -483,9 +448,11 @@ class KinemModel:
         )
 
         # Calculate how long the telescope will take to slew to this position.
-        tel_alt_slew_time = self._uam_slew_time(delta_alt, self.telalt_maxspeed_rad, self.telalt_accel_rad)
-        tel_az_slew_time = self._uam_slew_time(
-            np.abs(delta_aztel), self.telaz_maxspeed_rad, self.telaz_accel_rad
+        tel_alt_slew_time = jerk_time(
+            delta_alt, self.telalt_maxspeed_rad, self.telalt_accel_rad, self.telalt_jerk_rad
+        )
+        tel_az_slew_time = jerk_time(
+            np.abs(delta_aztel), self.telaz_maxspeed_rad, self.telaz_accel_rad, self.telaz_jerk_rad
         )
         tot_tel_time = np.maximum(tel_alt_slew_time, tel_az_slew_time)
 
@@ -541,10 +508,13 @@ class KinemModel:
         else:
             # the above models a dome slit and dome creep. However, it appears that
             # SOCS requires the dome to slew exactly to each field and settle in az
-            dom_alt_slew_time = self._uam_slew_time(
-                delta_alt, self.domalt_maxspeed_rad, self.domalt_accel_rad
+            dom_alt_slew_time = jerk_time(
+                delta_alt, self.domalt_maxspeed_rad, self.domalt_accel_rad, self.domalt_jerk_rad
             )
-            dom_az_slew_time = self._uam_slew_time(delta_az, self.domaz_maxspeed_rad, self.domaz_accel_rad)
+            dom_az_slew_time = jerk_time(
+                delta_az, self.domaz_maxspeed_rad, self.domaz_accel_rad, self.domaz_jerk_rad
+            )
+
             # Dome takes 1 second to settle in az
             dom_az_slew_time = np.where(
                 dom_az_slew_time > 0,
@@ -593,8 +563,8 @@ class KinemModel:
                 # kwarg overrides if it was supplied
                 current_rot_tel_pos = starting_rot_tel_pos_rad
             delta_rotation = np.abs(smallest_signed_angle(current_rot_tel_pos, rot_tel_pos))
-            rotator_time = self._uam_slew_time(
-                delta_rotation, self.telrot_maxspeed_rad, self.telrot_accel_rad
+            rotator_time = jerk_time(
+                delta_rotation, self.telrot_maxspeed_rad, self.telrot_accel_rad, self.telrot_jerk_rad
             )
             slew_time = np.maximum(slew_time, rotator_time)
 
