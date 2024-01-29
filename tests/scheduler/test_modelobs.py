@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 
 import rubin_scheduler.utils as utils
-from rubin_scheduler.scheduler.model_observatory import ModelObservatory, acc_time, jerk_time
+from rubin_scheduler.scheduler.model_observatory import KinemModel, ModelObservatory, acc_time, jerk_time
 
 
 class KindaClouds:
@@ -91,6 +91,14 @@ class TestModelObservatory(unittest.TestCase):
         t2 = jerk_time(np.radians(distance), np.radians(v_max), np.radians(acc_max), np.radians(jerk_max))
 
         assert np.allclose(t1, t2, atol=1e-7)
+
+        # test if values are equal case.
+        distance = 4.5  # degrees
+        v_max = 3.5  # deg/s
+        acc_max = 3.5  # deg/s/s
+        jerk_max = 3.5  # deg/s/s/s
+
+        t1 = jerk_time(distance, v_max, acc_max, jerk_max)
 
 
 if __name__ == "__main__":

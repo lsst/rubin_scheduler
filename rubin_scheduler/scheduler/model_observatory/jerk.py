@@ -6,9 +6,11 @@ import numpy as np
 def jerk_time(distance, v_max, acc_max, jerk_max):
     """Calculate how long to move a distance given maximum jerk, acceleration, and velocity
 
-    All parameters are assumed to be symetric (e.g, minium jerk = -1*jerk_max)
+    All parameters are assumed to be symetric (e.g, minimum jerk = -1*jerk_max)
 
     modified from https://github.com/mdhom/py_constant_jerk/blob/main/constantJerk.py
+    see also:
+    https://www.researchgate.net/publication/289374755_THIRD_ORDER_POINT-TO-POINT_MOTION_-PROFILE
 
     Parameters
     ----------
@@ -125,6 +127,8 @@ def _get_trajectory_instance_case(distance, v_max, acc_max, jerk_max):
     """Determine which motion profile to use.
 
     Modified from https://github.com/mdhom/py_constant_jerk/blob/main/constantJerk.py
+    which was probably derived from:
+    https://www.researchgate.net/publication/289374755_THIRD_ORDER_POINT-TO-POINT_MOTION_-PROFILE
 
     Parameters
     ----------
@@ -162,11 +166,11 @@ def _get_trajectory_instance_case(distance, v_max, acc_max, jerk_max):
     else:
         s_v = v_max * (v_max / acc_max + acc_max / jerk_max)
 
-    result[np.where((v_max <= v_a) & (distance > s_a))] = 1
-    result[np.where((v_max > v_a) & (distance < s_a))] = 2
-    result[np.where((v_max < v_a) & (s_a > distance) & (distance > s_v))] = 3
+    result[np.where((v_max < v_a) & (distance >= s_a))] = 1
+    result[np.where((v_max >= v_a) & (distance < s_a))] = 2
+    result[np.where((v_max < v_a) & (s_a > distance) & (distance >= s_v))] = 3
     result[np.where((v_max < v_a) & (distance < s_a) & (distance < s_v))] = 4
-    result[np.where((v_max > v_a) & (distance > s_a) & (distance >= s_v))] = 5
-    result[np.where((v_max > v_a) & (s_a < distance) & (distance < s_v))] = 6
+    result[np.where((v_max >= v_a) & (distance >= s_a) & (distance >= s_v))] = 5
+    result[np.where((v_max >= v_a) & (s_a <= distance) & (distance < s_v))] = 6
 
     return result
