@@ -1,4 +1,4 @@
-pytest
+pytest<8.0.0
 pytest-cov
 pytest-black
 black>=23.0.0,<24.0.0
