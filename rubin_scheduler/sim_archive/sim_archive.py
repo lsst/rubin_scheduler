@@ -44,6 +44,15 @@ try:
 except ModuleNotFoundError:
     LOGGER.error("Module lsst.resources required to use rubin_scheduler.sim_archive.")
 
+try:
+    from conda.cli.main_list import print_packages
+    from conda.gateways.disk.test import is_conda_environment
+
+    have_conda = True
+except ModuleNotFoundError:
+    have_conda = False
+    LOGGER.warning("No conda module found, no conda envirment data will be saved")
+
 
 def make_sim_archive_dir(
     observations,
@@ -120,11 +129,11 @@ def make_sim_archive_dir(
     if capture_env:
         # Save the conda environment
         conda_prefix = Path(sys.executable).parent.parent.as_posix()
-        if is_conda_environment(conda_prefix):
+        if have_conda and is_conda_environment(conda_prefix):
             conda_base_fname = "environment.txt"
             environment_fname = data_path.joinpath(conda_base_fname).as_posix()
 
-            # Python equivilest of conda list --export -p $conda_prefix > $environment_fname
+            # Python equivilent of conda list --export -p $conda_prefix > $environment_fname
             with open(environment_fname, "w") as environment_io:
                 with redirect_stdout(environment_io):
                     print_packages(conda_prefix, format="export")

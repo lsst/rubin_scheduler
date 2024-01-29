@@ -1,4 +1,4 @@
-import importlib
+import importlib.util
 import logging
 
 HAVE_LSST_RESOURCES = importlib.util.find_spec("lsst") and importlib.util.find_spec("lsst.resources")
