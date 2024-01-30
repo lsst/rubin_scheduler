@@ -12,6 +12,7 @@ Szalay A. et al. (2007)
 "Indexing the Sphere with the Hierarchical Triangular Mesh"
 arXiv:cs/0701164
 """
+
 __all__ = (
     "Trixel",
     "HalfSpace",

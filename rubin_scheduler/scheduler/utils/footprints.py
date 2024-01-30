@@ -2,6 +2,7 @@
 objects which understand seasons and time, in order to weight area on sky
 appropriately for a given time.
 """
+
 __all__ = (
     "ra_dec_hp_map",
     "calc_norm_factor",
