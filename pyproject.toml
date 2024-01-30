@@ -45,7 +45,6 @@ test = [
      "ruff",
      "isort",
      "pytest-cov",
-     "pytest-black",
      "lsst.resources",
 ]
 dev = [
@@ -74,7 +73,7 @@ __version__ = "{version}"
 """
 
 [tool.pytest.ini_options]
-addopts = "--black --ignore-glob=*/version.py --ignore-glob=*data_dir/*"
+addopts = "--ignore-glob=*/version.py --ignore-glob=*data_dir/*"
 
 [tool.mypy]
 disallow_untyped_defs = "True"
