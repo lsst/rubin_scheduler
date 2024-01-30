@@ -70,11 +70,14 @@ jobs:
         shell: bash -l {0}
         run: conda list
 
+      - name: black format test
+        shell: bash -l {0}
+        run: black --check .
+
       - name: run tests
         shell: bash -l {0}
         run: |
           export RUBIN_SIM_DATA_DIR=~/rubin_sim_data
-          #pytest -r a -v 
           pytest -r a -v --cov=rubin_scheduler --cov=tests --cov-report=xml --cov-report=term --cov-branch
 
       - name: Upload coverage to codecov
