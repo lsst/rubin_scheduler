@@ -491,7 +491,7 @@ def empty_observation(n=1):
         If rotSkyPos and rotTelPos are both NaN, and rotSkyPos_desired results in an out of range value
         for the camera rotator, then rotTelPos_backup is used.
     rotTelPos_backup : `float`
-        Rotation angle of the camera relative to the telescope (radians). Only used as a last resort if 
+        Rotation angle of the camera relative to the telescope (radians). Only used as a last resort if
         rotSkyPos and rotTelPos are set to NaN and rotSkyPos_desired results in an out of range rotator value.
     nexp : `int`
         Number of exposures in the visit.
@@ -502,8 +502,17 @@ def empty_observation(n=1):
     target : `str` (optional)
         A note about what target is being observed.
 
-    Note
-    ----
+    Notes
+    -----
+
+    On the camera rotator angle. Order of priority goes:
+    rotTelPos > rotSkyPos > rotSkyPos_desired > rotTelPos_backup
+    where if rotTelPos is NaN, it checks rotSkyPos. If rotSkyPos is set,
+    but not at an accessible rotTelPos, the observation will fail.
+    If rotSkyPos is NaN, then rotSkyPos_desired is used. If
+    rotSkyPos_desired is at an inaccessbile rotTelPos, the observation does
+    not fail, but falls back to the value in rotTelPos_backup.
+
     Lots of additional fields that get filled in by the model observatory
     when the observation is completed.
     See documentation at: https://rubin-scheduler.lsst.io/output_schema.html
