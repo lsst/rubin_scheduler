@@ -13,6 +13,8 @@ from collections import deque
 import numpy as np
 import scipy.spatial as spatial
 
+from .utils import IntRounded
+
 # Solve Traveling Salesperson using convex hulls.
 # re-write of https://github.com/jameskrysiak/ConvexSalesman/blob/master/convex_salesman.py
 # This like a good explination too https://www.youtube.com/watch?v=syRSy1MFuho
@@ -121,15 +123,18 @@ def merge_hulls(indices_lists, dist_matrix):
     return list(collapsed_indices)
 
 
-def three_opt(route, dist_matrix):
+def three_opt(route, dist_matrix, cross_platform=True):
     """Iterates over all possible 3-optional transformations.
 
     Parameters
     ----------
-    route : list
+    route : `list`
         The indices of the route
-    dist_matrix : np.array
+    dist_matrix : `np.array`
         Distance matrix for the towns
+    cross_platform : `bool`
+        Use utils.intRounded to make sure results will be repeatable
+        cross-platform. Default True
 
     Returns
     -------
@@ -170,9 +175,14 @@ def three_opt(route, dist_matrix):
         # Find the smallest of these permutations.
         for perm in route_perms:
             temp_length = route_length(perm, dist_matrix)
-            if temp_length < min_length:
-                min_length = temp_length
-                min_route = perm
+            if cross_platform:
+                if IntRounded(temp_length) < IntRounded(min_length):
+                    min_length = temp_length
+                    min_route = perm
+            else:
+                if temp_length < min_length:
+                    min_length = temp_length
+                    min_route = perm
 
     return min_route, min_length
 
