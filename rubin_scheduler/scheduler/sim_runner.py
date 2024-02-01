@@ -114,7 +114,8 @@ def sim_runner(
             # An observation failed to execute, usually it was outside the altitude limits.
             if observatory.mjd == mjd_last_flush:
                 raise RuntimeError("Scheduler has failed to provide a valid observation multiple times.")
-            # if this is a first offence, might just be that targets set. Flush queue and get some new targets.
+            # if this is a first offence, might just be that targets set.
+            # Flush queue and get some new targets.
             scheduler.flush_queue()
             mjd_last_flush = observatory.mjd + 0
         if new_night:

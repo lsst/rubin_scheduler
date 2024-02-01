@@ -4,17 +4,14 @@ import warnings
 from copy import copy
 
 import healpy as hp
-import matplotlib.pylab as plt
 import numpy as np
 
 from rubin_scheduler.scheduler.surveys import BaseMarkovSurvey
 from rubin_scheduler.scheduler.utils import (
-    IntRounded,
     empty_observation,
     gnomonic_project_toxy,
     int_binned_stat,
     mean_azimuth,
-    set_default_nside,
     tsp_convex,
 )
 from rubin_scheduler.utils import _angular_separation, _approx_ra_dec2_alt_az, _hpid2_ra_dec, hp_grow_argsort
@@ -324,7 +321,8 @@ class BlobSurvey(GreedySurvey):
                 )
             )
         else:
-            # Now we can stretch or contract the block size to allocate the remainder time until twilight starts
+            # Now we can stretch or contract the block size to allocate the
+            # remainder time until twilight starts
             # We can take the remaining time and try to do 1,2, or 3 blocks.
             possible_times = available_time / np.arange(1, 4)
             diff = np.abs(self.ideal_pair_time - possible_times)

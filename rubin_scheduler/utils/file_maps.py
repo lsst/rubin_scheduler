@@ -83,7 +83,7 @@ class SpecMap:
         try:
             self.__getitem__(item)
             return True
-        except:
+        except KeyError:
             return False
 
 

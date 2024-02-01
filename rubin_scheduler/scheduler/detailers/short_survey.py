@@ -1,7 +1,5 @@
 __all__ = ("ShortExptDetailer",)
 
-import healpy as hp
-import matplotlib.pylab as plt
 import numpy as np
 
 import rubin_scheduler.scheduler.features as features
@@ -11,7 +9,8 @@ from rubin_scheduler.utils import survey_start_mjd
 
 
 class ShortExptDetailer(BaseDetailer):
-    """Check if the area has been observed with a short exposure time this year. If not, add some short exposures.
+    """Check if the area has been observed with a short exposure time this year.
+    If not, add some short exposures.
 
     Parameters
     ----------
@@ -24,7 +23,8 @@ class ShortExptDetailer(BaseDetailer):
     n_repeat : `int` (1)
         How many short observations to do in a row.
     time_scale : `bool` (False)
-        Should the short observations be scaled throughout the year (True), or taken as fast as possible (False).
+        Should the short observations be scaled throughout the year (True),
+        or taken as fast as possible (False).
 
     """
 

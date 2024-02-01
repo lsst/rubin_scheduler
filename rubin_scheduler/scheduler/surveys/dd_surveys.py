@@ -76,7 +76,7 @@ class DeepDrillingSurvey(BaseSurvey):
         self.reward_value = reward_value
         self.flush_pad = flush_pad / 60.0 / 24.0  # To days
         self.filter_sequence = []
-        if type(sequence) == str:
+        if isinstance(sequence, str):
             self.observations = []
             for num, filtername in zip(nvis, sequence):
                 for j in range(num):
@@ -171,7 +171,10 @@ class DeepDrillingSurvey(BaseSurvey):
         return result
 
     def __repr__(self):
-        return f"<{self.__class__.__name__} survey_name='{self.survey_name}', RA={self.ra}, dec={self.dec} at {hex(id(self))}>"
+        return (
+            f"<{self.__class__.__name__} survey_name='{self.survey_name}'"
+            f", RA={self.ra}, dec={self.dec} at {hex(id(self))}>"
+        )
 
 
 def dd_bfs(

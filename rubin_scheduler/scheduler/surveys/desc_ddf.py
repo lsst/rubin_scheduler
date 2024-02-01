@@ -1,9 +1,5 @@
 __all__ = ("DescDdf", "generate_desc_dd_surveys")
 
-import copy
-import random
-
-import healpy as hp
 import numpy as np
 
 import rubin_scheduler.scheduler.basis_functions as basis_functions

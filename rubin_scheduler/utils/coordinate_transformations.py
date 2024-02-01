@@ -137,7 +137,8 @@ def calc_lmst_astropy(mjd, long_rad):
         This can be a numpy array or a single value.
     long_rad : `float`
         is the longitude in radians (positive east of the prime meridian)
-        This can be numpy array or a single value.  If a numpy array, should have the same length as mjd.  In that
+        This can be numpy array or a single value.  If a numpy array,
+        should have the same length as mjd.  In that
         case, each long_rad will be applied only to the corresponding mjd.
 
     Returns

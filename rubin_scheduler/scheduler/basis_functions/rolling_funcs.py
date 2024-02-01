@@ -7,7 +7,6 @@ __all__ = (
 import warnings
 
 import healpy as hp
-import matplotlib.pylab as plt
 import numpy as np
 
 from rubin_scheduler.scheduler import features, utils
@@ -233,8 +232,9 @@ class TargetMapModuloBasisFunction(BaseBasisFunction):
     nside: int (default_nside)
         The healpix resolution.
     target_maps : list of numpy array (None)
-        healpix maps showing the ratio of observations desired for all points on the sky. Last map will be used
-        for season -1. Probably shouldn't support going to season less than -1.
+        healpix maps showing the ratio of observations desired for all points on the sky.
+        Last map will be used for season -1. Probably shouldn't support going to season
+        less than -1.
     norm_factor : float (0.00010519)
         for converting target map to number of observations. Should be the area of the camera
         divided by the area of a healpixel divided by the sum of all your goal maps. Default

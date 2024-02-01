@@ -264,7 +264,8 @@ def moc2array(data, uniq, nside=128, reduce_func=np.sum, density=True, fill_val=
 
 
 def hp_grow_argsort(in_map, ignore_nan=True):
-    """Find the maximum of a healpix map, then orders healpixels by selecting the maximum bordering the selected area.
+    """Find the maximum of a healpix map, then orders healpixels
+    by selecting the maximum bordering the selected area.
 
     Parameters
     ----------

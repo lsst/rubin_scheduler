@@ -18,6 +18,11 @@ class TestAlmanac(unittest.TestCase):
         moon = alma.get_sun_moon_positions(mjd)
         indx = alma.mjd_indx(mjd)
 
+        assert planets is not None
+        assert sun is not None
+        assert moon is not None
+        assert indx is not None
+
     def test_index_for_local_evening(self):
         almanac = Almanac()
         longitude = np.radians(-70.75)

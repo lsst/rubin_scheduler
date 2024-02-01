@@ -4,7 +4,6 @@ import unittest
 
 import numpy as np
 
-import rubin_scheduler
 from rubin_scheduler.data import get_data_dir
 from rubin_scheduler.utils import (
     HalfSpace,

@@ -88,7 +88,7 @@ def generate_hulls(towns):
 
         # In a degenerate case (fewer than three points, points collinear)
         # Add all of the remaining points to the innermost convex hull.
-        except:
+        except spatial._qhull.QhullError:
             results.append(all_indices[~indices_used].tolist())
             indices_used[~indices_used] = True
             return results

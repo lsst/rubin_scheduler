@@ -32,7 +32,6 @@ class TestSeeingModel(unittest.TestCase):
         airmass = 1.0
         seeing = seeing_model(fwhm_500, airmass)
         fwhm_eff = seeing["fwhmEff"]
-        fwhm_geom = seeing["fwhmGeom"]
         # Check shape of returned values.
         self.assertEqual(fwhm_eff.shape, (len(seeing_model.eff_wavelens),))
         # Check actual value of seeing in @ wavelen[0] @ zenith after addition of system.

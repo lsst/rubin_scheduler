@@ -123,10 +123,13 @@ class BaseSurvey:
         Parameters
         ----------
         observations_array_in : np.array
-            An array of completed observations (with columns like rubin_scheduler.scheduler.utils.empty_observation).
+            An array of completed observations
+            (with columns like rubin_scheduler.scheduler.utils.empty_observation).
         observations_hpid_in : np.array
-            Same as observations_array_in, but larger and with an additional column for HEALpix id. Each
-            observation is listed mulitple times, once for every HEALpix it overlaps."""
+            Same as observations_array_in, but larger and with an additional column
+            for HEALpix id. Each observation is listed mulitple times,
+            once for every HEALpix it overlaps.
+        """
 
         # Just to be sure things are sorted
         observations_array_in.sort(order="mjd")

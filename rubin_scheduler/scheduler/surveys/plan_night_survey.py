@@ -3,12 +3,10 @@ __all__ = ("PlanAheadSurvey",)
 from copy import copy
 
 import healpy as hp
-import matplotlib.pylab as plt
 import numpy as np
 
 import rubin_scheduler.scheduler.basis_functions as bfs
 from rubin_scheduler.scheduler import features
-from rubin_scheduler.scheduler.utils import empty_observation, set_default_nside
 
 from .surveys import BlobSurvey
 

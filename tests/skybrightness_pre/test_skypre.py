@@ -20,7 +20,7 @@ class TestSkyPre(unittest.TestCase):
             tmp = cls.sm.return_mags(mjd)
             cls.nside = hp.npix2nside(tmp["r"].size)
             cls.data_present = True
-        except:
+        except ValueError:
             cls.data_present = False
             warnings.warn("Data files not found, skipping tests. Check data/ for instructions to pull data.")
 
