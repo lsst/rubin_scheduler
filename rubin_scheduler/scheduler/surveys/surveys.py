@@ -13,6 +13,7 @@ from rubin_scheduler.scheduler.utils import (
     empty_observation,
     gnomonic_project_toxy,
     int_binned_stat,
+    mean_azimuth,
     set_default_nside,
     tsp_convex,
 )
@@ -453,26 +454,11 @@ class BlobSurvey(GreedySurvey):
 
         # Let's find a good spot to project the points to a plane
         mid_alt = (np.max(pointing_alt) - np.min(pointing_alt)) / 2.0 + np.min(pointing_alt)
-
-        # Code snippet from MAF for computing mean of angle accounting for wrap around
-        # XXX-TODO: Maybe move this to sims_utils as a generally useful snippet.
-        x = np.cos(pointing_az)
-        y = np.sin(pointing_az)
-        meanx = np.mean(x)
-        meany = np.mean(y)
-        angle = np.arctan2(meany, meanx)
-        radius = np.sqrt(meanx**2 + meany**2)
-        mid_az = angle % (2.0 * np.pi)
-        if radius < 0.1:
-            mid_az = np.pi
+        mid_az = mean_azimuth(pointing_az)
 
         # Project the alt,az coordinates to a plane. Could consider scaling things to represent
         # time between points rather than angular distance.
         pointing_x, pointing_y = gnomonic_project_toxy(pointing_az, pointing_alt, mid_az, mid_alt)
-        # Round off positions so that we ensure identical cross-platform performance
-        scale = 1e4
-        pointing_x = np.round(pointing_x * scale).astype(int)
-        pointing_y = np.round(pointing_y * scale).astype(int)
         # Now I have a bunch of x,y pointings. Drop into TSP solver to get an effiencent route
         towns = np.vstack((pointing_x, pointing_y)).T
         # Leaving optimize=False for speed. The optimization step doesn't usually improve much.

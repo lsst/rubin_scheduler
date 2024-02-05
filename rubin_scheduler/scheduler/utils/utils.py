@@ -23,6 +23,7 @@ __all__ = (
     "create_season_offset",
     "thetaphi2xyz",
     "xyz2thetaphi",
+    "mean_azimuth",
 )
 
 import datetime
@@ -65,6 +66,29 @@ def xyz2thetaphi(x, y, z):
     phi = np.arccos(z)
     theta = np.arctan2(y, x)
     return theta, phi
+
+
+def mean_azimuth(az, min_val=0.1):
+    """Compute the mean azimuth value accounting for wrap
+
+    Parameters
+    ----------
+    az : `array-like`
+        The azimuths to average. Radians
+    min_val : `float`
+        A min cutoff to just use pi as the mean. Default 0.1. Radians
+    """
+
+    x = np.cos(az)
+    y = np.sin(az)
+    meanx = np.mean(x)
+    meany = np.mean(y)
+    angle = np.arctan2(meany, meanx)
+    radius = np.sqrt(meanx**2 + meany**2)
+    mid_az = angle % (2.0 * np.pi)
+    if IntRounded(radius) < IntRounded(min_val):
+        mid_az = np.pi
+    return mid_az
 
 
 class IntRounded:
