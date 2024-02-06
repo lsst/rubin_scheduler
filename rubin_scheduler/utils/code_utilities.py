@@ -32,7 +32,7 @@ def sims_clean_up():
                 if hasattr(obj[1], "close"):
                     try:
                         obj[1].close()
-                    except:
+                    except AttributeError:
                         pass
                 del obj
         elif isinstance(target, list):
@@ -41,7 +41,7 @@ def sims_clean_up():
                 if hasattr(obj, "close"):
                     try:
                         obj.close()
-                    except:
+                    except AttributeError:
                         pass
                 del obj
         else:

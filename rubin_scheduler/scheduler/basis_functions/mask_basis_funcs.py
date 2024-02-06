@@ -15,7 +15,6 @@ __all__ = (
 import warnings
 
 import healpy as hp
-import matplotlib.pylab as plt
 import numpy as np
 
 from rubin_scheduler.scheduler.basis_functions import BaseBasisFunction

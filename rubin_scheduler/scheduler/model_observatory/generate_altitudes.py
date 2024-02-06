@@ -194,8 +194,10 @@ def generate_nights(mjd_start, duration=3653.0, rough_step=2, verbose=False):
         )
         refined_mjds[key] = new_mjds.x
 
-    # Note, there is the possibility that some moonrise/moonset times changed nights upon refinement. I suppose
-    # I could do another seatchsorted pass here just to be extra sure nothing changed.
+    # Note, there is the possibility that some moonrise/moonset
+    # times changed nights upon refinement. I suppose
+    # I could do another seatchsorted pass here just
+    # to be extra sure nothing changed.
 
     return alt_info_array, refined_mjds
 

@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 
 import rubin_scheduler.utils as utils
-from rubin_scheduler.scheduler.model_observatory import KinemModel, ModelObservatory, acc_time, jerk_time
+from rubin_scheduler.scheduler.model_observatory import ModelObservatory, acc_time, jerk_time
 
 
 class KindaClouds:

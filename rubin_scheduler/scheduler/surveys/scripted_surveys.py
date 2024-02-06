@@ -6,7 +6,7 @@ import healpy as hp
 import numpy as np
 
 from rubin_scheduler.scheduler.surveys import BaseSurvey
-from rubin_scheduler.scheduler.utils import IntRounded, empty_observation, set_default_nside
+from rubin_scheduler.scheduler.utils import empty_observation, set_default_nside
 from rubin_scheduler.utils import _approx_ra_dec2_alt_az
 
 log = logging.getLogger(__name__)
@@ -129,7 +129,8 @@ class ScriptedSurvey(BaseSurvey):
 
                 # find the index
                 indx = np.searchsorted(self.obs_wanted["scripted_id"], observation["scripted_id"])
-                # If it matches scripted_id, note, and filter, mark it as observed and update scheduled observation list.
+                # If it matches scripted_id, note, and filter, mark it as
+                # observed and update scheduled observation list.
                 if indx < self.obs_wanted["scripted_id"].size:
                     if (
                         (self.obs_wanted["scripted_id"][indx] == observation["scripted_id"])
@@ -173,7 +174,8 @@ class ScriptedSurvey(BaseSurvey):
         Parameters
         ----------
         observation : np.array
-            An array of scheduled observations. Probably generated with rubin_scheduler.scheduler.utils.scheduled_observation
+            An array of scheduled observations. Probably generated with
+            rubin_scheduler.scheduler.utils.scheduled_observation
         """
         # Just do a fast ra,dec to alt,az conversion.
         alt, az = _approx_ra_dec2_alt_az(

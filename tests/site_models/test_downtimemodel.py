@@ -1,6 +1,5 @@
 import unittest
 
-import numpy as np
 from astropy.time import Time, TimeDelta
 
 from rubin_scheduler.site_models import DowntimeModel, ScheduledDowntimeData, UnscheduledDowntimeData

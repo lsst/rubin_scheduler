@@ -378,7 +378,6 @@ class AngularSeparationTestCase(unittest.TestCase):
                 np.degrees(ra1), np.degrees(dec1), np.degrees(ra2), np.degrees(dec2)
             )
             test = np.cos(np.radians(test))
-            dd = np.abs(test - control)
             np.testing.assert_array_almost_equal(test, control, decimal=14)
 
             # specifically test at the south pole

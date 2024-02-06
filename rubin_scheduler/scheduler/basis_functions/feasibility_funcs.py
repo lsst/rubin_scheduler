@@ -22,7 +22,6 @@ __all__ = (
     "SunHighLimitBasisFunction",
 )
 
-import matplotlib.pylab as plt
 import numpy as np
 
 from rubin_scheduler.scheduler import features
@@ -41,7 +40,7 @@ class FilterLoadedBasisFunction(BaseBasisFunction):
 
     def __init__(self, filternames="r"):
         super(FilterLoadedBasisFunction, self).__init__()
-        if type(filternames) is not list:
+        if not isinstance(filternames, list):
             filternames = [filternames]
         self.filternames = filternames
 
