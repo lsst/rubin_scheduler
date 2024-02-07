@@ -28,7 +28,7 @@ def comcam_tessellate(side_length=0.7, overlap=0.11):
     rotation_step = side_length / 2.0
 
     step_size = side_length - overlap
-    n_dec_steps = np.ceil(np.pi / 2.0 / step_size)
+    n_dec_steps = np.ceil(np.pi / 2.0 / step_size).astype(int)
     dec_stripes = np.linspace(0, np.pi / 2.0, n_dec_steps)
 
     # Lists to hold the RA and dec coords
@@ -39,7 +39,7 @@ def comcam_tessellate(side_length=0.7, overlap=0.11):
     for dec in dec_stripes:
         # Find the largest circumfrance the squares will have to cover
         circum = np.max(2.0 * np.pi * np.cos(test_decs + dec))
-        n_ra_steps = np.ceil(circum / step_size)
+        n_ra_steps = np.ceil(circum / step_size).astype(int)
         new_ras = np.linspace(0, 2.0 * np.pi, n_ra_steps)
         running_step += rotation_step / np.cos(dec)
         new_ras = (new_ras + running_step) % (2.0 * np.pi)

@@ -33,7 +33,6 @@ def _hpid2_ra_dec(nside, hpids, **kwargs):
     dec_ret : float (or np.array)
         Dec positions of the input healpixel IDs. In radians.
     """
-
     lat, lon = hp.pix2ang(nside, hpids, **kwargs)
     dec_ret = np.pi / 2.0 - lat
     ra_ret = lon
