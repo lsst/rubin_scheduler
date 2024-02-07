@@ -807,7 +807,7 @@ class HpInComcamFov:
     with no chip gaps.
     """
 
-    def __init__(self, nside=None, side_length=0.7):
+    def __init__(self, nside=None, side_length=0.7, scale=1e5):
         """
         Parameters
         ----------
@@ -817,10 +817,11 @@ class HpInComcamFov:
         if nside is None:
             nside = set_default_nside()
         self.nside = nside
-        self.tree = hp_kd_tree(nside=nside)
-        self.side_length = np.radians(side_length)
-        self.inner_radius = xyz_angular_radius(side_length / 2.0)
-        self.outter_radius = xyz_angular_radius(side_length / 2.0 * np.sqrt(2.0))
+        self.scale = scale
+        self.tree = hp_kd_tree(nside=nside, scale=scale)
+        self.side_length = np.round(np.radians(side_length * scale)).astype(int)
+        self.inner_radius = np.round(xyz_angular_radius(side_length / 2.0) * scale).astype(int)
+        self.outter_radius = np.round(xyz_angular_radius(side_length / 2.0 * np.sqrt(2.0)) * scale).astype(int)
         # The positions of the raft corners, unrotated
         self.corners_x = np.array(
             [
@@ -839,7 +840,7 @@ class HpInComcamFov:
             ]
         )
 
-    def __call__(self, ra, dec, rot_sky_pos=0.0):
+    def __call__(self, ra, dec, rotSkyPos=0.0):
         """
         Parameters
         ----------
@@ -855,14 +856,20 @@ class HpInComcamFov:
             The healpixels that are within the FoV
         """
         x, y, z = _xyz_from_ra_dec(np.max(ra), np.max(dec))
+        x = np.round(x * self.scale).astype(int)
+        y = np.round(y * self.scale).astype(int)
+        z = np.round(z * self.scale).astype(int)
         # Healpixels within the inner circle
         indices = self.tree.query_ball_point((x, y, z), self.inner_radius)
         # Healpixels withing the outer circle
         indices_all = np.array(self.tree.query_ball_point((x, y, z), self.outter_radius))
         indices_to_check = indices_all[np.in1d(indices_all, indices, invert=True)]
 
-        cos_rot = np.cos(rot_sky_pos)
-        sin_rot = np.sin(rot_sky_pos)
+        if np.size(indices_to_check) == 0:
+            ValueError("No HEALpix in pointing. Maybe need to increase nside.")
+
+        cos_rot = np.cos(rotSkyPos)
+        sin_rot = np.sin(rotSkyPos)
         x_rotated = self.corners_x * cos_rot - self.corners_y * sin_rot
         y_rotated = self.corners_x * sin_rot + self.corners_y * cos_rot
 
