@@ -342,7 +342,7 @@ class Footprint:
             norm_coverage = self.step_func(t_elapsed, self.phase)
             norm_coverage -= self.zero
             self.current_footprints = self.footprints * norm_coverage
-            c_sum = np.sum(self.current_footprints)
+            c_sum = np.nansum(self.current_footprints)
             if norm:
                 if c_sum != 0:
                     self.current_footprints = self.current_footprints / c_sum

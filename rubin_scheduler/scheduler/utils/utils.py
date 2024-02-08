@@ -855,7 +855,7 @@ class HpInComcamFov:
         indx : numpy array
             The healpixels that are within the FoV
         """
-        x, y, z = _xyz_from_ra_dec(np.max(ra), np.max(dec))
+        x, y, z = _xyz_from_ra_dec(ra, dec)
         x = np.round(x * self.scale).astype(int)
         y = np.round(y * self.scale).astype(int)
         z = np.round(z * self.scale).astype(int)
