@@ -863,6 +863,7 @@ class HpInComcamFov:
         indices = self.tree.query_ball_point((x, y, z), self.inner_radius)
         # Healpixels withing the outer circle
         indices_all = np.array(self.tree.query_ball_point((x, y, z), self.outter_radius))
+        # Only need to check pixel if it is outside inner circle
         indices_to_check = indices_all[np.in1d(indices_all, indices, invert=True)]
 
         if np.size(indices_to_check) == 0:
@@ -883,13 +884,15 @@ class HpInComcamFov:
                     [x_rotated[3], y_rotated[3]],
                     [x_rotated[0], y_rotated[0]],
                 ]
-            )
+            ).astype(int)
         )
 
         ra_to_check, dec_to_check = _hpid2_ra_dec(self.nside, indices_to_check)
 
         # Project the indices to check to the tangent plane, see if they fall inside the polygon
         x, y = gnomonic_project_toxy(ra_to_check, dec_to_check, ra, dec)
+        x = (x * self.scale).astype(int)
+        y = (y * self.scale).astype(int)
         for i, xcheck in enumerate(x):
             # I wonder if I can do this all at once rather than a loop?
             if bb_path.contains_point((x[i], y[i])):
