@@ -492,4 +492,9 @@ class BlobSurvey(GreedySurvey):
             counter2 += 1
 
         result = observations
+
+        ack = np.concatenate(result)
+        if np.degrees(np.min(ack['dec'])) < -40:
+            import pdb ; pdb.set_trace()
+
         return result
