@@ -8,7 +8,6 @@ import numpy as np
 
 from rubin_scheduler.scheduler.surveys import BaseMarkovSurvey
 from rubin_scheduler.scheduler.utils import (
-    HpInComcamFov,
     empty_observation,
     gnomonic_project_toxy,
     int_binned_stat,

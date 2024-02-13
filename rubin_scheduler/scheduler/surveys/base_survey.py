@@ -9,7 +9,6 @@ import pandas as pd
 
 from rubin_scheduler.scheduler.detailers import ZeroRotDetailer
 from rubin_scheduler.scheduler.utils import (
-    HpInComcamFov,
     HpInLsstFov,
     comcam_tessellate,
     empty_observation,
