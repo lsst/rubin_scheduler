@@ -7,13 +7,7 @@ import healpy as hp
 import numpy as np
 
 from rubin_scheduler.scheduler.surveys import BaseMarkovSurvey
-from rubin_scheduler.scheduler.utils import (
-    empty_observation,
-    gnomonic_project_toxy,
-    int_binned_stat,
-    mean_azimuth,
-    tsp_convex,
-)
+from rubin_scheduler.scheduler.utils import empty_observation, int_binned_stat, order_observations
 from rubin_scheduler.utils import _angular_separation, _approx_ra_dec2_alt_az, _hpid2_ra_dec, hp_grow_argsort
 
 
@@ -441,6 +435,8 @@ class BlobSurvey(GreedySurvey):
             return []
 
         # Let's find the alt, az coords of the points (right now, hopefully doesn't change much in time block)
+        # Not sure why need to convert to alt,az before running TSP, but it
+        # does seem to be better.
         pointing_alt, pointing_az = _approx_ra_dec2_alt_az(
             self.fields["RA"][self.best_fields],
             self.fields["dec"][self.best_fields],
@@ -450,17 +446,8 @@ class BlobSurvey(GreedySurvey):
             lmst=conditions.lmst,
         )
 
-        # Let's find a good spot to project the points to a plane
-        mid_alt = (np.max(pointing_alt) - np.min(pointing_alt)) / 2.0 + np.min(pointing_alt)
-        mid_az = mean_azimuth(pointing_az)
+        better_order = order_observations(pointing_az, pointing_alt)
 
-        # Project the alt,az coordinates to a plane. Could consider scaling things to represent
-        # time between points rather than angular distance.
-        pointing_x, pointing_y = gnomonic_project_toxy(pointing_az, pointing_alt, mid_az, mid_alt)
-        # Now I have a bunch of x,y pointings. Drop into TSP solver to get an effiencent route
-        towns = np.vstack((pointing_x, pointing_y)).T
-        # Leaving optimize=False for speed. The optimization step doesn't usually improve much.
-        better_order = tsp_convex(towns, optimize=False)
         # XXX-TODO: Could try to roll better_order to start at the nearest/fastest slew from current position.
         observations = []
         counter2 = 0

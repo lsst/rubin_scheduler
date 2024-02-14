@@ -1,4 +1,5 @@
 __all__ = (
+    "order_observations",
     "generate_dist_matrix",
     "route_length",
     "generate_hulls",
@@ -13,11 +14,45 @@ from collections import deque
 import numpy as np
 import scipy.spatial as spatial
 
-from .utils import IntRounded
+from .utils import IntRounded, gnomonic_project_toxy, mean_azimuth
 
 # Solve Traveling Salesperson using convex hulls.
 # re-write of https://github.com/jameskrysiak/ConvexSalesman/blob/master/convex_salesman.py
 # This like a good explination too https://www.youtube.com/watch?v=syRSy1MFuho
+
+
+def order_observations(lon, lat, scale=1e6, optimize=False):
+    """Use TSP solver to put observations in an order that minimizes
+    angular distance traveled
+
+    Parameters
+    ----------
+    lon : `float`
+        A longitude-like (RA, azimuth) angle (radians).
+    lat : `float`
+        A latitude-like (dec, altitude) angle (radians).
+    scale : `float`
+        A factor to scale and round projections to force same
+        machine precision cross-platforms (1e6).
+    optimize : `bool`
+        If the TSP should run extra optimization steps, default False
+    """
+
+    # Let's find a good spot to project the points to a plane
+    mid_dec = (np.max(lat) - np.min(lat)) / 2.0 + np.min(lat)
+    mid_ra = mean_azimuth(lon)
+    # Project the coordinates to a plane. Could consider scaling things to represent
+    # time between points rather than angular distance.
+    pointing_x, pointing_y = gnomonic_project_toxy(lon, lat, mid_ra, mid_dec)
+    # Round off positions so that we ensure identical cross-platform performance
+
+    pointing_x = np.round(pointing_x * scale).astype(int)
+    pointing_y = np.round(pointing_y * scale).astype(int)
+    # Now I have a bunch of x,y pointings. Drop into TSP solver to get an effiencent route
+    towns = np.vstack((pointing_x, pointing_y)).T
+    # Leaving optimize=False for speed. The optimization step doesn't usually improve much.
+    better_order = tsp_convex(towns, optimize=optimize)
+    return better_order
 
 
 def generate_dist_matrix(towns):
