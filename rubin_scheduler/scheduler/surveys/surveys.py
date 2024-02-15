@@ -382,7 +382,7 @@ class BlobSurvey(GreedySurvey):
 
         # Assuming reward has already been calcualted
 
-        potential_hp = np.where(~np.isnan(self.reward) == True)
+        potential_hp = np.where(np.isfinite(self.reward))[0]
 
         # Note, using nanmax, so masked pixels might be included in the pointing.
         # I guess I should document that it's not "NaN pixels can't be observed", but
@@ -391,13 +391,13 @@ class BlobSurvey(GreedySurvey):
             self.hp2fields[potential_hp], self.reward[potential_hp], statistic=np.nanmax
         )
         # chop off any nans
-        not_nans = np.where(~np.isnan(reward_by_field) == True)
+        not_nans = np.where(np.isfinite(reward_by_field))
         ufields = ufields[not_nans]
         reward_by_field = reward_by_field[not_nans]
 
-        order = np.argsort(reward_by_field)
-        ufields = ufields[order][::-1][0 : self.nvisit_block]
-        self.best_fields = ufields
+        order = np.argsort(reward_by_field)[::-1]
+        ufields = ufields[order]
+        self.best_fields = ufields[0 : self.nvisit_block]
 
     def generate_observations_rough(self, conditions):
         """
@@ -492,4 +492,5 @@ class BlobSurvey(GreedySurvey):
             counter2 += 1
 
         result = observations
+
         return result
