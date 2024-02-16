@@ -22,6 +22,30 @@ class ArbSeeing:
 
 
 class TestModelObservatory(unittest.TestCase):
+    def test_ideal(self):
+        """test that we can set ideal conditions"""
+        mjd_start = utils.survey_start_mjd()
+        mo_default = ModelObservatory(mjd_start=mjd_start)
+
+        mo_ideal = ModelObservatory(
+            mjd_start=mjd_start, cloud_data="ideal", seeing_data="ideal", downtimes="ideal"
+        )
+
+        cond_default = mo_default.return_conditions()
+        cond_ideal = mo_ideal.return_conditions()
+
+        # Should be at ideal seeing
+        assert mo_ideal.fwhm_500 == 0.7
+        assert mo_default.fwhm_500 != 0.7
+
+        assert cond_ideal.bulk_cloud == 0
+        assert cond_default.bulk_cloud > 0
+
+        mjd_down = mo_default.downtimes["start"][0] + 0.01
+
+        assert ~mo_default.check_up(mjd_down)
+        assert mo_ideal.check_up(mjd_down)
+
     def test_replace(self):
         """test that we can replace default downtimes, seeing, and clouds"""
 

@@ -48,7 +48,6 @@ class ModelObservatory:
         seeing_db=None,
         park_after=10.0,
         init_load_length=10,
-        ideal_conditions=False,
         kinem_model=None,
         cloud_db=None,
         cloud_offset_year=0,
@@ -81,9 +80,6 @@ class ModelObservatory:
             Park the telescope after a gap longer than park_after (minutes)
         init_load_length : int (10)
             The length of pre-scheduled sky brighntess to load initially (days).
-        ideal_conditions : bool (False)
-            If the scheduler should assume ideal conditions. This results in no uncheduled downtime,
-            no weather downtime, and nominal seeing.
         kinem_model : kinematic model object (None)
             A instantiated rubin_scheduler.scheduler.model_observatory.Kinem_model object. If None, the
             default is used
@@ -93,13 +89,16 @@ class ModelObservatory:
             The year offset to be passed to CloudData.
         cloud_data : None
             If one wants to replace the default cloud data. Should be an object with a
-            __call__ method that takes MJD and returns cloudy level.
+            __call__ method that takes MJD and returns cloudy level. Set to "ideal" for
+            no clouds.
         seeing_data : None
             If one wants to replace the default seeing_data object. Should be an object with a
-            __call__ method that takes MJD and returns zenith fwhm_500 in arcsec.
+            __call__ method that takes MJD and returns zenith fwhm_500 in arcsec. Set to
+            "ideal" to have constant 0.7" seeing.
         downtimes : None
             If one wants to replace the default downtimes. Should be a np.array with columns
-            of "start" and "end" with MJD values and should include both scheduled and unscheduled downtime
+            of "start" and "end" with MJD values and should include both scheduled and unscheduled downtime.
+            Set to "ideal" for no downtime.
         no_sky : bool
             Don't bother loading sky files. Handy if one wants a well filled out Conditions object,
             but doesn't need the sky since that can be slower to load. Default False.
@@ -147,7 +146,13 @@ class ModelObservatory:
 
         mjd_start_time = Time(self.mjd_start, format="mjd")
         # Downtime
-        if downtimes is None:
+        if isinstance(downtimes, str):
+            if downtimes == "ideal":
+                self.downtimes = np.array(
+                    list(zip([], [])),
+                    dtype=list(zip(["start", "end"], [float, float])),
+                )
+        elif downtimes is None:
             self.down_nights = []
             self.sched_downtime_data = ScheduledDowntimeData(mjd_start_time)
             self.unsched_downtime_data = UnscheduledDowntimeData(mjd_start_time)
@@ -160,10 +165,9 @@ class ModelObservatory:
             for dt in sched_downtimes:
                 down_starts.append(dt["start"].mjd)
                 down_ends.append(dt["end"].mjd)
-            if not ideal_conditions:
-                for dt in unsched_downtimes:
-                    down_starts.append(dt["start"].mjd)
-                    down_ends.append(dt["end"].mjd)
+            for dt in unsched_downtimes:
+                down_starts.append(dt["start"].mjd)
+                down_ends.append(dt["end"].mjd)
 
             self.downtimes = np.array(
                 list(zip(down_starts, down_ends)),
@@ -187,7 +191,7 @@ class ModelObservatory:
         else:
             self.downtimes = downtimes
 
-        if ideal_conditions:
+        if seeing_data == "ideal":
             self.seeing_data = NominalSeeing()
         elif seeing_data is not None:
             self.seeing_data = seeing_data
@@ -198,7 +202,7 @@ class ModelObservatory:
         for i, filtername in enumerate(self.seeing_model.filter_list):
             self.seeing_indx_dict[filtername] = i
 
-        if ideal_conditions:
+        if cloud_data == "ideal":
             self.cloud_data = NoClouds()
         elif cloud_data is not None:
             self.cloud_data = cloud_data
