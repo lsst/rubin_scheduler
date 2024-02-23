@@ -7,11 +7,20 @@ from rubin_scheduler.data import get_data_dir
 from rubin_scheduler.scheduler import sim_runner
 from rubin_scheduler.scheduler.example import example_scheduler, run_sched
 from rubin_scheduler.scheduler.model_observatory import KinemModel, ModelObservatory
-from rubin_scheduler.scheduler.utils import restore_scheduler, run_info_table, season_calc
+from rubin_scheduler.scheduler.utils import (
+    SchemaConverter,
+    empty_observation,
+    restore_scheduler,
+    run_info_table,
+    season_calc,
+)
 from rubin_scheduler.utils import survey_start_mjd
 
 
 class TestUtils(unittest.TestCase):
+    def tearDownClass():
+        os.remove("temp.sqlite")
+
     @unittest.skipUnless(
         os.path.isfile(os.path.join(get_data_dir(), "scheduler/dust_maps/dust_nside_32.npz")),
         "Test data not available.",
@@ -251,6 +260,24 @@ class TestUtils(unittest.TestCase):
 
         mod3 = season_calc(night, modulo=3, offset=-365.25 * 10)
         assert mod3 == -1
+
+    def test_schema_convert(self):
+        sc = SchemaConverter()
+
+        n = 20
+        obs = empty_observation(n=n)
+        obs["ID"] = np.arange(n)
+
+        # check that we can write observations to a database
+        sc.obs2opsim(obs, filename="temp.sqlite")
+
+        # change the ID and write it again, should append
+        obs["ID"] = np.arange(n) + n + 1
+        sc.obs2opsim(obs, filename="temp.sqlite")
+
+        read_in = sc.opsim2obs("temp.sqlite")
+
+        assert len(read_in) == 2 * n
 
     def test_run_info_table(self):
         """Test run_info_table gets information"""

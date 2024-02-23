@@ -435,7 +435,7 @@ class SchemaConverter:
         # Put LMST into degrees too
         self.angles_hours2deg = ["observationStartLST"]
 
-    def obs2opsim(self, obs_array, filename=None, info=None, delete_past=False):
+    def obs2opsim(self, obs_array, filename=None, info=None, delete_past=False, if_exists="append"):
         """convert an array of observations into a pandas dataframe with Opsim schema"""
         if delete_past:
             try:
@@ -452,10 +452,10 @@ class SchemaConverter:
 
         if filename is not None:
             con = sqlite3.connect(filename)
-            df.to_sql("observations", con, index=False)
+            df.to_sql("observations", con, index=False, if_exists=if_exists)
             if info is not None:
                 df = pd.DataFrame(info)
-                df.to_sql("info", con)
+                df.to_sql("info", con, if_exists=if_exists)
         else:
             return df
 
