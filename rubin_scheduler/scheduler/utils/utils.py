@@ -435,8 +435,31 @@ class SchemaConverter:
         # Put LMST into degrees too
         self.angles_hours2deg = ["observationStartLST"]
 
-    def obs2opsim(self, obs_array, filename=None, info=None, delete_past=False):
-        """convert an array of observations into a pandas dataframe with Opsim schema"""
+    def obs2opsim(
+            self, obs_array, filename=None, info=None, delete_past=False, if_exists="append"
+    ):
+        """Convert an array of observations into a pandas dataframe
+        with Opsim schema.
+        Parameters
+        ----------
+        obs_array : `np.array`
+            Numpy array with OpSim observations.
+        filename : `str`, optional
+            Name of the database file to write to.
+        info : `np.array`, optional
+            Numpy array with database info.
+        delete_past : `bool`
+            Delete past observations (default=False)?
+        if_exists : `str`
+            Flag to pass to `to_sql` when writting to the
+            database to control strategy when the database
+            already exists.
+        Returns
+        -------
+        `pd.DataFrame` or `None`
+            Either the converted dataframe or `None`, if
+            filename is provided.
+        """
         if delete_past:
             try:
                 os.remove(filename)
@@ -452,15 +475,21 @@ class SchemaConverter:
 
         if filename is not None:
             con = sqlite3.connect(filename)
-            df.to_sql("observations", con, index=False)
+            df.to_sql("observations", con, index=False, if_exists=if_exists)
             if info is not None:
                 df = pd.DataFrame(info)
-                df.to_sql("info", con)
+                df.to_sql("info", con, if_exists=if_exists)
         else:
             return df
 
     def opsim2obs(self, filename):
-        """convert an opsim schema dataframe into an observation array."""
+        """convert an opsim schema dataframe into an observation array.
+
+        Parameters
+        ----------
+        filename : `str`
+            Sqlite file containing opsim output observations.
+        """
 
         con = sqlite3.connect(filename)
         df = pd.read_sql("select * from observations;", con)
