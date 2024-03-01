@@ -251,7 +251,8 @@ class SkyAreaGenerator:
                 raise Exception('Cannot find datadir, please set "RUBIN_SIM_DATA_DIR"')
             datadir = os.path.join(datadir, "scheduler", "dust_maps")
             filename = os.path.join(datadir, "dust_nside_%i.npz" % self.nside)
-        self.dustmap = np.load(filename)["ebvMap"]
+        with np.load(filename) as data:
+            self.dustmap = data["ebvMap"]
 
     def _set_circular_region(self, ra_center, dec_center, radius):
         """Define a circular region centered on ra_center, dec_center."""
