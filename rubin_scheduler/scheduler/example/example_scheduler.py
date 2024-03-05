@@ -79,7 +79,8 @@ def standard_bf(
     strict=True,
     wind_speed_maximum=20.0,
 ):
-    """Generate the standard basis functions that are shared by blob surveys
+    """Generate the standard basis functions that are shared by
+    blob surveys
 
     Parameters
     ----------
@@ -96,11 +97,14 @@ def standard_bf(
     n_obs_template : dict (None)
         The number of observations to take every season in each filter
     season : float (300)
-        The length of season (i.e., how long before templates expire) (days)
+        The length of season (i.e., how long before templates expire)
+        (days)
     season_start_hour : float (-4.)
-        For weighting how strongly a template image needs to be observed (hours)
+        For weighting how strongly a template image needs to be
+        observed (hours)
     sesason_end_hour : float (2.)
-        For weighting how strongly a template image needs to be observed (hours)
+        For weighting how strongly a template image needs to be
+        observed (hours)
     moon_distance : float (30.)
         The mask radius to apply around the moon (degrees)
     m5_weight : float (3.)
@@ -110,16 +114,21 @@ def standard_bf(
     slewtime_weight : float (3.)
         The weight on the slewtime basis function
     stayfilter_weight : float (3.)
-        The weight on basis function that tries to stay avoid filter changes.
+        The weight on basis function that tries to stay avoid filter
+        changes.
     template_weight : float (12.)
         The weight to place on getting image templates every season
     u_template_weight : float (24.)
-        The weight to place on getting image templates in u-band. Since there
-        are so few u-visits, it can be helpful to turn this up a little higher than
+        The weight to place on getting image templates in u-band. Since
+        there
+        are so few u-visits, it can be helpful to turn this up a little
+        higher than
         the standard template_weight kwarg.
     g_template_weight : float (24.)
-        The weight to place on getting image templates in g-band. Since there
-        are so few g-visits, it can be helpful to turn this up a little higher than
+        The weight to place on getting image templates in g-band. Since
+        there
+        are so few g-visits, it can be helpful to turn this up a little
+        higher than
         the standard template_weight kwarg.
 
     Returns
@@ -314,15 +323,19 @@ def blob_for_long(
     pair_time : float (33)
         The ideal time between pairs (minutes)
     camera_rot_limits : list of float ([-80., 80.])
-        The limits to impose when rotationally dithering the camera (degrees).
+        The limits to impose when rotationally dithering the camera
+        (degrees).
     n_obs_template : dict (None)
-        The number of observations to take every season in each filter. If None, sets to 3 each.
+        The number of observations to take every season in each filter.
+        If None, sets to 3 each.
     season : float (300)
         The length of season (i.e., how long before templates expire) (days)
     season_start_hour : float (-4.)
-        For weighting how strongly a template image needs to be observed (hours)
+        For weighting how strongly a template image needs to be observed
+        (hours)
     sesason_end_hour : float (2.)
-        For weighting how strongly a template image needs to be observed (hours)
+        For weighting how strongly a template image needs to be observed
+        (hours)
     shadow_minutes : float (60.)
         Used to mask regions around zenith (minutes)
     max_alt : float (76.
@@ -338,15 +351,19 @@ def blob_for_long(
     slewtime_weight : float (3.)
         The weight on the slewtime basis function
     stayfilter_weight : float (3.)
-        The weight on basis function that tries to stay avoid filter changes.
+        The weight on basis function that tries to stay avoid filter
+        changes.
     template_weight : float (12.)
         The weight to place on getting image templates every season
     u_template_weight : float (24.)
-        The weight to place on getting image templates in u-band. Since there
-        are so few u-visits, it can be helpful to turn this up a little higher than
+        The weight to place on getting image templates in u-band. Since
+        there
+        are so few u-visits, it can be helpful to turn this up a little
+        higher than
         the standard template_weight kwarg.
     u_nexp1 : bool (True)
-        Add a detailer to make sure the number of expossures in a visit is always 1 for u observations.
+        Add a detailer to make sure the number of expossures in a visit
+        is always 1 for u observations.
     """
 
     BlobSurvey_params = {
@@ -522,10 +539,11 @@ def gen_greedy_surveys(
     """
     Make a quick set of greedy surveys
 
-    This is a convenience function to generate a list of survey objects that can be used with
+    This is a convenience function to generate a list of survey objects
+    that can be used with
     rubin_scheduler.scheduler.schedulers.Core_scheduler.
-    To ensure we are robust against changes in the sims_featureScheduler codebase, all kwargs are
-    explicitly set.
+    To ensure we are robust against changes in the sims_featureScheduler
+    codebase, all kwargs are explicitly set.
 
     Parameters
     ----------
@@ -538,7 +556,8 @@ def gen_greedy_surveys(
     filters : list of str (['r', 'i', 'z', 'y'])
         Which filters to generate surveys for.
     camera_rot_limits : list of float ([-80., 80.])
-        The limits to impose when rotationally dithering the camera (degrees).
+        The limits to impose when rotationally dithering the camera
+        (degrees).
     shadow_minutes : float (60.)
         Used to mask regions around zenith (minutes)
     max_alt : float (76.
@@ -554,10 +573,12 @@ def gen_greedy_surveys(
     slewtime_weight : float (3.)
         The weight on the slewtime basis function
     stayfilter_weight : float (3.)
-        The weight on basis function that tries to stay avoid filter changes.
+        The weight on basis function that tries to stay avoid filter
+        changes.
     """
     # Define the extra parameters that are used in the greedy survey. I
-    # think these are fairly set, so no need to promote to utility func kwargs
+    # think these are fairly set, so no need to promote to utility func
+    # kwargs
     greed_survey_params = {
         "block_size": 1,
         "smoothing_kernel": None,
@@ -676,15 +697,19 @@ def generate_blobs(
     pair_time : float (33)
         The ideal time between pairs (minutes)
     camera_rot_limits : list of float ([-80., 80.])
-        The limits to impose when rotationally dithering the camera (degrees).
+        The limits to impose when rotationally dithering the camera
+        (degrees).
     n_obs_template : Dict (None)
-        The number of observations to take every season in each filter. If None, sets to 3 each.
+        The number of observations to take every season in each filter.
+        If None, sets to 3 each.
     season : float (300)
         The length of season (i.e., how long before templates expire) (days)
     season_start_hour : float (-4.)
-        For weighting how strongly a template image needs to be observed (hours)
+        For weighting how strongly a template image needs to be observed
+        (hours)
     sesason_end_hour : float (2.)
-        For weighting how strongly a template image needs to be observed (hours)
+        For weighting how strongly a template image needs to be observed
+        (hours)
     shadow_minutes : float (60.)
         Used to mask regions around zenith (minutes)
     max_alt : float (76.
@@ -700,17 +725,22 @@ def generate_blobs(
     slewtime_weight : float (3.)
         The weight on the slewtime basis function
     stayfilter_weight : float (3.)
-        The weight on basis function that tries to stay avoid filter changes.
+        The weight on basis function that tries to stay avoid filter
+        changes.
     template_weight : float (12.)
         The weight to place on getting image templates every season
     u_template_weight : float (24.)
-        The weight to place on getting image templates in u-band. Since there
-        are so few u-visits, it can be helpful to turn this up a little higher than
+        The weight to place on getting image templates in u-band. Since
+        there
+        are so few u-visits, it can be helpful to turn this up a little
+        higher than
         the standard template_weight kwarg.
     u_nexp1 : bool (True)
-        Add a detailer to make sure the number of expossures in a visit is always 1 for u observations.
+        Add a detailer to make sure the number of expossures in a visit
+        is always 1 for u observations.
     scheduled_respect : float (45)
-        How much time to require there be before a pre-scheduled observation (minutes)
+        How much time to require there be before a pre-scheduled
+        observation (minutes)
     """
 
     BlobSurvey_params = {
@@ -914,15 +944,20 @@ def generate_twi_blobs(
     pair_time : float (22)
         The ideal time between pairs (minutes)
     camera_rot_limits : list of float ([-80., 80.])
-        The limits to impose when rotationally dithering the camera (degrees).
+        The limits to impose when rotationally dithering the camera
+        (degrees).
     n_obs_template : dict (None)
-        The number of observations to take every season in each filter. If None, sets to 3 each.
+        The number of observations to take every season in each filter.
+        If None, sets to 3 each.
     season : float (300)
-        The length of season (i.e., how long before templates expire) (days)
+        The length of season (i.e., how long before templates expire)
+        (days)
     season_start_hour : float (-4.)
-        For weighting how strongly a template image needs to be observed (hours)
+        For weighting how strongly a template image needs to be observed
+        (hours)
     sesason_end_hour : float (2.)
-        For weighting how strongly a template image needs to be observed (hours)
+        For weighting how strongly a template image needs to be observed
+        (hours)
     shadow_minutes : float (60.)
         Used to mask regions around zenith (minutes)
     max_alt : float (76.
@@ -942,8 +977,10 @@ def generate_twi_blobs(
     template_weight : float (12.)
         The weight to place on getting image templates every season
     u_template_weight : float (24.)
-        The weight to place on getting image templates in u-band. Since there
-        are so few u-visits, it can be helpful to turn this up a little higher than
+        The weight to place on getting image templates in u-band. Since
+        there
+        are so few u-visits, it can be helpful to turn this up a little
+        higher than
         the standard template_weight kwarg.
     """
 
@@ -1102,7 +1139,8 @@ def ecliptic_target(nside=32, dist_to_eclip=40.0, dec_max=30.0, mask=None):
     dec_max : float (30)
         The max declination to alow (degrees).
     mask : np.array (None)
-        Any additional mask to apply, should be a HEALpix mask with matching nside.
+        Any additional mask to apply, should be a HEALpix mask wit
+        matching nside.
     """
 
     ra, dec = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(nside)))
@@ -1150,7 +1188,8 @@ def generate_twilight_near_sun(
     Parameters
     ----------
     night_pattern : list of bool (None)
-        A list of bools that set when the survey will be active. e.g., [True, False]
+        A list of bools that set when the survey will be active. e.g.,
+        [True, False]
         for every-other night, [True, False, False] for every third night.
     nexp : int (1)
         Number of snaps in a visit
@@ -1163,7 +1202,8 @@ def generate_twilight_near_sun(
     camera_rot_limits : list of float ([-80, 80])
         The camera rotation limits to use (degrees).
     time_needed : float (10)
-        How much time should be available (e.g., before twilight ends) (minutes).
+        How much time should be available (e.g., before twilight ends)
+        (minutes).
     footprint_mask : np.array (None)
         Mask to apply to the constructed ecliptic target mask (None).
     footprint_weight : float (0.1)
@@ -1173,7 +1213,8 @@ def generate_twilight_near_sun(
     stayfilter_weight : float (3.)
         Weight for staying in the same filter basis function
     area_required : float (None)
-        The area that needs to be available before the survey will return observations (sq degrees?)
+        The area that needs to be available before the survey will
+        return observations (sq degrees?)
     filters : str ('riz')
         The filters to use, default 'riz'
     n_repeat : int (4)
@@ -1181,7 +1222,8 @@ def generate_twilight_near_sun(
     sun_alt_limit : float (-14.8)
         Do not start unless sun is higher than this limit (degrees)
     slew_estimate : float (4.5)
-        An estimate of how long it takes to slew between neighboring fields (seconds).
+        An estimate of how long it takes to slew between neighboring
+        fields (seconds).
     time_to_sunrise : float (25.)
         Do not execute if time to sunrise is greater than (minutes).
     """
@@ -1222,7 +1264,8 @@ def generate_twilight_near_sun(
         )
         bfs.append((bf.StrictFilterBasisFunction(filtername=filtername), stayfilter_weight))
         bfs.append((bf.FilterDistBasisFunction(filtername=filtername), filter_dist_weight))
-        # Need a toward the sun, reward high airmass, with an airmass cutoff basis function.
+        # Need a toward the sun, reward high airmass, with an
+        # airmass cutoff basis function.
         bfs.append((bf.NearSunTwilightBasisFunction(nside=nside, max_airmass=max_airmass), 0))
         bfs.append(
             (
@@ -1253,7 +1296,8 @@ def generate_twilight_near_sun(
         weights = [val[1] for val in bfs]
         basis_functions = [val[0] for val in bfs]
 
-        # Set huge ideal pair time and use the detailer to cut down the list of observations to fit twilight?
+        # Set huge ideal pair time and use the detailer to cut down
+        # the list of observations to fit twilight?
         surveys.append(
             BlobSurvey(
                 basis_functions,
@@ -1354,7 +1398,8 @@ def gen_scheduler(args):
     neo_area_req = args.neo_area_req
     nside = args.nside
 
-    # Be sure to also update and regenerate DDF grid save file if changing mjd_start
+    # Be sure to also update and regenerate DDF grid save file if
+    # changing mjd_start
     mjd_start = 60796.0
     per_night = True  # Dither DDF per night
 

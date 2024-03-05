@@ -26,10 +26,12 @@ class LsstCameraFootprint:
     ----------
     units : `str`, opt
         Units for the object RA/Dec and boresight RA/Dec/rotation values.
-        Default 'degrees'.  If not degrees, assumes incoming values are in radians.
+        Default 'degrees'.  If not degrees, assumes incoming values
+        are in radians.
     footprint_file : `str` or None, opt
         Location for the camera footprint map.
-        Default None loads the default map from $RUBIN_SIM_DATA_DIR/maf/fov_map.npz
+        Default None loads the default map from
+        $RUBIN_SIM_DATA_DIR/maf/fov_map.npz
 
     """
 
@@ -47,7 +49,8 @@ class LsstCameraFootprint:
         self.indx_max = len(self.x_camera)
 
     def __call__(self, obj_ra, obj_dec, boresight_ra, boresight_dec, boresight_rot_sky_pos):
-        """Determine which observations are within the actual camera footprint for a series of observations.
+        """Determine which observations are within the actual camera
+        footprint for a series of observations.
 
         Parameters
         ----------
@@ -65,9 +68,10 @@ class LsstCameraFootprint:
         Returns
         -------
         indices : `np.ndarray`
-            Returns the indexes of the numpy array of the object observations
-            which are inside the fov and land on a science chip.
-            Applying this to the input array (e.g. obj_ra[indices]) indicates the positions of
+            Returns the indexes of the numpy array of the object
+            observations which are inside the fov and land on a
+            science chip. Applying this to the input array
+            (e.g. obj_ra[indices]) indicates the positions of
             the objects which fell onto active silicon.
         """
         if self.units == "degrees":
@@ -78,8 +82,8 @@ class LsstCameraFootprint:
                 np.radians(boresight_dec),
             )
             # rotate them by rotskypos
-            # TODO: look up whether this is a positive or negative rotation
-            #  in the observatory documentation
+            # TODO: look up whether this is a positive or
+            # negative rotation in the observatory documentation
             x_proj, y_proj = rotate(x_proj, y_proj, np.radians(boresight_rot_sky_pos))
 
         else:

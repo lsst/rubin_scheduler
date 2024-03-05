@@ -7,8 +7,9 @@ import numpy as np
 
 class CloudModel:
     """LSST cloud calculations for cloud extinction.
-    Currently this actually only returns the cloud coverage of the sky, exactly as reported in the
-    cloud database (thus the sky coverage, in fractions of 8ths).
+    Currently this actually only returns the cloud coverage of the sky,
+    exactly as reported in the cloud database (thus the sky coverage,
+    in fractions of 8ths).
 
 
     Parameters
@@ -17,10 +18,11 @@ class CloudModel:
 
     self.efd_requirements and self.map_requirements are also set.
     efd_requirements is a tuple: (list of str, float).
-    This corresponds to the data columns required from the EFD and the amount of time history required.
-    target_requirements is a list of str.
-    This corresponds to the data columns required in the target map dictionary passed when calculating the
-    processed telemetry values.
+    This corresponds to the data columns required from the EFD and
+    the amount of time history required. target_requirements is a
+    list of str. This corresponds to the data columns required in the
+    target map dictionary passed when calculating the processed
+    telemetry values.
     """
 
     def __init__(self, cloud_column="cloud", altitude_column="altitude", azimuth_column="azimuth"):
@@ -39,9 +41,10 @@ class CloudModel:
     def __call__(self, cloud_value, altitude):
         """Calculate the sky coverage due to clouds.
 
-        This is where we'd plug in Peter's cloud transparency maps and predictions.
-        We could also try translating cloud transparency into a cloud extinction.
-        For now, we're simply returning the cloud coverage that we already got from the database,
+        This is where we'd plug in Peter's cloud transparency maps and
+        predictions. We could also try translating cloud transparency
+        into a cloud extinction. For now, we're simply returning the
+        cloud coverage that we already got from the database,
         but multiplied over the whole sky to provide a map.
 
         Parameters

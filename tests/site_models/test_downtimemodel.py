@@ -20,7 +20,8 @@ class TestDowntimeModel(unittest.TestCase):
         t_now = sched.downtime[0]["start"] + TimeDelta(0.5, format="jd")
         target_dict = {"time": t_now}
         dt_status = downtime_model(efd_data, target_dict)
-        # Expect return dict of : {'status': status, 'end': end_down, 'next': next_sched['start']}
+        # Expect return dict of : {'status': status, 'end': end_down,
+        # 'next': next_sched['start']}
         # Check keys
         for k in ("status", "end", "next"):
             self.assertTrue(k in dt_status)

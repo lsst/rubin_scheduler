@@ -1,12 +1,14 @@
 """
 This module implements utilities to convert between RA, Dec and indexes
-on the Hierarchical Triangular Mesh (HTM), a system of tiling the unit sphere
-with nested triangles.  The HTM is described in these references
+on the Hierarchical Triangular Mesh (HTM), a system of tiling the
+unit sphere with nested triangles.  The HTM is described in these
+references
 
 Kunszt P., Szalay A., Thakar A. (2006) in "Mining The Sky",
 Banday A, Zaroubi S, Bartelmann M. eds.
 ESO Astrophysics Symposia
-https://www.researchgate.net/publication/226072008_The_Hierarchical_Triangular_Mesh
+https://www.researchgate.net/publication/
+226072008_The_Hierarchical_Triangular_Mesh
 
 Szalay A. et al. (2007)
 "Indexing the Sphere with the Hierarchical Triangular Mesh"
@@ -38,10 +40,10 @@ class Trixel:
     A trixel is a single triangle in the Hierarchical Triangular Mesh (HTM)
     tiling scheme.  It is defined by its three corners on the unit sphere.
 
-    Instantiating this class directly is a bad idea. __init__() does nothing
-    to ensure that the parameters you give it are self-consistent.  Instead,
-    use the trixel_from_htmid() or get_all_trixels() methods in this module
-    to instantiate trixels.
+    Instantiating this class directly is a bad idea. __init__() does
+    nothing to ensure that the parameters you give it are
+    self-consistent.  Instead, use the trixel_from_htmid() or
+    get_all_trixels() methods in this module to instantiate trixels.
     """
 
     def __init__(self, present_htmid, present_corners):
@@ -145,7 +147,8 @@ class Trixel:
         Kunszt P., Szalay A., Thakar A. (2006) in "Mining The Sky",
         Banday A, Zaroubi S, Bartelmann M. eds.
         ESO Astrophysics Symposia
-        https://www.researchgate.net/publication/226072008_The_Hierarchical_Triangular_Mesh
+        https://www.researchgate.net/publication/
+        226072008_The_Hierarchical_Triangular_Mesh
         """
         if np.dot(self.cross01, pt) >= 0.0:
             if np.dot(self.cross12, pt) >= 0.0:
@@ -169,7 +172,8 @@ class Trixel:
         Kunszt P., Szalay A., Thakar A. (2006) in "Mining The Sky",
         Banday A, Zaroubi S, Bartelmann M. eds.
         ESO Astrophysics Symposia
-        https://www.researchgate.net/publication/226072008_The_Hierarchical_Triangular_Mesh
+        https://www.researchgate.net/publication/
+        226072008_The_Hierarchical_Triangular_Mesh
         """
         return (
             (np.dot(pts, self.cross01) >= 0.0)
@@ -212,7 +216,8 @@ class Trixel:
         Kunszt P., Szalay A., Thakar A. (2006) in "Mining The Sky",
         Banday A, Zaroubi S, Bartelmann M. eds.
         ESO Astrophysics Symposia
-        httpd://www.researchgate.net/publication/226072008_The_Hierarchical_Triangular_Mesh
+        httpd://www.researchgate.net/publication/
+        226072008_The_Hierarchical_Triangular_Mesh
         """
         if self._w_arr is None:
             self._create_w()
@@ -296,7 +301,8 @@ class Trixel:
         Kunszt P., Szalay A., Thakar A. (2006) in "Mining The Sky",
         Banday A, Zaroubi S, Bartelmann M. eds.
         ESO Astrophysics Symposia
-        https://www.researchgate.net/publication/226072008_The_Hierarchical_Triangular_Mesh
+        https://www.researchgate.net/publication/
+        226072008_The_Hierarchical_Triangular_Mesh
 
         for an explanation of which trixel corresponds to whic
         index.
@@ -378,7 +384,8 @@ class Trixel:
             (i.e. the dot product of the zeroth element with the
             most distant corner of the trixel).
 
-            Second element is the half angular extent of the bounding circle.
+            Second element is the half angular extent of the
+            bounding circle.
         """
         if self._bounding_circle is None:
             # find the unit vector pointing to the center of the trixel
@@ -407,7 +414,8 @@ class Trixel:
 # Kunszt P., Szalay A., Thakar A. (2006) in "Mining The Sky",
 # Banday A, Zaroubi S, Bartelmann M. eds.
 # ESO Astrophysics Symposia
-# https://www.researchgate.net/publication/226072008_The_Hierarchical_Triangular_Mesh
+# https://www.researchgate.net/publication/
+# 226072008_The_Hierarchical_Triangular_Mesh
 
 _n0_trixel = Trixel(
     12,
@@ -646,8 +654,8 @@ def _iterate_trixel_finder(pt, parent, max_level):
 
     Returns
     -------
-    The htmid at the desired level of the trixel containing the unit sphere
-    projection of the point in pt.
+    The htmid at the desired level of the trixel containing the unit
+    sphere projection of the point in pt.
     """
     children = parent.get_children()
     for child in children:
@@ -886,7 +894,8 @@ class HalfSpace:
         self._v = vector / np.sqrt(np.power(vector, 2).sum())
         self._d = length
         if np.abs(self._d) < 1.0:
-            self._phi = np.arccos(self._d)  # half angular extent of the half space
+            self._phi = np.arccos(self._d)  # half angular
+            # extent of the half space
             if self._phi > np.pi:
                 raise RuntimeError("phi %e d %e" % (self._phi, self._d))
         else:
@@ -1094,7 +1103,8 @@ class HalfSpace:
 
         Parameters
         ----------
-        bounds is a list of trixel bounds as returned by HalfSpace.find_all_trixels
+        bounds is a list of trixel bounds as returned by
+        HalfSpace.find_all_trixels
 
         Returns
         -------
@@ -1124,9 +1134,9 @@ class HalfSpace:
     @staticmethod
     def join_trixel_bound_sets(b1, b2):
         """
-        Take two sets of trixel bounds as returned by HalfSpace.find_all_trixels
-        and return a set of trixel bounds that represents the intersection of
-        the original sets of bounds
+        Take two sets of trixel bounds as returned by
+        HalfSpace.find_all_trixels and return a set of trixel bounds
+        that represents the intersection of the original sets of bounds
         """
         b1_sorted = HalfSpace.merge_trixel_bounds(b1)
         b2_sorted = HalfSpace.merge_trixel_bounds(b2)
@@ -1239,25 +1249,12 @@ class HalfSpace:
                         # need to investigate more fully
                         new_active_trixels.append(child)
                     elif is_contained == "full":
-                        # all of this trixels children, and their children are contained
+                        # all of this trixels children, and
+                        # their children are contained
                         min_htmid = child._htmid << 2 * (level - i_level)
                         max_htmid = min_htmid
                         max_htmid += max_d_htmid
                         output_prelim.append((min_htmid, max_htmid))
-
-                        ########################################
-                        # some assertions for debugging purposes
-                        # assert min_htmid<max_htmid
-                        # try:
-                        #     test_trix = trixel_from_htmid(min_htmid)
-                        #     assert self.contains_trixel(test_trix) != 'outside'
-                        #     test_trix = trixel_from_htmid(max_htmid)
-                        #     assert self.contains_trixel(test_trix) != 'outside'
-                        # except AssertionError:
-                        #     print('is_contained %s' % is_contained)
-                        #     print('level %d' % level_from_htmid(tt._htmid))
-                        #     raise
-
                 active_trixels = new_active_trixels
             if len(active_trixels) == 0:
                 break

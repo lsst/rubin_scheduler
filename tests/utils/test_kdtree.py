@@ -8,7 +8,8 @@ import rubin_scheduler.utils as utils
 class KdTreeTestCase(unittest.TestCase):
     def test_kd_tree_api(self):
         """
-        Make sure the API provided by scipy to the kdTree algorithm is functional.
+        Make sure the API provided by scipy to the kdTree algorithm
+        is functional.
         """
         _ra = np.linspace(0.0, 2.0 * np.pi)
         _dec = np.linspace(-np.pi, np.pi)

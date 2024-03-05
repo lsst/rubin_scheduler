@@ -243,7 +243,8 @@ class SkyAreaGenerator:
         self.low_dust = np.where(self.low_dust > smoothing_cutoff, 1, 0)
 
     def read_dustmap(self, dustmap_file=None):
-        """Read the dustmap from rubin_scheduler, in the appropriate resolution."""
+        """Read the dustmap from rubin_scheduler, in the
+        appropriate resolution."""
         # Dustmap from rubin_sim_data
         if dustmap_file is None:
             datadir = rs_data.get_data_dir()

@@ -7,7 +7,8 @@ from rubin_scheduler.utils import SpecMap, default_spec_map
 class SpecMapTest(unittest.TestCase):
     def verify_file(self, file_name, dir_name, test_spec_map=default_spec_map):
         """
-        Verify that test_spec_map[file_name] results in os.path.join(dir_name, file_name+'.gz')
+        Verify that test_spec_map[file_name] results in
+        os.path.join(dir_name, file_name+'.gz')
         """
         test_name = test_spec_map[file_name]
         control_name = os.path.join(dir_name, file_name + ".gz")

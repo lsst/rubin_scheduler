@@ -42,9 +42,10 @@ class TestUtils(unittest.TestCase):
         observatory, scheduler, observations = run_sched(scheduler, mjd_start=mjd_start, survey_length=7)
         u_notes = np.unique(observations["note"])
 
-        # Note that some of these may change and need to be updated if survey
-        # start date changes, e.g., different DDFs in season, or different lunar phase
-        # means different filters get picked for the blobs
+        # Note that some of these may change and need to be updated if
+        # survey start date changes, e.g., different DDFs in season,
+        # or different lunar phase means different filters get picked
+        # for the blobs
         notes_to_check = [
             "blob_long, gr, a",
             "blob_long, gr, b",
@@ -94,7 +95,8 @@ class TestUtils(unittest.TestCase):
         "Test data not available.",
     )
     def test_altaz_limit(self):
-        """Test that setting some azimuth limits via the kinematic model works"""
+        """Test that setting some azimuth limits via the kinematic
+        model works"""
         mjd_start = survey_start_mjd()
         scheduler = example_scheduler(mjd_start=mjd_start)
         km = KinemModel(mjd0=mjd_start)
@@ -111,7 +113,8 @@ class TestUtils(unittest.TestCase):
 
         az = np.degrees(observations["az"])
         forbidden = np.where((az > 90) & (az < 270))[0]
-        # Let a few pairs try to complete since by default we don't use an agressive shadow_minutes
+        # Let a few pairs try to complete since by default we don't
+        # use an agressive shadow_minutes
         n_forbidden = np.size(
             [obs for obs in observations[forbidden]["note"] if (("pair_33" not in obs) | (", b" not in obs))]
         )
@@ -185,8 +188,8 @@ class TestUtils(unittest.TestCase):
             n_visit_limit=new_n_limit,
         )
 
-        # Check that observations taken after restart match those from before
-        # Jenkins can be bad at comparing things, so if it thinks
+        # Check that observations taken after restart match those from
+        # before Jenkins can be bad at comparing things, so if it thinks
         # they aren't the same, check column-by-column to double check
         if not np.all(new_obs == observations[break_indx:]):
             names = new_obs.dtype.names
@@ -218,9 +221,10 @@ class TestUtils(unittest.TestCase):
             n_visit_limit=new_n_limit,
         )
 
-        # Check that observations taken after restart match those from before
-        # Jenkins can be bad at comparing things, so if it thinks
-        # they aren't the same, check column-by-column to double check
+        # Check that observations taken after restart match those
+        # from before Jenkins can be bad at comparing things, so if
+        # it thinks they aren't the same, check column-by-column to
+        # double check
         if not np.all(new_obs_fast == observations[break_indx:]):
             names = new_obs_fast.dtype.names
             for name in names:

@@ -37,7 +37,8 @@ class TestSkyPre(unittest.TestCase):
                 mjds.append(mjd)
                 mjds.append(mjd + 0.0002)
 
-            # Make sure there's an mjd that is between sunrise/set that gets tested
+            # Make sure there's an mjd that is between sunrise/set
+            # that gets tested
             diff = sms[0].mjds[1:] - sms[0].mjds[0:-1]
             between = np.where(diff >= timestep_max)[0][0]
             mjds.append(sms[0].mjds[between + 1] + timestep_max)

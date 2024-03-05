@@ -74,7 +74,8 @@ class HaMaskBasisFunction(BaseBasisFunction):
 
 
 class AreaCheckMaskBasisFunction(BaseBasisFunction):
-    """Take a list of other mask basis functions, and do an additional check for area available"""
+    """Take a list of other mask basis functions, and do an additional
+    check for area available"""
 
     def __init__(self, bf_list, nside=32, min_area=1000.0):
         super(AreaCheckMaskBasisFunction, self).__init__(nside=nside)
@@ -169,8 +170,9 @@ class PlanetMaskBasisFunction(BaseBasisFunction):
     mask_radius : float (3.5)
         The radius to mask around a planet (degrees).
     planets : list of str (None)
-        A list of planet names to mask. Defaults to ['venus', 'mars', 'jupiter']. Not including
-        Saturn because it moves really slow and has average apparent mag of ~0.4, so fainter than Vega.
+        A list of planet names to mask. Defaults to ['venus', 'mars',
+        'jupiter']. Not including Saturn because it moves really slow
+        and has average apparent mag of ~0.4, so fainter than Vega.
 
     """
 
@@ -237,9 +239,9 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         in_range_az = np.zeros(hp.nside2npix(self.nside), dtype=int)
 
         # Compute the alt,az values in the future. Use the conditions object
-        # so the results are cached and can be used by other surveys is needed.
-        # Technically this could fail if the masked region is very narrow or shadow time
-        # is very large.
+        # so the results are cached and can be used by other surveys is
+        # needed. Technically this could fail if the masked region is
+        # very narrow or shadow time is very large.
         future_alt, future_az = conditions.future_alt_az(np.max(conditions.mjd + self.shadow_time))
 
         # apply limits from the conditions object
@@ -270,7 +272,8 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         passed_all = np.where((in_range_alt > 1) & (in_range_az > 1))[0]
         result[passed_all] = 0
 
-        # Apply additional alt constraint in case we want to be more conservative than the limit
+        # Apply additional alt constraint in case we want to be more
+        # conservative than the limit
         result[np.where(IntRounded(conditions.alt) < IntRounded(self.min_alt))] = np.nan
         result[np.where(IntRounded(conditions.alt) > IntRounded(self.max_alt))] = np.nan
 
@@ -281,8 +284,9 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
 
 
 class ZenithShadowMaskBasisFunction(BaseBasisFunction):
-    """Mask the zenith, and things that will soon pass near zenith. Useful for making sure
-    observations will not be too close to zenith when they need to be observed again (e.g. for a pair).
+    """Mask the zenith, and things that will soon pass near zenith.
+    Useful for making sure observations will not be too close to zenith
+    when they need to be observed again (e.g. for a pair).
 
     Parameters
     ----------
@@ -291,7 +295,8 @@ class ZenithShadowMaskBasisFunction(BaseBasisFunction):
     max_alt : float (82.)
         The maximum altitude to alow. Everything higher is masked. (degrees)
     shadow_minutes : float (40.)
-        Mask anything that will pass through the max alt in the next shadow_minutes time. (minutes)
+        Mask anything that will pass through the max alt in the next
+        shadow_minutes time. (minutes)
     """
 
     def __init__(
@@ -356,7 +361,8 @@ class MoonAvoidanceBasisFunction(BaseBasisFunction):
     moon_distance: float (30.)
         Minimum allowed moon distance. (degrees)
 
-    XXX--TODO:  This could be a more complicated function of filter and moon phase.
+    XXX--TODO:  This could be a more complicated function of filter
+    and moon phase.
     """
 
     def __init__(self, nside=None, moon_distance=30.0):
@@ -387,9 +393,11 @@ class BulkCloudBasisFunction(BaseBasisFunction):
     nside: int (default_nside)
         The healpix resolution.
     max_cloud_map : numpy array (None)
-        A healpix map showing the maximum allowed cloud values for all points on the sky
+        A healpix map showing the maximum allowed cloud values for all
+        points on the sky
     out_of_bounds_val : float (10.)
-        Point value to give regions where there are no observations requested
+        Point value to give regions where there are no observations
+        requested
     """
 
     def __init__(self, nside=None, max_cloud_map=None, max_val=0.7, out_of_bounds_val=np.nan):
@@ -412,8 +420,8 @@ class BulkCloudBasisFunction(BaseBasisFunction):
             Index values to compute, if None, full map is computed
         Returns
         -------
-        Healpix map where pixels with a cloud value greater than the max_cloud_map
-        value are marked as unseen.
+        Healpix map where pixels with a cloud value greater than the
+        max_cloud_map value are marked as unseen.
         """
 
         result = self.result.copy()
@@ -434,9 +442,11 @@ class MapCloudBasisFunction(BaseBasisFunction):
     nside: int (default_nside)
         The healpix resolution.
     max_cloud_map : numpy array (None)
-        A healpix map showing the maximum allowed cloud values for all points on the sky
+        A healpix map showing the maximum allowed cloud values for all
+        points on the sky
     out_of_bounds_val : float (10.)
-        Point value to give regions where there are no observations requested
+        Point value to give regions where there are no observations
+        requested
     """
 
     def __init__(self, nside=None, max_cloud_map=None, max_val=0.7, out_of_bounds_val=np.nan):
@@ -459,8 +469,8 @@ class MapCloudBasisFunction(BaseBasisFunction):
             Index values to compute, if None, full map is computed
         Returns
         -------
-        Healpix map where pixels with a cloud value greater than the max_cloud_map
-        value are marked as unseen.
+        Healpix map where pixels with a cloud value greater than the
+        max_cloud_map value are marked as unseen.
         """
 
         result = self.result.copy()

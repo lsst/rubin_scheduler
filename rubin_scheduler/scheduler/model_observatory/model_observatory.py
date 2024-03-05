@@ -65,56 +65,67 @@ class ModelObservatory:
         nside : int (None)
             The healpix nside resolution
         mjd_start : float (None)
-            The MJD to start the observatory up at. Uses util to lookup default if None.
+            The MJD to start the observatory up at. Uses util to lookup
+            default if None.
         alt_min : float (5.)
             The minimum altitude to compute models at (degrees).
         lax_dome : bool (True)
             Passed to observatory model. If true, allows dome creep.
         cloud_limit : float (0.3)
-            The limit to stop taking observations if the cloud model returns something equal or higher
+            The limit to stop taking observations if the cloud model returns
+            something equal or higher
         sim_to_o : sim_targetoO object (None)
-            If one would like to inject simulated ToOs into the telemetry stream.
+            If one would like to inject simulated ToOs into the telemetry
+            stream.
         seeing_db : filename of the seeing data database (None)
             If one would like to use an alternate seeing database
         park_after : float (10)
             Park the telescope after a gap longer than park_after (minutes)
         init_load_length : int (10)
-            The length of pre-scheduled sky brighntess to load initially (days).
+            The length of pre-scheduled sky brighntess to load initially
+            (days).
         kinem_model : kinematic model object (None)
-            A instantiated rubin_scheduler.scheduler.model_observatory.Kinem_model object. If None, the
-            default is used
+            A instantiated
+            rubin_scheduler.scheduler.model_observatory.Kinem_model
+            object. If None, the default is used
         cloud_db : str (None)
-            The file to use for clouds. Default of None uses the database in rubin_sim_data.
+            The file to use for clouds. Default of None uses the database in
+            rubin_sim_data.
         cloud_offset_year : 0
             The year offset to be passed to CloudData.
         cloud_data : None
-            If one wants to replace the default cloud data. Should be an object with a
-            __call__ method that takes MJD and returns cloudy level. Set to "ideal" for
-            no clouds.
+            If one wants to replace the default cloud data. Should be an
+            object with a __call__ method that takes MJD and returns
+            cloudy level. Set to "ideal" for  no clouds.
         seeing_data : None
-            If one wants to replace the default seeing_data object. Should be an object with a
-            __call__ method that takes MJD and returns zenith fwhm_500 in arcsec. Set to
-            "ideal" to have constant 0.7" seeing.
+            If one wants to replace the default seeing_data object.
+            Should be an object with a
+            __call__ method that takes MJD and returns zenith fwhm_500 in
+            arcsec. Set to "ideal" to have constant 0.7" seeing.
         downtimes : None
-            If one wants to replace the default downtimes. Should be a np.array with columns
-            of "start" and "end" with MJD values and should include both scheduled and unscheduled downtime.
+            If one wants to replace the default downtimes. Should be a
+            np.array with columns of "start" and "end" with MJD values
+            and should include both scheduled and unscheduled downtime.
             Set to "ideal" for no downtime.
         no_sky : bool
-            Don't bother loading sky files. Handy if one wants a well filled out Conditions object,
-            but doesn't need the sky since that can be slower to load. Default False.
+            Don't bother loading sky files. Handy if one wants a well
+            filled out Conditions object, but doesn't need the sky since
+            that can be slower to load. Default False.
         wind_data : None
-            If one wants to replace the default wind_data object. Should be an
-            object with a __call__ method that takes the time and returns a
-            tuple with the wind speed (m/s) and originating direction (radians
-            east of north)
+            If one wants to replace the default wind_data object. Should
+            be an object with a __call__ method that takes the time and
+            returns a tuple with the wind speed (m/s) and originating
+            direction (radians east of north)
         starting_time_key : str
-            What key in the almanac to use to determine the start of observing on a night.
-            Default "sun_n12_setting", e.g., sun at -12 degrees and setting. Other
-            options are "sun_n18_setting" and "sunset"
+            What key in the almanac to use to determine the start of
+            observing on a night. Default "sun_n12_setting", e.g., sun
+            at -12 degrees and setting. Other options are
+            "sun_n18_setting" and "sunset"
         ending_time_key : str
-            What key in the almanac to use to signify it is time to skip to the next night.
-            Default "sun_n12_rising", e.g., sun at -12 degrees and rising. Other
-            options are "sun_n18_rising" and "sunrise"
+            What key in the almanac to use to signify it is time to skip
+            to the next night. Default "sun_n12_rising", e.g., sun at
+            -12 degrees and rising. Other options are "sun_n18_rising"
+            and "sunrise"
         """
 
         if nside is None:
@@ -283,7 +294,8 @@ class ModelObservatory:
         # Clouds. XXX--just the raw value
         self.conditions.bulk_cloud = self.cloud_data(current_time)
 
-        # use conditions object itself to get aprox altitude of each healpx
+        # use conditions object itself to get aprox altitude of each
+        # healpx
         alts = self.conditions.alt
         azs = self.conditions.az
 
@@ -492,12 +504,14 @@ class ModelObservatory:
         -------
         mjd_ok : `bool`
         mdj : `float`
-            If True, the input mjd. If false, a good mjd to skip forward to.
+            If True, the input mjd. If false, a good mjd to skip
+            forward to.
         """
         passed = True
         new_mjd = mjd + 0
 
-        # Maybe set this to a while loop to make sure we don't land on another cloudy time?
+        # Maybe set this to a while loop to make sure we don't
+        # land on another cloudy time?
         # or just make this an entire recursive call?
         clouds = self.cloud_data(Time(mjd, format="mjd"))
 
@@ -545,7 +559,8 @@ class ModelObservatory:
 
         obs_pa = _approx_altaz2pa(alt, az, self.site.latitude_rad)
 
-        # If the observation has a rotTelPos set, use it to compute rotSkyPos
+        # If the observation has a rotTelPos set, use it to compute
+        # rotSkyPos
         if np.isfinite(observation["rotTelPos"]):
             observation["rotSkyPos"] = (obs_pa + observation["rotTelPos"]) % (2 * np.pi)
             observation["rotTelPos"] = np.nan
@@ -569,7 +584,8 @@ class ModelObservatory:
         Returns
         -------
         observation : observation object
-            None if there was no observation taken. Completed observation with meta data filled in.
+            None if there was no observation taken. Completed
+            observation with meta data filled in.
         new_night : bool
             Have we started a new night.
         """
@@ -579,15 +595,17 @@ class ModelObservatory:
         if np.isnan(observation["rotSkyPos"]):
             observation = self._update_rot_sky_pos(observation)
 
-        # If there has been a long gap, assume telescope stopped tracking and parked
+        # If there has been a long gap, assume telescope stopped
+        # tracking and parked
         gap = self.mjd - self.observatory.last_mjd
         if gap > self.park_after:
             self.observatory.park()
 
         # Compute what alt,az we have tracked to (or are parked at)
         start_alt, start_az, start_rot_tel_pos = self.observatory.current_alt_az(self.mjd)
-        # Slew to new position and execute observation. Use the requested rotTelPos position,
-        # obsevation['rotSkyPos'] will be ignored.
+        # Slew to new position and execute observation. Use the
+        # requested rotTelPos position, obsevation['rotSkyPos'] will
+        # be ignored.
         slewtime, visittime = self.observatory.observe(
             observation,
             self.mjd,
@@ -595,7 +613,8 @@ class ModelObservatory:
             lax_dome=self.lax_dome,
         )
 
-        # inf slewtime means the observation failed (probably outside alt limits)
+        # inf slewtime means the observation failed (probably outside
+        # alt limits)
         if ~np.all(np.isfinite(slewtime)):
             return None, False
 
@@ -611,7 +630,8 @@ class ModelObservatory:
                 self.observatory.last_alt_rad,
             )
             self.mjd = self.mjd + slewtime / 24.0 / 3600.0
-            # Reach into the observatory model to pull out the relevant data it has calculated
+            # Reach into the observatory model to pull out the
+            # relevant data it has calculated
             # Note, this might be after the observation has been completed.
             observation["alt"] = self.observatory.last_alt_rad
             observation["az"] = self.observatory.last_az_rad
@@ -620,7 +640,8 @@ class ModelObservatory:
             observation["rotSkyPos"] = self.observatory.current_rot_sky_pos_rad
             observation["cummTelAz"] = self.observatory.cumulative_azimuth_rad
 
-            # Metadata on observation is after slew and settle, so at start of exposure.
+            # Metadata on observation is after slew and settle,
+            # so at start of exposure.
             result = self.observation_add_data(observation)
             self.mjd = self.mjd + visittime / 24.0 / 3600.0
             new_night = False

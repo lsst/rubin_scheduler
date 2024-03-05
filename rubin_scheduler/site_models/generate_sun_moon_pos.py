@@ -59,10 +59,12 @@ if __name__ == "__main__":
     sun_moon_sep = _angular_separation(sun.ra.rad, sun.dec.rad, moon.ra.rad, moon.dec.rad)
     sun_moon_info["moon_phase"] = sun_moon_sep / np.pi * 100.0
 
-    # Let's cut down a bit, no need to save info when the sun is high in the sky
+    # Let's cut down a bit, no need to save info when the sun is
+    # high in the sky
     good_suns = np.where(sun_moon_info["sun_alt"] < np.radians(10.0))
     sun_moon_info = sun_moon_info[good_suns]
 
     np.savez("sun_moon.npz", sun_moon_info=sun_moon_info)
 
-    # Takes 6.25 mintues for 221,072.  In a sim, I need 5e6, so 141 min--over 2 hours.
+    # Takes 6.25 mintues for 221,072.  In a sim, I need 5e6, so
+    # 141 min--over 2 hours.

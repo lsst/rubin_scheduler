@@ -21,24 +21,28 @@ class DeepDrillingSurvey(BaseSurvey):
 
     Parameters
     ----------
-    basis_functions : list of rubin_scheduler.scheduler.basis_function objects
+    basis_functions : list of rubin_scheduler.scheduler.basis_function
         These should be feasibility basis functions.
     RA : float
         The RA of the field (degrees)
     dec : float
         The dec of the field to observe (degrees)
     sequence : list of observation objects or str (rgizy)
-        The sequence of observations to take. Can be a string of list of obs objects.
+        The sequence of observations to take. Can be a string of
+        list of obs objects.
     nvis : list of ints
-        The number of visits in each filter. Should be same length as sequence.
+        The number of visits in each filter. Should be same length
+        as sequence.
     survey_name : str (DD)
         The name to give this survey so it can be tracked
     reward_value : float (101.)
         The reward value to report if it is able to start (unitless).
     readtime : float (2.)
-        Readout time for computing approximate time of observing the sequence. (seconds)
+        Readout time for computing approximate time of observing
+        the sequence. (seconds)
     flush_pad : float (30.)
-        How long to hold observations in the queue after they were expected to be completed (minutes).
+        How long to hold observations in the queue after they
+        were expected to be completed (minutes).
     """
 
     def __init__(
@@ -101,7 +105,8 @@ class DeepDrillingSurvey(BaseSurvey):
 
         n_filter_change = np.size(np.unique(self.observations["filter"]))
 
-        # Make an estimate of how long a seqeunce will take. Assumes no major rotational or spatial
+        # Make an estimate of how long a seqeunce will take.
+        # Assumes no major rotational or spatial
         # dithering slowing things down.
         self.approx_time = (
             np.sum(self.observations["exptime"] + readtime * self.observations["nexp"]) / 3600.0 / 24.0
@@ -120,11 +125,14 @@ class DeepDrillingSurvey(BaseSurvey):
     def check_continue(self, observation, conditions):
         # feasibility basis functions?
         """
-        This method enables external calls to check if a given observations that belongs to this survey is
-        feasible or not. This is called once a sequence has started to make sure it can continue.
+        This method enables external calls to check if a given
+        observations that belongs to this survey is
+        feasible or not. This is called once a sequence has
+        started to make sure it can continue.
 
-        XXX--TODO:  Need to decide if we want to develope check_continue, or instead hold the
-        sequence in the survey, and be able to check it that way.
+        XXX--TODO:  Need to decide if we want to develope check_continue,
+        or instead hold the sequence in the survey, and be able to check
+        it that way.
         """
 
         result = True
@@ -137,8 +145,9 @@ class DeepDrillingSurvey(BaseSurvey):
             if self.reward_value is not None:
                 result = self.reward_value
             else:
-                # XXX This might backfire if we want to have DDFs with different fractions of the
-                # survey time. Then might need to define a goal fraction, and have the reward be the
+                # XXX This might backfire if we want to have DDFs with
+                # different fractions of the survey time. Then might need
+                # to define a goal fraction, and have the reward be the
                 # number of observations behind that target fraction.
                 result = self.extra_features["Ntot"].feature / (self.extra_features["N_survey"].feature + 1)
         return result
@@ -159,7 +168,8 @@ class DeepDrillingSurvey(BaseSurvey):
             ind2 = np.where(result["filter"] != conditions.current_filter)[0]
             result = result[ind1.tolist() + (ind2.tolist())]
 
-            # convert to list of array. Arglebargle, don't understand why I need a reshape there
+            # convert to list of array. Arglebargle, don't understand
+            # why I need a reshape there
             final_result = [
                 row.reshape(
                     1,
@@ -380,7 +390,8 @@ def generate_dd_surveys(
     filters = "urgizy"
     nviss = nvis_master
     survey_name = "DD:EDFS"
-    # Note the sequences need to be in radians since they are using observation objects directly
+    # Note the sequences need to be in radians since they are using
+    # observation objects directly
     # Coords from jc.cuillandre@cea.fr Oct 15, 2020
     r_as = np.radians([locations["EDFS_a"][0], locations["EDFS_b"][0]])
     decs = np.radians([locations["EDFS_a"][1], locations["EDFS_b"][1]])
@@ -403,7 +414,8 @@ def generate_dd_surveys(
                 sequence.append(obs)
 
     ha_limits = ([0.0, 1.5], [22.5, 24.0])
-    # And back to degrees for the basis function. Need to bump up the time needed since it's a double field.
+    # And back to degrees for the basis function. Need to bump up the
+    # time needed since it's a double field.
     bfs = dd_bfs(
         np.degrees(r_as[0]),
         np.degrees(decs[0]),

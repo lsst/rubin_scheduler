@@ -1,6 +1,7 @@
 """
-This file contains coordinate transformation methods and utilities for converting an ra,dec coordinate set to
-cartesian coordinates and to grid id using a spatial tree.
+This file contains coordinate transformation methods and utilities
+for converting an ra,dec coordinate set to cartesian coordinates and
+to grid id using a spatial tree.
 """
 
 __all__ = ("_build_tree",)
@@ -13,7 +14,8 @@ from rubin_scheduler.utils.coordinate_transformations import _xyz_from_ra_dec
 
 def _build_tree(ra, dec, leafsize=100, scale=None):
     """
-    Build KD tree on simDataRA/Dec and set radius (via set_rad) for matching.
+    Build KD tree on simDataRA/Dec and set radius (via set_rad) for
+    matching.
 
     Parameters
     ----------
@@ -22,8 +24,9 @@ def _build_tree(ra, dec, leafsize=100, scale=None):
     leafsize : int (100)
         The number of Ra/Dec pointings in each leaf node.
     scale : float (None)
-        If set, the values are scaled up, rounded, and converted to integers. Useful for
-        forcing a set precision and preventing machine precision differences
+        If set, the values are scaled up, rounded, and converted to
+        integers. Useful for forcing a set precision and preventing
+        machine precision differences
     """
     if np.any(np.abs(ra) > np.pi * 2.0) or np.any(np.abs(dec) > np.pi * 2.0):
         raise ValueError("Expecting RA and Dec values to be in radians.")

@@ -20,33 +20,39 @@ class PointingsSurvey(BaseSurvey):
     Parameters
     ----------
     observations : `np.array`
-        An array of observations, from e.g. rubin_scheduler.scheduler.utils.empty_observation
+        An array of observations, from e.g.,
+        rubin_scheduler.scheduler.utils.empty_observation
         expect "RA", "dec", and "note" to be filled, other columns ignored.
     gap_min : `float`
-        The minimum gap to force between observations of the same spot (minutes)
+        The minimum gap to force between observations of the same
+        spot (minutes)
     alt_min : `float`
         Altitude limit of the telescope (degrees). Default 20.
     alt_max : `float`
         Altitude limit of the telescope (degrees). Default 85.
     ha_max, ha_min : `float` (4,-4)
-        hour angle limits (hours). Applied to all observations. Default 4,-4.
+        hour angle limits (hours). Applied to all observations.
+        Default 4,-4.
     weights : `dict`
         Dictionary with keys of method names and values of floats.
         Default of None uses {"visit_gap": 1.0, "balance_revisit": 1.0,
                               "m5diff": 1.0,
                               "wind_limit": 1.0, "slew_time": -1.0,
-                              "ha_limit": 0, "alt_limit": 0, "moon_limit": 0}
+                              "ha_limit": 0, "alt_limit": 0,
+                              "moon_limit": 0}
     wind_speed_maximum : `float`
-        The maximum wind (m/s), mask any targets that would take more wind than that.
-        Default 100 m/s.
+        The maximum wind (m/s), mask any targets that would take more
+        wind than that. Default 100 m/s.
     fiducial_FWHMEff : `float`
         A fiducial seeing value to use when computing dark sky depth.
         Default 0.7 arcsec.
     sun_alt_limit : `float`
-        Have survey as infeasible when sun altitude is above the limit. default -12 (degrees).
+        Have survey as infeasible when sun altitude is above the limit.
+        Default -12 (degrees).
     track_notes_ngoal : `dict`
-        If there are observations that should be tracked together (e.g., a sequence that
-        should be observed together). Dict with keys of str and values of int.
+        If there are observations that should be tracked together
+        (e.g., a sequence that should be observed together). Dict
+        with keys of str and values of int.
     """
 
     def __init__(
@@ -144,7 +150,8 @@ class PointingsSurvey(BaseSurvey):
         return result
 
     def calc_reward_function(self, conditions):
-        """Compute reward function using methods set by `weights` dict on init."""
+        """Compute reward function using methods set by `weights`
+        dict on init."""
         if self.last_computed_reward != conditions.mjd:
             self.alt, self.az = _approx_ra_dec2_alt_az(
                 self.observations["RA"],
@@ -169,8 +176,9 @@ class PointingsSurvey(BaseSurvey):
         return np.nanmax(self.reward)
 
     def generate_observations_rough(self, conditions):
-        """Calculate reward function and highest reward observation. This is usually
-        called by `generate_observations` which will take the result and then apply detailers to them.
+        """Calculate reward function and highest reward observation.
+        This is usually called by `generate_observations` which will
+        take the result and then apply detailers to them.
         """
         max_reward = self.calc_reward_function(conditions)
         # take the first one in the array if there's a tie
@@ -192,7 +200,8 @@ class PointingsSurvey(BaseSurvey):
                 self.tracking_notes[key] += 1
 
     def add_observations_array(self, observations_array_in, observations_hpid_in):
-        """Like `add_observation`, but for a large array of completed observations."""
+        """Like `add_observation`, but for a large array of completed
+        observations."""
         for unote in np.unique(observations_array_in["note"]):
             matching = np.where(observations_array_in["note"] == unote)[0]
             indx = np.where(self.observations["note"] == unote)[0]
@@ -270,7 +279,8 @@ class PointingsSurvey(BaseSurvey):
             lonlat=True,
         )
 
-        # Could do a filter check here and add a penalty for changing filters
+        # Could do a filter check here and add a penalty for changing
+        # filters
 
         return result
 
@@ -322,7 +332,8 @@ class PointingsSurvey(BaseSurvey):
         return scalar_reward, n_unmasked
 
     def make_reward_df(self, conditions, accum=True):
-        """Create a pandas.DataFrame describing the reward from the survey."""
+        """Create a pandas.DataFrame describing the reward from the
+        survey."""
 
         feasibility = []
         max_rewards = []

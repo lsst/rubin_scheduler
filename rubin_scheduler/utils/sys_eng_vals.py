@@ -1,4 +1,5 @@
-# Values from systems engineering that may need to be updated when new filter curves come out
+# Values from systems engineering that may need to be updated when
+# new filter curves come out
 
 __all__ = ("SysEngVals",)
 
@@ -6,7 +7,8 @@ __all__ = ("SysEngVals",)
 class SysEngVals:
     """Object to store values calculated in sys-eng
 
-    generated from notebook in:  https://github.com/lsst-pst/syseng_throughputs/tree/master/notebooks
+    generated from notebook in:
+    https://github.com/lsst-pst/syseng_throughputs/tree/master/notebooks
     """
 
     def __init__(self):

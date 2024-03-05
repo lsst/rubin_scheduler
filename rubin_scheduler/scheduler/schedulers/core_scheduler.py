@@ -16,16 +16,17 @@ from rubin_scheduler.utils import _approx_altaz2pa, _approx_ra_dec2_alt_az, _hpi
 
 
 class CoreScheduler:
-    """Core scheduler that takes requests observations, reports observatory
-    status and provides completed observations.
+    """Core scheduler that takes requests observations,
+    reports observatory status and provides completed observations.
 
     Parameters
     ----------
-    surveys : list (or list of lists) of rubin_scheduler.scheduler.survey objects
+    surveys : list (or list of lists) of rubin_scheduler.scheduler.survey
         A list of surveys to consider.
-        If multiple surveys return the same highest reward value, the survey
-        at the earliest position in the list will be selected.
-        Can also be a list of lists to make heirarchical priorities ('tiers').
+        If multiple surveys return the same highest reward value,
+        the survey at the earliest position in the list will be selected.
+        Can also be a list of lists to make heirarchical priorities
+        ('tiers').
     nside : `int`
         A HEALpix nside value.
     camera : `str`

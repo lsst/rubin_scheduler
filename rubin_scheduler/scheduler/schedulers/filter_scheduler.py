@@ -35,10 +35,11 @@ class SimpleFilterSched(FilterSwapScheduler):
 
 class FilterSchedUzy(FilterSwapScheduler):
     """
-    remove u in bright time. Alternate between removing z and y in dark time.
+    remove u in bright time. Alternate between removing z and y in
+    dark time.
 
-    Note, this might not work properly if we need to restart a bunch. So a more robust
-    way of scheduling filter loading might be in order.
+    Note, this might not work properly if we need to restart a bunch.
+    So a more robust way of scheduling filter loading might be in order.
     """
 
     def __init__(self, illum_limit=10.0):

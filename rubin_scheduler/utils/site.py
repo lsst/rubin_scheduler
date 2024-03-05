@@ -13,7 +13,7 @@ class LsstSiteParameters:
 
     (accessed on 4 January 2016)
 
-    This class only exists for initializing Site with LSST parameter values.
+    This class only exists for initializing Site with LSST parametervalues.
     Users should not be accessing this class directly.
     """
 
@@ -27,22 +27,24 @@ class LsstSiteParameters:
         self.lapse_rate = 0.0065  # in Kelvin per meter
         # the lapse rate was not specified by LSE-30;
         # 0.0065 K/m appears to be the "standard" value
-        # see, for example http://mnras.oxfordjournals.org/content/365/4/1235.full
+        # see, for example
+        # http://mnras.oxfordjournals.org/content/365/4/1235.full
 
 
 class Site:
     """
     This class will store site information for use in Catalog objects.
 
-    Defaults values are LSST site values taken from the Observatory System Specification
-    document
+    Defaults values are LSST site values taken from the Observatory
+    System Specification document
     https://docushare.lsstcorp.org/docushare/dsweb/ImageStoreViewer/LSE-30
     on 4 January 2016
 
     Parameters
     ----------
     name : `str`, opt
-        The name of the observatory. Set to 'LSST' for other parameters to default to LSST values.
+        The name of the observatory. Set to 'LSST' for other parameters
+        to default to LSST values.
     longitude : `float`, opt
         Longitude of the site in degrees.
     latitude : `float`, opt

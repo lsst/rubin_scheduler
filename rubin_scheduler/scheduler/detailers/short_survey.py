@@ -9,8 +9,8 @@ from rubin_scheduler.utils import survey_start_mjd
 
 
 class ShortExptDetailer(BaseDetailer):
-    """Check if the area has been observed with a short exposure time this year.
-    If not, add some short exposures.
+    """Check if the area has been observed with a short exposure time
+    this year. If not, add some short exposures.
 
     Parameters
     ----------
@@ -19,7 +19,8 @@ class ShortExptDetailer(BaseDetailer):
     nobs : `float` (2)
         The number of observations to try and take per year
     night_max : `float` (None)
-        Do not apply any changes to the observation list if the current night is greater than night_max.
+        Do not apply any changes to the observation list if the current
+        night is greater than night_max.
     n_repeat : `int` (1)
         How many short observations to do in a row.
     time_scale : `bool` (False)
@@ -63,8 +64,9 @@ class ShortExptDetailer(BaseDetailer):
         self.obs2hpid = HpInLsstFov(nside=nside)
 
     def __call__(self, observation_list, conditions):
-        # XXX--this logic would probably make more sense as a feasability basis function.
-        # Might consider expanding the detailer base class to include basis functions.
+        # XXX--this logic would probably make more sense as a feasability
+        # basis function. Might consider expanding the detailer base class
+        # to include basis functions.
         if self.night_max is not None:
             if conditions.night > self.night_max:
                 return observation_list

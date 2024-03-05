@@ -7,7 +7,8 @@ from rubin_scheduler.data import get_data_dir
 from rubin_scheduler.site_models import SeeingData
 
 # Unit test here uses oldest/original opsim seeing database, "Seeing.db".
-# Could be updated to use a new DB, but that would require changing some of these hard-coded numbers.
+# Could be updated to use a new DB, but that would require
+# changing some of these hard-coded numbers.
 
 
 class TestSeeingData(unittest.TestCase):
@@ -38,7 +39,8 @@ class TestSeeingData(unittest.TestCase):
         # Test time selection from seeing data.
         dt = TimeDelta(800, format="sec")
         fwhm500 = seeing_data(self.time + dt)
-        # Hack seeing data to remove first date, thus db does not start at zero.
+        # Hack seeing data to remove first date, thus db does not start
+        # at zero.
         seeing_data.seeing_dates = seeing_data.seeing_dates[:-1]
         seeing_data.seeing_values = seeing_data.seeing_values[:-1]
         seeing_data.time_range = seeing_data.seeing_dates[-1] - seeing_data.seeing_dates[0]

@@ -23,11 +23,12 @@ class FootprintBasisFunction(BaseBasisFunction):
     footprint : rubin_scheduler.scheduler.utils.Footprint object
         The desired footprint.
     all_footprints_sum : float (None)
-        If using multiple filters, the sum of all the footprints. Needed to make sure basis functions are
-        normalized properly across all fitlers.
+        If using multiple filters, the sum of all the footprints. Needed
+        to make sure basis functions are normalized properly across all
+        fitlers.
     out_of_bounds_val : float (-10)
-        The value to set the basis function for regions that are not in the footprint (default -10, np.nan is
-        another good value to use)
+        The value to set the basis function for regions that are not in
+        the footprint (default -10, np.nan is another good value to use)
 
     """
 
@@ -52,7 +53,8 @@ class FootprintBasisFunction(BaseBasisFunction):
         self.out_of_bounds_val = out_of_bounds_val
 
     def _calc_value(self, conditions, indx=None):
-        # Find out what the footprint object thinks we should have been observed
+        # Find out what the footprint object thinks we should have been
+        # observed
         desired_footprint_normed = self.footprint(conditions.mjd)[self.filtername]
 
         # Compute how many observations we should have on the sky
@@ -68,7 +70,8 @@ class FootprintRollingBasisFunction(BaseBasisFunction):
     Parameters
     ----------
     footprints : list of np.array
-        List of HEALpix arrays. The footprints should all have matching sums and have the same nside.
+        List of HEALpix arrays. The footprints should all have matching
+        sums and have the same nside.
     all_footprints_sum : float
         The sum of footprints over all filters.
     all_rolling_sum : float
@@ -78,7 +81,8 @@ class FootprintRollingBasisFunction(BaseBasisFunction):
     season_length : float (365.25)
         How long a season should be (days).
     max_season : int (None)
-        If set, the season calc will return -1 for values greater than max_season
+        If set, the season calc will return -1 for values greater than
+        max_season
     day_offset : np.array (None)
         Offset to pass to utils.season_calc (days).
 
@@ -100,8 +104,9 @@ class FootprintRollingBasisFunction(BaseBasisFunction):
     ):
         super(FootprintRollingBasisFunction, self).__init__(nside=nside, filtername=filtername)
 
-        # OK, going to find the parts of the map that are the same everywhere, and compute the
-        # basis function the same as usual for those.
+        # OK, going to find the parts of the map that are the same
+        # everywhere, and compute the basis function the same as usual
+        # for those.
         same_footprint = np.ones(footprints[0].size, dtype=bool)
         for footprint in footprints[0:-1]:
             same_footprint = same_footprint & (footprint == footprints[-1])
@@ -220,33 +225,38 @@ class FootprintRollingBasisFunction(BaseBasisFunction):
 
 
 class TargetMapModuloBasisFunction(BaseBasisFunction):
-    """Basis function that tracks number of observations and tries to match a specified spatial distribution
-    can enter multiple maps that will be used at different times in the survey
+    """Basis function that tracks number of observations and tries to match
+    a specified spatial distribution can enter multiple maps that will be
+    used at different times in the survey
 
     Parameters
     ----------
     day_offset : np.array
-        Healpix map that has the offset to be applied to each pixel when computing what season it is on.
+        Healpix map that has the offset to be applied to each pixel when
+        computing what season it is on.
     filtername : (string 'r')
         The name of the filter for this target map.
     nside: int (default_nside)
         The healpix resolution.
     target_maps : list of numpy array (None)
-        healpix maps showing the ratio of observations desired for all points on the sky.
-        Last map will be used for season -1. Probably shouldn't support going to season
-        less than -1.
+        healpix maps showing the ratio of observations desired for all
+        points on the sky. Last map will be used for season -1. Probably
+        shouldn't support going to season less than -1.
     norm_factor : float (0.00010519)
-        for converting target map to number of observations. Should be the area of the camera
-        divided by the area of a healpixel divided by the sum of all your goal maps. Default
-        value assumes LSST foV has 1.75 degree radius and the standard goal maps. If using
-        mulitple filters, see rubin_scheduler.scheduler.utils.calc_norm_factor for a utility
-        that computes norm_factor.
+        for converting target map to number of observations. Should be the
+        area of the camera divided by the area of a healpixel divided by
+        the sum of all your goal maps. Default value assumes LSST foV has
+        1.75 degree radius and the standard goal maps. If using mulitple
+        filters, see rubin_scheduler.scheduler.utils.calc_norm_factor for
+        a utility that computes norm_factor.
     out_of_bounds_val : float (-10.)
-        Reward value to give regions where there are no observations requested (unitless).
+        Reward value to give regions where there are no observations
+        requested (unitless).
     season_modulo : int (2)
         The value to modulate the season by (years).
     max_season : int (None)
-        For seasons higher than this value (pre-modulo), the final target map is used.
+        For seasons higher than this value (pre-modulo), the final target
+        map is used.
 
     """
 

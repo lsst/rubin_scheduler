@@ -37,18 +37,21 @@ def sim_runner(
     survey_length : float (3.)
         The length of the survey ot run (days)
     step_none : float (15)
-        The amount of time to advance if the scheduler fails to return a target (minutes).
+        The amount of time to advance if the scheduler fails to
+        return a target (minutes).
     extra_info : dict (None)
-        If present, dict gets added onto the information from the observatory model.
+        If present, dict gets added onto the information from the
+        observatory model.
     event_table : np.array (None)
         Any ToO events that were included in the simulation
     record_rewards : bool (False)
         Save computed rewards
     start_result_size : int
-        Size of observations array to pre-allocate at the start of the run. Default 2e5.
+        Size of observations array to pre-allocate at the start of
+        the run. Default 2e5.
     append_result_size : int
-        Size of observations array to append if start_result_size is too small.
-        Default 2.5e6.
+        Size of observations array to append if start_result_size is
+        too small. Default 2.5e6.
     """
 
     if extra_info is None:
@@ -111,7 +114,8 @@ def sim_runner(
             if record_rewards:
                 obs_rewards[completed_obs[0]["mjd"]] = last_obs_queue_fill_mjd_ns
         else:
-            # An observation failed to execute, usually it was outside the altitude limits.
+            # An observation failed to execute, usually it was outside
+            # the altitude limits.
             if observatory.mjd == mjd_last_flush:
                 raise RuntimeError("Scheduler has failed to provide a valid observation multiple times.")
             # if this is a first offence, might just be that targets set.
@@ -171,7 +175,8 @@ def sim_runner(
                     reward_df.to_sql("rewards", con)
                     obs_rewards_series.to_sql("obs_rewards", con)
     else:
-        # Make sure there is something to return if there are no observations
+        # Make sure there is something to return if there are no
+        # observations
         reward_df = None
         obs_rewards_series = None
 

@@ -13,21 +13,24 @@ from rubin_scheduler.data import get_data_dir
 class CloudData:
     """Handle the cloud information.
 
-    This class deals with the cloud information that was previously produced for
-    OpSim version 3.
+    This class deals with the cloud information that was previously
+    produced for OpSim version 3.
 
     Parameters
     ----------
     start_time : astropy.time.Time
         The time of the start of the simulation.
-        The cloud database will be assumed to start on Jan 01 of the same year.
+        The cloud database will be assumed to start on Jan 01 of
+        the same year.
     cloud_db : str, optional
         The full path name for the cloud database. Default None,
-        which will use the database stored in the module (site_models/clouds_ctio_1975_2022.db).
+        which will use the database stored in the module
+        (site_models/clouds_ctio_1975_2022.db).
     offset_year : float, optional
         Offset into the cloud database by 'offset_year' years. Default 0.
     scale : float (1e6)
-        Enforce machine precision for cross-platform repeatability by scaling and rounding date values.
+        Enforce machine precision for cross-platform repeatability by
+        scaling and rounding date values.
     """
 
     def __init__(self, start_time, cloud_db=None, offset_year=0, scale=1e6):
@@ -35,7 +38,8 @@ class CloudData:
         if self.cloud_db is None:
             self.cloud_db = os.path.join(get_data_dir(), "site_models", "clouds_ctio_1975_2022.db")
 
-        # Cloud database starts in Jan 01 of the year of the start of the simulation.
+        # Cloud database starts in Jan 01 of the year of the
+        # start of the simulation.
         year_start = start_time.datetime.year + offset_year
         self.start_time = Time("%d-01-01" % year_start, format="isot", scale="tai")
 
@@ -50,14 +54,16 @@ class CloudData:
         Parameters
         ----------
         time : astropy.time.Time
-            Time in the simulation for which to find the current cloud coverage.
-            The difference between this time and the start_time, plus the offset,
-            will be used to query the cloud database for the 'current' conditions.
+            Time in the simulation for which to find the current cloud
+            coverage. The difference between this time and the start_time,
+            plus the offset, will be used to query the cloud database
+            for the 'current' conditions.
 
         Returns
         -------
         float
-            The fraction of the sky that is cloudy (measured in steps of 8ths) closest to the specified time.
+            The fraction of the sky that is cloudy (measured in
+            steps of 8ths) closest to the specified time.
         """
         delta_time = (time - self.start_time).sec
         dbdate = delta_time % self.time_range + self.min_time
@@ -84,14 +90,16 @@ class CloudData:
     def read_data(self):
         """Read the cloud data from disk.
 
-        The default behavior is to use the module stored database. However, an
-        alternate database file can be provided. The alternate database file needs to have a
-        table called *Cloud* with the following columns:
+        The default behavior is to use the module stored database.
+        However, an alternate database file can be provided. The alternate
+        database file needs to have a table called *Cloud* with the
+        following columns:
 
         cloudId
             int : A unique index for each cloud entry.
         c_date
-            int : The time (units=seconds) since the start of the simulation for the cloud observation.
+            int : The time (units=seconds) since the start of the
+            simulation for the cloud observation.
         cloud
             float : The cloud coverage (in steps of 8ths) of the sky.
         """
@@ -103,10 +111,12 @@ class CloudData:
             self.cloud_dates = np.hsplit(results, 2)[0].flatten()
             self.cloud_values = np.hsplit(results, 2)[1].flatten()
             cur.close()
-        # Make sure seeing dates are ordered appropriately (monotonically increasing).
+        # Make sure seeing dates are ordered appropriately (monotonically
+        # increasing).
         ordidx = self.cloud_dates.argsort()
         self.cloud_dates = self.cloud_dates[ordidx]
-        # Record this information, in case the cloud database does not start at t=0.
+        # Record this information, in case the cloud database does not
+        # start at t=0.
         self.min_time = self.cloud_dates[0]
         self.max_time = self.cloud_dates[-1]
         self.time_range = self.max_time - self.min_time
