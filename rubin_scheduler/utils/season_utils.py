@@ -22,12 +22,6 @@ def calc_season(ra, mjd):
         The RA (in degrees) of the point on the sky
     mjd : `np.ndarray`
         The times of the observations, in MJD days
-    mjd_start : `float`
-        The MJD for the start of the survey. If None, uses
-        minimum of input mjd to set a zeropoint
-    ref_RA : `float`
-        The reference RA to use when setting the season
-        zeropoint. If None, uses minimum of input RA.
 
     Returns
     -------
