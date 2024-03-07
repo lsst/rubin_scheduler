@@ -1,6 +1,7 @@
 """
-This file contains coordinate transformation methods that are very thin wrappers
-of palpy methods, or that have no dependence on palpy at all
+This file contains coordinate transformation methods that are
+very thin wrappers of palpy methods, or that have no
+dependence on palpy at all
 """
 
 __all__ = (
@@ -79,9 +80,11 @@ def _alt_az_pa_from_ra_dec(ra, dec, mjd, site_longitude, site_latitude):
     hour_angle = _wrap_hour_angle(lmst.rad - ra)
 
     # Position Angle Equation from:
-    # http://www.gb.nrao.edu/~rcreager/GBTMetrology/140ft/l0058/gbtmemo52/memo52.html
+    # http://www.gb.nrao.edu/~rcreager/GBTMetrology/140ft/l0058/
+    # gbtmemo52/memo52.html
     # or
-    # http://www.gb.nrao.edu/GBT/DA/gbtidl/release2pt9/contrib/contrib/parangle.pro
+    # http://www.gb.nrao.edu/GBT/DA/gbtidl/release2pt9/contrib/
+    # contrib/parangle.pro
     pa = np.arctan2(
         np.sin(hour_angle),
         (np.cos(dec) * np.tan(site_latitude) - np.sin(dec) * np.cos(hour_angle)),
@@ -92,7 +95,8 @@ def _alt_az_pa_from_ra_dec(ra, dec, mjd, site_longitude, site_latitude):
 
 def calc_lmst(mjd, longitude_rad):
     """Calculate the LMST for a location
-    based on:  https://github.com/jhaupt/Sidereal-Time-Calculator/blob/master/SiderealTimeCalculator.py
+    based on:  https://github.com/jhaupt/Sidereal-Time-Calculator/
+    blob/master/SiderealTimeCalculator.py
     which uses:
     http://aa.usno.navy.mil/faq/docs/JD_Formula.php
     http://aa.usno.navy.mil/faq/docs/GAST.php and
@@ -116,8 +120,8 @@ def calc_lmst(mjd, longitude_rad):
     """
     gmst = 18.697374558 + 24.06570982441908 * (mjd - 51544.5)
     gmst = gmst % 24  # to hours
-    longitude = np.degrees(longitude_rad) / 15.0  # Convert longitude to hours
-    lst = gmst + longitude  # Fraction LST. If negative we want to add 24...
+    longitude = np.degrees(longitude_rad) / 15.0  # Convert longi to hours
+    lst = gmst + longitude  # Fraction LST. If negative we want to add 24
     if np.size(lst) == 1:
         if lst < 0:
             lst += 24
@@ -168,7 +172,8 @@ def cartesian_from_spherical(longitude, latitude):
     latitude : `Unknown`
         is a numpy array or number in radians
     a : `Unknown`
-        numpy array of the (three-dimensional) cartesian coordinates on a unit sphere.
+        numpy array of the (three-dimensional) cartesian
+        coordinates on a unit sphere.
 
     if inputs are numpy arrays:
     output[i][0] will be the x-coordinate of the ith point
@@ -250,7 +255,8 @@ def _xyz_from_ra_dec(ra, dec):
 
 def _ra_dec_from_xyz(x, y, z):
     """
-    Utility to convert x,y,z Cartesian coordinates to RA, dec positions in space.
+    Utility to convert x,y,z Cartesian coordinates to RA, dec
+    positions in space.
 
     Parameters
     ----------
@@ -275,7 +281,8 @@ def _ra_dec_from_xyz(x, y, z):
 
 def ra_dec_from_xyz(x, y, z):
     """
-    Utility to convert x,y,z Cartesian coordinates to RA, dec positions in space.
+    Utility to convert x,y,z Cartesian coordinates to RA, dec
+    positions in space.
 
     Parameters
     ----------
@@ -378,7 +385,8 @@ def rot_about_x(vec, theta):
 
 def rotation_matrix_from_vectors(v1, v2):
     """
-    Given two vectors v1,v2 calculate the rotation matrix for v1->v2 using the axis-angle approach
+    Given two vectors v1,v2 calculate the rotation matrix for v1->v2
+    using the axis-angle approach
 
     Parameters
     ----------
@@ -404,7 +412,8 @@ def rotation_matrix_from_vectors(v1, v2):
     cos_dot = np.cos(angle)
 
     # calculate the corresponding rotation matrix
-    # http://en.wikipedia.org/wiki/Rotation_matrix#Rotation_matrix_from_axis_and_angle
+    # http://en.wikipedia.org/wiki/Rotation_matrix#
+    # Rotation_matrix_from_axis_and_angle
     rot = [
         [
             cos_dot + cross[0] * cross[0] * (1 - cos_dot),

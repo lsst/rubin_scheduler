@@ -13,12 +13,16 @@ class UnscheduledDowntimeData:
     ----------
     start_time : `astropy.time.Time`
         The time of the start of the simulation.
-        The cloud database will be assumed to start on Jan 01 of the same year.
+        The cloud database will be assumed to start on Jan 01 of the
+        same year.
     seed : `int`, optional
-        The random seed for creating the random nights of unscheduled downtime. Default 1516231120.
+        The random seed for creating the random nights of unscheduled
+        downtime. Default 1516231120.
     start_of_night_offset : `float`, optional
-        The fraction of a day to offset from MJD.0 to reach the defined start of a night ('noon' works).
-        Default 0.16 (UTC midnight in Chile) - 0.5 (minus half a day) = -0.34
+        The fraction of a day to offset from MJD.0 to reach the
+        defined start of a night ('noon' works).
+        Default 0.16 (UTC midnight in Chile) - 0.5
+        (minus half a day) = -0.34
     survey_length : `int`, optional
         The number of nights in the total survey. Default 3650*2.
     """
@@ -42,7 +46,8 @@ class UnscheduledDowntimeData:
             start_of_night_offset, format="jd"
         )
 
-        # Scheduled downtime data is a np.ndarray of start / end / activity for each scheduled downtime.
+        # Scheduled downtime data is a np.ndarray of start
+        # / end / activity for each scheduled downtime.
         self.downtime = None
         self.make_data()
 
@@ -57,8 +62,9 @@ class UnscheduledDowntimeData:
         Returns
         -------
         downtime : `np.ndarray`
-            The array of all unscheduled downtimes, with keys for 'start', 'end', 'activity',
-            corresponding to `astropy.time.Time`, `astropy.time.Time`, and `str`.
+            The array of all unscheduled downtimes, with keys for
+            'start', 'end', 'activity',  corresponding to
+            `astropy.time.Time`, `astropy.time.Time`, and `str`.
         """
         return self.downtime
 
@@ -76,13 +82,16 @@ class UnscheduledDowntimeData:
     def make_data(self):
         """Configure the set of unscheduled downtimes.
 
-        This function creates the unscheduled downtimes based on a set of probabilities
-        of the downtime type occurance.
+        This function creates the unscheduled downtimes based on a set
+        of probabilities of the downtime type occurance.
 
-        The random downtime is calculated using the following probabilities:
+        The random downtime is calculated using the following
+        probabilities:
 
-        minor event : remainder of night and next day = 5/365 days e.g. power supply failure
-        intermediate : 3 nights = 2/365 days e.g. repair filter mechanism, rotator, hexapod, or shutter
+        minor event : remainder of night and next day = 5/365 days
+        e.g. power supply failure
+        intermediate : 3 nights = 2/365 days e.g. repair filter
+        mechanism, rotator, hexapod, or shutter
         major event : 7 nights = 1/2*365 days
         catastrophic event : 14 nights = 1/3650 days e.g. replace a raft
         """

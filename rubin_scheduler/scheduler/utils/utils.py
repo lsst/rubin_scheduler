@@ -42,7 +42,8 @@ from rubin_scheduler.utils import _build_tree, _hpid2_ra_dec, _xyz_from_ra_dec, 
 
 def smallest_signed_angle(a1, a2):
     """
-    via https://stackoverflow.com/questions/1878907/the-smallest-difference-between-2-angles
+    via https://stackoverflow.com/questions/1878907/
+    the-smallest-difference-between-2-angles
     """
     two_pi = 2.0 * np.pi
     x = a1 % two_pi
@@ -177,7 +178,8 @@ def set_default_nside(nside=None):
 
 
 def restore_scheduler(observation_id, scheduler, observatory, in_obs, filter_sched=None, fast=True):
-    """Put the scheduler and observatory in the state they were in. Handy for checking reward fucnction
+    """Put the scheduler and observatory in the state they were in.
+    Handy for checking reward fucnction
 
     Parameters
     ----------
@@ -188,14 +190,17 @@ def restore_scheduler(observation_id, scheduler, observatory, in_obs, filter_sch
     observatory : rubin_scheduler.scheduler.observatory.Model_observatory
         The observaotry object
     in_obs : np.array or str
-        Array of observations (formated like rubin_scheduler.scheduler.empty_observation). If a string,
+        Array of observations (formated like
+        rubin_scheduler.scheduler.empty_observation). If a string,
         assumed to be a file and SchemaConverter is used to load it.
     filter_sched : rubin_scheduler.scheduler.scheduler object
-        The filter scheduler. Note that we don't look up the official end of the previous night,
-        so there is potential for the loaded filters to not match.
+        The filter scheduler. Note that we don't look up the official
+        end of the previous night, so there is potential for the
+        loaded filters to not match.
     fast : bool (True)
-        If True, loads observations and passes them as an array to the `add_observations_array`
-        method. If False, passes observations individually with `add_observation` method.
+        If True, loads observations and passes them as an array to
+        the `add_observations_array` method. If False,
+        passes observations individually with `add_observation` method.
     """
     if isinstance(in_obs, str):
         sc = SchemaConverter()
@@ -223,7 +228,8 @@ def restore_scheduler(observation_id, scheduler, observatory, in_obs, filter_sch
         # changes.
 
         # Make sure we have mounted the right filters for the night
-        # XXX--note, this might not be exact, but should work most of the time.
+        # XXX--note, this might not be exact, but should work most
+        # of the time.
         mjd_start_night = np.min(observations["mjd"][np.where(observations["night"] == obs["night"])])
         observatory.mjd = mjd_start_night
         conditions = observatory.return_conditions()
@@ -241,7 +247,8 @@ def restore_scheduler(observation_id, scheduler, observatory, in_obs, filter_sch
     observatory.observatory.cumulative_azimuth_rad = obs["cummTelAz"]
     observatory.observatory.current_filter = obs["filter"]
     observatory.observatory.mounted_filters = filters_needed
-    # Note that we haven't updated last_az_rad, etc, but those values should be ignored.
+    # Note that we haven't updated last_az_rad, etc, but those
+    # values should be ignored.
 
     return scheduler, observatory
 
@@ -268,8 +275,8 @@ def int_binned_stat(ids, values, statistic=np.mean):
 
 
 def gnomonic_project_toxy(ra1, dec1, r_acen, deccen):
-    """Calculate x/y projection of ra1/dec1 in system with center at r_acen, deccen.
-    Input radians. Grabbed from sims_selfcal"""
+    """Calculate x/y projection of ra1/dec1 in system with center
+    at r_acen, deccen. Input radians. Grabbed from sims_selfcal"""
     # also used in Global Telescope Network website
     cosc = np.sin(deccen) * np.sin(dec1) + np.cos(deccen) * np.cos(dec1) * np.cos(ra1 - r_acen)
     x = np.cos(dec1) * np.sin(ra1 - r_acen) / cosc
@@ -278,8 +285,8 @@ def gnomonic_project_toxy(ra1, dec1, r_acen, deccen):
 
 
 def gnomonic_project_tosky(x, y, r_acen, deccen):
-    """Calculate RA/dec on sky of object with x/y and RA/Cen of field of view.
-    Returns Ra/dec in radians."""
+    """Calculate RA/dec on sky of object with x/y and RA/Cen of
+    field of view. Returns Ra/dec in radians."""
     denom = np.cos(deccen) - y * np.sin(deccen)
     RA = r_acen + np.arctan2(x, denom)
     dec = np.arctan2(np.sin(deccen) + y * np.cos(deccen), np.sqrt(x * x + denom * denom))
@@ -287,8 +294,8 @@ def gnomonic_project_tosky(x, y, r_acen, deccen):
 
 
 def match_hp_resolution(in_map, nside_out, unseen2nan=True):
-    """Utility to convert healpix map resolution if needed and change hp.UNSEEN values to
-    np.nan.
+    """Utility to convert healpix map resolution if needed and
+    change hp.UNSEEN values to np.nan.
 
     Parameters
     ----------
@@ -312,7 +319,8 @@ def match_hp_resolution(in_map, nside_out, unseen2nan=True):
 def raster_sort(x0, order=["x", "y"], xbin=1.0):
     """XXXX--depriciated, use tsp instead.
 
-    Do a sort to scan a grid up and down. Simple starting guess to traveling salesman.
+    Do a sort to scan a grid up and down. Simple starting guess
+    to traveling salesman.
 
     Parameters
     ----------
@@ -360,11 +368,13 @@ def raster_sort(x0, order=["x", "y"], xbin=1.0):
 
 class SchemaConverter:
     """
-    Record how to convert an observation array to the standard opsim schema
+    Record how to convert an observation array to the standard
+    opsim schema
     """
 
     def __init__(self):
-        # Conversion dictionary, keys are opsim schema, values are observation dtype names
+        # Conversion dictionary, keys are opsim schema, values
+        # are observation dtype names
         self.convert_dict = {
             "observationId": "ID",
             "night": "night",
@@ -406,7 +416,8 @@ class SchemaConverter:
             "note": "note",
             "target": "target",
         }
-        # Column(s) not bothering to remap:  'observationStartTime': None,
+        # Column(s) not bothering to remap:
+        # 'observationStartTime': None,
         self.inv_map = {v: k for k, v in self.convert_dict.items()}
         # angles to convert
         self.angles_rad2deg = [
@@ -518,39 +529,47 @@ def empty_observation(n=1):
     -------
     empty_observation : `np.array`
 
-    The numpy fields have the following labels. These fields are required to be set to be a valid observation
-    the model observatory can execute.
+    The numpy fields have the following labels. These fields are
+    required to be set to be a valid observation the model observatory
+    can execute.
     RA : `float`
-       The Right Acension of the observation (center of the field) (Radians)
+       The Right Acension of the observation (center of the field)
+       (Radians)
     dec : `float`
        Declination of the observation (Radians)
     mjd : `float`
-       Modified Julian Date at the start of the observation (time shutter opens)
+       Modified Julian Date at the start of the observation
+       (time shutter opens)
     exptime : `float`
        Total exposure time of the visit (seconds)
     filter : `str`
         The filter used. Should be one of u, g, r, i, z, y.
     rotSkyPos : `float`
-        The rotation angle of the camera relative to the sky E of N (Radians).
-        Will be ignored if rotTelPos is finite.
+        The rotation angle of the camera relative to the sky E of N
+        (Radians). Will be ignored if rotTelPos is finite.
         If rotSkyPos is set to NaN, rotSkyPos_desired is used.
     rotTelPos : `float`
-        The rotation angle of the camera relative to the telescope (radians).
-        Set to np.nan to force rotSkyPos to be used.
+        The rotation angle of the camera relative to the telescope
+        (radians). Set to np.nan to force rotSkyPos to be used.
     rotSkyPos_desired : `float`
-        If both rotSkyPos and rotTelPos are None/NaN, then rotSkyPos_desired (radians) is used.
-        If rotSkyPos_desired results in a valid rotTelPos, rotSkyPos is set to rotSkyPos_desired.
-        If rotSkyPos and rotTelPos are both NaN, and rotSkyPos_desired results in an out of range value
-        for the camera rotator, then rotTelPos_backup is used.
+        If both rotSkyPos and rotTelPos are None/NaN, then
+        rotSkyPos_desired (radians) is used. If rotSkyPos_desired
+        results in a valid rotTelPos, rotSkyPos is set to
+        rotSkyPos_desired. If rotSkyPos and rotTelPos are both NaN,
+        and rotSkyPos_desired results in an out of range value for the
+        camera rotator, then rotTelPos_backup is used.
     rotTelPos_backup : `float`
-        Rotation angle of the camera relative to the telescope (radians). Only used as a last resort if
-        rotSkyPos and rotTelPos are set to NaN and rotSkyPos_desired results in an out of range rotator value.
+        Rotation angle of the camera relative to the telescope (radians).
+        Only used as a last resort if rotSkyPos and rotTelPos are set
+        to NaN and rotSkyPos_desired results in an out of range rotator
+        value.
     nexp : `int`
         Number of exposures in the visit.
     flush_by_mjd : `float`
         If we hit this MJD, we should flush the queue and refill it.
     note : `str` (optional)
-        Usually good to set the note field so one knows which survey object generated the observation.
+        Usually good to set the note field so one knows which survey
+        object generated the observation.
     target : `str` (optional)
         A note about what target is being observed.
 
@@ -562,12 +581,13 @@ def empty_observation(n=1):
     where if rotTelPos is NaN, it checks rotSkyPos. If rotSkyPos is set,
     but not at an accessible rotTelPos, the observation will fail.
     If rotSkyPos is NaN, then rotSkyPos_desired is used. If
-    rotSkyPos_desired is at an inaccessbile rotTelPos, the observation does
-    not fail, but falls back to the value in rotTelPos_backup.
+    rotSkyPos_desired is at an inaccessbile rotTelPos, the observation
+    does not fail, but falls back to the value in rotTelPos_backup.
 
     Lots of additional fields that get filled in by the model observatory
     when the observation is completed.
-    See documentation at: https://rubin-scheduler.lsst.io/output_schema.html
+    See documentation at:
+    https://rubin-scheduler.lsst.io/output_schema.html
 
     """
 
@@ -683,26 +703,32 @@ def scheduled_observation(n=1):
     mjd_tol : `float`
         The tolerance on how early an observation can execute (days).
         Observation will be considered valid to attempt
-        when mjd-mjd_tol < current MJD < flush_by_mjd (and other conditions below pass)
+        when mjd-mjd_tol < current MJD < flush_by_mjd (and other
+        conditions below pass)
     dist_tol : `float`
-        The angular distance an observation can be away from the specified RA,Dec and
-        still count as completing the observation (radians).
+        The angular distance an observation can be away from the
+        specified RA,Dec and still count as completing the observation
+        (radians).
     alt_min : `float`
-        The minimum altitude to consider executing the observation (radians).
+        The minimum altitude to consider executing the observation
+        (radians).
     alt_max : `float`
         The maximuim altitude to try observing (radians).
     HA_max : `float`
-        Hour angle limit. Constraint is such that for hour angle running from 0 to 24 hours,
-        the target RA,Dec must be greather than HA_max and less than HA_min. Set HA_max to 0 for
-        no limit. (hours)
+        Hour angle limit. Constraint is such that for hour angle
+        running from 0 to 24 hours, the target RA,Dec must be greather
+        than HA_max and less than HA_min. Set HA_max to 0 for no
+        limit. (hours)
     HA_min : `float`
-        Hour angle limit. Constraint is such that for hour angle running from 0 to 24 hours,
-        the target RA,Dec must be greather than HA_max and less than HA_min. Set HA_min to 24 for
+        Hour angle limit. Constraint is such that for hour angle
+        running from 0 to 24 hours, the target RA,Dec must be greather
+        than HA_max and less than HA_min. Set HA_min to 24 for
         no limit. (hours)
     sun_alt_max : float
         The sun must be below sun_alt_max to execute. (radians)
     observed : `bool`
-        If set to True, scheduler will probably consider this a completed observation an never attempt it.
+        If set to True, scheduler will probably consider this a
+        completed observation an never attempt it.
 
     """
 
@@ -791,8 +817,9 @@ class HpInLsstFov:
         fov_radius : float (1.75)
             Radius of the filed of view in degrees
         scale : float (1e5)
-            How many sig figs to round off to. Useful for ensuring identical results
-            cross-ploatform where float precision can vary.
+            How many sig figs to round off to. Useful for ensuring
+            identical results cross-ploatform where float precision
+            can vary.
         """
         if nside is None:
             nside = set_default_nside()
@@ -917,7 +944,8 @@ class HpInComcamFov:
 
         ra_to_check, dec_to_check = _hpid2_ra_dec(self.nside, indices_to_check)
 
-        # Project the indices to check to the tangent plane, see if they fall inside the polygon
+        # Project the indices to check to the tangent plane, see
+        # if they fall inside the polygon
         x, y = gnomonic_project_toxy(ra_to_check, dec_to_check, ra, dec)
         x = (x * self.scale).astype(int)
         y = (y * self.scale).astype(int)
@@ -1005,14 +1033,15 @@ def season_calc(night, offset=0, modulo=None, max_season=None, season_length=365
     offset : float or array (0)
         Offset to be applied to night (days)
     modulo : int (None)
-        If the season should be modulated (i.e., so we can get all even years)
-        (seasons, years w/default season_length)
+        If the season should be modulated (i.e., so we can get all
+        even years) (seasons, years w/default season_length)
     max_season : int (None)
         For any season above this value (before modulo), set to -1
     season_length : float (365.25)
         How long to consider one season (nights)
     floor : bool (True)
-        If true, take the floor of the season. Otherwise, returns season as a float
+        If true, take the floor of the season. Otherwise, returns
+        season as a float
     """
     if np.size(night) == 1:
         night = np.ravel(np.array([night]))

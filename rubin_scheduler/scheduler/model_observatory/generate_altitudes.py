@@ -64,7 +64,8 @@ def generate_nights(mjd_start, duration=3653.0, rough_step=2, verbose=False):
         Time step for computing first pass rough sunrise times (hours)
     """
 
-    # Let's find the nights first, find the times where the sun crosses the meridian.
+    # Let's find the nights first, find the times where the sun crosses
+    # the meridian.
     site = Site("LSST")
     location = EarthLocation(lat=site.latitude, lon=site.longitude, height=site.height)
     # go on 1/10th of a day steps
@@ -203,12 +204,14 @@ def generate_nights(mjd_start, duration=3653.0, rough_step=2, verbose=False):
 
 
 if __name__ == "__main__":
-    # Let's use astropy to pre-compute the sunrise/sunset/twilight/moonrise/moonset times we're interested in.
+    # Let's use astropy to pre-compute the
+    # sunrise/sunset/twilight/moonrise/moonset times we're interested in.
     mjd_start = 59853.5
     #
     rough_times, refined_mjds = generate_nights(
         mjd_start - 365.25 * 2 - 40.0, duration=365.25 * 24 + 80, rough_step=2
     )
-    # rough_times, refined_mjds = generate_nights(mjd_start, duration=50, rough_step=2)
+    # rough_times, refined_mjds = generate_nights(mjd_start, duration=50,
+    # rough_step=2)
     # Maybe just use pandas to dump it to a csv file?
     np.savez("night_info.npz", rough_times=rough_times, refined_mjds=refined_mjds)

@@ -12,20 +12,23 @@ from rubin_scheduler.data import get_data_dir
 class ScheduledDowntimeData:
     """Read the scheduled downtime data.
 
-    This class deals with the scheduled downtime information that was previously produced for
-    OpSim version 3.
+    This class deals with the scheduled downtime information that
+    was previously produced for OpSim version 3.
 
     Parameters
     ----------
     start_time : `astropy.time.Time`
         The time of the start of the simulation.
-        The cloud database will be assumed to start on Jan 01 of the same year.
+        The cloud database will be assumed to start on Jan 01 of the
+        same year.
     cloud_db : `str`, optional
         The full path name for the cloud database. Default None,
-        which will use the database stored in the module ($SIMS_CLOUDMODEL_DIR/data/cloud.db).
+        which will use the database stored in the module
+        ($SIMS_CLOUDMODEL_DIR/data/cloud.db).
     start_of_night_offset : `float`, optional
-        The fraction of a day to offset from MJD.0 to reach the defined start of a night ('noon' works).
-        Default 0.16 (UTC midnight in Chile) - 0.5 (minus half a day) = -0.34
+        The fraction of a day to offset from MJD.0 to reach the defined
+        start of a night ('noon' works). Default 0.16 (UTC midnight
+        in Chile) - 0.5 (minus half a day) = -0.34
     """
 
     def __init__(self, start_time, scheduled_downtime_db=None, start_of_night_offset=-0.34):
@@ -33,13 +36,15 @@ class ScheduledDowntimeData:
         if self.scheduled_downtime_db is None:
             self.scheduled_downtime_db = os.path.join(get_data_dir(), "site_models", "scheduled_downtime.db")
 
-        # downtime database starts in Jan 01 of the year of the start of the simulation.
+        # downtime database starts in Jan 01 of the year of the
+        # start of the simulation.
         year_start = start_time.datetime.year
         self.night0 = Time("%d-01-01" % year_start, format="isot", scale="tai") + TimeDelta(
             start_of_night_offset, format="jd"
         )
 
-        # Scheduled downtime data is a np.ndarray of start / end / activity for each scheduled downtime.
+        # Scheduled downtime data is a np.ndarray of start / end /
+        # activity for each scheduled downtime.
         self.downtime = None
         self.read_data()
 
@@ -54,8 +59,9 @@ class ScheduledDowntimeData:
         Returns
         -------
         downtime : `np.ndarray`
-            The array of all unscheduled downtimes, with keys for 'start', 'end', 'activity',
-            corresponding to astropy.time.Time, astropy.time.Time, and str.
+            The array of all unscheduled downtimes, with keys for
+            'start', 'end', 'activity', corresponding to
+            astropy.time.Time, astropy.time.Time, and str.
         """
         return self.downtime
 
@@ -71,12 +77,14 @@ class ScheduledDowntimeData:
         return current, future
 
     def read_data(self):
-        """Read the scheduled downtime information from disk and translate to astropy.time.Times.
+        """Read the scheduled downtime information from disk and
+        translate to astropy.time.Times.
 
-        This function gets the appropriate database file and creates the set of
-        scheduled downtimes from it. The default behavior is to use the module stored
-        database. However, an alternate database file can be provided. The alternate
-        database file needs to have a table called *Downtime* with the following columns:
+        This function gets the appropriate database file and creates
+        the set of scheduled downtimes from it. The default behavior
+        is to use the module stored database. However, an alternate
+        database file can be provided. The alternate database file needs
+        to have a table called *Downtime* with the following columns:
 
         night : `int`
             The night (from start of simulation) the downtime occurs.

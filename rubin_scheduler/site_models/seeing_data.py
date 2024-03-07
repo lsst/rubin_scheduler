@@ -11,23 +11,27 @@ from rubin_scheduler.data import get_data_dir
 
 
 class SeeingData:
-    """Read the seeing data from disk and return appropriate FWHM_500 value at a given time.
-    This is for use in simulations only. Otherwise data would come from the EFD.
+    """Read the seeing data from disk and return appropriate FWHM_500
+    value at a given time. This is for use in simulations only.
+    Otherwise data would come from the EFD.
 
     Parameters
     ----------
     start_time : astropy.time.Time
         The time of the start of the simulation.
-        The seeing database will be assumed to start on Jan 01 of the same year.
+        The seeing database will be assumed to start on Jan 01 of the
+        same year.
     seeing_db : str or None, optional
         The name of the seeing database.
-        If None (default), this will use the simsee_pachon_58777_13.db file in the 'data' directory
-        of this package.
+        If None (default), this will use the simsee_pachon_58777_13.db
+        file in the 'data' directory of this package.
         Other available seeing databases from sims_seeingModel include:
         seeing.db (the original, less-variable, 3 year seeing database)
-        simsee_pachon_58777_13.db (the current default, 10 year, seeing database)
-        simsee_pachon_58777_16.db (a similar, but slightly offset, 13 year seeing database)
-        For more info on simsee_pachon_58777_*, see https://github.com/lsst/sims_seeingModel/issues/2
+        simsee_pachon_58777_13.db (the current default, 10 year,
+        seeing database) simsee_pachon_58777_16.db (a similar, but
+        slightly offset, 13 year seeing database)
+        For more info on simsee_pachon_58777_*, see
+        https://github.com/lsst/sims_seeingModel/issues/2
     offset_year : float, optional
         Offset into the cloud database by 'offset_year' years. Default 0.
     """
@@ -37,7 +41,8 @@ class SeeingData:
         if self.seeing_db is None:
             self.seeing_db = os.path.join(get_data_dir(), "site_models", "simsee_pachon_58777_13.db")
 
-        # Seeing database starts in Jan 01 of the year of the start of the simulation
+        # Seeing database starts in Jan 01 of the year of the start of
+        # the simulation
         year_start = start_time.datetime.year + offset_year
         self.start_time = Time("%d-01-01" % year_start, format="isot", scale="tai")
 
@@ -51,9 +56,10 @@ class SeeingData:
         Parameters
         ----------
         time : astropy.time.Time
-            Time in the simulation for which to find the 'current' zenith seeing values.
-            The difference between this time and the start_time, plus the offset,
-            will be used to query the seeing database.
+            Time in the simulation for which to find the 'current'
+            zenith seeing values. The difference between this time and
+            the start_time, plus the offset, will be used to query the
+            seeing database.
 
         Returns
         -------
@@ -82,16 +88,19 @@ class SeeingData:
     def read_data(self):
         """Read the seeing information from disk.
 
-        The default behavior is to use the module stored database. However, an
-        alternate database file can be provided. The alternate database file needs to have a
-        table called *Seeing* with the following columns:
+        The default behavior is to use the module stored database.
+        However, an alternate database file can be provided. The
+        alternate database file needs to have a table called *Seeing*
+        with the following columns:
 
         seeingId
             int : A unique index for each seeing entry.
         s_date
-            int : The time (in seconds) from the start of the simulation, for the seeing observation.
+            int : The time (in seconds) from the start of the
+            simulation, for the seeing observation.
         seeing
-            float : The FWHM of the atmospheric PSF (in arcseconds) at zenith.
+            float : The FWHM of the atmospheric PSF (in arcseconds) at
+            zenith.
         """
         with sqlite3.connect(self.seeing_db) as conn:
             cur = conn.cursor()
@@ -101,7 +110,8 @@ class SeeingData:
             self.seeing_dates = np.hsplit(results, 2)[0].flatten()
             self.seeing_values = np.hsplit(results, 2)[1].flatten()
             cur.close()
-        # Make sure seeing dates are ordered appropriately (monotonically increasing).
+        # Make sure seeing dates are ordered appropriately
+        # (monotonically increasing).
         ordidx = self.seeing_dates.argsort()
         self.seeing_dates = self.seeing_dates[ordidx]
         self.seeing_values = self.seeing_values[ordidx]

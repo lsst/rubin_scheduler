@@ -18,7 +18,8 @@ class TestLsstcamerafootprint(unittest.TestCase):
             units="degrees",
         )
         idx_obs = camera(self.obj_ra, self.obj_dec, self.obs_ra, self.obs_dec, self.obs_rot_sky_pos)
-        # The first of these objects should be in the middle of the FOV, while the second is outside
+        # The first of these objects should be in the middle of
+        # the FOV, while the second is outside
         self.assertEqual(idx_obs, [0])
 
 

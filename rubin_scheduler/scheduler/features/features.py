@@ -37,7 +37,8 @@ class BaseFeature:
     """
 
     def __init__(self, **kwargs):
-        # self.feature should be a float, bool, or healpix size numpy array, or numpy masked array
+        # self.feature should be a float, bool, or healpix size numpy
+        # array, or numpy masked array
         self.feature = None
 
     def __call__(self):
@@ -215,7 +216,8 @@ class NObsCountSeason(BaseSurveyFeature):
                 (self.filtername is None)
                 and (self.tag is not None)
                 and
-                # Track all observations on a specified filter on a specified tag
+                # Track all observations on a specified filter on a
+                # specified tag
                 (observation["filter"][0] in self.filtername)
                 and (observation["tag"][0] in self.tag)
             ):
@@ -280,7 +282,8 @@ class LastsequenceObservation(BaseSurveyFeature):
     """When was the last observation"""
 
     def __init__(self, sequence_ids=""):
-        self.sequence_ids = sequence_ids  # The ids of all sequence observations...
+        self.sequence_ids = sequence_ids  # The ids of all sequence
+        # observations...
         # Start out with an empty observation
         self.feature = utils.empty_observation()
 
@@ -347,7 +350,8 @@ class NObservations(BaseSurveyFeature):
         Parameters
         ----------
         indx : `list`-like of [`int`]
-            The indices of the healpixel map that have been observed by observation
+            The indices of the healpixel map that have been observed by
+            observation
         """
 
         if self.filtername is None or observation["filter"][0] in self.filtername:
@@ -401,7 +405,8 @@ class NObservationsSeason(BaseSurveyFeature):
         Parameters
         ----------
         indx :`list`-like of [`int`]
-            The indices of the healpixel map that have been observed by observation
+            The indices of the healpixel map that have been observed by
+            observation
         """
 
         observation_season = utils.season_calc(
@@ -561,8 +566,8 @@ class CoaddedDepth(BaseSurveyFeature):
     ----------
     fwh_meff_limit : `float` (100)
         The effective FWHM of the seeing (arcsecond).
-        Images will only be added to the coadded depth if the observation FWHM
-        is less than or equal to the limit.  Default 100.
+        Images will only be added to the coadded depth if the observation
+        FWHM is less than or equal to the limit.  Default 100.
     """
 
     def __init__(self, filtername="r", nside=None, fwh_meff_limit=100.0):
@@ -697,17 +702,20 @@ class PairInNight(BaseSurveyFeature):
         self.gap_min = IntRounded(gap_min / (24.0 * 60))  # Days
         self.gap_max = IntRounded(gap_max / (24.0 * 60))  # Days
         self.night = 0
-        # Need to keep a full record of times and healpixels observed in a night.
+        # Need to keep a full record of times and healpixels observed in
+        # a night.
         self.mjd_log = []
         self.hpid_log = []
 
     def add_observations_array(self, observations_array, observations_hpid):
-        # ok, let's just find the largest night and toss all those in one at a time
+        # ok, let's just find the largest night and toss all those in one
+        # at a time
         most_recent_night = np.where(observations_hpid["night"] == np.max(observations_hpid["night"]))[0]
         obs_hpid = observations_hpid[most_recent_night]
         uid = np.unique(obs_hpid["ID"])
         for ind_id in uid:
-            # maybe a faster searchsorted way to do this, but it'll work for now
+            # maybe a faster searchsorted way to do this, but it'll work
+            # for now
             good = np.where(obs_hpid["ID"] == ind_id)[0]
             self.add_observation(observations_hpid[good][0], observations_hpid[good]["hpid"])
 

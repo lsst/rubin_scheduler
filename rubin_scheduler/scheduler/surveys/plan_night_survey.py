@@ -12,18 +12,22 @@ from .surveys import BlobSurvey
 
 
 class PlanAheadSurvey(BlobSurvey):
-    """Have a survey object that can plan ahead if it will want to observer a blob later in the night
+    """Have a survey object that can plan ahead if it will want to
+    observer a blob later in the night
 
     Parameters
     ----------
     delta_mjd_tol : float
-        The tolerance to alow on when to execute scheduled observations (days)
+        The tolerance to alow on when to execute scheduled observations
+        (days)
     minimum_sky_area : float
-        The minimum sky area to demand before making a scheduled observation (square degrees)
+        The minimum sky area to demand before making a scheduled
+        observation (square degrees)
     track_filters : str
         The filter name we want to prevent long gaps on
     in_season : float
-        The distance in RA from the meridian at midnight to consider (hours). This is the half-width
+        The distance in RA from the meridian at midnight to consider
+        (hours). This is the half-width
     cadence : float
         Ignore gaps below this length (days)
     """
@@ -40,8 +44,9 @@ class PlanAheadSurvey(BlobSurvey):
         **kwargs,
     ):
         super(PlanAheadSurvey, self).__init__(basis_functions, basis_weights, **kwargs)
-        # note that self.night is already being used for tracking tesselation.
-        # So here's an attribute for seeing if the night has changed for cadence tracking
+        # note that self.night is already being used for tracking
+        # tesselation. So here's an attribute for seeing if the night
+        # has changed for cadence tracking
         self.night_cad = -100
         self.scheduled_obs = None
         self.delta_mjd_tol = delta_mjd_tol
@@ -55,14 +60,6 @@ class PlanAheadSurvey(BlobSurvey):
 
         self.pix_area = hp.nside2pixarea(self.nside, degrees=True)
         self.cadence = cadence
-
-    # def add_observation(self, observation, **kwargs):
-    #    # If a relevant observation got made, recompute when we actually want to observe in the night
-    #    if observation['filter'] in self.track_filters:
-    #        if self.scheduled_obs is not None:
-    #            # this will force a run of self.check_night on the next calc_reward_function
-    #            self.night = observation['night'] - 1
-    #    super(PlanAheadSurvey, self).add_observation(observation, **kwargs)
 
     def check_night(self, conditions):
         """"""
@@ -80,7 +77,8 @@ class PlanAheadSurvey(BlobSurvey):
         # If there are going to be some observations at a given time
         if area > self.minimum_sky_area:
             # Maybe just calculate the mean (with angles)
-            # Via https://en.wikipedia.org/wiki/Mean_of_circular_quantities
+            # Via https://en.wikipedia.org/wiki/
+            # Mean_of_circular_quantities
             mean_ra = np.arctan2(
                 np.mean(np.sin(conditions.ra[pix_to_obs])),
                 np.mean(np.cos(conditions.ra[pix_to_obs])),
@@ -110,10 +108,12 @@ class PlanAheadSurvey(BlobSurvey):
                 self.night_cad = copy(conditions.night)
 
             if self.scheduled_obs is not None:
-                # If there are scheduled observations, and we are in the correct time window
+                # If there are scheduled observations, and we are in
+                # the correct time window
                 delta_mjd = conditions.mjd - self.scheduled_obs
                 if (np.abs(delta_mjd) < self.delta_mjd_tol) & (self.scheduled_obs is not None):
-                    # So, we think there's a region that has had a long gap and can be observed
+                    # So, we think there's a region that has had a
+                    # long gap and can be observed
                     # call the standard reward function
                     self.reward = super(PlanAheadSurvey, self).calc_reward_function(conditions)
 
@@ -121,9 +121,10 @@ class PlanAheadSurvey(BlobSurvey):
 
     def generate_observations(self, conditions):
         observations = super(PlanAheadSurvey, self).generate_observations(conditions)
-        # We are providing observations, so clear the scheduled obs and reset the night so
-        # self.check_night will get called again in case there's another blob that should be done
-        # after this one completes
+        # We are providing observations, so clear the scheduled obs
+        # and reset the night so
+        # self.check_night will get called again in case there's
+        # another blob that should be done after this one completes
         self.scheduled_obs = None
         self.night_cad = conditions.night - 1
         return observations

@@ -30,8 +30,6 @@ import numpy as np
 import pandas as pd
 import yaml
 from astropy.time import Time
-from conda.cli.main_list import print_packages
-from conda.gateways.disk.test import is_conda_environment
 
 import rubin_scheduler
 from rubin_scheduler.scheduler import sim_runner
@@ -70,18 +68,20 @@ def make_sim_archive_dir(
     Parameters
     ----------
     observations : `numpy.recarray`
-        The observations data, in the "obs" format as accepted and created by
-        `rubin_scheduler.scheduler.utils.SchemaConverter`.
+        The observations data, in the "obs" format as accepted and
+        created by `rubin_scheduler.scheduler.utils.SchemaConverter`.
     reward_df : `pandas.DataFrame`, optional
         The reward data, by default None.
     obs_rewards : `pandas.DataFrame`, optional
         The observation rewards data, by default None.
     in_files : `dict`, optional
-        Additional input files to be included in the archive, by default {}.
+        Additional input files to be included in the archive,
+        by default {}.
     sim_runner_kwargs : `dict`, optional
         Additional simulation runner keyword arguments, by default {}.
     tags : `list` [`str`], optional
-        A list of tags/keywords to be included in the metadata, by default [].
+        A list of tags/keywords to be included in the metadata, by
+        default [].
     label : `str`, optional
         A label to be included in the metadata, by default None.
     data_path : `str` or `pathlib.Path`, optional
@@ -133,7 +133,8 @@ def make_sim_archive_dir(
             conda_base_fname = "environment.txt"
             environment_fname = data_path.joinpath(conda_base_fname).as_posix()
 
-            # Python equivilent of conda list --export -p $conda_prefix > $environment_fname
+            # Python equivilent of
+            # conda list --export -p $conda_prefix > $environment_fname
             with open(environment_fname, "w") as environment_io:
                 with redirect_stdout(environment_io):
                     print_packages(conda_prefix, format="export")
@@ -241,9 +242,11 @@ def transfer_archive_dir(archive_dir, archive_base_uri="s3://rubin-scheduler-pre
     Parameters:
     ----------
     archive_dir : `str`
-        The path to the archive directory containing the files to be transferred.
+        The path to the archive directory containing the files to be
+        transferred.
     archive_base_uri : `str`, optional
-        The base URI where the archive files will be transferred to. Default is "s3://rubin-scheduler-prenight/opsim/".
+        The base URI where the archive files will be transferred to.
+        Default is "s3://rubin-scheduler-prenight/opsim/".
 
     Returns:
     -------
@@ -494,7 +497,8 @@ def drive_sim(
     label : `str`, optional
         The label for the simulation in the archive. Defaults to None.
     tags : `list` of `str`, optional
-        The tags for the simulation in the archive. Defaults to an empty list.
+        The tags for the simulation in the archive. Defaults to an
+        empty list.
     script : `str`
         The filename of the script producing this simulation.
         Defaults to None.
@@ -529,10 +533,10 @@ def drive_sim(
     directly, so that `drive_sim` can act as a drop-in replacement of
     `sim-runner`.
 
-    In a jupyter notebook, the notebook can be saved for the notebook paramater
-    using `%notebook $notebook_fname` (where `notebook_fname` is variable
-    holding the filename for the notebook) in the cell prior to calling
-    `drive_sim`.
+    In a jupyter notebook, the notebook can be saved for the notebook
+    paramater using `%notebook $notebook_fname` (where `notebook_fname`
+    is variable holding the filename for the notebook) in the cell prior
+    to calling `drive_sim`.
     """
     if "record_rewards" in kwargs:
         if kwargs["record_rewards"] and not scheduler.keep_rewards:
@@ -548,8 +552,8 @@ def drive_sim(
         in_files["notebook"] = notebook
 
     with TemporaryDirectory() as local_data_dir:
-        # We want to store the state of the scheduler at the start of the sim,
-        # so we need to save it now before we run the simulation.
+        # We want to store the state of the scheduler at the start of
+        # the sim, so we need to save it now before we run the simulation.
         scheduler_path = Path(local_data_dir).joinpath("scheduler.pickle.xz")
         with lzma.open(scheduler_path, "wb", format=lzma.FORMAT_XZ) as pio:
             pickle.dump(scheduler, pio)

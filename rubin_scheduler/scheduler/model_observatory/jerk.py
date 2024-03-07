@@ -4,26 +4,32 @@ import numpy as np
 
 
 def jerk_time(distance, v_max, acc_max, jerk_max):
-    """Calculate how long to move a distance given maximum jerk, acceleration, and velocity
+    """Calculate how long to move a distance given maximum jerk,
+    acceleration, and velocity
 
-    All parameters are assumed to be symetric (e.g, minimum jerk = -1*jerk_max)
+    All parameters are assumed to be symetric
+    (e.g, minimum jerk = -1*jerk_max)
 
-    modified from https://github.com/mdhom/py_constant_jerk/blob/main/constantJerk.py
+    modified from https://github.com/mdhom/py_constant_jerk/blob/main/
+    constantJerk.py
     see also:
-    https://www.researchgate.net/publication/289374755_THIRD_ORDER_POINT-TO-POINT_MOTION_-PROFILE
+    https://www.researchgate.net/publication/
+    289374755_THIRD_ORDER_POINT-TO-POINT_MOTION_-PROFILE
 
     Parameters
     ----------
     distance : `float`
-        The distance to travel. Could be units of length or angle as long as other
-        parameters match.
+        The distance to travel. Could be units of length or angle as long
+        as other parameters match.
     v_max : `float`
         The maximum velocity. Units of length or angle per unit of time
     acc_max : `float`
-        The maximum acceleration. Units of length or angle per unit of time squared.
+        The maximum acceleration. Units of length or angle per unit of
+        time squared.
     jerk_max : `float`
-        The maximum jerk. Units of length or angle per unit of time cubed. If
-        set to None, assumes jerk is infinite and defaults to use acc_time.
+        The maximum jerk. Units of length or angle per unit of time cubed.
+        If set to None, assumes jerk is infinite and defaults to use
+        acc_time.
     """
 
     # If distance is a scalar, convert to array.
@@ -63,18 +69,20 @@ def jerk_time(distance, v_max, acc_max, jerk_max):
 
 
 def acc_time(distance, v_max, acc_max):
-    """Time to move given a maximum velocity and acceleration. Assumes infinite jerk.
-    Velocity and accelerations are assumed to be symetric (minimum acceleration = -1* acc_max)
+    """Time to move given a maximum velocity and acceleration. Assumes
+    infinite jerk. Velocity and accelerations are assumed to be
+    symetric (minimum acceleration = -1* acc_max)
 
     Parameters
     ----------
     distance : `float`
-        The distance to travel. Could be units of length or angle as long as other
-        parameters match.
+        The distance to travel. Could be units of length or angle as long
+        as other parameters match.
     v_max : `float`
         The maximum velocity. Units of length or angle per unit of time
     acc_max : `float`
-        The maximum acceleration. Units of length or angle per unit of time squared.
+        The maximum acceleration. Units of length or angle per unit of
+        time squared.
     """
 
     distance = np.atleast_1d(distance)
@@ -91,7 +99,8 @@ def acc_time(distance, v_max, acc_max):
 def _calculate_times(distance, v_max, acc_max, jerk_max, trajectory_instance_case=1):
     """Calculate travel time including jerk.
 
-    Modified from https://github.com/mdhom/py_constant_jerk/blob/main/constantJerk.py
+    Modified from https://github.com/mdhom/py_constant_jerk/blob/main/
+    #constantJerk.py
     """
     if trajectory_instance_case == 1 or trajectory_instance_case == 3:
         tj = np.sqrt(v_max / jerk_max)
@@ -126,19 +135,22 @@ def _calculate_times(distance, v_max, acc_max, jerk_max, trajectory_instance_cas
 def _get_trajectory_instance_case(distance, v_max, acc_max, jerk_max):
     """Determine which motion profile to use.
 
-    Modified from https://github.com/mdhom/py_constant_jerk/blob/main/constantJerk.py
+    Modified from https://github.com/mdhom/py_constant_jerk/blob/main/
+    constantJerk.py
     which was probably derived from:
-    https://www.researchgate.net/publication/289374755_THIRD_ORDER_POINT-TO-POINT_MOTION_-PROFILE
+    https://www.researchgate.net/publication/
+    289374755_THIRD_ORDER_POINT-TO-POINT_MOTION_-PROFILE
 
     Parameters
     ----------
     distance : `float`
-        The distance to travel. Could be units of length or angle as long as other
-        parameters match.
+        The distance to travel. Could be units of length or angle as long
+        as other parameters match.
     v_max : `float`
         The maximum velocity. Units of length or angle per unit of time.
     acc_max : `float`
-        The maximum acceleration. Units of length or angle per unit of time squared.
+        The maximum acceleration. Units of length or angle per unit of
+        time squared.
     jerk_max : `float`
         The maximum jerk. Units of length or angle per unit of time cubed.
 
@@ -151,7 +163,8 @@ def _get_trajectory_instance_case(distance, v_max, acc_max, jerk_max):
     #          (s = 15000, j = 2000, a = 5500, vMax = 2500)
     # Case 4: a_max reached, v_max not reached
     #          (s = 57,    j = 2000, a = 500,  vMax = 120)
-    # Case 5: a_max reached and constant for a time, v_max reached and constant for a time
+    # Case 5: a_max reached and constant for a time, v_max reached and
+    # constant for a time
     #          (s = 15000, j = 2000, a = 500,  vMax = 2500)
     # Case 6: a_max reached and constant for a time, v_max not reached
     #          (s = 15000, j = 2000, a = 500,  vMax = 20500)

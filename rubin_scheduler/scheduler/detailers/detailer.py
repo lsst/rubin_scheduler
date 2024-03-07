@@ -24,12 +24,14 @@ from rubin_scheduler.utils import _angular_separation, _approx_altaz2pa, _approx
 
 class BaseDetailer:
     """
-    A Detailer is an object that takes a list of proposed observations and adds "details" to them. The
-    primary purpose is that the Markov Decision Process does an excelent job selecting RA,Dec,filter
-    combinations, but we may want to add additional logic such as what to set the camera rotation angle
-    to, or what to use for an exposure time. We could also modify the order of the proposed observations.
-    For Deep Drilling Fields, a detailer could be useful for computing dither positions and modifying
-    the exact RA,Dec positions.
+    A Detailer is an object that takes a list of proposed observations and
+    adds "details" to them. The primary purpose is that the Markov Decision
+    Process does an excelent job selecting RA,Dec,filter combinations, but we
+    may want to add additional logic such as what to set the camera rotation
+    angle to, or what to use for an exposure time. We could also modify the
+    order of the proposed observations. For Deep Drilling Fields, a detailer
+    could be useful for computing dither positions and modifying the exact
+    RA,Dec positions.
     """
 
     def __init__(self, nside=32):
@@ -39,7 +41,8 @@ class BaseDetailer:
         self.nside = nside
 
     def add_observations_array(self, observations_array, observations_hpid):
-        """Like add_observation, but for loading a whole array of observations at a time"""
+        """Like add_observation, but for loading a whole array of
+        observations at a time"""
 
         for feature in self.survey_features:
             self.survey_features[feature].add_observations_array(observations_array, observations_hpid)
@@ -51,7 +54,8 @@ class BaseDetailer:
         observation : `np.array`
             An array with information about the input observation
         indx : `np.array`
-            The indices of the healpix map that the observation overlaps with
+            The indices of the healpix map that the observation overlaps
+            with
         """
         for feature in self.survey_features:
             self.survey_features[feature].add_observation(observation, indx=indx)
@@ -73,7 +77,8 @@ class BaseDetailer:
 
 
 class FlushByDetailer(BaseDetailer):
-    """Set the MJD an observation should be flushed from the scheduler queue if not yet completed.
+    """Set the MJD an observation should be flushed from the scheduler
+    queue if not yet completed.
 
     Parameters
     ----------
@@ -155,14 +160,15 @@ class Rottep2RotspDesiredDetailer(BaseDetailer):
 
 class ZeroRotDetailer(BaseDetailer):
     """
-    Detailer to set the camera rotation to be apporximately zero in rotTelPos.
-    Because it can never be written too many times:
+    Detailer to set the camera rotation to be apporximately zero in
+    rotTelPos. Because it can never be written too many times:
     rotSkyPos = rotTelPos - ParallacticAngle
     But, wait, what? Is it really the other way?
     """
 
     def __call__(self, observation_list, conditions):
-        # XXX--should I convert the list into an array and get rid of this loop?
+        # XXX--should I convert the list into an array and get rid of this
+        # loop?
         for obs in observation_list:
             alt, az = _approx_ra_dec2_alt_az(
                 obs["RA"],
@@ -179,8 +185,8 @@ class ZeroRotDetailer(BaseDetailer):
 
 class SpiderRotDetailer(BaseDetailer):
     """
-    Set the camera rotation to +/- 45 degrees so diffraction spikes align along chip rows
-    and columns
+    Set the camera rotation to +/- 45 degrees so diffraction spikes
+    align along chip rows and columns
     """
 
     def __call__(self, observation_list, conditions):
@@ -196,8 +202,8 @@ class SpiderRotDetailer(BaseDetailer):
 
 class Comcam90rotDetailer(BaseDetailer):
     """
-    Detailer to set the camera rotation so rotSkyPos is 0, 90, 180, or 270 degrees. Whatever
-    is closest to rotTelPos of zero.
+    Detailer to set the camera rotation so rotSkyPos is 0, 90, 180, or
+    270 degrees. Whatever is closest to rotTelPos of zero.
     """
 
     def __call__(self, observation_list, conditions):
@@ -211,8 +217,9 @@ class Comcam90rotDetailer(BaseDetailer):
             conditions.mjd,
         )
         parallactic_angle = _approx_altaz2pa(alt, az, conditions.site.latitude_rad)
-        # If we set rotSkyPos to parallactic angle, rotTelPos will be zero. So, find the
-        # favored rotSkyPos that is closest to PA to keep rotTelPos as close as possible to zero.
+        # If we set rotSkyPos to parallactic angle, rotTelPos will be zero.
+        # So, find the favored rotSkyPos that is closest to PA to keep
+        # rotTelPos as close as possible to zero.
         ang_diff = np.abs(parallactic_angle - favored_rot_sky_pos)
         min_indxs = np.argmin(ang_diff, axis=0)
         # can swap 360 and zero if needed?
@@ -247,7 +254,8 @@ class FixedSkyAngleDetailer(BaseDetailer):
 
 class CloseAltDetailer(BaseDetailer):
     """
-    re-order a list of observations so that the closest in altitude to the current pointing is first.
+    re-order a list of observations so that the closest in altitude to
+    the current pointing is first.
 
     Parameters
     ----------
@@ -353,7 +361,8 @@ class TakeAsPairsDetailer(BaseDetailer):
             for obs in observation_list:
                 obs["note"] = obs["note"][0] + ", a"
             result = observation_list + paired
-        # XXX--maybe a temp debugging thing, label what part of sequence each observation is.
+        # XXX--maybe a temp debugging thing, label what part of sequence
+        # each observation is.
         for i, obs in enumerate(result):
             obs["survey_id"] = i
         return result

@@ -35,7 +35,8 @@ def generate_ddf_grid(
     sun_limit : float
         Ignore times with sun above sun limit in degrees. Default -12.
     nominal_seeling : float
-        Nominal seeing in arcseconds to assume for depth calculations. Default 0.7
+        Nominal seeing in arcseconds to assume for depth calculations.
+        Default 0.7
     filtername : str
         The filter to use for the grid, default g
     nominal_expt : float

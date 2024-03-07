@@ -97,12 +97,14 @@ def rotate_ra_dec(ra, dec, ra_target, dec_target, init_rotate=0.0):
 
 class Pointings2hp:
     """
-    Convert a list of telescope pointings and convert them to a pointing map
+    Convert a list of telescope pointings and convert them to a
+    pointing map
     """
 
     def __init__(self, nside, radius=1.75):
         """"""
-        # hmm, not sure what the leafsize should be? Kernel can crash if too low.
+        # hmm, not sure what the leafsize should be? Kernel can crash
+        # if too low.
         self.tree = hp_kd_tree(nside=nside, leafsize=300)
         self.nside = nside
         self.rad = _xyz_angular_radius(radius)
@@ -122,7 +124,8 @@ class Pointings2hp:
         Returns
         -------
         result : healpy map
-            The number of times each healpxel is observed by the given pointings
+            The number of times each healpxel is observed by the
+            given pointings
         """
         xs, ys, zs = _xyz_from_ra_dec(ra, dec)
         coords = np.array((xs, ys, zs)).T
@@ -139,14 +142,16 @@ class Pointings2hp:
 
 class HpmapCross:
     """
-    Find the cross-correlation of a healpix map and a bunch of rotated pointings
+    Find the cross-correlation of a healpix map and a bunch of
+    rotated pointings
     """
 
     # XXX--just a very random radius search
     def __init__(self, nside=default_nside, radius=1.75, radius_search=1.75):
         """"""
         self.nside = nside
-        # XXX -- should I shrink the radius slightly to get rid of overlap? That would be clever!
+        # XXX -- should I shrink the radius slightly to get rid
+        # of overlap? That would be clever!
         self.p2hp_search = Pointings2hp(nside=nside, radius=radius_search)
         self.p2hp = Pointings2hp(nside=nside, radius=radius)
         # Load up a list of pointings, chop them down to a small block
@@ -181,13 +186,14 @@ class HpmapCross:
         x[2], im_rot : float
             Initial rotation to apply to fields (radians)
         return_pointings_map : bool (False)
-            If set, return the overlapping fields and the resulting observing helpix map
+            If set, return the overlapping fields and the resulting
+            observing helpix map
 
         Returns
         -------
         cross_corr : float
-            If return_pointings_map is False, return the sum of the pointing map multipled
-            with the
+            If return_pointings_map is False, return the sum of the
+            pointing map multipled with the
         """
         # XXX-check the nside
 
@@ -239,7 +245,8 @@ class HpmapCross:
         # rots = np.arange(-np.pi/2., np.pi/2.+rot_delta, rot_delta)
         rots = [np.radians(0.0)]
         # Make sure the initial simplex is large enough
-        # XXX--might need to update scipy latest version to actually use this.
+        # XXX--might need to update scipy latest version to
+        # actually use this.
         deltas = np.array(
             [
                 [ra_delta, 0, 0],

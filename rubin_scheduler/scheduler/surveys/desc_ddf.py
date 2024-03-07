@@ -67,18 +67,22 @@ class DescDdf(BaseSurvey):
                 self.approx_times.append(time_needed / 3600.0 / 24.0)
 
         # Track what we last tried to do
-        # XXX-this should probably go into self.extra_features or something for consistency.
+        # XXX-this should probably go into self.extra_features or
+        # something for consistency.
         self.sequence_index = 0
         self.last_night_observed = -100
 
     def check_continue(self, observation, conditions):
         # feasibility basis functions?
         """
-        This method enables external calls to check if a given observations that belongs to this survey is
-        feasible or not. This is called once a sequence has started to make sure it can continue.
+        This method enables external calls to check if a given
+        observations that belongs to this survey is
+        feasible or not. This is called once a sequence has started to
+        make sure it can continue.
 
-        XXX--TODO:  Need to decide if we want to develope check_continue, or instead hold the
-        sequence in the survey, and be able to check it that way.
+        XXX--TODO:  Need to decide if we want to develope check_continue
+         or instead hold the sequence in the survey, and be able to check
+         it that way.
         """
 
         result = True

@@ -33,8 +33,8 @@ def short_angle_dist(a0, a1):
 
 def interp_angle(x_out, xp, anglep, degrees=False):
     """
-    Interpolate angle values (handle wrap around properly). Does nearest neighbor
-    interpolation if values out of range.
+    Interpolate angle values (handle wrap around properly).
+    Does nearest neighbor interpolation if values out of range.
 
     Parameters
     ----------
@@ -80,14 +80,17 @@ class SkyModelPreBase(abc.ABC):
     Parameters
     ----------
     data_path : `str`, opt
-        path to the numpy save files. Looks in standard SIMS_SKYBRIGHTNESS_DATA or RUBIN_SIM_DATA_DIR
-        if set to default (None).
+        path to the numpy save files. Looks in standard
+        SIMS_SKYBRIGHTNESS_DATA or RUBIN_SIM_DATA_DIR if set to
+        default (None).
     init_load_length : `int` (10)
-        The length of time (days) to load from disk initially. Set to something small for fast reads.
+        The length of time (days) to load from disk initially.
+        Set to something small for fast reads.
     load_length : `int` (365)
         The number of days to load after the initial load.
     mjd0 : `float` (None)
-        The starting MJD to load on initilization (days). Uses util to lookup default if None.
+        The starting MJD to load on initilization (days). Uses
+        util to lookup default if None.
     """
 
     def __init__(
@@ -148,10 +151,11 @@ class SkyModelPreBase(abc.ABC):
         mjd : `float`
             The Modified Julian Date that we want to load
         filename : `str` (None)
-            The filename to restore. If None, it checks the filenames on disk to find one that
-            should have the requested MJD
+            The filename to restore. If None, it checks the filenames
+            on disk to find one that should have the requested MJD
         npyfile : `str` (None)
-            If sky brightness data not in npz file, checks the .npy file with same root name.
+            If sky brightness data not in npz file, checks the .npy
+            file with same root name.
         """
 
         if filename is None:
@@ -162,15 +166,16 @@ class SkyModelPreBase(abc.ABC):
                     "MJD = %f is out of range for the files found (%f-%f)"
                     % (mjd, self.mjd_left.min(), self.mjd_right.max())
                 )
-            # Just take the later one, assuming we're probably simulating forward in time
+            # Just take the later one, assuming we're probably
+            # simulating forward in time
             file_indx = np.max(file_indx)
 
             filename = self.files[file_indx]
         else:
             self.loaded_range = None
 
-        # Use three separate try/excepet blocks so that if any of them throw
-        # exceptions, we still get the others.
+        # Use three separate try/excepet blocks so that if any of
+        # them throw exceptions, we still get the others.
         try:
             del self.sb
         except AttributeError:
@@ -224,8 +229,9 @@ class SkyModelPreBase(abc.ABC):
         mjd : `float`
             Modified Julian Date to interpolate to
         indx : `List` of `int` (None)
-            indices to interpolate the sky values at. Returns full sky if None. If the class was
-            instatiated with opsimFields, indx is the field ID, otherwise it is the healpix ID.
+            indices to interpolate the sky values at. Returns full sky
+            if None. If the class was instatiated with opsimFields,
+            indx is the field ID, otherwise it is the healpix ID.
         airmass_mask : `bool` (True)
             Set high (>2.5) airmass pixels to badval.
         planet_mask : `bool` (True)
@@ -240,14 +246,14 @@ class SkyModelPreBase(abc.ABC):
             List of strings for the filters that should be returned.
             Default returns ugrizy.
         extrapolate : `bool` (False)
-            In indx is set, extrapolate any masked pixels to be the same as the nearest non-masked
-            value from the full sky map.
+            In indx is set, extrapolate any masked pixels to be the
+            same as the nearest non-masked value from the full sky map.
 
         Returns
         -------
         sbs : `dict`
-            A dictionary with filter names as keys and np.arrays as values which
-            hold the sky brightness maps in mag/sq arcsec.
+            A dictionary with filter names as keys and np.arrays as
+            values which hold the sky brightness maps in mag/sq arcsec.
         """
         if mjd < self.loaded_range.min() or (mjd > self.loaded_range.max()):
             self._load_data(mjd)
@@ -298,14 +304,15 @@ class SkyModelPreBase(abc.ABC):
                 if (badval in sbs[filter_name]) | (True in np.isnan(sbs[filter_name])):
                     masked_pix = True
             if masked_pix:
-                # We have pixels that are masked that we want reasonable values for
+                # We have pixels that are masked that we want
+                # reasonable values for
                 full_sky_sb = self.return_mags(
                     mjd,
                     filters=filters,
                 )
                 good = np.where((full_sky_sb[filters[0]] != badval) & ~np.isnan(full_sky_sb[filters[0]]))[0]
-                ra_full = self.ra[good]  # np.radians(self.header["ra"][good])
-                dec_full = self.dec[good]  # np.radians(self.header["dec"][good])
+                ra_full = self.ra[good]
+                dec_full = self.dec[good]
                 for filtername in filters:
                     full_sky_sb[filtername] = full_sky_sb[filtername][good]
                 # Going to assume the masked pixels are the same in all filters
@@ -313,7 +320,8 @@ class SkyModelPreBase(abc.ABC):
                     (sbs[filters[0]].ravel() == badval) | np.isnan(sbs[filters[0]].ravel())
                 )[0]
                 for i, mi in enumerate(masked_indx):
-                    # Note, this is going to be really slow for many pixels, should use a kdtree
+                    # Note, this is going to be really slow for many
+                    # pixels, should use a kdtree
                     dist = _angular_separation(
                         self.ra[indx[i]],
                         self.dec[indx[i]],
@@ -375,9 +383,10 @@ class SkyModelPreWithResources(SkyModelPreBase):
         try:
             self.files = list(ResourcePath.findFileResources([data_resource], file_filter=r".*\.h5"))
         except NotImplementedError:
-            # lsst.requests does not implement walk for plain html, so do it manually here.
-            # Unlike the method above, however, this simple approach does not
-            # descend into subdirectories.
+            # lsst.requests does not implement walk for plain html,
+            # so do it manually here.
+            # Unlike the method above, however, this simple approach
+            # does not descend into subdirectories.
             self.files = []
             if urllib.parse.urlparse(data_resource.geturl()).scheme in ("http", "https"):
                 request_content = requests.get(data_resource.geturl()).text

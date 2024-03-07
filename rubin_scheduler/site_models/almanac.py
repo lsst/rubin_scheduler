@@ -10,7 +10,8 @@ from rubin_scheduler.data import get_data_dir
 
 
 class Almanac:
-    """Class to load and return pre-computed information about the LSST site."""
+    """Class to load and return pre-computed information about the
+    LSST site."""
 
     def __init__(self, mjd_start=None, kind="quadratic"):
         # Load up the sunrise/sunset times
@@ -91,8 +92,8 @@ class Almanac:
             A UTC MJD that occurs during the desired night.
             Defaults to None.
         evening_date : `str` or `datetime.date`
-            The local date of the evening of the night whose index is desired,
-            in ISO8601 format (YYYY-MM-DD). Defaults to None.
+            The local date of the evening of the night whose index is
+            desired, in ISO8601 format (YYYY-MM-DD). Defaults to None.
         longitude : `float` or  `astropy.coordinates.angles.core.Angle`
             If a float, then the value is interpreted as being in radians.
             Defaults to None.
@@ -138,8 +139,8 @@ class Almanac:
         Parameters
         ----------
         evening_date : `str` or `datetime.date`
-            The local date of the evening of the night whose index is desired,
-            in ISO8601 format (YYYY-MM-DD).
+            The local date of the evening of the night whose index i
+            desired, in ISO8601 format (YYYY-MM-DD).
         longitude : `float` or  `astropy.coordinates.angles.core.Angle`
             If a float, then the value is interpreted as being in radians.
 
@@ -160,8 +161,9 @@ class Almanac:
         evening_mjd = np.floor(evening_datetime.timestamp() / (24 * 60 * 60) + 40587)
 
         # Depending on the time of year, the UTC date rollover might not
-        # always be on the same side of local sunset. Shift by the longitude
-        # to make sure the rollover is always near midnight, far from sunset.
+        # always be on the same side of local sunset. Shift by the
+        # longitude to make sure the rollover is always near midnight,
+        # far from sunset.
         matching_nights = np.argwhere(
             np.floor(self.sunsets["sunset"] + longitude / (2 * np.pi)) == evening_mjd
         )

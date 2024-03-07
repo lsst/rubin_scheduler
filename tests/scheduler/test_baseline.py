@@ -273,7 +273,8 @@ class TestFeatures(unittest.TestCase):
     @unittest.skipUnless(os.path.isfile(SAMPLE_BIG_DATA_FILE), "Test data not available.")
     def test_wind(self):
         """
-        Test that a wind mask prevent things from being executed in the wrong spot
+        Test that a wind mask prevent things from being executed in
+        the wrong spot
         """
         mjd_start = utils.survey_start_mjd()
         nside = 32

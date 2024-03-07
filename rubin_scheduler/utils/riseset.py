@@ -2,10 +2,7 @@
 """
 
 __all__ = ("riseset_times",)
-# pylint: disable=too-many-arguments
-# pylint: disable=too-many-instance-attributes
 
-# imports
 import warnings
 
 import astropy.coordinates
@@ -13,12 +10,6 @@ import astropy.time
 import numpy as np
 from astropy import units as u
 from astropy.utils import iers
-
-# constants
-
-# exception classes
-
-# interface functions
 
 
 def riseset_times(  # pylint: disable=too-many-locals
@@ -72,7 +63,7 @@ def riseset_times(  # pylint: disable=too-many-locals
                 + 0.000387933 * century * century
                 - century * century * century / 38710000
             )
-            lst = ((gst + location.lon.deg) % 360) * u.deg  # pylint: disable=no-member
+            lst = ((gst + location.lon.deg) % 360) * u.deg
 
         return lst
 
@@ -111,7 +102,8 @@ def riseset_times(  # pylint: disable=too-many-locals
         target_sinalt = np.sin(np.radians(alt))
 
         ha = _compute_lst(times) - crds.ra  # pylint: disable=invalid-name
-        # Derivative of the standard formula for sin(alt) in terms of decl, latitude, and HA
+        # Derivative of the standard formula for sin(alt) in terms
+        # of decl, latitude, and HA
         dsinalt_dlst = (-1 * np.cos(crds.dec) * np.cos(location.lat) * np.sin(ha)).value
         dsinalt_dmjd = dsinalt_dlst * (2 * np.pi / 0.9972696)
         mjds = mjds - (current_sinalt - target_sinalt) / dsinalt_dmjd
@@ -129,8 +121,3 @@ def riseset_times(  # pylint: disable=too-many-locals
             warnings.warn(f"twilight_times did not converge, starting with {first_unfinished_mjd}")
 
     return mjds
-
-
-# classes
-
-# internal functions & classes

@@ -112,11 +112,13 @@ def download_rubin_data(
     file_dict : `dict`
         A dict with keys of directory names and values of remote filenames.
     dirs : `list` [`str`]
-        List of directories to download. Default (None) assumes they are in file_dict
+        List of directories to download. Default (None) assumes they are
+        in file_dict
     versions : `bool`
         If True, print the versions currently on disk. Default False.
     update : `bool`
-        If True, update versions on disk to match expected 'current'. Default False.
+        If True, update versions on disk to match expected 'current'.
+        Default False.
     force : `bool`
         If True, replace versions on disk with new download. Default False.
     url_base : `str`

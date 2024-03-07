@@ -17,8 +17,10 @@ import scipy.spatial as spatial
 from .utils import IntRounded, gnomonic_project_toxy, mean_azimuth
 
 # Solve Traveling Salesperson using convex hulls.
-# re-write of https://github.com/jameskrysiak/ConvexSalesman/blob/master/convex_salesman.py
-# This like a good explination too https://www.youtube.com/watch?v=syRSy1MFuho
+# re-write of https://github.com/jameskrysiak/ConvexSalesman/
+# blob/master/convex_salesman.py
+# This like a good explination too
+# https://www.youtube.com/watch?v=syRSy1MFuho
 
 
 def order_observations(lon, lat, scale=1e6, optimize=False):
@@ -41,16 +43,20 @@ def order_observations(lon, lat, scale=1e6, optimize=False):
     # Let's find a good spot to project the points to a plane
     mid_dec = (np.max(lat) - np.min(lat)) / 2.0 + np.min(lat)
     mid_ra = mean_azimuth(lon)
-    # Project the coordinates to a plane. Could consider scaling things to represent
-    # time between points rather than angular distance.
+    # Project the coordinates to a plane. Could consider scaling
+    # things to represent time between points rather than angular
+    # distance.
     pointing_x, pointing_y = gnomonic_project_toxy(lon, lat, mid_ra, mid_dec)
-    # Round off positions so that we ensure identical cross-platform performance
+    # Round off positions so that we ensure identical cross-platform
+    # performance
 
     pointing_x = np.round(pointing_x * scale).astype(int)
     pointing_y = np.round(pointing_y * scale).astype(int)
-    # Now I have a bunch of x,y pointings. Drop into TSP solver to get an effiencent route
+    # Now I have a bunch of x,y pointings. Drop into TSP solver
+    # to get an effiencent route
     towns = np.vstack((pointing_x, pointing_y)).T
-    # Leaving optimize=False for speed. The optimization step doesn't usually improve much.
+    # Leaving optimize=False for speed. The optimization step doesn't
+    # usually improve much.
     better_order = tsp_convex(towns, optimize=optimize)
     return better_order
 
@@ -147,8 +153,8 @@ def merge_hulls(indices_lists, dist_matrix):
             possible_results = []
             possible_lengths = []
             dindex = deque([indx])
-            # In theory, I think this could loop over fewer points. Only need to check
-            # points that can "see" the inner points?
+            # In theory, I think this could loop over fewer points.
+            # Only need to check points that can "see" the inner points?
             for i in range(len(collapsed_indices)):
                 collapsed_indices.rotate(1)
                 possible_results.append(collapsed_indices + dindex)
@@ -186,7 +192,8 @@ def three_opt(route, dist_matrix, cross_platform=True):
     min_length = route_length(min_route, dist_matrix)
 
     for cuts in combinations:
-        # The three chunks that the route is broken into based on the cuts.
+        # The three chunks that the route is broken into based
+        # on the cuts.
         c1 = route[cuts[0] : cuts[1]]
         c2 = route[cuts[1] : cuts[2]]
         c3 = route[cuts[2] :] + route[: cuts[0]]

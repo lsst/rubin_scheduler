@@ -15,9 +15,9 @@ from rubin_scheduler.utils import (
 
 class DitherDetailer(BaseDetailer):
     """
-    make a uniform dither pattern. Offset by a maximum radius in a random direction.
-    Mostly intended for DDF pointings, the BaseMarkovDF_survey class includes dithering
-    for large areas.
+    make a uniform dither pattern. Offset by a maximum radius in a random
+    direction. Mostly intended for DDF pointings, the BaseMarkovDF_survey
+    class includes dithering for large areas.
 
     Parameters
     ----------
@@ -210,7 +210,8 @@ class CameraRotDetailer(BaseDetailer):
     min_rot : `float` (90)
         The minimum to offset the camera (degrees)
     per_night : `bool` (True)
-        If True, only set a new offset per night. If False, randomly rotates every observation.
+        If True, only set a new offset per night. If False, randomly
+        rotates every observation.
     """
 
     def __init__(self, max_rot=90.0, min_rot=-90.0, per_night=True, seed=42, nnights=7305):

@@ -58,26 +58,29 @@ from rubin_scheduler.utils import _hpid2_ra_dec
 
 
 class BaseBasisFunction:
-    """Class that takes features and computes a reward function when called."""
+    """Class that takes features and computes a reward function when
+    called."""
 
     def __init__(self, nside=None, filtername=None, **kwargs):
         # Set if basis function needs to be recalculated if there is a new
         # observation
         self.update_on_newobs = True
-        # Set if basis function needs to be recalculated if conditions change
+        # Set if basis function needs to be recalculated if conditions
+        # change
         self.update_on_mjd = True
         # Dict to hold all the features we want to track
         self.survey_features = {}
-        # Keep track of the last time the basis function was called. If mjd
-        # doesn't change, use cached value
+        # Keep track of the last time the basis function was called.
+        # If mjd doesn't change, use cached value
         self.mjd_last = None
         self.value = 0
-        # list the attributes to compare to check if basis functions are equal.
+        # list the attributes to compare to check if basis functions
+        # are equal.
         self.attrs_to_compare = []
         # Do we need to recalculate the basis function
         self.recalc = True
-        # Basis functions don't technically all need an nside, but so many do
-        #  might as well set it here
+        # Basis functions don't technically all need an nside, but so
+        # many do might as well set it here
         if nside is None:
             self.nside = utils.set_default_nside()
         else:
@@ -114,7 +117,8 @@ class BaseBasisFunction:
         observation : `np.array`
             An array with information about the input observation
         indx : `np.array`
-            The indices of the healpix map that the observation overlaps with
+            The indices of the healpix map that the observation overlaps
+            with
         """
         for feature in self.survey_features:
             self.survey_features[feature].add_observation(observation, indx=indx)
@@ -122,8 +126,8 @@ class BaseBasisFunction:
             self.recalc = True
 
     def check_feasibility(self, conditions):
-        """If there is logic to decide if something is feasible (e.g., only if
-        moon is down), it can be calculated here.
+        """If there is logic to decide if something is feasible
+        (e.g., only if  moon is down), it can be calculated here.
 
         Helps prevent full __call__ from being called more than needed.
         """
@@ -168,7 +172,8 @@ class BaseBasisFunction:
         Returns
         -------
         label : `str`
-            A string suitable for labeling the basis function in a plot or table.
+            A string suitable for labeling the basis function in a
+            plot or table.
         """
         label = self.__class__.__name__.replace("BasisFunction", "")
 
@@ -198,7 +203,8 @@ class HealpixLimitedBasisFunctionMixin:
         Returns
         -------
         feasibility : `bool`
-            True if the current set of conditions is feasible, False otherwise.
+            True if the current set of conditions is feasible, False
+            otherwise.
         """
 
         if super().check_feasibility(conditions):
@@ -294,8 +300,8 @@ class NObsPerYearBasisFunction(BaseBasisFunction):
         The amount of time to allow pass before marking a region as "behind".
         Default 365.25 (days).
     season_start_hour : `float` (-2)
-        When to start the season relative to RA 180 degrees away from the sun
-        (hours)
+        When to start the season relative to RA 180 degrees away
+        from the sun (hours)
     season_end_hour : `float` (2)
         When to consider a season ending, the RA relative to the sun + 180
         degrees. (hours)
@@ -464,8 +470,8 @@ class AvoidLongGapsBasisFunction(BaseBasisFunction):
 
 
 class TargetMapBasisFunction(BaseBasisFunction):
-    """Basis function that tracks number of observations and tries to match a
-    specified spatial distribution
+    """Basis function that tracks number of observations and tries
+    to match a specified spatial distribution
 
     Parameters
     ----------
@@ -474,19 +480,20 @@ class TargetMapBasisFunction(BaseBasisFunction):
     nside: `int` (default_nside)
         The healpix resolution.
     target_map : `np.array` (None)
-        A healpix map showing the ratio of observations desired for all points
-        on the sky
+        A healpix map showing the ratio of observations desired
+        for all points on the sky
     norm_factor : `float` (0.00010519)
         for converting target map to number of observations.
         Should be the area of the camera divided by the area of a healpixel
         divided by the sum of all your goal maps.
         Default value assumes LSST foV has 1.75 degree radius and the
         standard goal maps.
-        If using multiple filters, see rubin_scheduler.utils.calc_norm_factor
+        If using multiple filters, see
+        rubin_scheduler.utils.calc_norm_factor
         for a utility that computes norm_factor.
     out_of_bounds_val : `float` (-10.)
-        Reward value to give regions where there are no observations requested
-        (unitless).
+        Reward value to give regions where there are no
+        observations requested (unitless).
     """
 
     def __init__(
@@ -586,7 +593,8 @@ class NObsHighAmBasisFunction(BaseBasisFunction):
         observation : `np.array`
             An array with information about the input observation
         indx : `np.array`
-            The indices of the healpix map that the observation overlaps with
+            The indices of the healpix map that the observation
+            overlaps with
         """
 
         # Only count the observations if they are at the airmass limits
@@ -703,9 +711,11 @@ class SeasonCoverageBasisFunction(BaseBasisFunction):
         The number of observations to attempt to gather every season
     offset : healpix map
         The offset to apply when computing the current season over the sky.
-        rubin_scheduler.utils.create_season_offset is helpful for making this
+        rubin_scheduler.utils.create_season_offset is helpful for
+        making this
     season_frac_start : `float` (0.5)
-        Only start trying to gather observations after a season is fractionally this far over.
+        Only start trying to gather observations after a season
+        is fractionally this far over.
     """
 
     def __init__(
@@ -751,7 +761,8 @@ class FootprintNvisBasisFunction(BaseBasisFunction):
     Parameters
     ----------
     footprint : `np.array`
-        A healpix array (1 for desired, 0 for not desired) of the target footprint.
+        A healpix array (1 for desired, 0 for not desired) of the
+        target footprint.
     nvis : `int` (1)
         The number of visits to try and gather
     """
@@ -919,7 +930,8 @@ class VisitRepeatBasisFunction(BaseBasisFunction):
         )
 
         # When was it last observed
-        # XXX--since this feature is also in Pair_in_night, I should just access that one!
+        # XXX--since this feature is also in Pair_in_night, I should just
+        # access that one!
         self.survey_features["Last_observed"] = features.LastObserved(filtername=filtername, nside=nside)
 
     def _calc_value(self, conditions, indx=None):
@@ -928,7 +940,8 @@ class VisitRepeatBasisFunction(BaseBasisFunction):
             indx = np.arange(result.size)
         diff = conditions.mjd - self.survey_features["Last_observed"].feature[indx]
         mask = np.isnan(diff)
-        # remove NaNs from diff, but save mask so we exclude those values later.
+        # remove NaNs from diff, but save mask so we exclude those values
+        # later.
         diff[mask] = 0.0
         ir_diff = IntRounded(diff)
         good = np.where(
@@ -1139,9 +1152,9 @@ class GoalStrictFilterBasisFunction(BaseBasisFunction):
 
     def check_feasibility(self, conditions):
         """
-        This method makes a pre-check of the feasibility of this basis function.
-        If a basis function returns False on the feasibility check,
-        it won't computed at all.
+        This method makes a pre-check of the feasibility of this
+        basis function. If a basis function returns False on the
+        feasibility check, it won't computed at all.
 
         Returns
         -------
@@ -1149,10 +1162,11 @@ class GoalStrictFilterBasisFunction(BaseBasisFunction):
         """
 
         # Make a quick check about the feasibility of this basis function.
-        # If current filter is none, telescope is parked and we could, in principle, switch to any filter.
-        # If this basis function computes reward for the current filter, then it is also feasible.
-        # At last we check for an "aways_available" flag. Meaning, we force this basis function t
-        # o be aways be computed.
+        # If current filter is none, telescope is parked and we could,
+        # in principle, switch to any filter. If this basis function
+        # computes reward for the current filter, then it is also feasible.
+        # At last we check for an "aways_available" flag. Meaning, we
+        # force this basis function to be aways be computed.
         if (
             conditions.current_filter is None
             or conditions.current_filter == self.filtername
@@ -1161,7 +1175,8 @@ class GoalStrictFilterBasisFunction(BaseBasisFunction):
             return True
 
         # If we arrive here,
-        # we make some extra checks to make sure this bf is feasible and should be computed.
+        # we make some extra checks to make sure this bf is
+        # feasible and should be computed.
 
         # Did the moon set or rise since last observation?
         moon_changed = conditions.moon_alt * self.survey_features["Last_observation"].feature["moonAlt"] < 0
@@ -1192,14 +1207,9 @@ class GoalStrictFilterBasisFunction(BaseBasisFunction):
     def _calc_value(self, conditions, **kwargs):
         if conditions.current_filter is None:
             return 0.0  # no bonus if no filter is mounted
-        # elif self.condition_features['Current_filter'].feature == self.filtername:
-        #     return 0.  # no bonus if on the filter already
 
         # Did the moon set or rise since last observation?
         moon_changed = conditions.moon_alt * self.survey_features["Last_observation"].feature["moonAlt"] < 0
-
-        # Are we already in the filter (or at start of night)?
-        # not_in_filter = (self.condition_features['Current_filter'].feature != self.filtername)
 
         # Has enough time past?
         lag = conditions.mjd - self.survey_features["Last_filter_change"].feature["mjd"]
@@ -1245,7 +1255,8 @@ class SlewtimeBasisFunction(BaseBasisFunction):
     ----------
     max_time : `float` (135)
          The estimated maximum slewtime (seconds).
-         Used to normalize so the basis function spans ~ -1-0 in reward units.
+         Used to normalize so the basis function spans ~ -1-0
+         in reward units.
     """
 
     def __init__(self, max_time=135.0, filtername="r", nside=None):
@@ -1256,17 +1267,20 @@ class SlewtimeBasisFunction(BaseBasisFunction):
         self.filtername = filtername
 
     def add_observation(self, observation, indx=None):
-        # No tracking of observations in this basis function. Purely based on conditions.
+        # No tracking of observations in this basis function.
+        # Purely based on conditions.
         pass
 
     def _calc_value(self, conditions, indx=None):
-        # If we are in a different filter, the FilterChangeBasisFunction will take it
+        # If we are in a different filter, the
+        # FilterChangeBasisFunction will take it
         if conditions.current_filter != self.filtername:
             result = 0
         else:
             # Need to make sure smaller slewtime is larger reward.
             if np.size(conditions.slewtime) > 1:
-                # Slewtime map can contain nans and/or infs - mask these with nans
+                # Slewtime map can contain nans and/or
+                # infs - mask these with nans
                 result = np.where(
                     np.isfinite(conditions.slewtime),
                     -conditions.slewtime / self.maxtime,
@@ -1294,7 +1308,8 @@ class AggressiveSlewtimeBasisFunction(BaseBasisFunction):
         self.result = np.zeros(hp.nside2npix(nside), dtype=float)
 
     def _calc_value(self, conditions, indx=None):
-        # If we are in a different filter, the FilterChangeBasisFunction will take it
+        # If we are in a different filter, the
+        # FilterChangeBasisFunction will take it
         if conditions.current_filter != self.filtername:
             result = 0.0
         else:
@@ -1465,7 +1480,8 @@ class CablewrapUnwrapBasisFunction(BaseBasisFunction):
         mask_min = np.where(accum_abs_rad < min_abs_rad)
         distance_rad[mask_min] += TWOPI
 
-        # Step-2: Repeat but now with compute reward to unwrap using specified delta_unwrap
+        # Step-2: Repeat but now with compute reward to unwrap
+        # using specified delta_unwrap
         unwrap_current_abs_rad = current_abs_rad - (
             np.abs(self.delta_unwrap) if self.unwrap_direction > 0 else -np.abs(self.delta_unwrap)
         )
@@ -1554,7 +1570,8 @@ class CadenceEnhanceBasisFunction(BaseBasisFunction):
         return result
 
 
-# https://docs.astropy.org/en/stable/_modules/astropy/modeling/functional_models.html#Trapezoid1D
+# https://docs.astropy.org/en/stable/_modules/astropy/modeling
+# functional_models.html#Trapezoid1D
 def trapezoid(x, amplitude, x_0, width, slope):
     """One dimensional Trapezoid model function"""
     # Compute the four points where the trapezoid changes slope
@@ -1690,8 +1707,8 @@ class AzimuthBasisFunction(BaseBasisFunction):
 
 
 class AzModuloBasisFunction(BaseBasisFunction):
-    """Try to replicate the Rothchild et al cadence forcing by only observing
-    on limited az ranges per night.
+    """Try to replicate the Rothchild et al cadence forcing by
+    only observing on limited az ranges per night.
 
     Parameters
     ----------
@@ -1932,8 +1949,8 @@ class VisitGap(BaseBasisFunction):
     note : str
         Value of the observation "note" field to be masked.
     filter_names : list [str], optional
-        List of filter names that will be considered when evaluating if the gap
-        has passed.
+        List of filter names that will be considered when evaluating
+        if the gap has passed.
     gap_min : float (optional)
         Time gap (default=25, in minutes).
     penalty_val : float or np.nan
@@ -1941,10 +1958,10 @@ class VisitGap(BaseBasisFunction):
 
     Notes
     -----
-    When a list of filters is provided, all filters must be observed before the
-    gap requirement will be activated, and once activated, only observations in
-    these filters will be evaluated in context of whether the last observation
-    was at least gap in the past.
+    When a list of filters is provided, all filters must be observed before
+    the gap requirement will be activated, and once activated, only
+    observations in these filters will be evaluated in context of whether
+    the last observation was at least gap in the past.
     """
 
     def __init__(self, note, filter_names=None, gap_min=25.0, penalty_val=np.nan):
@@ -2029,11 +2046,11 @@ class BalanceVisits(BaseBasisFunction):
     collective number of observations.
 
     For example, if you have 3 surveys (e.g. SURVEY_A_REGION_1,
-    SURVEY_A_REGION_2, SURVEY_A_REGION_3), when one of them is observed once
-    (SURVEY_A_REGION_1) they all get a small reward boost proportional to the
-    collective number of observations (`nobs_reference`). Further observations
-    of SURVEY_A_REGION_1 would now cause the other surveys to gain a reward
-    boost in relative to it.
+    SURVEY_A_REGION_2, SURVEY_A_REGION_3), when one of them is observed
+    once (SURVEY_A_REGION_1) they all get a small reward boost proportional
+    to the collective number of observations (`nobs_reference`). Further
+    observations of SURVEY_A_REGION_1 would now cause the other surveys
+    to gain a reward boost in relative to it.
     """
 
     def __init__(self, nobs_reference, note_survey, note_interest, nside=None):
@@ -2067,9 +2084,9 @@ class RewardNObsSequence(BaseBasisFunction):
 
     Notes
     -----
-    This basis function is useful when a survey is composed of more than one
-    observation (e.g. in different filters) and one wants to make sure they are
-    all taken together.
+    This basis function is useful when a survey is composed of more than
+    one observation (e.g. in different filters) and one wants to make sure
+    they are all taken together.
     """
 
     def __init__(self, n_obs_survey, note_survey, nside=None):

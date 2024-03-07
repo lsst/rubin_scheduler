@@ -12,7 +12,8 @@ two_pi = 2.0 * np.pi
 
 
 class Radec2altazpa:
-    """Class to make it easy to swap in different alt/az conversion if wanted."""
+    """Class to make it easy to swap in different alt/az conversion if
+    wanted."""
 
     def __init__(self, location):
         self.location = location
@@ -115,24 +116,29 @@ class KinemModel:
         readtime : `float` (2)
             The readout time of the CCDs (seconds)
         shuttertime : `float` (1.)
-            The time it takes the shutter to go from closed to fully open (seconds)
+            The time it takes the shutter to go from closed to fully open
+            (seconds)
         filter_changetime : `float` (120)
             The time it takes to change filters (seconds)
         fov : `float` (3.5)
             The camera field of view (degrees)
         rotator_min : `float` (-90)
-            The minimum angle the camera rotator (rotTelPos) can move to (degrees)
+            The minimum angle the camera rotator (rotTelPos) can move to
+            (degrees)
         rotator_max : `float` (90)
-            The maximum angle the camera rotator (rotTelPos) can move to (degrees)
+            The maximum angle the camera rotator (rotTelPos) can move to
+            degrees)
         maxspeed : `float` (3.5)
             The maximum speed of the rotator (degrees/s)
         accel : `float` (1.0)
             The acceleration of the rotator (degrees/s^2)
         jerk : `float`
-            The jerk of the rotator (degrees/s^3). Default of None treats jerk as infinite
+            The jerk of the rotator (degrees/s^3). Default of None treats
+            jerk as infinite
         shutter_2motion_min_time : `float` (15.)
-            The time required for two shutter motions (seconds). If one takes
-            a 1-snap 10s exposure, there will be a 5s of overhead before the next exposure can start.
+            The time required for two shutter motions (seconds). If one
+            takes a 1-snap 10s exposure, there will be a 5s of overhead
+            before the next exposure can start.
         """
         self.readtime = readtime
         self.shuttertime = shuttertime
@@ -267,10 +273,12 @@ class KinemModel:
 
         Note
         ----
-        A given movement in altitude will cover X degrees; if X > cl_altlimit[i] there is
+        A given movement in altitude will cover X degrees;
+        if X > cl_altlimit[i] there is
         an additional delay of cl_delay[i]
         """
-        self.optics_ol_slope = ol_slope / np.radians(1.0)  # ah, 1./np.radians(1)=np.pi/180
+        # ah, 1./np.radians(1)=np.pi/180
+        self.optics_ol_slope = ol_slope / np.radians(1.0)
         self.optics_cl_delay = cl_delay
         self.optics_cl_altlimit = np.radians(cl_altlimit)
 
@@ -278,7 +286,8 @@ class KinemModel:
         """Put the telescope in the park position."""
         # I'm going to ignore that the old model had the dome altitude at 90
         # and telescope altitude 86 for park.
-        # We should usually be dome az limited anyway, so this should be a negligible approximation.
+        # We should usually be dome az limited anyway, so this should be a
+        # negligible approximation.
         self.parked = True
 
         # We have no current position we are tracking
@@ -370,9 +379,9 @@ class KinemModel:
             Will override ra_rad,dec_rad if provided.
         lax_dome : `bool`, default True
             If True, allow the dome to creep, model a dome slit, and don't
-            require the dome to settle in azimuth. If False, adhere to the way
-            SOCS calculates slew times (as of June 21 2017) and do not allow
-            dome creep.
+            require the dome to settle in azimuth. If False, adhere to the
+            way SOCS calculates slew times (as of June 21 2017) and do not
+            allow dome creep.
         starting_alt_rad : `float` (None)
             The starting altitude for the slew (radians).
             If None, will use internally stored last pointing.
@@ -383,8 +392,8 @@ class KinemModel:
             The starting camera rotation for the slew (radians).
             If None, will use internally stored last pointing.
         update_tracking : `bool` (False)
-            If True, update the internal attributes to say we are tracking the
-            specified RA,Dec,RotSkyPos position.
+            If True, update the internal attributes to say we are tracking
+            the specified RA,Dec,RotSkyPos position.
 
         Returns
         -------
@@ -395,7 +404,8 @@ class KinemModel:
         if filtername not in self.mounted_filters:
             return np.nan
 
-        # Don't trust folks to do pa calculation correctly, if both rotations set, rot_sky_pos wins
+        # Don't trust folks to do pa calculation correctly, if both
+        # rotations set, rot_sky_pos wins
         if (rot_tel_pos is not None) & (rot_sky_pos is not None):
             if np.isfinite(rot_tel_pos):
                 rot_sky_pos = None
@@ -426,7 +436,8 @@ class KinemModel:
         delta_az_long = delta_az_short - two_pi
         daslz = np.where(delta_az_short < 0)[0]
         delta_az_long[daslz] = two_pi + delta_az_short[daslz]
-        # So, for every position, we can get there by slewing long or short way
+        # So, for every position, we can get there by slewing long or
+        # short way
         cummulative_az_short = delta_az_short + self.cumulative_azimuth_rad
         oob = np.where(
             (cummulative_az_short < self.telaz_minpos_rad) | (cummulative_az_short > self.telaz_maxpos_rad)
@@ -439,15 +450,18 @@ class KinemModel:
         )[0]
         delta_az_long[oob] = np.inf
 
-        # Find minimum azimuth slew out of long/short direction (use absolute, because these can be negative)
-        # Note that with an impaired telescope with az range<180, infinite slewtimes can propagate
+        # Find minimum azimuth slew out of long/short direction (use
+        # absolute, because these can be negative)
+        # Note that with an impaired telescope with az range<180,
+        # infinite slewtimes can propagate
         delta_aztel = np.where(
             np.abs(delta_az_short) < np.abs(delta_az_long),
             delta_az_short,
             delta_az_long,
         )
 
-        # Calculate how long the telescope will take to slew to this position.
+        # Calculate how long the telescope will take to slew to this
+        # position.
         tel_alt_slew_time = jerk_time(
             delta_alt, self.telalt_maxspeed_rad, self.telalt_accel_rad, self.telalt_jerk_rad
         )
@@ -460,16 +474,18 @@ class KinemModel:
         ol_time = delta_alt / self.optics_ol_slope
         tot_tel_time += ol_time
         # Add time for telescope settle.
-        # note, this means we're going to have a settle time even for very small slews like dithering.
+        # note, this means we're going to have a settle time even for very
+        # small slews like dithering.
         settle_and_ol = np.where(tot_tel_time > 0)
         tot_tel_time[settle_and_ol] += np.maximum(0, self.mount_settletime - ol_time[settle_and_ol])
 
-        # And any leftover overhead sets a minimum on the total telescope time
+        # And any leftover overhead sets a minimum on the total telescope
+        # time
         tot_tel_time = np.maximum(self.overhead, tot_tel_time)
 
         # now compute dome slew time
-        # the dome can spin all the way around, so we will let it go the shortest angle,
-        # even if the telescope has to unwind
+        # the dome can spin all the way around, so we will let it go the
+        # shortest angle, even if the telescope has to unwind
         delta_az = np.abs(smallest_signed_angle(starting_az_rad, az_rad))
         if lax_dome:
             # model dome creep, dome slit, and no azimuth settle
@@ -484,7 +500,8 @@ class KinemModel:
             # * that we start out going maxspeed for both alt and az
             # * that we only just barely have to get the new field in the
             #   dome slit in one direction, but that we have to center the
-            #   field in the other (which depends which of the two options used)
+            #   field in the other (which depends which of the two options
+            #   used)
             # * that we don't have to slow down until after the shutter
             #   starts opening
             dom_delta_alt = delta_alt
@@ -506,8 +523,9 @@ class KinemModel:
             tot_dom_time[same_dome] = 0
 
         else:
-            # the above models a dome slit and dome creep. However, it appears that
-            # SOCS requires the dome to slew exactly to each field and settle in az
+            # the above models a dome slit and dome creep. However, it
+            # appears that SOCS requires the dome to slew exactly to each
+            # field and settle in az
             dom_alt_slew_time = jerk_time(
                 delta_alt, self.domalt_maxspeed_rad, self.domalt_accel_rad, self.domalt_jerk_rad
             )
@@ -524,8 +542,8 @@ class KinemModel:
             tot_dom_time = np.maximum(dom_alt_slew_time, dom_az_slew_time)
         # Find the max of the above for slew time.
         slew_time = np.maximum(tot_tel_time, tot_dom_time)
-        # include filter change time if necessary. Assume no filter change time
-        # needed if we are starting parked
+        # include filter change time if necessary. Assume no filter
+        # change time needed if we are starting parked
         if not self.parked:
             filter_change = np.where(filtername != self.current_filter)
             slew_time[filter_change] = np.maximum(slew_time[filter_change], self.filter_changetime)
@@ -568,8 +586,8 @@ class KinemModel:
             )
             slew_time = np.maximum(slew_time, rotator_time)
 
-        # Update the internal attributes to note that we are now pointing and tracking
-        # at the requested RA,Dec,rot_sky_pos
+        # Update the internal attributes to note that we are now pointing
+        # and tracking at the requested RA,Dec,rot_sky_pos
         if update_tracking:
             self.current_ra_rad = ra_rad
             self.current_dec_rad = dec_rad
@@ -597,7 +615,8 @@ class KinemModel:
         return visit_time
 
     def shutter_stall(self, observation):
-        """Time we need to stall after shutter closes to let things cool down."""
+        """Time we need to stall after shutter closes to let things cool
+        down."""
         result = 0.0
         delta_t = observation["exptime"] / observation["nexp"]
         if delta_t < self.shutter_2motion_min_time:

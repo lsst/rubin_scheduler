@@ -53,17 +53,20 @@ class FilterLoadedBasisFunction(BaseBasisFunction):
 
 
 class SunHighLimitBasisFunction(BaseBasisFunction):
-    """Only execute if the sun is high. Have a sum alt limit for sunset, and a time
-    until 12 degree twilight for sun rise.
+    """Only execute if the sun is high. Have a sum alt limit for sunset,
+    and a time until 12 degree twilight for sun rise.
 
     Parameters
     ----------
     sun_alt_limit : `float`
-        The sun altitude limit (degrees). Sun must be higher than this at sunset to execute
+        The sun altitude limit (degrees). Sun must be higher than this
+        at sunset to execute
     time_to_12deg : `float`
-        How much time must be remaining before 12 degree twilight in the morning (minutes)
+        How much time must be remaining before 12 degree twilight in
+        the morning (minutes)
     time_remaining : `float`
-        Minimum about of time that must be available before trying to execute (minutes)
+        Minimum about of time that must be available before trying to
+        execute (minutes)
     """
 
     def __init__(self, sun_alt_limit=-14.8, time_to_12deg=21.0, time_remaining=15.0):
@@ -241,8 +244,9 @@ class TimeToTwilightBasisFunction(BaseBasisFunction):
 
 
 class TimeToScheduledBasisFunction(BaseBasisFunction):
-    """Make sure there is enough time before next scheduled observation. Useful
-    if you want to check before starting a long sequence of observations.
+    """Make sure there is enough time before next scheduled observation.
+    Useful if you want to check before starting a long sequence of
+    observations.
 
     Parameters
     ----------
@@ -303,7 +307,8 @@ class ForceDelayBasisFunction(BaseBasisFunction):
 
 
 class SoftDelayBasisFunction(BaseBasisFunction):
-    """Like Force_delay, but go ahead and let things catch up if they fall far behind.
+    """Like Force_delay, but go ahead and let things catch up if they fall
+    far behind.
 
     Parameters
     ----------
@@ -374,8 +379,8 @@ class MoonDownBasisFunction(BaseBasisFunction):
 
 class FractionOfObsBasisFunction(BaseBasisFunction):
     """Limit the fraction of all observations that can be labled a certain
-    survey name. Useful for keeping DDFs from exceeding a given fraction of the
-    total survey.
+    survey name. Useful for keeping DDFs from exceeding a given fraction
+    of the total survey.
 
     Parameters
     ----------
@@ -411,10 +416,12 @@ class LookAheadDdfBasisFunction(BaseBasisFunction):
     frac_total : float
         The fraction of total observations that can be of this survey
     aggressive_fraction : float
-        If the fraction of observations drops below ths value, be more aggressive in scheduling.
-        e.g., do not wait for conditions to improve, execute as soon as possible.
+        If the fraction of observations drops below ths value, be more
+        aggressive in scheduling.  e.g., do not wait for conditions to
+        improve, execute as soon as possible.
     time_needed : float (30.)
-        Estimate of the amount of time needed to execute DDF sequence (minutes).
+        Estimate of the amount of time needed to execute DDF sequence
+        (minutes).
     RA : float (0.)
         The RA of the DDF
     ha_limits : list of lists (None)
@@ -423,7 +430,8 @@ class LookAheadDdfBasisFunction(BaseBasisFunction):
     survey_name : str ('')
         The name of the survey
     time_jump : float (44.)
-        The amount of time to assume will jump ahead if another survey executes (minutes)
+        The amount of time to assume will jump ahead if another survey
+        executes (minutes)
     sun_alt_limit : float (-18.)
         The limit to assume twilight starts (degrees)
     """
@@ -465,7 +473,8 @@ class LookAheadDdfBasisFunction(BaseBasisFunction):
         ):
             if IntRounded(available_time) > IntRounded(self.time_needed + self.time_jump):
                 result = False
-                # If we paused for better conditions, but the moon will rise, turn things back on.
+                # If we paused for better conditions, but the moon will
+                # rise, turn things back on.
                 if IntRounded(conditions.moon_alt) < IntRounded(0):
                     if IntRounded(conditions.moonrise) > IntRounded(conditions.mjd):
                         if IntRounded(conditions.moonrise - conditions.mjd) > IntRounded(self.time_jump):
@@ -479,7 +488,8 @@ class LookAheadDdfBasisFunction(BaseBasisFunction):
                 if IntRounded(time_after_moonset) > IntRounded(self.time_needed):
                     result = False
 
-        # If the survey has fallen far behind, be agressive and observe anytime it's up.
+        # If the survey has fallen far behind, be agressive and observe
+        # anytime it's up.
         if IntRounded(ratio) < IntRounded(self.aggressive_fraction):
             result = True
         return result
@@ -498,14 +508,16 @@ class CloudedOutBasisFunction(BaseBasisFunction):
 
 
 class RisingMoreBasisFunction(BaseBasisFunction):
-    """Say a spot is not available if it will rise substatially before twilight.
+    """Say a spot is not available if it will rise substatially before
+    twilight.
 
     Parameters
     ----------
     RA : float
         The RA of the point in the sky (degrees)
     pad : float
-        When to start observations if there's plenty of time before twilight (minutes)
+        When to start observations if there's plenty of time before
+        twilight (minutes)
     """
 
     def __init__(self, RA, pad=30.0):
@@ -516,7 +528,8 @@ class RisingMoreBasisFunction(BaseBasisFunction):
     def check_feasibility(self, conditions):
         result = True
         hour_angle = conditions.lmst - self.ra_hours
-        # If it's rising, and twilight is well beyond when it crosses the meridian
+        # If it's rising, and twilight is well beyond when it crosses
+        # the meridian
         time_to_twi = (conditions.sun_n18_rising - conditions.mjd) * 24.0
         if (hour_angle < -self.pad) & (np.abs(hour_angle) < (time_to_twi - self.pad)):
             result = False

@@ -30,13 +30,15 @@ class BaseSurvey:
     extra_features : list XXX--should this be a dict for clarity?
         List of any additional features the survey may want to use
         e.g., for computing final dither positions.
-    extra_basis_functions : dict of rubin_scheduler.scheduler.basis_function objects
-        Extra basis function objects. Typically not psased in, but et in the __init__.
+    extra_basis_functions : dict of rubin_scheduler.scheduler.basis_function
+        Extra basis function objects. Typically not passed in, but et
+        in the __init__.
     ignore_obs : list of str (None)
-        If an incoming observation has this string in the note, ignore it. Handy if
-        one wants to ignore DD fields or observations requested by self. Take note,
-        if a survey is called 'mysurvey23', setting ignore_obs to 'mysurvey2' will
-        ignore it because 'mysurvey2' is a substring of 'mysurvey23'.
+        If an incoming observation has this string in the note, ignore it.
+        Handy if one wants to ignore DD fields or observations
+        requested by self. Take note, if a survey is called 'mysurvey23',
+        setting ignore_obs to 'mysurvey2' will ignore it because
+        'mysurvey2' is a substring of 'mysurvey23'.
     detailers : list of rubin_scheduler.scheduler.detailers objects
         The detailers to apply to the list of observations.
     scheduled_obs : np.array
@@ -124,11 +126,12 @@ class BaseSurvey:
         ----------
         observations_array_in : np.array
             An array of completed observations
-            (with columns like rubin_scheduler.scheduler.utils.empty_observation).
+            (with columns like
+            rubin_scheduler.scheduler.utils.empty_observation).
         observations_hpid_in : np.array
-            Same as observations_array_in, but larger and with an additional column
-            for HEALpix id. Each observation is listed mulitple times,
-            once for every HEALpix it overlaps.
+            Same as observations_array_in, but larger and with an
+            additional column for HEALpix id. Each observation is
+            listed mulitple times, once for every HEALpix it overlaps.
         """
 
         # Just to be sure things are sorted
@@ -159,7 +162,8 @@ class BaseSurvey:
     def add_observation(self, observation, **kwargs):
         # Check each posible ignore string
         checks = [io not in str(observation["note"]) for io in self.ignore_obs]
-        # ugh, I think here I have to assume observation is an array and not a dict.
+        # ugh, I think here I have to assume observation is an
+        # array and not a dict.
         if all(checks):
             for feature in self.extra_features:
                 self.extra_features[feature].add_observation(observation, **kwargs)
@@ -225,8 +229,10 @@ class BaseSurvey:
         return observations
 
     def viz_config(self):
-        # XXX--zomg, we should have a method that goes through all the objects and
-        # makes plots/prints info so there can be a little notebook showing the config!
+        # XXX--zomg, we should have a method that goes through all
+        # the objects and
+        # makes plots/prints info so there can be a little
+        # notebook showing the config!
         pass
 
     def __repr__(self):
@@ -411,13 +417,14 @@ def rotx(theta, x, y, z):
 
 
 class BaseMarkovSurvey(BaseSurvey):
-    """A Markov Decision Function survey object. Uses Basis functions to compute a
-    final reward function and decide what to observe based on the reward. Includes
-    methods for dithering and defaults to dithering nightly.
+    """A Markov Decision Function survey object. Uses Basis functions
+    to compute a final reward function and decide what to observe based
+    on the reward. Includes methods for dithering and defaults to
+    dithering nightly.
 
     Parameters
     ----------
-    basis_function : list of rubin_scheduler.schuler.basis_function objects
+    basis_function : list of rubin_scheduler.schuler.basis_function
 
     basis_weights : list of float
         Must be same length as basis_function
@@ -426,13 +433,16 @@ class BaseMarkovSurvey(BaseSurvey):
     camera : str ('LSST')
         Should be 'LSST' or 'comcam'
     fields : np.array (None)
-        An array of field positions. Should be numpy array with columns of "RA" and
-        "dec" in radians. If none, site_models.read_fields or utils.comcam_tessellate is
-        used to read field positions.
+        An array of field positions. Should be numpy array with columns
+        of "RA" and "dec" in radians. If none,
+        site_models.read_fields or utils.comcam_tessellate is used to
+        read field positions.
     area_required : float (None)
-        The valid area that should be present in the reward function (square degrees).
+        The valid area that should be present in the reward
+        function (square degrees).
     npositions : int (7305)
-        The number of dither positions to pre-compute. Defaults to 7305 (so good for 20 years)
+        The number of dither positions to pre-compute. Defaults
+        to 7305 (so good for 20 years)
     """
 
     def __init__(
@@ -500,8 +510,8 @@ class BaseMarkovSurvey(BaseSurvey):
         self.dither = dither
 
         # Generate and store rotation positions to use.
-        # This way, if different survey objects are seeded the same, they will
-        # use the same dither positions each night
+        # This way, if different survey objects are seeded the same,
+        # they will use the same dither positions each night
         rng = np.random.default_rng(seed)
         self.lon = rng.random(npositions) * np.pi * 2
         # Make sure latitude points spread correctly
@@ -526,8 +536,8 @@ class BaseMarkovSurvey(BaseSurvey):
         return result
 
     def _hp2fieldsetup(self, ra, dec):
-        """Map each healpixel to nearest field. This will only work if healpix
-        resolution is higher than field resolution.
+        """Map each healpixel to nearest field. This will only work
+        if healpix resolution is higher than field resolution.
 
         Parameters
         ----------
@@ -553,13 +563,14 @@ class BaseMarkovSurvey(BaseSurvey):
     def _spin_fields(self, conditions, lon=None, lat=None, lon2=None):
         """Spin the field tessellation to generate a random orientation
 
-        The default field tesselation is rotated randomly in longitude, and then the
-        pole is rotated to a random point on the sphere.
+        The default field tesselation is rotated randomly in longitude,
+        and then the pole is rotated to a random point on the sphere.
 
         Parameters
         ----------
         lon : float (None)
-            The amount to initially rotate in longitude (radians). Will use a random value
+            The amount to initially rotate in longitude (radians).
+            Will use a random value
             between 0 and 2 pi if None (default).
         lat : float (None)
             The amount to rotate in latitude (radians).
@@ -590,22 +601,21 @@ class BaseMarkovSurvey(BaseSurvey):
         self.fields["RA"] = ra
         self.fields["dec"] = dec
         # Rebuild the kdtree with the new positions
-        # XXX-may be doing some ra,dec to conversions xyz more than needed.
+        # XXX-may be doing some ra,dec to conversions xyz more
+        # than needed.
         self._hp2fieldsetup(ra, dec)
 
     def smooth_reward(self):
         """If we want to smooth the reward function."""
         if hp.isnpixok(self.reward.size):
-            # Need to swap NaNs to hp.UNSEEN so smoothing doesn't spread mask
+            # Need to swap NaNs to hp.UNSEEN so smoothing doesn't
+            # spread mask
             reward_temp = copy(self.reward)
             mask = np.isnan(reward_temp)
             reward_temp[mask] = hp.UNSEEN
             self.reward_smooth = hp.sphtfunc.smoothing(reward_temp, fwhm=self.smoothing_kernel, verbose=False)
             self.reward_smooth[mask] = np.nan
             self.reward = self.reward_smooth
-            # good = ~np.isnan(self.reward_smooth)
-            # Round off to prevent strange behavior early on
-            # self.reward_smooth[good] = np.round(self.reward_smooth[good], decimals=4)
 
     def calc_reward_function(self, conditions):
         self.reward_checked = True

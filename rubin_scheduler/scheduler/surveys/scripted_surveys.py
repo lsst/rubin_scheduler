@@ -18,20 +18,23 @@ class ScriptedSurvey(BaseSurvey):
 
     Parameters
     ----------
-    basis_functions : list of rubin_scheduler.scheduler.BasisFunction objects
-        Basis functions to use. These are only used for masking regions of the sky and
-        computing survey feasibility. They do not contribute to the logic of how
-        observations are selected.
+    basis_functions : list of rubin_scheduler.scheduler.BasisFunction
+        Basis functions to use. These are only used for masking regions
+        of the sky and computing survey feasibility. They do not
+        contribute to the logic of how observations are selected.
     id_start : `int` (1)
-        The integer to start the "scripted id" field with. Bad things could happen
-        if you have multiple scripted survey objects with the same scripted IDs.
+        The integer to start the "scripted id" field with. Bad things
+        could happen if you have multiple scripted survey objects with
+        the same scripted IDs.
     return_n_limit : `int` (10)
-        The maximum number of observations to return. Set to high and your block
-        of scheduled observations can run into twilight time.
+        The maximum number of observations to return. Set to high and
+        your block of scheduled observations can run into twilight time.
     before_twi_check : `bool`
-        Check if the returned observations have enough time to complete before twilight starts. (default True)
+        Check if the returned observations have enough time to complete
+        before twilight starts. (default True)
     filter_change_time : `float`
-        The time needed to change filters. Default 120 seconds. Only used if before_twi_check is True.
+        The time needed to change filters. Default 120 seconds. Only
+        used if before_twi_check is True.
     """
 
     def __init__(
@@ -99,7 +102,8 @@ class ScriptedSurvey(BaseSurvey):
             for detailer in self.detailers:
                 detailer.add_observations_array(observations_array, observations_hpid)
 
-            # If scripted_id, note, and filter match, then consider the observation completed.
+            # If scripted_id, note, and filter match, then consider
+            # the observation completed.
             completed = np.char.add(
                 observations_array["scripted_id"].astype(str),
                 observations_array["note"],
@@ -141,7 +145,8 @@ class ScriptedSurvey(BaseSurvey):
                         self.scheduled_obs = self.obs_wanted["mjd"][~self.obs_wanted["observed"]]
 
     def calc_reward_function(self, conditions):
-        """If there is an observation ready to go, execute it, otherwise, -inf"""
+        """If there is an observation ready to go, execute it,
+        otherwise, -inf"""
         observation = self.generate_observations_rough(conditions)
         if (observation is None) | (np.size(observation) == 0):
             self.reward = -np.inf
@@ -169,7 +174,8 @@ class ScriptedSurvey(BaseSurvey):
         return observation
 
     def _check_alts_ha(self, observation, conditions):
-        """Given scheduled observations, check which ones can be done in current conditions.
+        """Given scheduled observations, check which ones can be
+        done in current conditions.
 
         Parameters
         ----------
@@ -217,7 +223,8 @@ class ScriptedSurvey(BaseSurvey):
         """Check to see if the current mjd is good"""
         observations = None
         if self.obs_wanted is not None:
-            # Scheduled observations that are in the right time window and have not been executed
+            # Scheduled observations that are in the right time
+            # window and have not been executed
             in_time_window = np.where(
                 (self.mjd_start < conditions.mjd)
                 & (self.obs_wanted["flush_by_mjd"] > conditions.mjd)
@@ -240,7 +247,8 @@ class ScriptedSurvey(BaseSurvey):
                 if np.size(matches) > self.return_n_limit:
                     matches = matches[0 : self.return_n_limit]
                 observations = self.obs_wanted[matches]
-                # Need to check that none of these are masked by basis functions
+                # Need to check that none of these are masked by basis
+                # functions
                 reward = 0
                 for bf, weight in zip(self.basis_functions, self.basis_weights):
                     basis_value = bf(conditions)
@@ -271,12 +279,15 @@ class ScriptedSurvey(BaseSurvey):
         Parameters
         ----------
         obs_wanted : np.array
-            The observations that should be executed. Needs to have columns with dtype names:
+            The observations that should be executed. Needs to have
+            columns with dtype names:
             Should be from lsst.sim.scheduler.utils.scheduled_observation
         mjds : np.array
-            The MJDs for the observaitons, should be same length as obs_list
+            The MJDs for the observaitons, should be same length as
+            obs_list
         mjd_tol : float (15.)
-            The tolerance to consider an observation as still good to observe (min)
+            The tolerance to consider an observation as still good to
+            observe (min)
         """
 
         self.obs_wanted = obs_wanted
@@ -289,8 +300,8 @@ class ScriptedSurvey(BaseSurvey):
         self.id_start = np.max(self.obs_wanted["scripted_id"]) + 1
 
         self.mjd_start = self.obs_wanted["mjd"] - self.obs_wanted["mjd_tol"]
-        # Here is the atribute that core scheduler checks to broadcast scheduled observations
-        # in the conditions object.
+        # Here is the atribute that core scheduler checks to
+        # broadcast scheduled observations in the conditions object.
         self.scheduled_obs = self.obs_wanted["mjd"]
 
     def generate_observations_rough(self, conditions):
@@ -306,7 +317,8 @@ class ScriptedSurvey(BaseSurvey):
 
         n_filter_changes = np.sum(observations[1:]["filter"] == observations[:-1]["filter"])
 
-        # If we want to ensure the observations can be completed before twilight starts
+        # If we want to ensure the observations can be completed
+        # before twilight starts
         if self.before_twi_check:
             # Note that if detailers are adding lots of exposures, this
             # calculation has the potential to not be right at all.

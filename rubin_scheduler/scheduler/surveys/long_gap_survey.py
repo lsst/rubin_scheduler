@@ -18,21 +18,26 @@ class LongGapSurvey(BaseSurvey):
     Parameters
     ----------
     blob_survey : rubin_scheduler.scheduler.surveys.BlobSurvey
-        A survey object that we will want to take repeat measurments of sometime later in the evening
+        A survey object that we will want to take repeat measurments of
+        sometime later in the evening
     scripted_survey : rubin_scheduler.scheduler.surveys.ScriptedSurvey
-        A scripted survey object that will have a queue updated with objects to observe later.
+        A scripted survey object that will have a queue updated with
+        objects to observe later.
     gap range : list of 2 floats
         The desired gap range (hours)
     long_name : str
-        The string to put in the observation 'note' for the scripted observations
+        The string to put in the observation 'note' for the scripted
+        observations
     scripted_tol : float
         The tolerance for when scripted observations can execute (hours)
     after_meridian : bool (False)
-        If True, force the scripted obsrevations to happen after they pass through the meridian.
-        This can help make sure we don't hit the zenith exclusion zone.
+        If True, force the scripted obsrevations to happen after they
+        pass through the meridian. This can help make sure we don't hit
+        the zenith exclusion zone.
     hour_step : float (0.5)
-        The amount of time to step scheduled observations forward if they could try to execute in the
-        zenith avoidance area (hours). Only used if `avoid_zenith` is True.
+        The amount of time to step scheduled observations forward if
+        they could try to execute in the zenith avoidance area (hours).
+        Only used if `avoid_zenith` is True.
     ha_min(_max) : float (0,24)
         Trying to set so they don't acctually get used.
 
@@ -94,11 +99,12 @@ class LongGapSurvey(BaseSurvey):
         )
 
     def _schedule_obs(self, observations):
-        """Take incoming observations and decide if they should be added to the
-        scripted survey to try and be observered again later
+        """Take incoming observations and decide if they should be added
+        to the scripted survey to try and be observered again later
         """
 
-        # Only match if we have completed the second of a pair and are in most recent night.
+        # Only match if we have completed the second of a pair and are
+        # in most recent night.
         # ugh, stupid np.where doesn't support using scalars anymore
         if np.size(observations) == 1:
             if (observations["note"] == self.blob_survey.survey_note + ", b") & (
@@ -116,7 +122,8 @@ class LongGapSurvey(BaseSurvey):
         # Set to the proper gap
         self.gap = self.gaps[np.max(observations["night"])]
 
-        # If the incoming observation needs to have something scheduled later
+        # If the incoming observation needs to have something
+        # scheduled later
         if np.size(need_to_observe) > 0:
             sched_array = scheduled_observation(n=need_to_observe.size)
             for dt in np.intersect1d(observations.dtype.names, sched_array.dtype.names):
@@ -148,7 +155,8 @@ class LongGapSurvey(BaseSurvey):
                     np.max(sched_array["mjd"]) + self.mjd_step,
                     self.mjd_step,
                 )
-                # Let's compute the alt of everything at earliest and scheduled
+                # Let's compute the alt of everything at earliest and
+                # scheduled
                 for mjd in mjds:
                     alt, az = _approx_ra_dec2_alt_az(
                         sched_array["RA"],
@@ -170,7 +178,8 @@ class LongGapSurvey(BaseSurvey):
                         np.max(sched_array["mjd"]) + self.mjd_step,
                         self.mjd_step,
                     )
-                    # Let's compute the alt of everything at earliest and scheduled
+                    # Let's compute the alt of everything at earliest
+                    # and scheduled
                     for mjd in mjds:
                         alt, az = _approx_ra_dec2_alt_az(
                             sched_array["RA"],
@@ -183,7 +192,8 @@ class LongGapSurvey(BaseSurvey):
             # Make sure these have the note filled in
             sched_array["note"] = self.long_name
 
-            # See if we need to append things to the scripted survey object
+            # See if we need to append things to the scripted survey
+            # object
             if self.scripted_survey.obs_wanted is not None:
                 sched_array = np.concatenate([self.scripted_survey.obs_wanted, sched_array])
 
@@ -221,7 +231,8 @@ class LongGapSurvey(BaseSurvey):
             time_remaining = conditions.sun_n18_rising - conditions.mjd
             if self.gap > time_remaining:
                 self.gap = time_remaining - self.block_length
-            # XXX-need to reach into the blob and set what the gap is I guess
+            # XXX-need to reach into the blob and set what the gap
+            # is I guess
 
         self.r1 = self.blob_survey.calc_reward_function(conditions)
         self.r2 = self.scripted_survey.calc_reward_function(conditions)

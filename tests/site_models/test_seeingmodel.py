@@ -12,9 +12,10 @@ class TestSeeingModel(unittest.TestCase):
         self.assertAlmostEqual(seeing_model.fwhm_system_zenith, 0.39862262855989494, places=7)
 
     def test_fwhm_geom_eff(self):
-        # Check that the translation between FWHM effective and geometric is done as expected.
-        # (note that fwhmEff_tofwhmGeom & fwhmGeom_to_fwhmEff are static methods)
-        # Document-20160 for reference.
+        # Check that the translation between FWHM effective and
+        # geometric is done as expected.
+        # (note that fwhmEff_tofwhmGeom & fwhmGeom_to_fwhmEff are
+        # static methods) Document-20160 for reference.
         fwhm_eff = 1.23
         fwhm_geom = 0.822 * fwhm_eff + 0.052
         self.assertEqual(fwhm_geom, SeeingModel.fwhm_eff_to_fwhm_geom(fwhm_eff))
@@ -34,7 +35,8 @@ class TestSeeingModel(unittest.TestCase):
         fwhm_eff = seeing["fwhmEff"]
         # Check shape of returned values.
         self.assertEqual(fwhm_eff.shape, (len(seeing_model.eff_wavelens),))
-        # Check actual value of seeing in @ wavelen[0] @ zenith after addition of system.
+        # Check actual value of seeing in @ wavelen[0] @ zenith
+        # after addition of system.
         fwhm_system = seeing_model.fwhm_system_zenith
         expected_fwhm_eff = 1.16 * np.sqrt(fwhm_system**2 + 1.04 * fwhm_500**2)
         self.assertAlmostEqual(fwhm_eff[0], expected_fwhm_eff, 15)

@@ -107,40 +107,49 @@ class BlobSurvey(GreedySurvey):
     filtername1 : `str`
         The filter to observe in.
     filtername2 : `str`
-        The filter to pair with the first observation. If set to None, no pair
-        will be observed.
+        The filter to pair with the first observation. If set to None,
+        no pair will be observed.
     slew_approx : `float`
-        The approximate slewtime between neerby fields (seconds). Used to calculate
-        how many observations can be taken in the desired time block.
+        The approximate slewtime between neerby fields (seconds). Used
+        to calculate how many observations can be taken in the
+        desired time block.
     nexp : `int`
         The number of exposures to take in a visit.
     exp_dict : `dict`
-        If set, should have keys of filtername and values of ints that are the nuber of exposures to take
-        per visit. For estimating block time, nexp is still used.
+        If set, should have keys of filtername and values of ints that
+        are the nuber of exposures to take per visit. For estimating
+        block time, nexp is still used.
     filter_change_approx : `float`
          The approximate time it takes to change filters (seconds).
     ideal_pair_time : `float`
-        The ideal time gap wanted between observations to the same pointing (minutes)
+        The ideal time gap wanted between observations to the same
+        pointing (minutes)
     min_pair_time : `float`
         The minimum acceptable pair time (minutes)
     flush_time : `float`
-        The time past the final expected exposure to flush the queue. Keeps observations
-        from lingering past when they should be executed. (minutes)
+        The time past the final expected exposure to flush the queue.
+        Keeps observations from lingering past when they should be
+        executed. (minutes)
     twilight_scale : `bool`
-        Scale the block size to fill up to twilight. Set to False if running in twilight
+        Scale the block size to fill up to twilight. Set to False if
+        running in twilight
     in_twilight : `bool`
         Scale the block size to stay within twilight time.
     check_scheduled : `bool`
-        Check if there are scheduled observations and scale blob size to match
+        Check if there are scheduled observations and scale blob size
+        to match
     min_area : `float`
-        If set, demand the reward function have an area of so many square degrees before executing
+        If set, demand the reward function have an area of so many
+        square degrees before executing
     grow_blob : `bool`
-        If True, try to grow the blob from the global maximum. Otherwise, just use a simple sort.
-        Simple sort will not constrain the blob to be contiguous.
+        If True, try to grow the blob from the global maximum. Otherwise,
+        just use a simple sort.  Simple sort will not constrain the
+        blob to be contiguous.
     max_radius_peak : `float`
-        The maximum radius to demand things be within the maximum of the reward function. (degrees)
-        Note that traveling salesman solver can have rare failures if this is set too large
-        (probably issue with projection effects or something).
+        The maximum radius to demand things be within the maximum of
+        the reward function. (degrees) Note that traveling salesman
+        solver can have rare failures if this is set too large (probably
+        issue with projection effects or something).
     """
 
     def __init__(
@@ -212,10 +221,12 @@ class BlobSurvey(GreedySurvey):
 
         self.min_area = min_area
         self.check_scheduled = check_scheduled
-        # If we are taking pairs in same filter, no need to add filter change time.
+        # If we are taking pairs in same filter, no need to add filter
+        # change time.
         if filtername1 == filtername2:
             filter_change_approx = 0
-        # Compute the minimum time needed to observe a blob (or observe, then repeat.)
+        # Compute the minimum time needed to observe a blob (or observe,
+        # then repeat.)
         if filtername2 is not None:
             self.time_needed = (
                 (min_pair_time * 60.0 * 2.0 + exptime + read_approx + filter_change_approx) / 24.0 / 3600.0
@@ -231,7 +242,7 @@ class BlobSurvey(GreedySurvey):
         self.ra, self.dec = _hpid2_ra_dec(self.nside, self.hpids)
 
         self.survey_note = survey_note
-        self.counter = 1  # start at 1, because 0 is default in empty observation
+        self.counter = 1  # start at 1, because 0 is default in empty obs
         self.min_pair_time = min_pair_time
         self.ideal_pair_time = ideal_pair_time
 
@@ -257,7 +268,8 @@ class BlobSurvey(GreedySurvey):
             if not result:
                 return result
 
-        # If we need to check that the reward function has enough area available
+        # If we need to check that the reward function has enough
+        # area available
         if self.min_area is not None:
             reward = 0
             for bf, weight in zip(self.basis_functions, self.basis_weights):
@@ -294,7 +306,8 @@ class BlobSurvey(GreedySurvey):
                 if n_blocks < n_ideal_blocks:
                     n_ideal_blocks = n_blocks
 
-        # If we are trying to complete before twilight ends or the night ends
+        # If we are trying to complete before twilight ends or
+        # the night ends
         if self.in_twilight:
             at1 = conditions.sun_n12_rising - conditions.mjd
             at2 = conditions.sun_n18_setting - conditions.mjd
@@ -315,9 +328,11 @@ class BlobSurvey(GreedySurvey):
                 )
             )
         else:
-            # Now we can stretch or contract the block size to allocate the
+            # Now we can stretch or contract the block size to
+            # allocate the
             # remainder time until twilight starts
-            # We can take the remaining time and try to do 1,2, or 3 blocks.
+            # We can take the remaining time and try to do 1,2,
+            # or 3 blocks.
             possible_times = available_time / np.arange(1, 4)
             diff = np.abs(self.ideal_pair_time - possible_times)
             best_block_time = np.max(possible_times[np.where(diff == np.min(diff))])
@@ -378,9 +393,11 @@ class BlobSurvey(GreedySurvey):
 
         potential_hp = np.where(np.isfinite(self.reward))[0]
 
-        # Note, using nanmax, so masked pixels might be included in the pointing.
-        # I guess I should document that it's not "NaN pixels can't be observed", but
-        # "non-NaN pixles CAN be observed", which probably is not intuitive.
+        # Note, using nanmax, so masked pixels might be included in
+        # the pointing. I guess I should document that it's not
+        # "NaN pixels can't be observed", but
+        # "non-NaN pixles CAN be observed", which probably is
+        # not intuitive.
         ufields, reward_by_field = int_binned_stat(
             self.hp2fields[potential_hp], self.reward[potential_hp], statistic=np.nanmax
         )
@@ -434,9 +451,10 @@ class BlobSurvey(GreedySurvey):
             # everything was nans, or self.nvisit_block was zero
             return []
 
-        # Let's find the alt, az coords of the points (right now, hopefully doesn't change much in time block)
-        # Not sure why need to convert to alt,az before running TSP, but it
-        # does seem to be better.
+        # Let's find the alt, az coords of the points (right now,
+        # hopefully doesn't change much in time block)
+        # Not sure why need to convert to alt,az before running TSP,
+        # but it does seem to be better.
         pointing_alt, pointing_az = _approx_ra_dec2_alt_az(
             self.fields["RA"][self.best_fields],
             self.fields["dec"][self.best_fields],
@@ -448,7 +466,8 @@ class BlobSurvey(GreedySurvey):
 
         better_order = order_observations(pointing_az, pointing_alt)
 
-        # XXX-TODO: Could try to roll better_order to start at the nearest/fastest slew from current position.
+        # XXX-TODO: Could try to roll better_order to start at
+        # the nearest/fastest slew from current position.
         observations = []
         counter2 = 0
         approx_end_time = np.size(better_order) * (

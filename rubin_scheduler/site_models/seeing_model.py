@@ -10,34 +10,38 @@ from rubin_scheduler.utils import SysEngVals
 class SeeingModel:
     """LSST FWHM calculations for FWHM_effective and FWHM_geometric.
 
-    Calculations of the delivered values are based on equations in Document-20160
-    ("Atmospheric and Delivered Image Quality in OpSim" by Bo Xin, George Angeli, Zeljko Ivezic)
-    An example of the calculation of delivered image seeing from DIMM FWHM_500 is available in
-    https://smtn-002.lsst.io/#calculating-m5-values-in-the-lsst-operations-simulator
+    Calculations of the delivered values are based on equations in
+    Document-20160 ("Atmospheric and Delivered Image Quality in OpSim"
+    by Bo Xin, George Angeli, Zeljko Ivezic)
+    An example of the calculation of delivered image seeing from DIMM
+    FWHM_500 is available in
+    https://smtn-002.lsst.io/
+    #calculating-m5-values-in-the-lsst-operations-simulator
 
     Parameters
     ----------
     filter_list : `list` [`str`], opt
-        List of the filter bandpasses for which to calculate delivered FWHM_effective and FWHM_geometric
+        List of the filter bandpasses for which to calculate delivered
+        FWHM_effective and FWHM_geometric
         Default ['u', 'g', 'r', 'i', 'z', 'y']
     eff_wavelens : `list` [`float`] or None, opt
-        Effective wavelengths for those bandpasses, in nanometers. If None, loades from
-        rubin_scheduler.utils.SysEngVals
+        Effective wavelengths for those bandpasses, in nanometers.
+        If None, loades from rubin_scheduler.utils.SysEngVals
     telescope_seeing : `float`, opt
-        The contribution to the delivered FWHM from the telescope, in arcseconds.
-        Default 0.25"
+        The contribution to the delivered FWHM from the telescope,
+        in arcseconds. Default 0.25"
     optical_design_seeing : `float`, opt
-        The contribution to the seeing from the optical design, in arcseconds.
-        Default 0.08 arcseconds
+        The contribution to the seeing from the optical design, in
+        arcseconds. Default 0.08 arcseconds
     camera_seeing : `float`, opt
         The contribution to the seeing from the camera, in arcseconds.
         Default 0.30 arcseconds
     raw_seeing_wavelength : `float`, opt
-        The wavelength of the DIMM-delivered equivalent FWHM, in nanometers.
-        Default 500nm.
+        The wavelength of the DIMM-delivered equivalent FWHM, in
+        nanometers. Default 500nm.
     efd_seeing : `str`, opt
-        The name of the DIMM FWHM measurements in the efd / conditions object.
-        Default `FWHM_500`
+        The name of the DIMM FWHM measurements in the efd /
+        conditions object. Default `FWHM_500`
     """
 
     def __init__(
@@ -68,31 +72,36 @@ class SeeingModel:
         warnings.warn("the configure method is deprecated")
 
     def config_info(self):
-        """Deprecated. Report configuration parameters and version information."""
+        """Deprecated. Report configuration parameters and version
+        information."""
         warnings.warn("the config_info method is deprecated.")
 
     def _set_fwhm_zenith_system(self):
         """Calculate the system contribution to FWHM at zenith.
 
-        This is simply the individual telescope, optics, and camera contributions
-        combined in quadrature.
+        This is simply the individual telescope, optics, and camera
+        contributions combined in quadrature.
         """
         self.fwhm_system_zenith = np.sqrt(
             self.telescope_seeing**2 + self.optical_design_seeing**2 + self.camera_seeing**2
         )
 
     def __call__(self, fwhm_z, airmass):
-        """Calculate the seeing values FWHM_eff and FWHM_geom at the given airmasses,
-        for the specified effective wavelengths, given FWHM_zenith (typically FWHM_500).
+        """Calculate the seeing values FWHM_eff and FWHM_geom at the
+        given airmasses, for the specified effective wavelengths, given
+        FWHM_zenith (typically FWHM_500).
 
-        FWHM_geom represents the geometric size of the PSF; FWHM_eff represents the FWHM of a
-        single gaussian which encloses the same number of pixels as N_eff (the number of pixels
-        enclosed in the actual PSF -- this is the value to use when calculating SNR).
+        FWHM_geom represents the geometric size of the PSF; FWHM_eff
+        represents the FWHM of a single gaussian which encloses the
+        same number of pixels as N_eff (the number of pixels enclosed
+        in the actual PSF -- this is the value to use when calculating
+        SNR).
 
         FWHM_geom(") = 0.822 * FWHM_eff(") + 0.052"
 
-        The FWHM_eff includes a contribution from the system and from the atmosphere.
-        Both of these are expected to scale with airmass^0.6 and with (500(nm)/wavelength(nm))^0.3.
+        The FWHM_eff includes a contribution from the system and from
+        the atmosphere.  Both of these are expected to scale with
+        airmass^0.6 and with (500(nm)/wavelength(nm))^0.3.
         FWHM_eff = 1.16 * sqrt(FWHM_sys**2 + 1.04*FWHM_atm**2)
 
         Parameters
@@ -106,10 +115,12 @@ class SeeingModel:
         -------
         FWHMeff, FWHMGeom : `dict` of {`numpy.ndarray`, `numpy.ndarray`}
             FWHMeff, FWHMgeom: both are the same shape numpy.ndarray.
-            If airmass is a single value, FWHMeff & FWHMgeom are 1-d arrays,
-            with the same order as eff_wavelen (i.e. eff_wavelen[0] = u, then FWHMeff[0] = u).
-            If airmass is a numpy array, FWHMeff and FWHMgeom are 2-d arrays,
-            in the order of <filter><airmass> (i.e. eff_wavelen[0] = u, 1-d array over airmass range).
+            If airmass is a single value, FWHMeff & FWHMgeom are 1-d
+            arrays, with the same order as eff_wavelen (i.e.
+            eff_wavelen[0] = u, then FWHMeff[0] = u). If airmass is a
+            numpy array, FWHMeff and FWHMgeom are 2-d arrays, in the
+            order of <filter><airmass> (i.e. eff_wavelen[0] = u, 1-d
+            array over airmass range).
         """
         if isinstance(fwhm_z, dict):
             fwhm_z = fwhm_z[self.efd_seeing]

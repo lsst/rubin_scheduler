@@ -9,13 +9,14 @@ from rubin_scheduler.scheduler.surveys import BaseSurvey, BlobSurvey
 
 class TooMaster(BaseSurvey):
     """
-    A target of opportunity class. Every time a new ToO comes in, it will spawn a new sub-survey.
+    A target of opportunity class. Every time a new ToO comes in, it
+    will spawn a new sub-survey.
 
     Parameters
     ----------
-    example__to_o_survey : rubin_scheduler.scheduler.surveys.ToO_survey object
-        A survey object that will be coppied and have a new target map set
-        for each incoming ToO.
+    example__to_o_survey : rubin_scheduler.scheduler.surveys.ToO_survey
+        A survey object that will be coppied and have a new target
+        map set for each incoming ToO.
     """
 
     def __init__(self, example__to_o_survey):
@@ -79,10 +80,11 @@ class TooMaster(BaseSurvey):
 
 
 class TooSurvey(BlobSurvey):
-    """Survey class to catch incoming target of opportunity anouncements and try to observe them.
+    """Survey class to catch incoming target of opportunity
+    anouncements and try to observe them.
 
-    The idea is that we can dynamically update the target footprint basis function,
-    and add new features as more ToOs come in.
+    The idea is that we can dynamically update the target
+    footprint basis function, and add new features as more ToOs come in.
 
     Parameters
     ----------

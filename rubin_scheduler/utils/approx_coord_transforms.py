@@ -13,7 +13,7 @@ from .coordinate_transformations import calc_lmst
 
 
 def _approx_altaz2pa(alt_rad, az_rad, latitude_rad):
-    """A fast calculation of parallactic angle
+    """A fast calculation of parallactic angle.
 
     Parameters
     ----------
@@ -39,7 +39,7 @@ def _approx_altaz2pa(alt_rad, az_rad, latitude_rad):
 
 
 def approx_altaz2pa(alt_deg, az_deg, latitude_deg):
-    """A fast calculation of parallactic angle
+    """A fast calculation of parallactic angle.
 
     Parameters
     ----------
@@ -60,14 +60,16 @@ def approx_altaz2pa(alt_deg, az_deg, latitude_deg):
 
 
 def approx_alt_az2_ra_dec(alt, az, lat, lon, mjd, lmst=None):
-    """Convert alt, az to RA, Dec without taking into account aberration, precession, diffraction, etc.
+    """Convert alt, az to RA, Dec without taking into account aberration,
+    precession, diffraction, etc.
 
     Parameters
     ----------
     alt : numpy.array
         Altitude, same length as `ra` and `dec`. Degrees.
     az : numpy.array
-        Azimuth, same length as `ra` and `dec`. Must be same length as `alt`. Degrees.
+        Azimuth, same length as `ra` and `dec`. Must be same length
+        as `alt`. Degrees.
     lat : float
         Latitude of the observatory in degrees.
     lon : float
@@ -96,15 +98,16 @@ def approx_alt_az2_ra_dec(alt, az, lat, lon, mjd, lmst=None):
 
 
 def _approx_alt_az2_ra_dec(alt, az, lat, lon, mjd, lmst=None):
-    """
-    Convert alt, az to RA, Dec without taking into account aberration, precession, diffraction, etc.
+    """Convert alt, az to RA, Dec without taking into account aberration,
+    precession, diffraction, etc.
 
     Parameters
     ----------
     alt : numpy.array
         Altitude, same length as `ra` and `dec`. Radians.
     az : numpy.array
-        Azimuth, same length as `ra` and `dec`. Must be same length as `alt`. Radians.
+        Azimuth, same length as `ra` and `dec`. Must be same length
+        as `alt`. Radians.
     lat : float
         Latitude of the observatory in radians.
     lon : float
@@ -140,11 +143,11 @@ def _approx_alt_az2_ra_dec(alt, az, lat, lon, mjd, lmst=None):
 
 
 def approx_ra_dec2_alt_az(ra, dec, lat, lon, mjd, lmst=None):
-    """
-    Convert Ra,Dec to Altitude and Azimuth.
+    """Convert Ra,Dec to Altitude and Azimuth.
 
-    Coordinate transformation is killing performance. Just use simple equations to speed it up
-    and ignore aberration, precession, nutation, nutrition, etc.
+    Coordinate transformation is killing performance. Just use
+    simple equations to speed it up and ignore aberration, precession,
+    nutation, nutrition, etc.
 
     Parameters
     ----------
@@ -180,11 +183,11 @@ def approx_ra_dec2_alt_az(ra, dec, lat, lon, mjd, lmst=None):
 
 
 def _approx_ra_dec2_alt_az(ra, dec, lat, lon, mjd, lmst=None, return_pa=False):
-    """
-    Convert Ra,Dec to Altitude and Azimuth.
+    """Convert Ra,Dec to Altitude and Azimuth.
 
-    Coordinate transformation is killing performance. Just use simple equations to speed it up
-    and ignore aberration, precession, nutation, nutrition, etc.
+    Coordinate transformation is killing performance. Just use
+    simple equations to speed it up and ignore aberration,
+    precession, nutation, nutrition, etc.
 
     Parameters
     ----------
