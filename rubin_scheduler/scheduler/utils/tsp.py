@@ -23,7 +23,7 @@ from .utils import IntRounded, gnomonic_project_toxy, mean_azimuth
 # https://www.youtube.com/watch?v=syRSy1MFuho
 
 
-def order_observations(lon, lat, scale=1e6, optimize=False):
+def order_observations(lon, lat, optimize=False):
     """Use TSP solver to put observations in an order that minimizes
     angular distance traveled
 
@@ -47,11 +47,7 @@ def order_observations(lon, lat, scale=1e6, optimize=False):
     # things to represent time between points rather than angular
     # distance.
     pointing_x, pointing_y = gnomonic_project_toxy(lon, lat, mid_ra, mid_dec)
-    # Round off positions so that we ensure identical cross-platform
-    # performance
 
-    pointing_x = np.round(pointing_x * scale).astype(int)
-    pointing_y = np.round(pointing_y * scale).astype(int)
     # Now I have a bunch of x,y pointings. Drop into TSP solver
     # to get an effiencent route
     towns = np.vstack((pointing_x, pointing_y)).T
@@ -255,7 +251,7 @@ def tsp_convex(towns, optimize=False, niter=10):
         optimized = False
         while not optimized:
             new_route, new_distance = three_opt(route, dist_matrix)
-            if new_distance < distance:
+            if IntRounded(new_distance) < IntRounded(distance):
                 route = new_route
                 distance = new_distance
                 iter_count += 1
