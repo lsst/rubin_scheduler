@@ -1,6 +1,5 @@
 __all__ = ("get_data_dir", "data_versions")
 
-import glob
 import os
 
 
