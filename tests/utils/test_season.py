@@ -12,7 +12,7 @@ class SeasonTest(unittest.TestCase):
         # Test that a single RA value returns a range of season values
         ra = 260.2
         mjd_start = survey_start_mjd()
-        mjd = np.arange(mjd_start, mjd_start + 2*365.25)
+        mjd = np.arange(mjd_start, mjd_start + 2 * 365.25)
         # First check with survey_start_mjd within the range of mjds
         # (this also verifies calc_season works with single value ra
         seasons = calc_season(ra, mjd - 100, mjd_start)
@@ -22,7 +22,7 @@ class SeasonTest(unittest.TestCase):
         assert seasons.min() < 0
         assert seasons.max() > 1
         # Next check with survey_start_mjd long before observations
-        seasons = calc_season(ra, mjd+365.25*2, mjd_start)
+        seasons = calc_season(ra, mjd + 365.25 * 2, mjd_start)
         assert seasons.min() > 1
         # Next check calc_season works with array of RA values
         ra = np.arange(0, 360, 1)

@@ -89,6 +89,7 @@ def calc_season(ra, mjd, mjd_start=None):
 
     return seasons
 
+
 def _generate_reference():
     # The reference values for calc_season can be evaluated using
     loc = EarthLocation.of_site("Rubin", refresh_cache=True)
