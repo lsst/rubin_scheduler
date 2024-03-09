@@ -42,7 +42,7 @@ def calc_season(ra, mjd, mjd_start=None):
 
     To convert to integer seasons, use np.floor(seasons).
 
-    "Season 1" will be the first season after the RA value becomes
+    "Season 0" will be the first season after the RA value becomes
     visible for the first time after mjd_start.
     This induces a "skip" in the resulting season values, corresponding
     to the RA where the survey started.
@@ -72,8 +72,8 @@ def calc_season(ra, mjd, mjd_start=None):
     # at each RA value, in the reference year.
     season_began = ref_time + offset
 
-    # Add an adjustment so that the first season at each RA is in the year
-    # after mjd_start
+    # Add an adjustment so that the first season (season = 0)
+    # at each RA is in the year after mjd_start
     first = np.floor((season_began - mjd_start) / 365.25)
     season_began = season_began - first * 365.25
 

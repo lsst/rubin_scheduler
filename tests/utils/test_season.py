@@ -22,7 +22,7 @@ class SeasonTest(unittest.TestCase):
         assert seasons.max() > 1
         # Next check with survey_start_mjd long before observations
         seasons = calc_season(ra, mjd + 365.25 * 2, mjd_start)
-        assert seasons.min() > 1
+        assert seasons.min() > 0
         # Next check calc_season works with array of RA values
         ra = np.arange(0, 360, 1)
         seasons = calc_season(ra, mjd, mjd_start)
