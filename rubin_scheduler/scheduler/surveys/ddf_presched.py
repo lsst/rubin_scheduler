@@ -1,4 +1,4 @@
-__all__ = ("generate_ddf_scheduled_obs",)
+__all__ = "generate_ddf_scheduled_obs"
 
 import os
 import warnings
@@ -38,10 +38,10 @@ def ddf_slopes(ddf_name, raw_obs, night_season, min_season=60 / 365.25):
 
     ss = 30  # standard season, was 45 .. note this may be affected by season length
 
-    round_season = np.floor(night_season)
+    int_season = np.floor(night_season)
 
     n_season = night_season[np.where(raw_obs)]
-    r_season = round_season[np.where(raw_obs)]
+    r_season = int_season[np.where(raw_obs)]
     season_list = np.unique(r_season)
 
     # Calculate season length for each season
@@ -57,18 +57,27 @@ def ddf_slopes(ddf_name, raw_obs, night_season, min_season=60 / 365.25):
     too_short = np.where(season_length < min_season)
     season_vals[too_short] = 0
     # Adjust other seasons, relative to the max season length.
-    max_season = np.max(season_length)
-    season_vals = season_vals * season_length / max_season
+    season_vals = season_vals * season_length / np.max(season_length)
 
-    # Add extra adjustment for COSMOS to boost visits in years 1-3
+    # Add extra adjustment for COSMOS to boost visits in seasons 0-3
+    # Note this means boost in first incomplete season too
     if ddf_name == "COSMOS":
         season_vals[0:3] = season_vals[0:3] * 5
-        season_vals[4] = season_vals[4] * 2
+        season_vals[3] = season_vals[3] * 2
+
+    if ddf_name == "EDFS_b":
+        # EDFS_b ddf visits are allocated some other way
+        season_vals = season_vals * 0
+
+    # Round the season_vals so that we're looking for integer sequences
+    season_vals = np.round(season_vals)
+
+    # print(list(zip(season_vals, season_length)))
 
     # assign cumulative values
     cumulative_desired = np.zeros(raw_obs.size, dtype=float)
     for i, season in enumerate(season_list):
-        in_season = np.where(round_season == season)
+        in_season = np.where(int_season == season)
         cumulative = np.cumsum(raw_obs[in_season])
         if cumulative.max() > 0:
             cumulative = cumulative / cumulative.max() * season_vals[i]
