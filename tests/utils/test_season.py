@@ -2,8 +2,7 @@ import unittest
 
 import numpy as np
 
-from rubin_scheduler.utils import survey_start_mjd
-from rubin_scheduler.utils import calc_season
+from rubin_scheduler.utils import calc_season, survey_start_mjd
 
 
 class SeasonTest(unittest.TestCase):
