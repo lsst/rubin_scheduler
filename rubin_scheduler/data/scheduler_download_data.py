@@ -164,9 +164,9 @@ def download_rubin_data(
 
     # See if base URL is alive
     url_base = url_base
+    fail_message = f"Could not connect to {url_base}. Check site is up?"
     try:
         r = requests.get(url_base)
-        fail_message = f"Could not connect to {url_base} or {url_base}. Check sites are up?"
     except ConnectionError:
         print(fail_message)
         exit()
@@ -206,7 +206,7 @@ def download_rubin_data(
             if file_size < 245:
                 warnings.warn(f"{url} file size unexpectedly small.")
             # Download this size chunk at a time; reasonable guess
-            block_size = 512 * 512
+            block_size = 512 * 512 * 10
             progress_bar = tqdm(total=file_size, unit="iB", unit_scale=True, disable=tdqm_disable)
             print(f"Writing to {os.path.join(data_dir, filename)}")
             with open(os.path.join(data_dir, filename), "wb") as f:
