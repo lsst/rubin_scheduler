@@ -18,33 +18,28 @@ def generate_ddf_grid(
     delta_t=15.0,
     survey_length=40.0,
     sun_limit=-12,
-    nominal_seeing=0.7,
-    filtername="g",
     nominal_expt=30.0,
 ):
     """Pre-compute conditions for DDF locations over survey
 
     Parameters
     ----------
-    mjd0 : float
+    mjd0 : `float`
         The start MJD of the grid
-    delta_t : float
+    delta_t : `float`
         Spacing of time steps in minutes. Default 15
-    survey_length : float
+    survey_length : `float`
         Full span of DDF grid (years). Default 40.
-    sun_limit : float
-        Ignore times with sun above sun limit in degrees. Default -12.
-    nominal_seeling : float
-        Nominal seeing in arcseconds to assume for depth calculations.
-        Default 0.7
-    filtername : str
-        The filter to use for the grid, default g
-    nominal_expt : float
-        Nominal exposure time in seconds to use for depth visits. Default 30
+    sun_limit : `float`
+        Ignore times with sun above sun limit in degrees.
+        Default -12.
+    nominal_expt : `float`
+        Nominal exposure time in seconds to use for depth visits.
+        Default 30
     """
 
     # Technically this script should be over in rubin_sim, but here to be more
-    # easily found. Burry import here so it's hopefully not a problem.
+    # easily found. Bury import here so it's hopefully not a problem.
     import rubin_sim.skybrightness as sb
     from astroplan import Observer
 

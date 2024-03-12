@@ -1,6 +1,5 @@
-__all__ = ("get_data_dir", "data_versions", "get_baseline")
+__all__ = ("get_data_dir", "data_versions")
 
-import glob
 import os
 
 
@@ -19,20 +18,6 @@ def get_data_dir():
     if data_dir is None:
         data_dir = os.path.join(os.getenv("HOME"), "rubin_sim_data")
     return data_dir
-
-
-def get_baseline():
-    """Get the path to the baseline cadence simulation sqlite file.
-
-    Returns
-    -------
-    file : `str`
-        Path to the baseline cadence simulation sqlite file.
-    """
-    dd = get_data_dir()
-    path = os.path.join(dd, "sim_baseline")
-    file = glob.glob(path + "/*10yrs.db")[0]
-    return file
 
 
 def data_versions():
