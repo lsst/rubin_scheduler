@@ -77,10 +77,11 @@ def make_rolling_footprints(
     n_constant_end : `int`
         The number of constant seasons to end the survey with. Defaults to 6.
     uniform : `bool`
-        If True, the rolling sequence is adjusted in half of the sky to generate
-        uniform surveys during years between rolling cycles. For nslice=2 and
-        three cycles, years 1, 4, 7, and 10 will be uniform. For nslice=3 and
-        two cycles, years 1, 5, 9, and 10 will be uniform. Default is True.
+        If True, the rolling sequence is adjusted in half of the sky to
+        generate uniform surveys during years between rolling cycles. For
+        nslice=2 and three cycles, years 1, 4, 7, and 10 will be uniform.
+        For nslice=3 and two cycles, years 1, 5, 9, and 10 will be uniform.
+        Default is True.
 
     Returns
     -------
@@ -113,15 +114,11 @@ def make_rolling_footprints(
     if uniform:
         for i in range(nslice):
             _roll = np.roll(rolling, i).tolist() + [1]
-            all_slopes.append(
-                start + _roll * n_cycles + end
-            )
+            all_slopes.append(start + _roll * n_cycles + end)
         for i in range(nslice):
             _roll = np.roll(rolling, i).tolist() + [1]
             _roll = [_roll[-1]] + _roll[1:-1] + [_roll[0]]
-            all_slopes.append(
-                start + _roll * n_cycles + end
-            )
+            all_slopes.append(start + _roll * n_cycles + end)
     else:
         rolling = rolling * n_cycles
         all_slopes = [start + np.roll(rolling, i).tolist() + end for i in range(nslice)]
@@ -143,12 +140,16 @@ def make_rolling_footprints(
 
     if uniform:
         split_wfd_indices = slice_quad_galactic_cut(
-            hp_footprints, nslice=nslice, wfd_indx=wfd_indx,
-            ra_range=(sun_ra_start + 1.5 * np.pi, sun_ra_start + np.pi/2),
+            hp_footprints,
+            nslice=nslice,
+            wfd_indx=wfd_indx,
+            ra_range=(sun_ra_start + 1.5 * np.pi, sun_ra_start + np.pi / 2),
         )
 
         split_wfd_indices_delayed = slice_quad_galactic_cut(
-            hp_footprints, nslice=nslice, wfd_indx=wfd_indx,
+            hp_footprints,
+            nslice=nslice,
+            wfd_indx=wfd_indx,
             ra_range=(sun_ra_start + np.pi / 2, sun_ra_start + 1.5 * np.pi),
         )
     else:
@@ -173,13 +174,13 @@ def make_rolling_footprints(
             rolling_footprints[i].set_footprint(key, temp)
 
         if uniform:
-            for _i in range(nslice, nslice*2):
+            for _i in range(nslice, nslice * 2):
                 # make a copy of the current filter
                 temp = hp_footprints[key] + 0
                 # Set the non-rolling area to zero
                 temp[non_wfd_indx] = 0
 
-                indx = split_wfd_indices_delayed[_i-nslice]
+                indx = split_wfd_indices_delayed[_i - nslice]
                 # invert the indices
                 ze = temp * 0
                 ze[indx] = 1
@@ -216,9 +217,7 @@ def _is_in_ra_range(ra, low, high):
         return (ra >= _low) | (ra <= _high)
 
 
-def slice_quad_galactic_cut(
-    target_map, nslice=2, wfd_indx=None, ra_range=None
-):
+def slice_quad_galactic_cut(target_map, nslice=2, wfd_indx=None, ra_range=None):
     """
     Helper function for generating rolling footprints
 
