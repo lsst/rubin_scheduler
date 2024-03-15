@@ -39,8 +39,9 @@ def make_rolling_footprints(
     wfd_indx=None,
     order_roll=0,
     n_cycles=None,
-    n_constant_start=3,
+    n_constant_start=None,
     n_constant_end=6,
+    uniform=True,
 ):
     """
     Generate rolling footprints
@@ -58,6 +59,8 @@ def make_rolling_footprints(
     scale : `float`
         The strength of the rolling, value of 1 is full power rolling.
         Zero is no rolling.
+    nside : `int`
+        HEALpix nisde to use to represent the footprints. Default is 32.
     wfd_indx : array of ints
         The indices of the HEALpix map that are to be included in the rolling.
     order_roll : `int`
@@ -67,11 +70,17 @@ def make_rolling_footprints(
         full cycles for nslice=2, 2 cycles for nslice=3 or 4, and 1 cycle for
         nslice=6.
     n_constant_start : `int`
-        The number of constant non-rolling seasons to start with.
-        Anything less than 3 results in rolling starting before the
-        entire sky has had a constant year.
+        The number of constant non-rolling seasons to start with. Anything
+        less than 2 will start rolling too early near Y1. If uniform rolling
+        is turned off, the lowest value should be 3. Defaults to None which
+        selects the correct lowest value based on the value of uniform.
     n_constant_end : `int`
         The number of constant seasons to end the survey with. Defaults to 6.
+    uniform : `bool`
+        If True, the rolling sequence is adjusted in half of the sky to generate
+        uniform surveys during years between rolling cycles. For nslice=2 and
+        three cycles, years 1, 4, 7, and 10 will be uniform. For nslice=3 and
+        two cycles, years 1, 5, 9, and 10 will be uniform. Default is True.
 
     Returns
     -------
@@ -81,6 +90,12 @@ def make_rolling_footprints(
     nc_default = {2: 3, 3: 2, 4: 2, 6: 1}
     if n_cycles is None:
         n_cycles = nc_default[nslice]
+
+    if n_constant_start is None:
+        if uniform:
+            n_constant_start = 2
+        else:
+            n_constant_start = 3
 
     hp_footprints = fp_hp
 
@@ -92,15 +107,28 @@ def make_rolling_footprints(
     end = [1.0] * n_constant_end
 
     rolling = [up] + [down] * (nslice - 1)
-    rolling = rolling * n_cycles
-
     rolling = np.roll(rolling, order_roll).tolist()
 
-    all_slopes = [start + np.roll(rolling, i).tolist() + end for i in range(nslice)]
+    all_slopes = []
+    if uniform:
+        for i in range(nslice):
+            _roll = np.roll(rolling, i).tolist() + [1]
+            all_slopes.append(
+                start + _roll * n_cycles + end
+            )
+        for i in range(nslice):
+            _roll = np.roll(rolling, i).tolist() + [1]
+            _roll = [_roll[-1]] + _roll[1:-1] + [_roll[0]]
+            all_slopes.append(
+                start + _roll * n_cycles + end
+            )
+    else:
+        rolling = rolling * n_cycles
+        all_slopes = [start + np.roll(rolling, i).tolist() + end for i in range(nslice)]
 
     fp_non_wfd = Footprint(mjd_start, sun_ra_start=sun_ra_start, nside=nside)
     rolling_footprints = []
-    for i in range(nslice):
+    for i in range(len(all_slopes)):
         step_func = StepSlopes(rise=all_slopes[i])
         rolling_footprints.append(
             Footprint(mjd_start, sun_ra_start=sun_ra_start, step_func=step_func, nside=nside)
@@ -113,7 +141,18 @@ def make_rolling_footprints(
     wfd[wfd_indx] = 1
     non_wfd_indx = np.where(wfd == 0)[0]
 
-    split_wfd_indices = slice_quad_galactic_cut(hp_footprints, nslice=nslice, wfd_indx=wfd_indx)
+    if uniform:
+        split_wfd_indices = slice_quad_galactic_cut(
+            hp_footprints, nslice=nslice, wfd_indx=wfd_indx,
+            ra_range=(sun_ra_start + 1.5 * np.pi, sun_ra_start + np.pi/2),
+        )
+
+        split_wfd_indices_delayed = slice_quad_galactic_cut(
+            hp_footprints, nslice=nslice, wfd_indx=wfd_indx,
+            ra_range=(sun_ra_start + np.pi / 2, sun_ra_start + 1.5 * np.pi),
+        )
+    else:
+        split_wfd_indices = slice_quad_galactic_cut(hp_footprints, nslice=nslice, wfd_indx=wfd_indx)
 
     for key in hp_footprints:
         temp = hp_footprints[key] + 0
@@ -132,6 +171,20 @@ def make_rolling_footprints(
             ze[indx] = 1
             temp = temp * ze
             rolling_footprints[i].set_footprint(key, temp)
+
+        if uniform:
+            for _i in range(nslice, nslice*2):
+                # make a copy of the current filter
+                temp = hp_footprints[key] + 0
+                # Set the non-rolling area to zero
+                temp[non_wfd_indx] = 0
+
+                indx = split_wfd_indices_delayed[_i-nslice]
+                # invert the indices
+                ze = temp * 0
+                ze[indx] = 1
+                temp = temp * ze
+                rolling_footprints[_i].set_footprint(key, temp)
 
     result = Footprints([fp_non_wfd] + rolling_footprints)
     return result
@@ -154,7 +207,18 @@ def slice_wfd_indx(target_map, nslice=2, wfd_indx=None):
     return split_wfd_indices
 
 
-def slice_quad_galactic_cut(target_map, nslice=2, wfd_indx=None):
+def _is_in_ra_range(ra, low, high):
+    _low = low % (2.0 * np.pi)
+    _high = high % (2.0 * np.pi)
+    if _low <= _high:
+        return (ra >= _low) & (ra <= _high)
+    else:
+        return (ra >= _low) | (ra <= _high)
+
+
+def slice_quad_galactic_cut(
+    target_map, nslice=2, wfd_indx=None, ra_range=None
+):
     """
     Helper function for generating rolling footprints
 
@@ -167,6 +231,9 @@ def slice_quad_galactic_cut(target_map, nslice=2, wfd_indx=None):
     wfd_indx : array of ints
         The indices of target_map that should be used for rolling.
         If None, assumes the rolling area should be where target_map['r'] == 1.
+    ra_range : tuple of floats, optional
+        If not None, then the indices are restricted to the given RA range
+        in radians.
     """
 
     ra, dec = ra_dec_hp_map(nside=hp.npix2nside(target_map["r"].size))
@@ -187,6 +254,11 @@ def slice_quad_galactic_cut(target_map, nslice=2, wfd_indx=None):
             indx_temp += indx_north[splits_north[i - 1] : splits_north[i]].tolist()
             indx_temp += indx_south[splits_south[i - 1] : splits_south[i]].tolist()
         slice_indx.append(indx_temp)
+
+    if ra_range is not None:
+        ra_indx = np.where(_is_in_ra_range(ra, *ra_range))[0]
+        for j in range(nslice):
+            slice_indx[j] = np.intersect1d(ra_indx, slice_indx[j])
 
     return slice_indx
 

@@ -2,6 +2,7 @@ import os
 import unittest
 
 import numpy as np
+import healpy as hp
 
 from rubin_scheduler.data import get_data_dir
 from rubin_scheduler.scheduler import sim_runner
@@ -13,6 +14,7 @@ from rubin_scheduler.scheduler.utils import (
     restore_scheduler,
     run_info_table,
     season_calc,
+    make_rolling_footprints,
 )
 from rubin_scheduler.utils import survey_start_mjd
 
@@ -300,6 +302,105 @@ class TestUtils(unittest.TestCase):
         have_keys = list(version_info["Parameter"])
         for k in need_keys:
             self.assertTrue(k in have_keys)
+
+    def test_make_rolling_footprints_uniform(self):
+        """Test that we can make a uniform folling footprint"""
+
+        # utility function to get sun ra at a given mjd
+        from astropy.time import Time
+        from astropy.coordinates import get_sun
+        from astropy.coordinates import EarthLocation
+
+        def _get_sun_ra_at_mjd(mjd):
+            t = Time(
+                mjd,
+                format='mjd',
+                location=EarthLocation.of_site("Cerro Pachon"),
+            )
+            return get_sun(t).ra.deg
+
+        nside = 32
+        scale = 0.9
+        order_roll = 1
+
+        # setup a simple test survey with dec < 20
+        _, dec = hp.pix2ang(nside, np.arange(hp.nside2npix(nside)), lonlat=True)
+        base_footprint = np.zeros(hp.nside2npix(nside), dtype=float)
+        wfd_indx = np.where(dec < 20)[0]
+        base_footprint[wfd_indx] = 1
+
+        # now test uniformity of uniform rolling and baseline at a range
+        # of survey start times
+        for mjd_offset in [0, 12, 60, 90, 180, 195, 240, 267, 270, 319]:
+            mjd_start = survey_start_mjd() + mjd_offset
+            sun_ra_start = _get_sun_ra_at_mjd(mjd_start)
+            fp_hp = {
+                "g": base_footprint.copy(),
+                "r": base_footprint.copy(),
+                "i": base_footprint.copy(),
+            }
+
+            for nslice in [2, 3]:
+                uniform_footprint = make_rolling_footprints(
+                    fp_hp=fp_hp,
+                    mjd_start=mjd_start,
+                    sun_ra_start=sun_ra_start,
+                    nslice=nslice,
+                    scale=scale,
+                    nside=nside,
+                    wfd_indx=wfd_indx,
+                    order_roll=order_roll,
+                    n_cycles=None,
+                    n_constant_start=None,
+                    n_constant_end=6,
+                    uniform=True,
+                )
+
+                footprint = make_rolling_footprints(
+                    fp_hp=fp_hp,
+                    mjd_start=mjd_start,
+                    sun_ra_start=sun_ra_start,
+                    nslice=nslice,
+                    scale=scale,
+                    nside=nside,
+                    wfd_indx=wfd_indx,
+                    order_roll=order_roll,
+                    n_cycles=None,
+                    n_constant_start=None,
+                    n_constant_end=6,
+                    uniform=False,
+                )
+
+                # make sure all of the bands are OK
+                for band in ["g", "r", "i"]:
+                    # look at each yearly release
+                    for i in range(1, 11):
+                        mjd = mjd_start + i * 365.25
+                        ud = uniform_footprint(mjd, norm=False)
+                        uniform_scat = np.std(ud[band][wfd_indx])
+
+                        # uniform rolling surveys have special times where the
+                        # scatter in the requested number of observations is 0
+                        if nslice == 2:
+                            if i in [1, 4, 7, 10]:
+                                self.assertTrue(np.allclose(uniform_scat, 0))
+                            else:
+                                self.assertTrue(uniform_scat != 0)
+                        elif nslice == 3:
+                            if i in [1, 5, 9, 10]:
+                                self.assertTrue(np.allclose(uniform_scat, 0))
+                            else:
+                                self.assertTrue(uniform_scat != 0)
+
+                        # non-uniform rolling surveys only have uniform
+                        # requests at Y1 and Y10
+                        d = footprint(mjd, norm=False)
+                        scat = np.std(d[band][wfd_indx])
+
+                        if i in [1, 10]:
+                            self.assertTrue(np.allclose(scat, 0))
+                        else:
+                            self.assertTrue(scat != 0)
 
 
 if __name__ == "__main__":
