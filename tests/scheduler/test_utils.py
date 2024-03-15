@@ -1,8 +1,8 @@
 import os
 import unittest
 
-import numpy as np
 import healpy as hp
+import numpy as np
 
 from rubin_scheduler.data import get_data_dir
 from rubin_scheduler.scheduler import sim_runner

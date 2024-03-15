@@ -77,10 +77,11 @@ def make_rolling_footprints(
     n_constant_end : `int`
         The number of constant seasons to end the survey with. Defaults to 6.
     uniform : `bool`
-        If True, the rolling sequence is adjusted in half of the sky to generate
-        uniform surveys during years between rolling cycles. For nslice=2 and
-        three cycles, years 1, 4, 7, and 10 will be uniform. For nslice=3 and
-        two cycles, years 1, 5, 9, and 10 will be uniform. Default is True.
+        If True, the rolling sequence is adjusted in half of the sky to
+        generate uniform surveys during years between rolling cycles. For
+        nslice=2 and three cycles, years 1, 4, 7, and 10 will be uniform.
+        For nslice=3 and two cycles, years 1, 5, 9, and 10 will be uniform.
+        Default is True.
 
     Returns
     -------
