@@ -11,10 +11,10 @@ from rubin_scheduler.scheduler.model_observatory import KinemModel, ModelObserva
 from rubin_scheduler.scheduler.utils import (
     SchemaConverter,
     empty_observation,
+    make_rolling_footprints,
     restore_scheduler,
     run_info_table,
     season_calc,
-    make_rolling_footprints,
 )
 from rubin_scheduler.utils import survey_start_mjd
 
@@ -307,9 +307,8 @@ class TestUtils(unittest.TestCase):
         """Test that we can make a uniform folling footprint"""
 
         # utility function to get sun ra at a given mjd
+        from astropy.coordinates import EarthLocation, get_sun
         from astropy.time import Time
-        from astropy.coordinates import get_sun
-        from astropy.coordinates import EarthLocation
 
         def _get_sun_ra_at_mjd(mjd):
             t = Time(
