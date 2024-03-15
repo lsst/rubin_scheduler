@@ -7,7 +7,7 @@ import numpy as np
 
 from rubin_scheduler.scheduler.surveys import BaseSurvey
 from rubin_scheduler.scheduler.utils import empty_observation, set_default_nside
-from rubin_scheduler.utils import _approx_ra_dec2_alt_az
+from rubin_scheduler.utils import _angular_separation, _approx_ra_dec2_alt_az
 
 log = logging.getLogger(__name__)
 
@@ -183,6 +183,11 @@ class ScriptedSurvey(BaseSurvey):
             An array of scheduled observations. Probably generated with
             rubin_scheduler.scheduler.utils.scheduled_observation
         """
+        # distance to the moon
+        d_to_moon = _angular_separation(
+            observation["RA"], observation["dec"], conditions.moon_ra, conditions.moon_dec
+        )
+
         # Just do a fast ra,dec to alt,az conversion.
         alt, az = _approx_ra_dec2_alt_az(
             observation["RA"],
@@ -196,7 +201,8 @@ class ScriptedSurvey(BaseSurvey):
         HA[np.where(HA > 24)] -= 24
         HA[np.where(HA < 0)] += 24
         in_range = np.where(
-            (alt < observation["alt_max"])
+            (d_to_moon > observation["moon_min_distance"])
+            & (alt < observation["alt_max"])
             & (alt > observation["alt_min"])
             & ((HA > observation["HA_max"]) | (HA < observation["HA_min"]))
             & (conditions.sun_alt < observation["sun_alt_max"])
