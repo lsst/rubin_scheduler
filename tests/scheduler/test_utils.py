@@ -313,7 +313,7 @@ class TestUtils(unittest.TestCase):
         def _get_sun_ra_at_mjd(mjd):
             t = Time(
                 mjd,
-                format='mjd',
+                format="mjd",
                 location=EarthLocation.of_site("Cerro Pachon"),
             )
             return get_sun(t).ra.deg
