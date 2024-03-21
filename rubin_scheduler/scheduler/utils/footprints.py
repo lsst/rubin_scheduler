@@ -41,7 +41,7 @@ def make_rolling_footprints(
     n_cycles=None,
     n_constant_start=None,
     n_constant_end=6,
-    uniform=True,
+    uniform=False,
 ):
     """
     Generate rolling footprints
@@ -81,7 +81,7 @@ def make_rolling_footprints(
         generate uniform surveys during years between rolling cycles. For
         nslice=2 and three cycles, years 1, 4, 7, and 10 will be uniform.
         For nslice=3 and two cycles, years 1, 5, 9, and 10 will be uniform.
-        Default is True.
+        Default is False.
 
     Returns
     -------
