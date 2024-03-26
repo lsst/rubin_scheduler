@@ -562,7 +562,7 @@ class ModelObservatory:
         # If the observation has a rotTelPos set, use it to compute
         # rotSkyPos
         if np.isfinite(observation["rotTelPos"]):
-            observation["rotSkyPos"] = (obs_pa + observation["rotTelPos"]) % (2 * np.pi)
+            observation["rotSkyPos"] = (observation["rotTelPos"] - obs_pa) % (2 * np.pi)
             observation["rotTelPos"] = np.nan
         else:
             # Fall back to rotSkyPos_desired

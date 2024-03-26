@@ -587,7 +587,7 @@ def empty_observation(n=1):
     Lots of additional fields that get filled in by the model observatory
     when the observation is completed.
     See documentation at:
-    https://rubin-scheduler.lsst.io/output_schema.html
+    https://rubin-scheduler.lsst.io/fbs-output-schema.html
 
     """
 
