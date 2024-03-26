@@ -10,106 +10,78 @@ from rubin_scheduler.scheduler.utils import scheduled_observation
 from rubin_scheduler.utils import calc_season, ddf_locations, survey_start_mjd
 
 
-def ddf_slopes(ddf_name, raw_obs, night_season):
+def ddf_slopes(ddf_name, raw_obs, night_season, min_season=60 / 365.25):
     """
     Let's make custom slopes for each DDF
 
     Parameters
     ----------
-    ddf_name : str
+    ddf_name : `str`
        The DDF name to use
-    raw_obs : np.array
+    raw_obs : `np.array`, (N,)
         An array with values of 1 or zero. One element per night, value of
         1 indicates the night is during an active observing season.
-    night_season : np.array
-        An array of floats with the fractional season value
-        (e.g., 0.5 would be half way through the first season)
+    night_season : `np.array`, (N,)
+        An array of floats with the fractional season value.
+        Season values range from 0-1 for the first season;
+        0.5 would be the "peak" of seasonal visiblity.
+        These should ONLY be the night the field should be 'active'
+        (take out the season ends first).
+    min_season : `float`, optional
+        Minimal season length that is useful.
+        In units of "season" (fractions of a year).
     """
 
     # OK, so 258 sequences is ~1% of the survey
     # so a 25.8 sequences is a 0.1% season
     # COSMOS is going to be 0.7% for 3 years, then 0.175 for the rest.
 
-    ss = 30  # standard season, was 45
+    ss = 30  # standard season, was 45 .. note this may be affected by season length
 
-    if (ddf_name == "ELAISS1") | (ddf_name == "XMM_LSS") | (ddf_name == "ECDFS"):
-        # Dict with keys for each season and values of the number of
-        # sequences to attempt.
-        season_vals = {
-            0: 10,
-            1: ss,
-            2: ss,
-            3: ss,
-            4: ss,
-            5: ss,
-            6: ss,
-            7: ss,
-            8: ss,
-            9: ss,
-            10: 10,
-        }
+    int_season = np.floor(night_season)
 
-        round_season = np.floor(night_season)
+    n_season = night_season[np.where(raw_obs)]
+    r_season = int_season[np.where(raw_obs)]
+    season_list = np.unique(r_season)
 
-        cumulative_desired = np.zeros(raw_obs.size, dtype=float)
-        for season in np.unique(round_season):
-            in_season = np.where(round_season == season)
-            cumulative = np.cumsum(raw_obs[in_season])
-            if cumulative.max() > 0:
-                cumulative = cumulative / cumulative.max() * season_vals[season]
-                cumulative_desired[in_season] = cumulative + np.max(cumulative_desired)
+    # Calculate season length for each season
+    # In general this should be the same each season except for first and last
+    season_length = np.zeros(len(season_list), float)
+    for i, season in enumerate(season_list):
+        match = np.where(r_season == season)
+        season_length[i] = n_season[match].max() - n_season[match].min()
 
-    if ddf_name == "EDFS_a":
-        season_vals = {
-            0: 10,
-            1: ss,
-            2: ss,
-            3: ss,
-            4: ss,
-            5: ss,
-            6: ss,
-            7: ss,
-            8: ss,
-            9: ss,
-            10: 10,
-        }
+    # Determine goal number of sequences in each season.
+    season_vals = np.ones(len(season_list), float) * ss
+    # Throw out seasons which are too short
+    too_short = np.where(season_length < min_season)
+    season_vals[too_short] = 0
+    # Adjust other seasons, relative to the max season length.
+    season_vals = season_vals * season_length / np.max(season_length)
 
-        round_season = np.floor(night_season)
-
-        cumulative_desired = np.zeros(raw_obs.size, dtype=float)
-        for season in np.unique(round_season):
-            in_season = np.where(round_season == season)
-            cumulative = np.cumsum(raw_obs[in_season])
-            if cumulative.max() > 0:
-                cumulative = cumulative / cumulative.max() * season_vals[season]
-                cumulative_desired[in_season] = cumulative + np.max(cumulative_desired)
-
+    # Add extra adjustment for COSMOS to boost visits in seasons 0-3
+    # Note this means boost in first incomplete season too
     if ddf_name == "COSMOS":
-        # looks like COSMOS has no in-season time for 10 at the
-        # current start mjd.
-        season_vals = {
-            0: 10,
-            1: ss * 5,
-            2: ss * 5,
-            3: ss * 2,
-            4: ss,
-            5: ss,
-            6: ss,
-            7: ss,
-            8: ss,
-            9: ss,
-            10: 10,
-        }
+        season_vals[0:3] = season_vals[0:3] * 5
+        season_vals[3] = season_vals[3] * 2
 
-        round_season = np.floor(night_season)
+    if ddf_name == "EDFS_b":
+        # EDFS_b ddf visits are allocated some other way
+        season_vals = season_vals * 0
 
-        cumulative_desired = np.zeros(raw_obs.size, dtype=float)
-        for season in np.unique(round_season):
-            in_season = np.where(round_season == season)[0]
-            cumulative = np.cumsum(raw_obs[in_season])
-            if cumulative.max() > 0:
-                cumulative = cumulative / cumulative.max() * season_vals[season]
-                cumulative_desired[in_season] = cumulative + np.max(cumulative_desired)
+    # Round the season_vals so that we're looking for integer sequences
+    season_vals = np.round(season_vals)
+
+    # print(list(zip(season_vals, season_length)))
+
+    # assign cumulative values
+    cumulative_desired = np.zeros(raw_obs.size, dtype=float)
+    for i, season in enumerate(season_list):
+        in_season = np.where(int_season == season)
+        cumulative = np.cumsum(raw_obs[in_season])
+        if cumulative.max() > 0:
+            cumulative = cumulative / cumulative.max() * season_vals[i]
+            cumulative_desired[in_season] = cumulative + np.max(cumulative_desired)
 
     return cumulative_desired
 
@@ -243,11 +215,15 @@ def optimize_ddf_times(
     # The season of each night
     night_season = calc_season(ddf_RA, night_mjd)
 
-    raw_obs = np.ones(unights.size)
-    # take out the ones that are out of season
+    # Mod by 1 to turn the season value in each night a simple 0-1 value
     season_mod = night_season % 1
-
+    # Remove the tails of the seasons which are within "season_unobs_fract"
+    # Note that the "season" does include times where the field wouldn't
+    # really have been observable, due to being too close to the sun.
+    # Small values of season_unobs_frac may not reduce the usable season.
     out_season = np.where((season_mod < season_unobs_frac) | (season_mod > (1.0 - season_unobs_frac)))
+
+    raw_obs = np.ones(unights.size)
     raw_obs[out_season] = 0
 
     cumulative_desired = ddf_slopes(ddf_name, raw_obs, night_season)
