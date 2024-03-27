@@ -275,12 +275,16 @@ class BlobSurvey(GreedySurvey):
             for bf, weight in zip(self.basis_functions, self.basis_weights):
                 basis_value = bf(conditions)
                 reward += basis_value * weight
-            max_reward_indx = np.min(np.where(reward == np.nanmax(reward)))
-            distances = _angular_separation(
-                self.ra, self.dec, self.ra[max_reward_indx], self.dec[max_reward_indx]
-            )
-            valid_pix = np.where((np.isnan(reward) == False) & (distances < self.max_radius_peak))[0]
-            if np.size(valid_pix) * self.pixarea < self.min_area:
+            # Are there any valid reward pixels remaining
+            if np.sum(np.isfinite(reward)) > 0:
+                max_reward_indx = np.min(np.where(reward == np.nanmax(reward)))
+                distances = _angular_separation(
+                    self.ra, self.dec, self.ra[max_reward_indx], self.dec[max_reward_indx]
+                )
+                valid_pix = np.where((np.isnan(reward) == False) & (distances < self.max_radius_peak))[0]
+                if np.size(valid_pix) * self.pixarea < self.min_area:
+                    result = False
+            else:
                 result = False
         return result
 
