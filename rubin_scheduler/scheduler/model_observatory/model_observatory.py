@@ -520,7 +520,7 @@ class ModelObservatory:
             while clouds > self.cloud_limit:
                 new_mjd = new_mjd + cloud_skip / 60.0 / 24.0
                 clouds = self.cloud_data(Time(new_mjd, format="mjd"))
-        alm_indx = np.searchsorted(self.almanac.sunsets["sunset"], mjd, side="right") - 1
+        alm_indx = np.searchsorted(self.almanac.sunsets[self.starting_time_key], mjd, side="right") - 1
         # at the end of the night, advance to the next setting twilight
         if mjd > self.almanac.sunsets[self.ending_time_key][alm_indx]:
             passed = False
