@@ -35,28 +35,10 @@ First, clone the `rubin_scheduler <https://github.com/lsst/rubin_scheduler>`_ re
 
  git clone git@github.com:lsst/rubin_scheduler.git
  cd rubin_scheduler
-
-
-Create a conda environment for it:
-
-::
-
  conda create --channel conda-forge --name rubin_scheduler --file requirements.txt python=3.11
-
-
-If you want to run tests, install the test requirements as well:
-
-::
-
  conda activate rubin_scheduler
- conda install -c conda-forge --file=test-requirements.txt
-
-
-Install the ``rubin_scheduler`` project into this environment (from the rubin_scheduler directory):
-
-::
-
- pip install -e .
+ conda install -c conda-forge --file=test-requirements.txt # Optional for running unit tests
+ pip install -e . --no-deps
 
 Please note that following installation,
 additional data must be downloaded to use the software,
