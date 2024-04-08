@@ -425,8 +425,8 @@ class CoreScheduler:
             {
                 "camera": camera,
                 "nside": self.nside,
-                "rotator limits": self.rotator_limits,
-                "survey index": self.survey_index,
+                "rotator limits": list(self.rotator_limits),
+                "survey index": list(self.survey_index),
                 "Last chosen": last_chosen,
             }
         )
