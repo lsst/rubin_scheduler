@@ -55,6 +55,7 @@ from rubin_scheduler.scheduler import features, utils
 from rubin_scheduler.scheduler.utils import IntRounded
 from rubin_scheduler.skybrightness_pre import dark_m5
 from rubin_scheduler.utils import _hpid2_ra_dec
+from rubin_scheduler.utils import _hpid2_ra_dec, survey_start_mjd
 
 
 class BaseBasisFunction:
@@ -701,21 +702,31 @@ class CadenceInSeasonBasisFunction(BaseBasisFunction):
 
 
 class SeasonCoverageBasisFunction(BaseBasisFunction):
-    """Basis function to encourage N observations per observing season
+    """Basis function to encourage N observations per observing season.
 
     Parameters
     ----------
-    footprint : healpix map (None)
-        The footprint where one should demand coverage every season
-    n_per_season : `int` (3)
-        The number of observations to attempt to gather every season
-    offset : healpix map
-        The offset to apply when computing the current season over the sky.
-        rubin_scheduler.utils.create_season_offset is helpful for
-        making this
-    season_frac_start : `float` (0.5)
+    filtername : `str`, optional
+        Count observations in this filter. Default 'r'.
+    nside : `int`, optional
+        Nside for the healpix map to use for the feature.
+        This should match the nside of the survey and scheduler.
+    footprint : `np.array` (N,), optional
+        Healpix map of the footprint where one should demand coverage
+        every season. Default None will use the entire sky.
+    n_per_season : `int`, optional
+        The number of observations to attempt to gather every season.
+        Default of 3 is suitable for first year template building.
+    mjd_start : `float`, optional
+        The mjd of the start of the survey (days).
+        Default None uses `rubin_scheduler.utils.survey_start_mjd()`.
+    season_frac_start : `float`
         Only start trying to gather observations after a season
-        is fractionally this far over.
+        is fractionally this far along.
+        Seasons start when the apparent position of sun is at the RA of
+        the pixel (0) and finish when the sun returns again to this RA.
+        The default of 0.5 means that the basis function will not
+        start returning values until the RA reaches the peak of its season.
     """
 
     def __init__(
@@ -724,30 +735,46 @@ class SeasonCoverageBasisFunction(BaseBasisFunction):
         nside=None,
         footprint=None,
         n_per_season=3,
-        offset=None,
+        mjd_start=None,
         season_frac_start=0.5,
     ):
-        super(SeasonCoverageBasisFunction, self).__init__(nside=nside, filtername=filtername)
+        super().__init__(nside=nside, filtername=filtername)
+
+        if footprint is None:
+            footprint = np.ones(hp.nside2npix(self.nside), float)
+        self.footprint = footprint
+        # Calculate the RA values for each spot on the footprint
+        ra, dec = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(nside)))
+        self.ra_deg = np.degrees(ra)
 
         self.n_per_season = n_per_season
-        self.footprint = footprint
+        if mjd_start is None:
+            mjd_start = survey_start_mjd()
+        self.mjd_start = mjd_start
+        self.season_frac_start = season_frac_start
+        # Track how many observations have been taken at each RA/Dec
+        # in the current observing season (for that point on the sky).
         self.survey_features["n_obs_season"] = features.NObservationsCurrentSeason(
-            filtername=filtername, nside=nside, offset=offset
+            filtername=filtername, nside=nside, mjd_start=mjd_start
         )
         self.result = np.zeros(hp.nside2npix(self.nside), dtype=float)
-        self.season_frac_start = season_frac_start
-        self.offset = offset
 
     def _calc_value(self, conditions, indx=None):
         result = self.result.copy()
-        season = utils.season_calc(conditions.night, offset=self.offset, floor=False)
-        # Find the area that still needs observation
+
+        # Update the feature to the current time
+        self.survey_features["n_obs_season"].season_update(conditions)
         feature = self.survey_features["n_obs_season"].feature
+
+        # Get the season from the conditions object.
+        season = conditions.season
+
+        # Evaluate where there are not yet enough observations and also
+        # that season is far enough along to require more weight.
         not_enough = np.where(
             (self.footprint > 0)
             & (feature < self.n_per_season)
             & ((IntRounded(season - np.floor(season)) > IntRounded(self.season_frac_start)))
-            & (season >= 0)
         )
         result[not_enough] = 1
         return result
