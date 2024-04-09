@@ -730,7 +730,7 @@ def scheduled_observation(n=1):
         The minimum distance to demand the moon should be away (radians)
     observed : `bool`
         If set to True, scheduler will probably consider this a
-        completed observation an never attempt it.
+        completed observation and never attempt it.
 
     """
 
@@ -808,22 +808,42 @@ def hp_kd_tree(nside=None, leafsize=100, scale=1e5):
 
 
 class HpInLsstFov:
-    """
-    Return the healpixels within a pointing.
-    A very simple LSST camera model with no chip/raft gaps.
+    """Return the healpixels in an underlying healpix grid that
+    overlap an observation/pointing.
+
+    This uses a very simple circular LSST camera model with no chip/raft gaps.
+
+    Parameters
+    ----------
+    nside : `int`, optional
+        Nside to match for the healpix array.
+        Default None uses `set_default_nside`.
+    fov_radius : `float`, optional
+        Radius of the field of view in degrees. Default 1.75
+        covers the inscribed circle.
+    scale : `float`, optional
+        How many sig figs to round when considering matches to healpixels.
+        Useful for ensuring identical results cross-ploatform where
+        float precision can vary.
+
+
+    Examples
+    --------
+    Set up the class, then call to convert pointings to indices in the
+    healpix array. Note that RA and dec should be in RADIANS.
+
+    ```
+    >>> ra = np.radians(30)
+    >>> dec = np.radians(-20)
+    >>> pointing2indx = HpInLsstFov()
+    >>> indices = pointing2indx(ra, dec)
+    >>> indices
+    [8138, 8267]
+    ```
+
     """
 
     def __init__(self, nside=None, fov_radius=1.75, scale=1e5):
-        """
-        Parameters
-        ----------
-        fov_radius : float (1.75)
-            Radius of the filed of view in degrees
-        scale : float (1e5)
-            How many sig figs to round off to. Useful for ensuring
-            identical results cross-ploatform where float precision
-            can vary.
-        """
         if nside is None:
             nside = set_default_nside()
 

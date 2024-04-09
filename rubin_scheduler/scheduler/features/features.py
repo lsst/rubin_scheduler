@@ -21,6 +21,8 @@ __all__ = (
     "NoteLastObserved",
 )
 
+import warnings
+
 import healpy as hp
 import numpy as np
 from scipy.stats import binned_statistic
@@ -28,12 +30,25 @@ from scipy.stats import binned_statistic
 from rubin_scheduler.scheduler import utils
 from rubin_scheduler.scheduler.utils import IntRounded
 from rubin_scheduler.skybrightness_pre import dark_sky
-from rubin_scheduler.utils import _hpid2_ra_dec, calc_season, m5_flat_sed, ra_dec2_hpid
+from rubin_scheduler.utils import _hpid2_ra_dec, calc_season, m5_flat_sed, survey_start_mjd
+
+
+def send_unused_deprecation_warning(name):
+    message = (
+        f"The feature {name} is not in use by the current "
+        "baseline scheduler and may be deprecated shortly. "
+        "Please contact the rubin_scheduler maintainers if "
+        "this is in use elsewhere."
+    )
+    warnings.warn(message, FutureWarning)
 
 
 class BaseFeature:
-    """
-    Base class for features.
+    """The base class for features.
+    This defines the standard API: a Feature should include
+    a `self.feature` attribute, which could be a float, bool,
+    or healpix size numpy array, or numpy masked array, and a
+    __call__ method which returns `self.feature`.
     """
 
     def __init__(self, **kwargs):
@@ -46,36 +61,76 @@ class BaseFeature:
 
 
 class BaseSurveyFeature(BaseFeature):
-    """
-    Feature that tracks progreess of the survey.
-    Takes observations and updates self.feature
+    """Track information relevant to the progress of a survey, using
+    `self.feature` to hold this information.
+
+    Features can track a single piece of information, or keep a map across
+    the sky, or any other piece of information.
+
+    Information in `self.feature` is updated via `add_observation` or
+    `add_observation_array`.
     """
 
     def add_observations_array(self, observations_array, observations_hpid):
-        """ """
+        """Update self.feature based on information in `observations_array`
+        and `observations_hpid`.
+
+        This is a method to more rapidly restore the feature to its
+        expected state, by using an array of all previous observations
+        (`observations_array`) instead looping over the individual
+        observations, as in `self.add_observation`. The observations array
+        allows rapid calculation of acceptable observations, without
+        considering factors such as which healpix is relevant.
+
+        The `observations_hpid` is a reorganized version of the
+        `observations_array`, where the array representing each observation
+        is extended to include `hpid` and recorded multiple times (for each
+        healpixel). The `observations_hpid` allows rapid calculation of
+        feature values which depend on hpid.
+
+        Links between `observations_array` and `observations_hpid` can
+        be made using `ID`.
+        """
         print(self)
         raise NotImplementedError
 
     def add_observation(self, observation, indx=None, **kwargs):
-        """
+        """Update self.feature based on information in `observation`.
+        Observations should be ordered in monotonically increasing time.
+
         Parameters
         ----------
-        obsevation : dict-like
-            Object that contains the information about the observation
-            (ra, dec, filter, mjd, etc)
+        observation : `np.array`, (1,N)
+            Array of observation information, containing
+            `mjd` for the time. See
+            `rubin_scheduler.scheduler.utils.empty_observation`.
         indx : `list`-like of [`int`]
             The healpixel indices that the observation overlaps.
+            See `rubin_scheduler.utils.HpInLsstFov`.
         """
         raise NotImplementedError
 
 
 class SurveyInNight(BaseSurveyFeature):
-    """Keep track of how many times a survey has executed in a night."""
+    """Count appearances of `survey_str` within observation `note` in
+    the current night; `survey_str` must be contained in `note`.
+
+    Useful to keep track of how many times a survey has executed in a night.
+
+    Parameters
+    ----------
+    survey_str : `str`, optional
+        String to search for in observation `note`.
+        String does not have to match `note` exactly,
+        just be contained in `note`.
+        Default of "" means any observation will match.
+    """
 
     def __init__(self, survey_str=""):
         self.feature = 0
         self.survey_str = survey_str
-        self.night = -1
+        self.night = -100
+        send_unused_deprecation_warning(self.__class__.__name__)
 
     def add_observation(self, observation, indx=None):
         if observation["night"] != self.night:
@@ -87,18 +142,35 @@ class SurveyInNight(BaseSurveyFeature):
 
 
 class NoteInNight(BaseSurveyFeature):
-    """How many times a matching note has executed in the current night."""
+    """Count appearances of any of `notes` in observation `note` in the
+    current night; `note` must match one of `notes` exactly.
 
-    def __init__(self, notes=[]):
+    Useful for keeping track of how many times a survey or other subset
+    of visits has executed in a given night.
+
+    Parameters
+    ----------
+    notes : `list` [`str`], optional
+        List of strings to match against observation `note` values.
+        The `note` must match one of the items in notes exactly.
+        Default of None uses `[]` and will match any note.
+    """
+
+    def __init__(self, notes=None):
         self.feature = 0
+        if notes is None:
+            notes = []
         self.notes = notes
         self.current_night = -100
 
     def add_observations_array(self, observations_array, observations_hpid):
+        # Identify the most recent night.
         if self.current_night != observations_array["night"][-1]:
             self.current_night = observations_array["night"][-1].copy()
             self.feature = 0
+        # Identify observations within this night.
         indx = np.where(observations_array["night"] == observations_array["night"][-1])[0]
+        # Count observations that match notes.
         for ind in indx:
             if observations_array["note"][ind] in self.notes:
                 self.feature += 1
@@ -112,19 +184,30 @@ class NoteInNight(BaseSurveyFeature):
 
 
 class NObsCount(BaseSurveyFeature):
-    """Count the number of observations. Total number, not tracked over sky
+    """Count the number of observations.
+    Total number, not tracked over sky
 
     Parameters
     ----------
     filtername : `str` (None)
         The filter to count (if None, all filters counted)
+
     """
 
     def __init__(self, filtername=None, tag=None):
         self.feature = 0
         self.filtername = filtername
-        # XXX--is "tag" actually used anywhere? Maybe should remove that.
+        # 'tag' is used in GoalStrictFilterBasisFunction
         self.tag = tag
+        if self.tag is not None:
+            warnings.warn(
+                "Tag is not a supported element"
+                "of the `observation` and this aspect of "
+                "the feature will be "
+                "deprecated in 2 minor releases.",
+                DeprecationWarning,
+                stack_level=2,
+            )
 
     def add_observations_array(self, observations_array, observations_hpid):
         if self.filtername is None:
@@ -159,12 +242,18 @@ class NObsCount(BaseSurveyFeature):
 
 
 class NObsCountSeason(BaseSurveyFeature):
-    """Count the number of observations.
+    """Count the number of observations in a season.
 
     Parameters
     ----------
     filtername : `str` (None)
         The filter to count (if None, all filters counted)
+
+    Notes
+    -----
+    Uses `season_calc` to calculate season value.
+
+    Seems unused - added deprecation warning.
     """
 
     def __init__(
@@ -189,6 +278,7 @@ class NObsCountSeason(BaseSurveyFeature):
             self.offset = offset
         self.max_season = max_season
         self.season_length = season_length
+        send_unused_deprecation_warning(self.__class__.__name__)
 
     def add_observation(self, observation, indx=None):
         season = utils.season_calc(
@@ -225,12 +315,12 @@ class NObsCountSeason(BaseSurveyFeature):
 
 
 class NObsSurvey(BaseSurveyFeature):
-    """Count the number of observations.
+    """Count the number of observations, whole sky (not per pixel).
 
     Parameters
     ----------
     note : `str` (None)
-        Only count observations that have str in their note field
+        Only count observations that contain str in their note field
     """
 
     def __init__(self, note=None):
@@ -247,7 +337,8 @@ class NObsSurvey(BaseSurveyFeature):
 
 
 class LastObservation(BaseSurveyFeature):
-    """Track the last observation. Useful if you want to see when the
+    """Track the last observation.
+    Useful if you want to see when the
     last time a survey took an observation.
 
     Parameters
@@ -257,6 +348,8 @@ class LastObservation(BaseSurveyFeature):
     """
 
     def __init__(self, survey_name=None):
+        # Will this work for observations read from a database???
+        # "note" is definitely NOT guaranteed to match the survey_name.
         self.survey_name = survey_name
         # Start out with an empty observation
         self.feature = utils.empty_observation()
@@ -346,14 +439,6 @@ class NObservations(BaseSurveyFeature):
             self.feature += result
 
     def add_observation(self, observation, indx=None):
-        """
-        Parameters
-        ----------
-        indx : `list`-like of [`int`]
-            The indices of the healpixel map that have been observed by
-            observation
-        """
-
         if self.filtername is None or observation["filter"][0] in self.filtername:
             if self.survey_name is None or observation["note"] in self.survey_name:
                 self.feature[indx] += 1
@@ -375,6 +460,10 @@ class NObservationsSeason(BaseSurveyFeature):
         The offset to use when computing the season (days)
     modulo : `int` (None)
         How to mod the years when computing season
+
+    Notes
+    -----
+    Uses `season_calc` to calculate season value.
     """
 
     def __init__(
@@ -394,21 +483,17 @@ class NObservationsSeason(BaseSurveyFeature):
 
         self.feature = np.zeros(hp.nside2npix(nside), dtype=float)
         self.filtername = filtername
+        ## How does this work if the default is 0 -- in add_observation
+        # an index is referenced for offset, so the default should fail
         self.offset = offset
         self.modulo = modulo
         self.season = season
         self.max_season = max_season
         self.season_length = season_length
+        send_unused_deprecation_warning(self.__class__.__name__)
 
     def add_observation(self, observation, indx=None):
-        """
-        Parameters
-        ----------
-        indx :`list`-like of [`int`]
-            The indices of the healpixel map that have been observed by
-            observation
-        """
-
+        # How does this work if indx is None -- self.offset[indx] should fail
         observation_season = utils.season_calc(
             observation["night"],
             offset=self.offset[indx],
@@ -694,17 +779,17 @@ class CoaddedDepth(BaseSurveyFeature):
         FWHM is less than or equal to the limit.  Default 100.
     """
 
-    def __init__(self, filtername="r", nside=None, fwh_meff_limit=100.0):
+    def __init__(self, filtername="r", nside=None, fwhm_eff_limit=100.0):
         if nside is None:
             nside = utils.set_default_nside()
         self.filtername = filtername
-        self.fwh_meff_limit = IntRounded(fwh_meff_limit)
+        self.fwhm_eff_limit = IntRounded(fwhm_eff_limit)
         # Starting at limiting mag of zero should be fine.
         self.feature = np.zeros(hp.nside2npix(nside), dtype=float)
 
     def add_observation(self, observation, indx=None):
         if observation["filter"] == self.filtername:
-            if IntRounded(observation["FWHMeff"]) <= self.fwh_meff_limit:
+            if IntRounded(observation["FWHMeff"]) <= self.fwhm_eff_limit:
                 m5 = m5_flat_sed(
                     observation["filter"],
                     observation["skybrightness"],

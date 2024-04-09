@@ -256,8 +256,9 @@ class Conditions:
         # Keep these named in both ways, for backwards compatibility for now
         if season_map is None:
             season_map = calc_season(np.degrees(self.ra), [self.mjd_start], self.mjd_start).flatten()
-        # season_offset in units of days
+        # season_offset in units of days -useful for season_calc calculations
         self.season_offset = season_map * 365.25
+        # Season_map is useful for utils.calc_season calculations
         self.season_map = season_map
 
         self.sun_ra_start = sun_ra_start
@@ -602,10 +603,6 @@ class Conditions:
         print("moonPhase: ", self.moon_phase, "  ", file=output)
         print("bulk_cloud: ", self.bulk_cloud, "  ", file=output)
         print("targets_of_opportunity: ", self.targets_of_opportunity, "  ", file=output)
-        print("season_modulo: ", self.season_modulo, "  ", file=output)
-        print("season_max_season: ", self.season_max_season, "  ", file=output)
-        print("season_length: ", self.season_length, "  ", file=output)
-        print("season_floor: ", self.season_floor, "  ", file=output)
         print("cumulative_azimuth_rad: ", self.cumulative_azimuth_rad, "  ", file=output)
 
         positions = [

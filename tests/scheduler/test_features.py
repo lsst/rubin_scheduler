@@ -36,7 +36,7 @@ class TestFeatures(unittest.TestCase):
         self.assertEqual(np.max(pin.feature), 2.0)
 
     def test_conditions(self):
-        observatory = ModelObservatory()
+        observatory = ModelObservatory(init_load_length=1, mjd_start=survey_start_mjd())
         conditions = observatory.return_conditions()
         self.assertIsInstance(repr(conditions), str)
         self.assertIsInstance(str(conditions), str)
@@ -52,9 +52,6 @@ class TestFeatures(unittest.TestCase):
             new_lmst,
             (initial_lmst + step_days * sidereal_hours_per_day) % 24,
         )
-
-        # Test that the string representation works
-        _ = conditions.__str__()
 
         # Check that naked conditions work
         conditions_naked = features.Conditions()

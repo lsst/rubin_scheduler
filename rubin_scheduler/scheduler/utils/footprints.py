@@ -309,14 +309,6 @@ class BasePixelEvolution:
 
 
 class StepLine(BasePixelEvolution):
-    """
-    Parameters
-    ----------
-    period : `float`
-        The period to use
-    rise : `float`
-        How much the curve should rise every period
-    """
 
     def __call__(self, mjd_in, phase):
         t = mjd_in + phase - self.t_start
@@ -330,15 +322,6 @@ class StepLine(BasePixelEvolution):
 
 
 class StepSlopes(BasePixelEvolution):
-    """
-    Parameters
-    ----------
-    period : `float`
-        The period to use - typically should be a year.
-    rise : np.array-like
-        How much the curve should rise each period.
-    """
-
     def __call__(self, mjd_in, phase):
         steps = np.array(self.rise)
         t = mjd_in + phase - self.t_start
@@ -373,10 +356,12 @@ class Footprint:
         mjd_start,
         sun_ra_start=0,
         nside=32,
-        filters={"u": 0, "g": 1, "r": 2, "i": 3, "z": 4, "y": 5},
+        filters=None,
         period=365.25,
         step_func=None,
     ):
+        if filters is None:
+            filters = {"u": 0, "g": 1, "r": 2, "i": 3, "z": 4, "y": 5}
         self.period = period
         self.nside = nside
         if step_func is None:
@@ -389,6 +374,8 @@ class Footprint:
         self.ra, self.dec = _hpid2_ra_dec(self.nside, np.arange(self.npix))
         # Set the phase of each healpixel.
         # If RA to sun is zero, we are at phase np.pi/2.
+        # This is similar to the season calculation, except
+        # that phase and season are offset by 90 degrees.
         self.phase = (-self.ra + self.sun_ra_start + np.pi / 2) % (2.0 * np.pi)
         self.phase = self.phase * (self.period / 2.0 / np.pi)
         # Empty footprints to start
@@ -458,12 +445,18 @@ class Footprint:
 
 
 class ConstantFootprint(Footprint):
-    def __init__(self, nside=32, filters={"u": 0, "g": 1, "r": 2, "i": 3, "z": 4, "y": 5}):
+    def __init__(self, nside=32, filters=None):
+        if filters is None:
+            filters = {"u": 0, "g": 1, "r": 2, "i": 3, "z": 4, "y": 5}
         self.nside = nside
         self.filters = filters
         self.npix = hp.nside2npix(nside)
         self.footprints = np.zeros((len(filters), self.npix), dtype=float)
         self.out_dtype = list(zip(filters, [float] * len(filters)))
+        self.to_return = self.arr2struc(self.footprints)
+
+    def set_footprint(self, filtername, values):
+        self.footprints[self.filters[filtername], :] = values
         self.to_return = self.arr2struc(self.footprints)
 
     def __call__(self, mjd, array=False):
