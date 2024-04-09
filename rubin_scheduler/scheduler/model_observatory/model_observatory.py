@@ -282,7 +282,7 @@ class ModelObservatory:
         self.conditions = Conditions(
             nside=self.nside,
             mjd_start=self.mjd_start,
-            season_offset=self.season_offset,
+            season_map=self.season_map,
             sun_ra_start=self.sun_ra_start,
             mjd=self.mjd,
         )
