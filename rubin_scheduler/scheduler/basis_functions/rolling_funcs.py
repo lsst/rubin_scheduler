@@ -162,16 +162,22 @@ class FootprintRollingBasisFunction(BaseBasisFunction):
         self.out_of_bounds_val = out_of_bounds_val
 
         self.result = np.zeros(hp.nside2npix(nside), dtype=float)
+        send_unused_deprecation_warning(self.__class__.__name__)
 
     def _calc_value(self, conditions, indx=None):
         result = self.result.copy()
 
         # Compute what season it is at each pixel
-        seasons = conditions.season(
-            modulo=self.season_modulo,
-            max_season=self.max_season,
-            season_length=self.season_length,
-        )
+        seasons = conditions.season.copy()
+        seasons = seasons * 365.25 / self.season_length
+        if self.max_season is not None:
+            over_indx = np.where(seasons >= self.max_season)
+        if self.season_modulo is not None:
+            neg = np.where(seasons < 0)
+            seasons = seasons % self.season_modulo
+            seasons[neg] = -1
+        if self.max_season is not None:
+            seasons[over_indx] = -1
 
         # Update the coverage of the sky so far
         # If RA to sun is zero, we are at phase np.pi/2.
