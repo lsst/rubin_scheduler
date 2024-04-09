@@ -52,9 +52,8 @@ from astropy import units as u
 from astropy.coordinates import SkyCoord
 
 from rubin_scheduler.scheduler import features, utils
-from rubin_scheduler.scheduler.utils import IntRounded
+from rubin_scheduler.scheduler.utils import IntRounded, get_current_footprint
 from rubin_scheduler.skybrightness_pre import dark_m5
-from rubin_scheduler.utils import _hpid2_ra_dec
 from rubin_scheduler.utils import _hpid2_ra_dec, survey_start_mjd
 
 
@@ -378,6 +377,7 @@ class NGoodSeeingBasisFunction(BaseBasisFunction):
         The starting MJD.
     footprint : `np.array` (None)
         Only use area where footprint > 0. Should be a HEALpix map.
+        Default None calls `get_current_footprint()`.
     """
 
     def __init__(
@@ -402,6 +402,11 @@ class NGoodSeeingBasisFunction(BaseBasisFunction):
             m5_penalty_max=m5_penalty_max,
             nside=nside,
         )
+        # Set footprint to current survey footprint class if undefined.
+        if footprint is None:
+            footprints, labels = get_current_footprint(self.nside)
+            footprint = footprints[self.filtername]
+        self.footprint = footprint
         self.result = np.zeros(hp.nside2npix(self.nside))
         self.dark_map = None
         self.footprint = footprint
@@ -448,11 +453,15 @@ class AvoidLongGapsBasisFunction(BaseBasisFunction):
         self.min_gap = min_gap
         self.max_gap = max_gap
         self.filtername = filtername
+        if footprint is None:
+            footprints, labels = get_current_footprint(self.nside)
+            footprint = footprints[self.filtername]
         self.footprint = footprint
         self.ha_limit = 2.0 * np.pi * ha_limit / 24.0  # To radians
         self.survey_features = {}
-        self.survey_features["last_observed"] = features.Last_observed(nside=nside, filtername=filtername)
+        self.survey_features["last_observed"] = features.LastObserved(nside=nside, filtername=filtername)
         self.result = np.zeros(hp.nside2npix(self.nside))
+        send_unused_deprecation_warning(self.__class__.__name__)
 
     def _calc_value(self, conditions, indx=None):
         result = self.result.copy()
@@ -576,6 +585,9 @@ class NObsHighAmBasisFunction(BaseBasisFunction):
         out_of_bounds_val=np.nan,
     ):
         super(NObsHighAmBasisFunction, self).__init__(nside=nside, filtername=filtername)
+        if footprint is None:
+            footprints, labels = get_current_footprint(self.nside)
+            footprint = footprints[self.filtername]
         self.footprint = footprint
         self.out_footprint = np.where((footprint == 0) | np.isnan(footprint))
         self.am_limits = am_limits
@@ -713,7 +725,7 @@ class SeasonCoverageBasisFunction(BaseBasisFunction):
         This should match the nside of the survey and scheduler.
     footprint : `np.array` (N,), optional
         Healpix map of the footprint where one should demand coverage
-        every season. Default None will use the entire sky.
+        every season. Default None will call `get_current_footprint()`.
     n_per_season : `int`, optional
         The number of observations to attempt to gather every season.
         Default of 3 is suitable for first year template building.
@@ -741,7 +753,8 @@ class SeasonCoverageBasisFunction(BaseBasisFunction):
         super().__init__(nside=nside, filtername=filtername)
 
         if footprint is None:
-            footprint = np.ones(hp.nside2npix(self.nside), float)
+            footprints, labels = get_current_footprint(self.nside)
+            footprint = footprints[self.filtername]
         self.footprint = footprint
         # Calculate the RA values for each spot on the footprint
         ra, dec = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(nside)))
@@ -1852,7 +1865,8 @@ class GoodSeeingBasisFunction(BaseBasisFunction):
         self.filtername = filtername
         self.fwh_meff_limit = IntRounded(fwh_meff_limit)
         if footprint is None:
-            fp = utils.standard_goals(nside=nside)[filtername]
+            footprints, labels = get_current_footprint(nside=self.nside)
+            fp = footprints[self.filtername]
         else:
             fp = footprint
         self.out_of_bounds = np.where(fp == 0)[0]
@@ -1895,7 +1909,7 @@ class TemplateGenerateBasisFunction(BaseBasisFunction):
         How long to wait before boosting the reward (days)
     footprint : `np.array`
         The indices of the healpixels to apply the boost to.
-        Uses the default footprint if None
+        Default None will call `get_current_footprint()`.
     """
 
     def __init__(self, nside=None, day_gap=250.0, filtername="r", footprint=None):
@@ -1906,7 +1920,8 @@ class TemplateGenerateBasisFunction(BaseBasisFunction):
         self.survey_features["Last_observed"] = features.Last_observed(filtername=filtername)
         self.result = np.zeros(hp.nside2npix(self.nside))
         if footprint is None:
-            fp = utils.standard_goals(nside=nside)[filtername]
+            footprints, labels = get_current_footprint(self.nside)
+            fp = footprints[self.filtername]
         else:
             fp = footprint
         self.out_of_bounds = np.where(fp == 0)

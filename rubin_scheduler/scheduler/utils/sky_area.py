@@ -1,4 +1,5 @@
 __all__ = (
+    "get_current_footprint",
     "generate_all_sky",
     "filter_count_ratios",
     "SkyAreaGenerator",
@@ -22,6 +23,28 @@ from rubin_scheduler.utils import Site, _angular_separation, angular_separation
 
 from .footprints import ra_dec_hp_map
 from .utils import IntRounded, set_default_nside
+
+
+def get_current_footprint(nside):
+    """Convenience method to return the current footprint.
+
+    This is primarily a way to help rubin-sim users keep up to date
+    on footprint changes (as we have been moving to new subclasses).
+
+    Parameters
+    ----------
+    nside : `int`
+        The nside for the footprint map.
+
+    Returns
+    -------
+    footprint_arrays, label_array : `np.array`, (N,), `np.array`, (N,)
+        HEALPix target survey maps for ugrizy,
+        and array of string labels for each healpix to indicate the "region".
+    """
+    sky = EuclidOverlapFootprint(nside=nside)
+    footprints, labels = sky.return_maps()
+    return footprints, labels
 
 
 def generate_all_sky(nside=None, elevation_limit=20, mask=hp.UNSEEN):
