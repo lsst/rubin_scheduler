@@ -11,6 +11,17 @@ import numpy as np
 
 from rubin_scheduler.scheduler import features, utils
 from rubin_scheduler.scheduler.basis_functions import BaseBasisFunction
+from rubin_scheduler.scheduler.utils import ConstantFootprint
+
+
+def send_unused_deprecation_warning(name):
+    message = (
+        f"The basis function {name} is not in use by the current "
+        "baseline scheduler and may be deprecated shortly. "
+        "Please contact the rubin_scheduler maintainers if "
+        "this is in use elsewhere."
+    )
+    warnings.warn(message, FutureWarning)
 
 
 class FootprintBasisFunction(BaseBasisFunction):
@@ -18,17 +29,20 @@ class FootprintBasisFunction(BaseBasisFunction):
 
     Parameters
     ----------
-    filtername : str ('r')
-        The filter for this footprint
-    footprint : rubin_scheduler.scheduler.utils.Footprint object
-        The desired footprint.
-    all_footprints_sum : float (None)
-        If using multiple filters, the sum of all the footprints. Needed
-        to make sure basis functions are normalized properly across all
-        fitlers.
-    out_of_bounds_val : float (-10)
+    filtername : `str`, optional
+        The filter for this footprint. Default r.
+    nside : `int`, optional
+        The nside for the basis function and features.
+        Default None uses `~utils.set_default_nside()`
+    footprint : `~rubin_scheduler.scheduler.utils.Footprint` object
+        The desired footprint. The default will set this to None,
+        but in general this is really not desirable.
+        In order to make default a kwarg, a current baseline footprint
+        is setup with a Constant footprint (not rolling, not even season
+        aware).
+    out_of_bounds_val : `float`, optional
         The value to set the basis function for regions that are not in
-        the footprint (default -10, np.nan is another good value to use)
+        the footprint. Default -10, np.nan is another good value to use.
 
     """
 
@@ -38,15 +52,23 @@ class FootprintBasisFunction(BaseBasisFunction):
         nside=None,
         footprint=None,
         out_of_bounds_val=-10.0,
-        window_size=6.0,
     ):
-        super(FootprintBasisFunction, self).__init__(nside=nside, filtername=filtername)
+        super().__init__(nside=nside, filtername=filtername)
+        if footprint is None:
+            # This is useful as a backup, but really footprint SHOULD
+            # be specified when basis function is set up.
+            # This just uses whole survey, but doesn't set up rolling.
+            warnings.warn("No Footprint set, using a constant default.")
+            target_maps, labels = utils.get_current_footprint(self.nside)
+            fp = ConstantFootprint(nside=self.nside)
+            for f in "ugrizy":
+                fp.set_footprint(f, target_maps[f])
         self.footprint = footprint
 
         self.survey_features = {}
         # All the observations in all filters
-        self.survey_features["N_obs_all"] = features.NObservations(nside=nside, filtername=None)
-        self.survey_features["N_obs"] = features.NObservations(nside=nside, filtername=filtername)
+        self.survey_features["N_obs_all"] = features.NObservations(nside=self.nside, filtername=None)
+        self.survey_features["N_obs"] = features.NObservations(nside=self.nside, filtername=filtername)
 
         # should probably actually loop over all the target maps?
         self.out_of_bounds_area = np.where(footprint.get_footprint(self.filtername) <= 0)[0]
@@ -100,7 +122,6 @@ class FootprintRollingBasisFunction(BaseBasisFunction):
         season_length=365.25,
         max_season=None,
         day_offset=None,
-        window_size=6.0,
     ):
         super(FootprintRollingBasisFunction, self).__init__(nside=nside, filtername=filtername)
 
@@ -162,16 +183,22 @@ class FootprintRollingBasisFunction(BaseBasisFunction):
         self.out_of_bounds_val = out_of_bounds_val
 
         self.result = np.zeros(hp.nside2npix(nside), dtype=float)
+        send_unused_deprecation_warning(self.__class__.__name__)
 
     def _calc_value(self, conditions, indx=None):
         result = self.result.copy()
 
         # Compute what season it is at each pixel
-        seasons = conditions.season(
-            modulo=self.season_modulo,
-            max_season=self.max_season,
-            season_length=self.season_length,
-        )
+        seasons = conditions.season.copy()
+        seasons = seasons * 365.25 / self.season_length
+        if self.max_season is not None:
+            over_indx = np.where(seasons >= self.max_season)
+        if self.season_modulo is not None:
+            neg = np.where(seasons < 0)
+            seasons = seasons % self.season_modulo
+            seasons[neg] = -1
+        if self.max_season is not None:
+            seasons[over_indx] = -1
 
         # Update the coverage of the sky so far
         # If RA to sun is zero, we are at phase np.pi/2.
@@ -323,7 +350,8 @@ class TargetMapModuloBasisFunction(BaseBasisFunction):
             season_length=season_length,
         )
         if target_maps is None:
-            self.target_maps = utils.generate_goal_map(filtername=filtername, nside=self.nside)
+            target_maps, labels = utils.get_current_footprint(nside)
+            self.target_map = target_maps[filtername]
         else:
             self.target_maps = target_maps
         # should probably actually loop over all the target maps?
@@ -341,6 +369,7 @@ class TargetMapModuloBasisFunction(BaseBasisFunction):
         self.season_modulo = season_modulo
         self.max_season = max_season
         self.season_length = season_length
+        send_unused_deprecation_warning(self.__class__.__name__)
 
     def _calc_value(self, conditions, indx=None):
         """

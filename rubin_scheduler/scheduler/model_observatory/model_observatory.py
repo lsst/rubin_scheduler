@@ -1,5 +1,6 @@
 __all__ = ("ModelObservatory",)
 
+import warnings
 
 import healpy as hp
 import numpy as np
@@ -10,13 +11,14 @@ import rubin_scheduler.skybrightness_pre as sb
 from rubin_scheduler.data import data_versions
 from rubin_scheduler.scheduler.features import Conditions
 from rubin_scheduler.scheduler.model_observatory import KinemModel
-from rubin_scheduler.scheduler.utils import create_season_offset, set_default_nside
+from rubin_scheduler.scheduler.utils import set_default_nside
 
 # For backwards compatibility
-from rubin_scheduler.site_models import Almanac, CloudData
-from rubin_scheduler.site_models import ConstantCloudData as NoClouds
-from rubin_scheduler.site_models import ConstantSeeingData as NominalSeeing
 from rubin_scheduler.site_models import (
+    Almanac,
+    CloudData,
+    ConstantCloudData,
+    ConstantSeeingData,
     ScheduledDowntimeData,
     SeeingData,
     SeeingModel,
@@ -27,119 +29,147 @@ from rubin_scheduler.utils import (
     _angular_separation,
     _approx_altaz2pa,
     _approx_ra_dec2_alt_az,
+    _hpid2_ra_dec,
     _ra_dec2_hpid,
     calc_lmst,
+    calc_season,
     m5_flat_sed,
     survey_start_mjd,
 )
 
 
 class ModelObservatory:
-    """A class to generate a realistic telemetry stream for the scheduler"""
+    """Generate a realistic telemetry stream for the scheduler in simulations,
+    including simulating the acquisition of observations.
+
+    Parameters
+    ----------
+    nside : `int`, optional
+        The healpix nside resolution.
+        Default None uses `set_default_nside()`.
+    mjd : `float`, optional
+        The MJD to start the model observatory for observations.
+        Used to set current conditions and load sky.
+        Default None uses mjd_start.
+    mjd_start : `float`, optional
+        The MJD of the start of the survey.
+        This must be set to start of whole survey, for tracking
+        purposes.  Default None uses `survey_start_mjd()`.
+    alt_min : `float`, optional
+        The minimum altitude to compute models at (degrees).
+    lax_dome : `bool`, optional
+        Passed to observatory model. If true, allows dome creep.
+    cloud_limit : `float`, optional.
+        The limit to stop taking observations if the cloud model returns
+        something equal or higher. Default of 0.3 is validated as a
+        "somewhat pessimistic" weather downtime choice.
+    sim_to_o : `sim_targetoO` object, optional
+        If one would like to inject simulated ToOs into the telemetry
+        stream. Default None adds no ToOs.
+    park_after : `float`, optional
+        Park the telescope after a gap longer than park_after (minutes).
+        Default 10 minutes is used to park the telescope during downtime.
+    init_load_length : `int`, optional
+        The length of pre-scheduled sky brightness values to load
+        initially (days). The default is 10 days; shorter values
+        can be used for quicker load times.
+    kinem_model : `~.scheduler.model_observatory.Kinem_model`, optional
+        An instantiated rubin_scheduler Kinem_model object.
+        Default of None uses a default Kinem_model.
+    seeing_db : `str`, optional
+        The filename of the seeing data database, if one would like
+        to use an alternate seeing database.
+        Default None uses the default seeing database.
+    seeing_data : `~.site_models.SeeingData`-like, optional
+        If one wants to replace the default seeing_data object.
+        Should be an object with a
+        __call__ method that takes MJD and returns zenith fwhm_500 in
+        arcsec. Set to "ideal" to have constant 0.7" seeing.
+    cloud_db : `str`, optional
+        The filename of the cloud data database.
+        Default of None uses the default database from rubin_sim_data.
+    cloud_offset_year : `int`, optional
+        The year offset to be passed to CloudData. Default 0.
+    cloud_data : `~.site_models.CloudData`-like, optional
+        If one wants to replace the default cloud data. Should be an
+        object with a __call__ method that takes MJD and returns
+        cloudy level. Set to "ideal" for  no clouds.
+    downtimes : `np.ndarray`, (N,3) or None, optional
+        If one wants to replace the default downtimes. Should be a
+        np.array with columns of "start" and "end" with MJD values
+        and should include both scheduled and unscheduled downtime.
+        Set to "ideal" for no downtime. Default of None will use
+        the downtime models from `~.site_models.ScheduledDowntime`
+        and `~.site_models.UnscheduledDowntime`.
+    no_sky : `bool`, optional
+        If True, then don't load any skybrightness files.
+        Handy if one wants a well filled out Conditions object,
+        but doesn't need the sky since that can be slower to load.
+        Default False.
+    wind_data : ~.site_models.WindData`-like, optional
+        If one wants to replace the default wind_data object. Should
+        be an object with a __call__ method that takes the time and
+        returns a tuple with the wind speed (m/s) and originating
+        direction (radians east of north).
+        Default of None uses an idealized WindData object with no wind.
+    starting_time_key : `str`, optional
+        What key in the almanac to use to determine the start of
+        observing on a night. Default "sun_n12_setting", e.g., sun
+        at -12 degrees and setting. Other options are
+        "sun_n18_setting" and "sunset".
+        If surveys are not configured to wait until the sun is lower
+        in the sky, observing will start as soon as the time passes
+        the time returned by this key, in each night.
+    ending_time_key : `str`, optional
+        What key in the almanac to use to signify it is time to skip
+        to the next night. Default "sun_n12_rising", e.g., sun at
+        -12 degrees and rising. Other options are "sun_n18_rising"
+        and "sunrise".
+    """
 
     def __init__(
         self,
         nside=None,
+        mjd=None,
         mjd_start=None,
         alt_min=5.0,
         lax_dome=True,
         cloud_limit=0.3,
         sim_to_o=None,
-        seeing_db=None,
         park_after=10.0,
         init_load_length=10,
         kinem_model=None,
+        seeing_db=None,
+        seeing_data=None,
         cloud_db=None,
         cloud_offset_year=0,
         cloud_data=None,
-        seeing_data=None,
         downtimes=None,
         no_sky=False,
         wind_data=None,
         starting_time_key="sun_n12_setting",
         ending_time_key="sun_n12_rising",
     ):
-        """
-        Parameters
-        ----------
-        nside : int (None)
-            The healpix nside resolution
-        mjd_start : float (None)
-            The MJD to start the observatory up at. Uses util to lookup
-            default if None.
-        alt_min : float (5.)
-            The minimum altitude to compute models at (degrees).
-        lax_dome : bool (True)
-            Passed to observatory model. If true, allows dome creep.
-        cloud_limit : float (0.3)
-            The limit to stop taking observations if the cloud model returns
-            something equal or higher
-        sim_to_o : sim_targetoO object (None)
-            If one would like to inject simulated ToOs into the telemetry
-            stream.
-        seeing_db : filename of the seeing data database (None)
-            If one would like to use an alternate seeing database
-        park_after : float (10)
-            Park the telescope after a gap longer than park_after (minutes)
-        init_load_length : int (10)
-            The length of pre-scheduled sky brighntess to load initially
-            (days).
-        kinem_model : kinematic model object (None)
-            A instantiated
-            rubin_scheduler.scheduler.model_observatory.Kinem_model
-            object. If None, the default is used
-        cloud_db : str (None)
-            The file to use for clouds. Default of None uses the database in
-            rubin_sim_data.
-        cloud_offset_year : 0
-            The year offset to be passed to CloudData.
-        cloud_data : None
-            If one wants to replace the default cloud data. Should be an
-            object with a __call__ method that takes MJD and returns
-            cloudy level. Set to "ideal" for  no clouds.
-        seeing_data : None
-            If one wants to replace the default seeing_data object.
-            Should be an object with a
-            __call__ method that takes MJD and returns zenith fwhm_500 in
-            arcsec. Set to "ideal" to have constant 0.7" seeing.
-        downtimes : None
-            If one wants to replace the default downtimes. Should be a
-            np.array with columns of "start" and "end" with MJD values
-            and should include both scheduled and unscheduled downtime.
-            Set to "ideal" for no downtime.
-        no_sky : bool
-            Don't bother loading sky files. Handy if one wants a well
-            filled out Conditions object, but doesn't need the sky since
-            that can be slower to load. Default False.
-        wind_data : None
-            If one wants to replace the default wind_data object. Should
-            be an object with a __call__ method that takes the time and
-            returns a tuple with the wind speed (m/s) and originating
-            direction (radians east of north)
-        starting_time_key : str
-            What key in the almanac to use to determine the start of
-            observing on a night. Default "sun_n12_setting", e.g., sun
-            at -12 degrees and setting. Other options are
-            "sun_n18_setting" and "sunset"
-        ending_time_key : str
-            What key in the almanac to use to signify it is time to skip
-            to the next night. Default "sun_n12_rising", e.g., sun at
-            -12 degrees and rising. Other options are "sun_n18_rising"
-            and "sunrise"
-        """
 
         if nside is None:
             nside = set_default_nside()
         self.nside = nside
 
-        self.wind_data = wind_data
+        # Set the time now - mjd
+        # and the time of the survey start
+        if mjd_start is None:
+            mjd_start = survey_start_mjd()
+        self.mjd_start = mjd_start
+
+        if mjd is None:
+            mjd = mjd_start
+
+        self.filterlist = ["u", "g", "r", "i", "z", "y"]
 
         self.cloud_limit = cloud_limit
         self.no_sky = no_sky
-
         self.alt_min = np.radians(alt_min)
         self.lax_dome = lax_dome
-        self.mjd_start = survey_start_mjd() if mjd_start is None else mjd_start
         self.starting_time_key = starting_time_key
         self.ending_time_key = ending_time_key
 
@@ -153,16 +183,23 @@ class ModelObservatory:
             lat=self.site.latitude, lon=self.site.longitude, height=self.site.height
         )
 
-        # Load up all the models we need
+        # Set up the almanac - use mjd_start to keep "night" count the same.
+        self.almanac = Almanac(mjd_start=self.mjd_start)
 
+        # Load up all the models we need
+        # Use mjd_start to ensure models always initialize to the same
+        # starting point in time.
         mjd_start_time = Time(self.mjd_start, format="mjd")
-        # Downtime
+
+        # Set up the downtime
         if isinstance(downtimes, str):
             if downtimes == "ideal":
                 self.downtimes = np.array(
                     list(zip([], [])),
                     dtype=list(zip(["start", "end"], [float, float])),
                 )
+            else:
+                warnings.warn("Downtimes should be a string equal to " "'ideal', an array or None")
         elif downtimes is None:
             self.down_nights = []
             self.sched_downtime_data = ScheduledDowntimeData(mjd_start_time)
@@ -189,7 +226,7 @@ class ModelObservatory:
             # Make sure there aren't any overlapping downtimes
             diff = self.downtimes["start"][1:] - self.downtimes["end"][0:-1]
             while np.min(diff) < 0:
-                # Should be able to do this wihtout a loop, but this works
+                # Should be able to do this without a loop, but this works
                 for i, dt in enumerate(self.downtimes[0:-1]):
                     if self.downtimes["start"][i + 1] < dt["end"]:
                         new_end = np.max([dt["end"], self.downtimes["end"][i + 1]])
@@ -202,8 +239,12 @@ class ModelObservatory:
         else:
             self.downtimes = downtimes
 
+        # Set the wind data
+        self.wind_data = wind_data
+
+        # Set up the seeing data
         if seeing_data == "ideal":
-            self.seeing_data = NominalSeeing()
+            self.seeing_data = ConstantSeeingData()
         elif seeing_data is not None:
             self.seeing_data = seeing_data
         else:
@@ -213,46 +254,49 @@ class ModelObservatory:
         for i, filtername in enumerate(self.seeing_model.filter_list):
             self.seeing_indx_dict[filtername] = i
 
+        self.seeing_fwhm_eff = {}
+        for key in self.filterlist:
+            self.seeing_fwhm_eff[key] = np.zeros(hp.nside2npix(self.nside), dtype=float)
+
+        # Set up the cloud data
         if cloud_data == "ideal":
-            self.cloud_data = NoClouds()
+            self.cloud_data = ConstantCloudData()
         elif cloud_data is not None:
             self.cloud_data = cloud_data
         else:
             self.cloud_data = CloudData(mjd_start_time, cloud_db=cloud_db, offset_year=cloud_offset_year)
 
+        # Set up the skybrightness
         if not self.no_sky:
             self.sky_model = sb.SkyModelPre(init_load_length=init_load_length)
         else:
             self.sky_model = None
 
+        # Set up the kinematic model
         if kinem_model is None:
             self.observatory = KinemModel(mjd0=self.mjd_start)
         else:
             self.observatory = kinem_model
 
-        self.filterlist = ["u", "g", "r", "i", "z", "y"]
-        self.seeing_fwhm_eff = {}
-        for key in self.filterlist:
-            self.seeing_fwhm_eff[key] = np.zeros(hp.nside2npix(self.nside), dtype=float)
-
-        self.almanac = Almanac(mjd_start=self.mjd_start)
-
         # Let's make sure we're at an openable MJD
         good_mjd = False
-        to_set_mjd = self.mjd_start
+        to_set_mjd = mjd
         while not good_mjd:
             good_mjd, to_set_mjd = self.check_mjd(to_set_mjd)
         self.mjd = to_set_mjd
 
-        sun_moon_info = self.almanac.get_sun_moon_positions(self.mjd)
-        season_offset = create_season_offset(self.nside, sun_moon_info["sun_RA"])
+        sun_moon_info = self.almanac.get_sun_moon_positions(mjd)
+        # Create the map of the season offsets - this map is constant
+        ra, dec = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(self.nside)))
+        ra_deg = np.degrees(ra)
+        self.season_map = calc_season(ra_deg, [self.mjd_start], self.mjd_start).flatten()
         self.sun_ra_start = sun_moon_info["sun_RA"] + 0
-        self.season_offset = season_offset
         # Conditions object to update and return on request
+        # (at present, this is not updated -- recreated, below).
         self.conditions = Conditions(
             nside=self.nside,
             mjd_start=self.mjd_start,
-            season_offset=self.season_offset,
+            season_map=self.season_map,
             sun_ra_start=self.sun_ra_start,
         )
 
@@ -282,7 +326,7 @@ class ModelObservatory:
         self.conditions = Conditions(
             nside=self.nside,
             mjd_start=self.mjd_start,
-            season_offset=self.season_offset,
+            season_map=self.season_map,
             sun_ra_start=self.sun_ra_start,
             mjd=self.mjd,
         )

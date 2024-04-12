@@ -8,12 +8,7 @@ import healpy as hp
 import numpy as np
 import pandas as pd
 
-from rubin_scheduler.scheduler.utils import (
-    match_hp_resolution,
-    season_calc,
-    set_default_nside,
-    smallest_signed_angle,
-)
+from rubin_scheduler.scheduler.utils import match_hp_resolution, set_default_nside, smallest_signed_angle
 from rubin_scheduler.utils import (
     Site,
     _angular_separation,
@@ -21,19 +16,49 @@ from rubin_scheduler.utils import (
     _approx_ra_dec2_alt_az,
     _hpid2_ra_dec,
     calc_lmst,
+    calc_season,
     m5_flat_sed,
+    survey_start_mjd,
 )
 
 
 class Conditions:
-    """
-    Class to hold telemetry information
+    """Holds telemetry information, keeping calculated values in sync
+    for `self.mjd` (such as ra/dec mappings to alt/az).
 
-    If the incoming value is a healpix map, we use a setter to ensure the
-    resolution matches.
+    Incoming values have setters to keep values in sync. Healpix maps
+    are set to the expected (`self.nside`) resolution.
 
     Unless otherwise noted, all values are assumed to be valid at the time
-    given by self.mjd
+    given by `self.mjd`.
+
+    Parameters
+    ----------
+    nside : `int`, optional
+        The healpixel nside to set the resolution of attributes.
+        Default of None will use
+        `rubin_scheduler.scheduler.utils.set_default_nside`.
+    site : str ('LSST')
+        A site name used to create a sims.utils.Site object. For
+        looking up observatory parameters like latitude and longitude.
+    exptime : `float`, optional
+        The exposure time (seconds) to assume when computing the 5-sigma
+        limiting depth maps stored in Conditions. These maps are used
+        by basis functions, but are not used to calculate expected
+        observation m5 values (such as when exposure time varies).
+        Default 30 seconds.
+    mjd_start : `float`, optional
+        The starting MJD of the survey. Default uses
+        `rubin_scheduler.utils.survey_start_date()`.
+    season_map : `np.array`, (N,), optional
+        A HEALpix array that specifies the day offset when computing
+        the season for each HEALpix. Equivalent to season at mjd_start.
+    sun_ra_start : `float`, optional
+        The RA of the sun at the start of the survey (radians)
+    mjd : `float`, optional
+        The current MJD.
+        Default of None is fine on init - will be updated by telemetry
+        stream.
     """
 
     global_maps = set(["ra", "dec", "slewtime", "airmass", "zeros_map", "nan_map"])
@@ -44,32 +69,12 @@ class Conditions:
         nside=None,
         site="LSST",
         exptime=30.0,
-        mjd_start=59853.5,
-        season_offset=None,
+        mjd_start=survey_start_mjd(),
+        season_map=None,
         sun_ra_start=None,
         mjd=None,
     ):
         """
-        Parameters
-        ----------
-        nside : int
-            The healpixel nside to set the resolution of attributes.
-        site : str ('LSST')
-            A site name used to create a sims.utils.Site object. For
-            looking up observatory paramteres like latitude and longitude.
-        expTime : float (30)
-            The exposure time to assume when computing the 5-sigma
-            limiting depth
-        mjd_start : float (59853.5)
-            The starting MJD of the survey.
-        season_offset : np.array
-            A HEALpix array that specifies the day offset when computing
-            the season for each HEALpix.
-        sun_ra_start : float (None)
-            The RA of the sun at the start of the survey (radians)
-        mjd : float
-            The current MJD.
-
         Attributes (Set on init)
         -----------
         nside : int
@@ -204,6 +209,11 @@ class Conditions:
         pa : np.array
             The parallactic angle of each healpixel (radians). Recaclulated
             if mjd is updated. Based on the fast approximate alt,az values.
+        season : `np.array`, (N,)
+            The current season value (0-1) at each healpixel.
+            Recalculated if mjd is updated. Used by features that would
+            otherwise need to calculate `season`.
+            Uses `rubin_scheduler.utils.calc_season`.
         lmst : float
             The local mean sidearal time (hours). Updates is mjd is changed.
         m5_depth : dict of np.array
@@ -233,24 +243,37 @@ class Conditions:
         if nside is None:
             nside = set_default_nside()
         self.nside = nside
+
+        # The RA, Dec grid we are using
+        hpids = np.arange(hp.nside2npix(self.nside))
+        self.ra, self.dec = _hpid2_ra_dec(self.nside, hpids)
+
         self.site = Site(site)
         self.exptime = exptime
-        self.mjd_start = mjd_start
-        hpids = np.arange(hp.nside2npix(nside))
-        self.season_offset = season_offset
-        self.sun_ra_start = sun_ra_start
-        # Generate an empty map so we can copy when we need a new map
-        self.zeros_map = np.zeros(hp.nside2npix(nside), dtype=float)
-        self.nan_map = np.zeros(hp.nside2npix(nside), dtype=float)
-        self.nan_map.fill(np.nan)
-        # The RA, Dec grid we are using
-        self.ra, self.dec = _hpid2_ra_dec(nside, hpids)
 
+        self.mjd_start = mjd_start
+
+        # Keep these named in both ways, for backwards compatibility for now
+        if season_map is None:
+            season_map = calc_season(np.degrees(self.ra), [self.mjd_start], self.mjd_start).flatten()
+        # season_offset in units of days -useful for season_calc calculations
+        self.season_offset = season_map * 365.25
+        # Season_map is useful for utils.calc_season calculations
+        self.season_map = season_map
+
+        self.sun_ra_start = sun_ra_start
+
+        # Generate an empty map so we can copy when we need a new map
+        self.zeros_map = np.zeros(hp.nside2npix(self.nside), dtype=float)
+        self.nan_map = np.zeros(hp.nside2npix(self.nside), dtype=float)
+        self.nan_map.fill(np.nan)
+
+        # Set other attributes to Nones
         self._init_attributes()
         self.mjd = mjd
 
     def _init_attributes(self):
-        """Initialize all the attributes"""
+        """Initialize or clear all the attributes"""
 
         # Modified Julian Date (day)
         self._mjd = None
@@ -258,6 +281,7 @@ class Conditions:
         self._alt = None
         self._az = None
         self._pa = None
+
         # The cloud level. Fraction, but could upgrade to transparency map
         self.clouds = None
         self._slewtime = None
@@ -274,7 +298,7 @@ class Conditions:
         self.wind_speed = None
         self.wind_direction = None
 
-        # Upcomming scheduled observations
+        # Upcoming scheduled observations
         self.scheduled_observations = np.array([], dtype=float)
 
         # Attribute to hold the current observing queue
@@ -327,12 +351,11 @@ class Conditions:
 
         self.targets_of_opportunity = None
 
+        # self._season tracks the actual current
+        # observing season at each pixel
         self._season = None
-
-        self.season_modulo = None
-        self.season_max_season = None
-        self.season_length = 365.25
-        self.season_floor = True
+        # int_season = np.floor(season)
+        self._int_season = None
 
         # Potential attributes that get computed
         self._solar_elongation = None
@@ -419,6 +442,22 @@ class Conditions:
             self.site.longitude_rad,
             self._mjd,
         )
+
+    @property
+    def season(self):
+        if self._season is None:
+            self.update_season()
+        return self._season
+
+    @property
+    def int_season(self):
+        if self._int_season is None:
+            self.update_season()
+        return self._int_season
+
+    def update_season(self):
+        self._season = self.season_map + (self.mjd - self.mjd_start) / 365.25
+        self._int_season = np.floor(self._season)
 
     @functools.lru_cache(maxsize=10)
     def future_alt_az(self, mjd):
@@ -519,35 +558,6 @@ class Conditions:
             self.calc_az_to_antisun()
         return self._az_to_antisun
 
-    # XXX, there's probably an elegant decorator that could do this
-    # caching automatically
-    def season(self, modulo=None, max_season=None, season_length=365.25, floor=True):
-        if self.season_offset is not None:
-            kwargs_match = (
-                (modulo == self.season_modulo)
-                & (max_season == self.season_max_season)
-                & (season_length == self.season_length)
-                & (floor == self.season_floor)
-            )
-            if ~kwargs_match:
-                self.season_modulo = modulo
-                self.season_max_season = max_season
-                self.season_length = season_length
-                self.season_floor = floor
-            if (self._season is None) | (~kwargs_match):
-                self._season = season_calc(
-                    self.night,
-                    offset=self.season_offset,
-                    modulo=modulo,
-                    max_season=max_season,
-                    season_length=season_length,
-                    floor=floor,
-                )
-        else:
-            self._season = None
-
-        return self._season
-
     def __repr__(self):
         return f"<{self.__class__.__name__} mjd_start='{self.mjd_start}' at {hex(id(self))}>"
 
@@ -593,10 +603,6 @@ class Conditions:
         print("moonPhase: ", self.moon_phase, "  ", file=output)
         print("bulk_cloud: ", self.bulk_cloud, "  ", file=output)
         print("targets_of_opportunity: ", self.targets_of_opportunity, "  ", file=output)
-        print("season_modulo: ", self.season_modulo, "  ", file=output)
-        print("season_max_season: ", self.season_max_season, "  ", file=output)
-        print("season_length: ", self.season_length, "  ", file=output)
-        print("season_floor: ", self.season_floor, "  ", file=output)
         print("cumulative_azimuth_rad: ", self.cumulative_azimuth_rad, "  ", file=output)
 
         positions = [

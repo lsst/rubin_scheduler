@@ -6,7 +6,7 @@ __all__ = (
     "DelayStartBasisFunction",
     "TargetMapBasisFunction",
     "AvoidLongGapsBasisFunction",
-    "AvoidFastRevists",
+    "AvoidFastRevisits",
     "VisitRepeatBasisFunction",
     "M5DiffBasisFunction",
     "M5DiffAtHpixBasisFunction",
@@ -52,9 +52,19 @@ from astropy import units as u
 from astropy.coordinates import SkyCoord
 
 from rubin_scheduler.scheduler import features, utils
-from rubin_scheduler.scheduler.utils import IntRounded
+from rubin_scheduler.scheduler.utils import IntRounded, get_current_footprint
 from rubin_scheduler.skybrightness_pre import dark_m5
-from rubin_scheduler.utils import _hpid2_ra_dec
+from rubin_scheduler.utils import _hpid2_ra_dec, survey_start_mjd
+
+
+def send_unused_deprecation_warning(name):
+    message = (
+        f"The basis function {name} is not in use by the current "
+        "baseline scheduler and may be deprecated shortly. "
+        "Please contact the rubin_scheduler maintainers if "
+        "this is in use elsewhere."
+    )
+    warnings.warn(message, FutureWarning)
 
 
 class BaseBasisFunction:
@@ -251,7 +261,13 @@ class SimpleArrayBasisFunction(BaseBasisFunction):
 
 
 class DelayStartBasisFunction(BaseBasisFunction):
-    """Force things to not run before a given night"""
+    """Force things to not run before a given night.
+
+    Parameters
+    ----------
+    nights_delay : `float`, optional
+        Return False until conditions.night >= nights_delay.
+    """
 
     def __init__(self, nights_delay=365.25 * 5):
         super().__init__()
@@ -363,20 +379,32 @@ class NObsPerYearBasisFunction(BaseBasisFunction):
 
 
 class NGoodSeeingBasisFunction(BaseBasisFunction):
-    """Try to get N "good seeing" images each observing season
+    """Try to get N "good seeing" images each observing season.
 
     Parameters
     ----------
-    seeing_fwhm_max : `float` (0.8)
+    filtername : `str`
+        Bandpass in which to count images. Default r.
+    nside : `int`
+        The nside of the map for the basis function. Should match
+        survey and scheduler nside.
+        Default None uses `set_default_nside`.
+    seeing_fwhm_max : `float`
         Value to consider as "good" threshold (arcsec).
-    m5_penalty_max : `float` (0.5)
-        The maximum depth loss that is considered acceptable (magnitudes)
-    n_obs_desired : `int` (3)
+        Default of 0.8 arcseconds.
+    m5_penalty_max : `float`
+        The maximum depth loss that is considered acceptable (magnitudes),
+        compared to the dark-sky map in this filter.
+        Default 0.5 magnitudes.
+    n_obs_desired : `int`
         Number of good seeing observations to collect per season.
-    mjd_start : float (1)
-        The starting MJD.
-    footprint : `np.array` (None)
+        Default 3.
+    mjd_start : `float`
+        The starting MJD of the survey.
+        Default None uses `rubin_scheduler.utils.survey_start_mjd()`.
+    footprint : `np.array`, (N,)
         Only use area where footprint > 0. Should be a HEALpix map.
+        Default None calls `get_current_footprint()`.
     """
 
     def __init__(
@@ -386,24 +414,30 @@ class NGoodSeeingBasisFunction(BaseBasisFunction):
         seeing_fwhm_max=0.8,
         m5_penalty_max=0.5,
         n_obs_desired=3,
+        mjd_start=None,
         footprint=None,
-        mjd_start=1,
     ):
         super().__init__(nside=nside, filtername=filtername)
         self.seeing_fwhm_max = seeing_fwhm_max
         self.m5_penalty_max = m5_penalty_max
         self.n_obs_desired = n_obs_desired
-
+        if mjd_start is None:
+            mjd_start = survey_start_mjd()
+        self.mjd_start = mjd_start
         self.survey_features["N_good_seeing"] = features.NObservationsCurrentSeason(
-            filtername=filtername,
-            mjd_start=mjd_start,
-            seeing_fwhm_max=seeing_fwhm_max,
-            m5_penalty_max=m5_penalty_max,
-            nside=nside,
+            filtername=self.filtername,
+            mjd_start=self.mjd_start,
+            seeing_fwhm_max=self.seeing_fwhm_max,
+            m5_penalty_max=self.m5_penalty_max,
+            nside=self.nside,
         )
+        # Set footprint to current survey footprint class if undefined.
+        if footprint is None:
+            footprints, labels = get_current_footprint(self.nside)
+            footprint = footprints[self.filtername]
+        self.footprint = footprint
         self.result = np.zeros(hp.nside2npix(self.nside))
         self.dark_map = None
-        self.footprint = footprint
 
     def _calc_value(self, conditions, indx=None):
         if self.filtername is not None:
@@ -411,8 +445,10 @@ class NGoodSeeingBasisFunction(BaseBasisFunction):
                 self.dark_map = dark_m5(
                     conditions.dec, self.filtername, conditions.site.latitude_rad, fiducial_FWHMEff=0.7
                 )
-        result = 0
-        # Need to update the feature to the current season
+        # Return the same kind of array (not float) regardless
+        # of result
+        result = self.result.copy()
+        # Update the feature to the current time.
         self.survey_features["N_good_seeing"].season_update(conditions=conditions)
 
         m5_penalty = self.dark_map - conditions.m5_depth[self.filtername]
@@ -423,15 +459,31 @@ class NGoodSeeingBasisFunction(BaseBasisFunction):
             & (self.footprint > 0)
         )[0]
 
-        if np.size(potential_pixels) > 0:
-            result = self.result.copy()
-            result[potential_pixels] = 1
+        result[potential_pixels] = 1
         return result
 
 
 class AvoidLongGapsBasisFunction(BaseBasisFunction):
     """Boost the reward on parts of the survey that haven't been
     observed for a while.
+
+    Parameters
+    ----------
+    filtername : `str`, optional
+        The filter to consider when tracking visits.
+    nside : `int`, optional
+        The nside to use for the basis function.
+        Default None uses `set_default_nside()`.
+    footprint : `np.ndarray`, (N,)
+        The footprint to consider when tracking visits.
+        Default None uses `get_current_footprint()`.
+    min_gap : `float`, optional
+        The minimum gap of time before boosting (in days).
+    max_gap : `float`, optional
+        The maximum gap of time before stopping boosting (in days).
+    ha_limit : `float, optional
+        Only boost visits at parts of the sky with HA < ha_limit
+        (in hours).
     """
 
     def __init__(
@@ -447,11 +499,15 @@ class AvoidLongGapsBasisFunction(BaseBasisFunction):
         self.min_gap = min_gap
         self.max_gap = max_gap
         self.filtername = filtername
+        if footprint is None:
+            footprints, labels = get_current_footprint(self.nside)
+            footprint = footprints[self.filtername]
         self.footprint = footprint
         self.ha_limit = 2.0 * np.pi * ha_limit / 24.0  # To radians
         self.survey_features = {}
-        self.survey_features["last_observed"] = features.Last_observed(nside=nside, filtername=filtername)
+        self.survey_features["last_observed"] = features.LastObserved(nside=nside, filtername=filtername)
         self.result = np.zeros(hp.nside2npix(self.nside))
+        send_unused_deprecation_warning(self.__class__.__name__)
 
     def _calc_value(self, conditions, indx=None):
         result = self.result.copy()
@@ -471,7 +527,10 @@ class AvoidLongGapsBasisFunction(BaseBasisFunction):
 
 class TargetMapBasisFunction(BaseBasisFunction):
     """Basis function that tracks number of observations and tries
-    to match a specified spatial distribution
+    to match a specified spatial distribution.
+
+    In general, this is deprecated in favor of
+    `FootprintBasisFunction`.
 
     Parameters
     ----------
@@ -518,25 +577,21 @@ class TargetMapBasisFunction(BaseBasisFunction):
         # Count of all the observations
         self.survey_features["n_obs_count_all"] = features.NObsCount(filtername=None)
         if target_map is None:
-            self.target_map = utils.generate_goal_map(filtername=filtername, nside=self.nside)
+            target_maps, labels = utils.get_current_footprint(self.nside)
+            self.target_map = target_maps[filtername]
         else:
             self.target_map = target_map
         self.out_of_bounds_area = np.where(self.target_map == 0)[0]
         self.out_of_bounds_val = out_of_bounds_val
         self.result = np.zeros(hp.nside2npix(self.nside), dtype=float)
         self.all_indx = np.arange(self.result.size)
+        # As of 4/2024,
+        # this is used in the ts_fbs_utils maintel "anytime" test survey.
+        # It is also used in unit tests.
+        # send_unused_deprecation_warning(self.__class__.__name__)
+        # In general, it is deprecated in favor of FootprintBasisFunction
 
     def _calc_value(self, conditions, indx=None):
-        """
-        Parameters
-        ----------
-        indx : `list` (None)
-            Index values to compute, if None, full map is computed
-
-        Returns
-        -------
-        Healpix reward map
-        """
         result = self.result.copy()
         if indx is None:
             indx = self.all_indx
@@ -562,7 +617,7 @@ def az_rel_point(azs, point_az):
 
 
 class NObsHighAmBasisFunction(BaseBasisFunction):
-    """Reward only reward/count observations at high airmass"""
+    """Reward only reward/count observations at high airmass."""
 
     def __init__(
         self,
@@ -575,6 +630,9 @@ class NObsHighAmBasisFunction(BaseBasisFunction):
         out_of_bounds_val=np.nan,
     ):
         super(NObsHighAmBasisFunction, self).__init__(nside=nside, filtername=filtername)
+        if footprint is None:
+            footprints, labels = get_current_footprint(self.nside)
+            footprint = footprints[self.filtername]
         self.footprint = footprint
         self.out_footprint = np.where((footprint == 0) | np.isnan(footprint))
         self.am_limits = am_limits
@@ -587,16 +645,6 @@ class NObsHighAmBasisFunction(BaseBasisFunction):
         self.out_of_bounds_val = out_of_bounds_val
 
     def add_observation(self, observation, indx=None):
-        """
-        Parameters
-        ----------
-        observation : `np.array`
-            An array with information about the input observation
-        indx : `np.array`
-            The indices of the healpix map that the observation
-            overlaps with
-        """
-
         # Only count the observations if they are at the airmass limits
         if (observation["airmass"] > np.min(self.am_limits)) & (
             observation["airmass"] < np.max(self.am_limits)
@@ -607,10 +655,6 @@ class NObsHighAmBasisFunction(BaseBasisFunction):
                 self.recalc = True
 
     def check_feasibility(self, conditions):
-        """If there is logic to decide if something is feasible
-        (e.g., only if moon is down), it can be calculated here.
-        Helps prevent full __call__ from being called more than needed.
-        """
         result = True
         reward = self._calc_value(conditions)
         # If there are no non-NaN values, we're not feasible now
@@ -662,14 +706,14 @@ class CadenceInSeasonBasisFunction(BaseBasisFunction):
 
     Parameters
     ----------
-    drive_map : np.array
+    drive_map : `np.ndarray`, (N,)
         A HEALpix map with values of 1 where the cadence should be driven.
     filtername : `str`
-        The filters that can count
-    season_span : `float` (2.5)
-        How long to consider a spot "in_season" (hours)
-    cadence : `float` (2.5)
-        How long to wait before activating the basis function (days)
+        The filters that can count.
+    season_span : `float`
+        How long to consider a spot "in_season" (hours).
+    cadence : `float`
+        How long to wait before activating the basis function (days).
     """
 
     def __init__(self, drive_map, filtername="griz", season_span=2.5, cadence=2.5, nside=None):
@@ -677,7 +721,7 @@ class CadenceInSeasonBasisFunction(BaseBasisFunction):
         self.drive_map = drive_map
         self.season_span = season_span / 12.0 * np.pi  # To radians
         self.cadence = cadence
-        self.survey_features["last_observed"] = features.Last_observed(nside=nside, filtername=filtername)
+        self.survey_features["last_observed"] = features.LastObserved(nside=nside, filtername=filtername)
         self.result = np.zeros(hp.nside2npix(self.nside), dtype=float)
 
     def _calc_value(self, conditions, indx=None):
@@ -701,21 +745,31 @@ class CadenceInSeasonBasisFunction(BaseBasisFunction):
 
 
 class SeasonCoverageBasisFunction(BaseBasisFunction):
-    """Basis function to encourage N observations per observing season
+    """Basis function to encourage N observations per observing season.
 
     Parameters
     ----------
-    footprint : healpix map (None)
-        The footprint where one should demand coverage every season
-    n_per_season : `int` (3)
-        The number of observations to attempt to gather every season
-    offset : healpix map
-        The offset to apply when computing the current season over the sky.
-        rubin_scheduler.utils.create_season_offset is helpful for
-        making this
-    season_frac_start : `float` (0.5)
+    filtername : `str`, optional
+        Count observations in this filter. Default 'r'.
+    nside : `int`, optional
+        Nside for the healpix map to use for the feature.
+        This should match the nside of the survey and scheduler.
+    footprint : `np.array` (N,), optional
+        Healpix map of the footprint where one should demand coverage
+        every season. Default None will call `get_current_footprint()`.
+    n_per_season : `int`, optional
+        The number of observations to attempt to gather every season.
+        Default of 3 is suitable for first year template building.
+    mjd_start : `float`, optional
+        The mjd of the start of the survey (days).
+        Default None uses `rubin_scheduler.utils.survey_start_mjd()`.
+    season_frac_start : `float`
         Only start trying to gather observations after a season
-        is fractionally this far over.
+        is fractionally this far along.
+        Seasons start when the apparent position of sun is at the RA of
+        the pixel (0) and finish when the sun returns again to this RA.
+        The default of 0.5 means that the basis function will not
+        start returning values until the RA reaches the peak of its season.
     """
 
     def __init__(
@@ -724,30 +778,47 @@ class SeasonCoverageBasisFunction(BaseBasisFunction):
         nside=None,
         footprint=None,
         n_per_season=3,
-        offset=None,
+        mjd_start=None,
         season_frac_start=0.5,
     ):
-        super(SeasonCoverageBasisFunction, self).__init__(nside=nside, filtername=filtername)
+        super().__init__(nside=nside, filtername=filtername)
+
+        if footprint is None:
+            footprints, labels = get_current_footprint(self.nside)
+            footprint = footprints[self.filtername]
+        self.footprint = footprint
+        # Calculate the RA values for each spot on the footprint
+        ra, dec = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(nside)))
+        self.ra_deg = np.degrees(ra)
 
         self.n_per_season = n_per_season
-        self.footprint = footprint
+        if mjd_start is None:
+            mjd_start = survey_start_mjd()
+        self.mjd_start = mjd_start
+        self.season_frac_start = season_frac_start
+        # Track how many observations have been taken at each RA/Dec
+        # in the current observing season (for that point on the sky).
         self.survey_features["n_obs_season"] = features.NObservationsCurrentSeason(
-            filtername=filtername, nside=nside, offset=offset
+            filtername=filtername, nside=nside, mjd_start=mjd_start
         )
         self.result = np.zeros(hp.nside2npix(self.nside), dtype=float)
-        self.season_frac_start = season_frac_start
-        self.offset = offset
 
     def _calc_value(self, conditions, indx=None):
         result = self.result.copy()
-        season = utils.season_calc(conditions.night, offset=self.offset, floor=False)
-        # Find the area that still needs observation
+
+        # Update the feature to the current time
+        self.survey_features["n_obs_season"].season_update(conditions)
         feature = self.survey_features["n_obs_season"].feature
+
+        # Get the season from the conditions object.
+        season = conditions.season
+
+        # Evaluate where there are not yet enough observations and also
+        # that season is far enough along to require more weight.
         not_enough = np.where(
             (self.footprint > 0)
             & (feature < self.n_per_season)
             & ((IntRounded(season - np.floor(season)) > IntRounded(self.season_frac_start)))
-            & (season >= 0)
         )
         result[not_enough] = 1
         return result
@@ -776,6 +847,8 @@ class FootprintNvisBasisFunction(BaseBasisFunction):
         out_of_bounds_val=np.nan,
     ):
         super(FootprintNvisBasisFunction, self).__init__(nside=nside, filtername=filtername)
+        if footprint is None:
+            footprint = np.zeros(hp.nside2npix(self.nside))
         self.footprint = footprint
         self.nvis = nvis
 
@@ -786,6 +859,7 @@ class FootprintNvisBasisFunction(BaseBasisFunction):
         self.result = np.zeros(hp.nside2npix(nside))
         self.result.fill(out_of_bounds_val)
         self.out_of_bounds_val = out_of_bounds_val
+        send_unused_deprecation_warning(self.__class__.__name__)
 
     def _calc_value(self, conditions, indx=None):
         result = self.result.copy()
@@ -832,7 +906,7 @@ class ThirdObservationBasisFunction(BaseBasisFunction):
         return result
 
 
-class AvoidFastRevists(BaseBasisFunction):
+class AvoidFastRevisits(BaseBasisFunction):
     """Marks targets as unseen if they are in a specified time window
     in order to avoid fast revisits.
 
@@ -850,7 +924,7 @@ class AvoidFastRevists(BaseBasisFunction):
     """
 
     def __init__(self, filtername="r", nside=None, gap_min=25.0, penalty_val=np.nan):
-        super(AvoidFastRevists, self).__init__(nside=nside, filtername=filtername)
+        super().__init__(nside=nside, filtername=filtername)
 
         self.filtername = filtername
         self.penalty_val = penalty_val
@@ -859,7 +933,7 @@ class AvoidFastRevists(BaseBasisFunction):
         self.nside = nside
 
         self.survey_features = dict()
-        self.survey_features["Last_observed"] = features.Last_observed(filtername=filtername, nside=nside)
+        self.survey_features["Last_observed"] = features.LastObserved(filtername=filtername, nside=nside)
 
     def _calc_value(self, conditions, indx=None):
         result = np.ones(hp.nside2npix(self.nside), dtype=float)
@@ -872,12 +946,20 @@ class AvoidFastRevists(BaseBasisFunction):
 
 
 class NearSunTwilightBasisFunction(BaseBasisFunction):
-    """Reward looking into the twilight for NEOs at high airmass
+    """Reward areas on the sky at high airmass, within 90 degrees azimuth
+    of the Sun, such as suitable for the near-sun twilight microsurvey for
+    near- or interior-to earth asteroids.
 
     Parameters
     ----------
-    max_airmass : `float` (2.5)
-        The maximum airmass to try and observe (unitless)
+    nside : `int`, optional
+        Nside for the basis function. If None, uses `set_default_nside()`.
+    max_airmass : `float`, oprionl
+        The maximum airmass to try and observe (unitless).
+    penalty : `float`, optional
+        The value to fill in non-rewarded parts of the sky.
+        Default np.nan, which serves to mask regions exceeding the airmass
+        limit and more than 90 degrees azimuth toward the sun.
     """
 
     def __init__(self, nside=None, max_airmass=2.5, penalty=np.nan):
@@ -961,8 +1043,17 @@ class M5DiffBasisFunction(BaseBasisFunction):
 
     Parameters
     ----------
-    fiducial_FWHMEff : `float`
-        The zenith seeing to assume for "good" conditions
+    filtername : `str`, optional
+        The filter to consider for visits.
+    fiducial_FWHMEff : `float`, optional
+        The zenith seeing to assume for "good" conditions.
+        While the dark sky depth map simply scales with this value,
+        picking a reasonable fiducial_FWHMEff is important because
+        this effects the overall value and scale of the reward
+        from the basis function.
+    nside : `int`, optional
+        The nside for the basis function.
+        Default None uses `set_default_nside()`.
     """
 
     def __init__(self, filtername="r", fiducial_FWHMEff=0.7, nside=None):
@@ -977,7 +1068,6 @@ class M5DiffBasisFunction(BaseBasisFunction):
             self.dark_map = dark_m5(
                 conditions.dec, self.filtername, conditions.site.latitude_rad, self.fiducial_FWHMEff
             )
-
         # No way to get the sign on this right the first time.
         result = conditions.m5_depth[self.filtername] - self.dark_map
         return result
@@ -1121,7 +1211,9 @@ class GoalStrictFilterBasisFunction(BaseBasisFunction):
         self.survey_features["Last_observation"] = features.Last_observation()
         self.survey_features["Last_filter_change"] = features.LastFilterChange()
         self.survey_features["n_obs_all"] = features.NObsCount(filtername=None)
+        # Tag is not actually supported at observation level.
         self.survey_features["n_obs"] = features.NObsCount(filtername=filtername, tag=tag)
+        send_unused_deprecation_warning(self.__class__.__name__)
 
     def filter_change_bonus(self, time):
         lag_min = self.time_lag_min
@@ -1253,10 +1345,18 @@ class SlewtimeBasisFunction(BaseBasisFunction):
 
     Parameters
     ----------
-    max_time : `float` (135)
+    max_time : `float`
          The estimated maximum slewtime (seconds).
          Used to normalize so the basis function spans ~ -1-0
-         in reward units.
+         in reward units. Default 135 seconds corresponds to just
+         slightly less than a filter change.
+    filtername : `str`, optional
+        The filter to check for pre-post slewtime estimates.
+        If a slew includes a filter change, other basis functions will
+        decide on the reward, so the result here can be 0.
+    nside : `int`, optional
+        Nside for the basis function.
+        Default None will use `set_default_nside()`.
     """
 
     def __init__(self, max_time=135.0, filtername="r", nside=None):
@@ -1306,6 +1406,7 @@ class AggressiveSlewtimeBasisFunction(BaseBasisFunction):
         self.hard_max = hard_max
         self.order = order
         self.result = np.zeros(hp.nside2npix(nside), dtype=float)
+        send_unused_deprecation_warning(self.__class__.__name__)
 
     def _calc_value(self, conditions, indx=None):
         # If we are in a different filter, the
@@ -1333,17 +1434,22 @@ class AggressiveSlewtimeBasisFunction(BaseBasisFunction):
 
 
 class SkybrightnessLimitBasisFunction(BaseBasisFunction):
-    """Mask regions that are outside a sky brightness limit
-
-    XXX--TODO:  This should probably go to the mask basis functions.
+    """Mask regions that are outside a sky brightness limit.
 
     Parameters
     ----------
-    min : `float` (20.)
-         The minimum sky brightness (mags).
-    max : `float` (30.)
-         The maximum sky brightness (mags).
-
+    nside : `int`, optional
+        The nside for the basis function. Default None uses
+        `set_default_nside()`.
+    filtername : `str`, optional
+        The filter to consider for the skybrightness pre values.
+    sbmin : `float`, optional
+        The minimum (brightest) skybrightness to consider (mags).
+        Default of 20 will cut out some times of night or parts of the
+        sky.
+    sbmax : `float`, optional
+        The maximum (faintest) skybrightness to consider (mags).
+        Default of 30 will pass all skybrightness values.
     """
 
     def __init__(self, nside=None, filtername="r", sbmin=20.0, sbmax=30.0):
@@ -1353,6 +1459,7 @@ class SkybrightnessLimitBasisFunction(BaseBasisFunction):
         self.max = IntRounded(sbmax)
         self.result = np.empty(hp.nside2npix(self.nside), dtype=float)
         self.result.fill(np.nan)
+        send_unused_deprecation_warning(self.__class__.__name__)
 
     def _calc_value(self, conditions, indx=None):
         result = self.result.copy()
@@ -1423,6 +1530,7 @@ class CablewrapUnwrapBasisFunction(BaseBasisFunction):
         self.max_duration = max_duration / 60.0 / 24.0  # Convert to days
         self.activation_time = None
         self.result = np.zeros(hp.nside2npix(self.nside), dtype=float)
+        send_unused_deprecation_warning(self.__class__.__name__)
 
     def _calc_value(self, conditions, indx=None):
         result = self.result.copy()
@@ -1537,7 +1645,7 @@ class CadenceEnhanceBasisFunction(BaseBasisFunction):
         self.enhance_val = enhance_val
 
         self.survey_features = {}
-        self.survey_features["last_observed"] = features.Last_observed(filtername=filtername)
+        self.survey_features["last_observed"] = features.LastObserved(filtername=filtername)
 
         self.empty = np.zeros(hp.nside2npix(self.nside), dtype=float)
         # No map, try to drive the whole area
@@ -1636,7 +1744,7 @@ class CadenceEnhanceTrapezoidBasisFunction(BaseBasisFunction):
         self.season_limit = season_limit / 12 * np.pi  # To radians
 
         self.survey_features = {}
-        self.survey_features["last_observed"] = features.Last_observed(filtername=filtername)
+        self.survey_features["last_observed"] = features.LastObserved(filtername=filtername)
 
         self.empty = np.zeros(hp.nside2npix(self.nside), dtype=float)
         # No map, try to drive the whole area
@@ -1658,7 +1766,7 @@ class CadenceEnhanceTrapezoidBasisFunction(BaseBasisFunction):
 
         return result
 
-    def season_calc(self, conditions):
+    def season_len(self, conditions):
         ra_mid_season = (conditions.sunRA + np.pi) % (2.0 * np.pi)
         angle_to_mid_season = np.abs(conditions.ra - ra_mid_season)
         over = np.where(IntRounded(angle_to_mid_season) > IntRounded(np.pi))
@@ -1680,7 +1788,7 @@ class CadenceEnhanceTrapezoidBasisFunction(BaseBasisFunction):
             result[ind] += self.suppress_enhance(mjd_diff)
 
         if self.season_limit is not None:
-            radians_to_midseason = self.season_calc(conditions)
+            radians_to_midseason = self.season_len(conditions)
             outside_season = np.where(radians_to_midseason > self.season_limit)
             result[outside_season] = 0
 
@@ -1817,15 +1925,16 @@ class GoodSeeingBasisFunction(BaseBasisFunction):
         nside=None,
         filtername="r",
         footprint=None,
-        fwh_meff_limit=0.8,
+        fwhm_eff_limit=0.8,
         mag_diff=0.75,
     ):
         super(GoodSeeingBasisFunction, self).__init__(nside=nside)
 
         self.filtername = filtername
-        self.fwh_meff_limit = IntRounded(fwh_meff_limit)
+        self.fwhm_eff_limit = IntRounded(fwhm_eff_limit)
         if footprint is None:
-            fp = utils.standard_goals(nside=nside)[filtername]
+            footprints, labels = get_current_footprint(nside=self.nside)
+            fp = footprints[self.filtername]
         else:
             fp = footprint
         self.out_of_bounds = np.where(fp == 0)[0]
@@ -1833,14 +1942,16 @@ class GoodSeeingBasisFunction(BaseBasisFunction):
 
         self.mag_diff = IntRounded(mag_diff)
         self.survey_features = {}
-        self.survey_features["coadd_depth_all"] = features.Coadded_depth(filtername=filtername, nside=nside)
-        self.survey_features["coadd_depth_good"] = features.Coadded_depth(
-            filtername=filtername, nside=nside, fwh_meff_limit=fwh_meff_limit
+        self.survey_features["coadd_depth_all"] = features.CoaddedDepth(
+            filtername=self.filtername, nside=self.nside
+        )
+        self.survey_features["coadd_depth_good"] = features.CoaddedDepth(
+            filtername=self.filtername, nside=self.nside, fwhm_eff_limit=fwhm_eff_limit
         )
 
     def _calc_value(self, conditions, **kwargs):
         # Seeing is "bad"
-        if IntRounded(conditions.FWHMeff[self.filtername].min()) > self.fwh_meff_limit:
+        if IntRounded(conditions.FWHMeff[self.filtername].min()) > self.fwhm_eff_limit:
             return 0
         result = self.result.copy()
 
@@ -1850,7 +1961,7 @@ class GoodSeeingBasisFunction(BaseBasisFunction):
         # Where are there things we want to observe?
         good_pix = np.where(
             (IntRounded(diff) > self.mag_diff)
-            & (IntRounded(conditions.FWHMeff[self.filtername]) <= self.fwh_meff_limit)
+            & (IntRounded(conditions.FWHMeff[self.filtername]) <= self.fwhm_eff_limit)
         )
         # Hm, should this scale by the mag differences? Probably.
         result[good_pix] = diff[good_pix]
@@ -1864,11 +1975,18 @@ class TemplateGenerateBasisFunction(BaseBasisFunction):
 
     Parameters
     ----------
-    day_gap : `float`
-        How long to wait before boosting the reward (days)
-    footprint : `np.array`
+    nside : `int`, optional
+        The nside for the basis function and feature.
+        Default None uses `set_default_nside()`.
+    day_gap : `float`, optional
+        How long to wait before boosting the reward (days).
+        Default of 250 pushes visits into parts of the sky which missed
+        a significant chunk of a season.
+    filtername : `str`, optional
+        The filter to consider when tracking observations.
+    footprint : `np.array`, (N,)
         The indices of the healpixels to apply the boost to.
-        Uses the default footprint if None
+        Default None will call `get_current_footprint()`.
     """
 
     def __init__(self, nside=None, day_gap=250.0, filtername="r", footprint=None):
@@ -1876,13 +1994,15 @@ class TemplateGenerateBasisFunction(BaseBasisFunction):
         self.day_gap = day_gap
         self.filtername = filtername
         self.survey_features = {}
-        self.survey_features["Last_observed"] = features.Last_observed(filtername=filtername)
+        self.survey_features["Last_observed"] = features.LastObserved(filtername=filtername)
         self.result = np.zeros(hp.nside2npix(self.nside))
         if footprint is None:
-            fp = utils.standard_goals(nside=nside)[filtername]
+            footprints, labels = get_current_footprint(self.nside)
+            fp = footprints[self.filtername]
         else:
             fp = footprint
         self.out_of_bounds = np.where(fp == 0)
+        send_unused_deprecation_warning(self.__class__.__name__)
 
     def _calc_value(self, conditions, **kwargs):
         result = self.result.copy()
@@ -1907,6 +2027,7 @@ class LimitRepeatBasisFunction(BaseBasisFunction):
         self.survey_features["n_obs"] = features.NObsNight(nside=nside, filtername=filtername)
 
         self.result = np.zeros(hp.nside2npix(self.nside))
+        send_unused_deprecation_warning(self.__class__.__name__)
 
     def _calc_value(self, conditions, **kwargs):
         result = self.result.copy()
@@ -1929,6 +2050,7 @@ class ObservedTwiceBasisFunction(BaseBasisFunction):
         self.survey_features["n_obs_all"] = features.NObsNight(nside=nside, filtername="")
 
         self.result = np.zeros(hp.nside2npix(self.nside))
+        send_unused_deprecation_warning(self.__class__.__name__)
 
     def _calc_value(self, conditions, **kwargs):
         result = self.result.copy()
@@ -1995,12 +2117,15 @@ class VisitGap(BaseBasisFunction):
 
 
 class AvoidDirectWind(BaseBasisFunction):
-    """Basis function to avoid direct wind.
+    """Mask the sky where the wind pressure exceeds `wind_speed_maximum`.
 
     Parameters
     ----------
-    wind_speed_maximum : `float`
+    wind_speed_maximum : `float`, optional
         Wind speed to mark regions as unobservable (in m/s).
+    nside : `int`, optional
+        The nside for the basis function. Default None uses
+        `set_default_nside()`.
     """
 
     def __init__(self, wind_speed_maximum=20.0, nside=None):

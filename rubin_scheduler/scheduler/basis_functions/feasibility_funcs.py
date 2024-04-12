@@ -30,11 +30,13 @@ from rubin_scheduler.scheduler.utils import IntRounded
 
 
 class FilterLoadedBasisFunction(BaseBasisFunction):
-    """Check that the filter(s) needed are loaded
+    """Check that the filter(s) needed are loaded.
+
+    Are the filters in `filternames` loaded and available?
 
     Parameters
     ----------
-    filternames : str or list of str
+    filternames : `str` or `list` [ `str` ]
         The filternames that need to be mounted to execute.
     """
 
@@ -53,8 +55,12 @@ class FilterLoadedBasisFunction(BaseBasisFunction):
 
 
 class SunHighLimitBasisFunction(BaseBasisFunction):
-    """Only execute if the sun is high. Have a sum alt limit for sunset,
-    and a time until 12 degree twilight for sun rise.
+    """Only execute if the sun is higher than `sun_alt_limit`,
+    the current time is within `time_to_12deg` of -12 degree twilight,
+    and there is at least `time_remaining` time left before -12 degree
+    twilight.
+
+    Is the current time and sun altitude close to twilight, but not too close?
 
     Parameters
     ----------
@@ -67,6 +73,11 @@ class SunHighLimitBasisFunction(BaseBasisFunction):
     time_remaining : `float`
         Minimum about of time that must be available before trying to
         execute (minutes)
+
+    Notes
+    -----
+    This is primarily useful for surveys which must execute within close
+    limits of -12 degree twilight.
     """
 
     def __init__(self, sun_alt_limit=-14.8, time_to_12deg=21.0, time_remaining=15.0):
@@ -99,7 +110,7 @@ class OnceInNightBasisFunction(BaseBasisFunction):
 
     Parameters
     ----------
-    notes : list of str
+    notes : `list` [ `str` ]
         A list of str to check if any observations with a matching note exist.
     """
 
