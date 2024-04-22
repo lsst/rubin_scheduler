@@ -1127,7 +1127,7 @@ class StrictFilterBasisFunction(BaseBasisFunction):
         ) < 0
 
         # Did we just finish a DD sequence
-        was_dd = self.note_free in self.survey_features["Last_observation"].feature["note"]
+        was_dd = self.note_free in self.survey_features["Last_observation"].feature["scheduler_note"]
 
         # Is the filter mounted?
         mounted = self.filtername in conditions.mounted_filters
@@ -1286,7 +1286,7 @@ class GoalStrictFilterBasisFunction(BaseBasisFunction):
         ) < 0
 
         # Did we just finish a DD sequence
-        was_dd = self.survey_features["Last_observation"].feature["note"] == "DD"
+        was_dd = self.survey_features["Last_observation"].feature["scheduler_note"] == "DD"
 
         # Is the filter mounted?
         mounted = self.filtername in conditions.mounted_filters
@@ -1313,7 +1313,7 @@ class GoalStrictFilterBasisFunction(BaseBasisFunction):
         ) < 0
 
         # Did we just finish a DD sequence
-        was_dd = self.survey_features["Last_observation"].feature["note"] == "DD"
+        was_dd = self.survey_features["Last_observation"].feature["scheduler_note"] == "DD"
 
         # Is the filter mounted?
         mounted = self.filtername in conditions.mounted_filters
@@ -2069,7 +2069,7 @@ class VisitGap(BaseBasisFunction):
     Parameters
     ----------
     note : str
-        Value of the observation "note" field to be masked.
+        Value of the observation "scheduler_note" field to be masked.
     filter_names : list [str], optional
         List of filter names that will be considered when evaluating
         if the gap has passed.

@@ -67,12 +67,12 @@ class TestFeatures(unittest.TestCase):
 
         assert note_last_observed.feature is None
 
-        observation["note"] = "foo"
+        observation["scheduler_note"] = "foo"
 
         note_last_observed.add_observation(observation=observation)
         assert note_last_observed.feature is None
 
-        observation["note"] = "test"
+        observation["scheduler_note"] = "test"
 
         note_last_observed.add_observation(observation=observation)
         assert note_last_observed.feature == observation["mjd"]
@@ -90,18 +90,18 @@ class TestFeatures(unittest.TestCase):
 
         assert note_last_observed.feature is None
 
-        observation["note"] = "foo"
+        observation["scheduler_note"] = "foo"
 
         note_last_observed.add_observation(observation=observation)
         assert note_last_observed.feature is None
 
-        observation["note"] = "test"
+        observation["scheduler_note"] = "test"
         observation["filter"] = "g"
 
         note_last_observed.add_observation(observation=observation)
         assert note_last_observed.feature is None
 
-        observation["note"] = "test"
+        observation["scheduler_note"] = "test"
         observation["filter"] = "r"
 
         note_last_observed.add_observation(observation=observation)

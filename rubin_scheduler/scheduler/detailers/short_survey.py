@@ -91,7 +91,7 @@ class ShortExptDetailer(BaseDetailer):
                         new_obs = observation.copy()
                         new_obs["exptime"] = self.exp_time
                         new_obs["nexp"] = 1
-                        new_obs["note"] = self.survey_name
+                        new_obs["scheduler_note"] = self.survey_name
                         out_observations.append(new_obs)
                         time_to_add += new_obs["exptime"] + self.read_approx
         # pump up the flush time

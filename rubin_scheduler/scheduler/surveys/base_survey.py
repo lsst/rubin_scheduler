@@ -143,10 +143,10 @@ class BaseSurvey:
         observations_hpid = observations_hpid_in.copy()
 
         for ig in self.ignore_obs:
-            not_ignore = np.where(np.char.find(observations_array["note"], ig) == -1)[0]
+            not_ignore = np.where(np.char.find(observations_array["scheduler_note"], ig) == -1)[0]
             observations_array = observations_array[not_ignore]
 
-            not_ignore = np.where(np.char.find(observations_hpid["note"], ig) == -1)[0]
+            not_ignore = np.where(np.char.find(observations_hpid["scheduler_note"], ig) == -1)[0]
             observations_hpid = observations_hpid[not_ignore]
 
         for feature in self.extra_features:
@@ -161,7 +161,7 @@ class BaseSurvey:
 
     def add_observation(self, observation, **kwargs):
         # Check each posible ignore string
-        checks = [io not in str(observation["note"]) for io in self.ignore_obs]
+        checks = [io not in str(observation["scheduler_note"]) for io in self.ignore_obs]
         # ugh, I think here I have to assume observation is an
         # array and not a dict.
         if all(checks):

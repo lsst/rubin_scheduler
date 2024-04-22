@@ -45,8 +45,12 @@ class ModelObservatoryWindy(ModelObservatory):
 def ddf_surveys(detailers=None, season_unobs_frac=0.2, euclid_detailers=None, nside=None):
     obs_array = generate_ddf_scheduled_obs(season_unobs_frac=season_unobs_frac)
 
-    euclid_obs = np.where((obs_array["note"] == "DD:EDFS_b") | (obs_array["note"] == "DD:EDFS_a"))[0]
-    all_other = np.where((obs_array["note"] != "DD:EDFS_b") & (obs_array["note"] != "DD:EDFS_a"))[0]
+    euclid_obs = np.where(
+        (obs_array["scheduler_note"] == "DD:EDFS_b") | (obs_array["scheduler_note"] == "DD:EDFS_a")
+    )[0]
+    all_other = np.where(
+        (obs_array["scheduler_note"] != "DD:EDFS_b") & (obs_array["scheduler_note"] != "DD:EDFS_a")
+    )[0]
 
     survey1 = ScriptedSurvey([bf.AvoidDirectWind(nside=nside)], detailers=detailers)
     survey1.set_script(obs_array[all_other])
@@ -194,15 +198,15 @@ class TestExample(unittest.TestCase):
             observatory, scheduler, survey_length=survey_length, filename=None
         )
         # Check that greedy observed some
-        assert "greedy" in observations["note"]
+        assert "greedy" in observations["scheduler_note"]
         # check some long pairs got observed
-        assert np.any(["pair_33" in obs for obs in observations["note"]])
+        assert np.any(["pair_33" in obs for obs in observations["scheduler_note"]])
         # Make sure lots of observations executed
         assert observations.size > 1000
         # Make sure nothing tried to look through the earth
         assert np.min(observations["alt"]) > 0
         # Make sure a DDF executed
-        assert np.any(["DD" in note for note in observations["note"]])
+        assert np.any(["DD" in note for note in observations["scheduler_note"]])
 
 
 class TestFeatures(unittest.TestCase):
@@ -231,7 +235,7 @@ class TestFeatures(unittest.TestCase):
         )
 
         # Check that greedy observed some
-        assert "greedy" in observations["note"]
+        assert "greedy" in observations["scheduler_note"]
         # Make sure lots of observations executed
         assert observations.size > 1000
         # Make sure nothing tried to look through the earth
@@ -261,10 +265,10 @@ class TestFeatures(unittest.TestCase):
         )
 
         # Make sure some blobs executed
-        assert "blob, gg, b" in observations["note"]
-        assert "blob, gg, a" in observations["note"]
+        assert "blob, gg, b" in observations["scheduler_note"]
+        assert "blob, gg, a" in observations["scheduler_note"]
         # Make sure some greedy executed
-        assert "greedy" in observations["note"]
+        assert "greedy" in observations["scheduler_note"]
         # Make sure lots of observations executed
         assert observations.size > 1000
         # Make sure nothing tried to look through the earth
@@ -295,10 +299,10 @@ class TestFeatures(unittest.TestCase):
         )
 
         # Make sure some blobs executed
-        assert "blob, gg, b" in observations["note"]
-        assert "blob, gg, a" in observations["note"]
+        assert "blob, gg, b" in observations["scheduler_note"]
+        assert "blob, gg, a" in observations["scheduler_note"]
         # Make sure some greedy executed
-        assert "greedy" in observations["note"]
+        assert "greedy" in observations["scheduler_note"]
         # Make sure lots of observations executed
         assert observations.size > 1000
         # Make sure nothing tried to look through the earth
@@ -332,10 +336,10 @@ class TestFeatures(unittest.TestCase):
         )
 
         # Make sure some blobs executed
-        assert "blob, gg, b" in observations["note"]
-        assert "blob, gg, a" in observations["note"]
+        assert "blob, gg, b" in observations["scheduler_note"]
+        assert "blob, gg, a" in observations["scheduler_note"]
         # Make sure some greedy executed
-        assert "greedy" in observations["note"]
+        assert "greedy" in observations["scheduler_note"]
         # Make sure lots of observations executed
         assert observations.size > 1000
         # Make sure nothing tried to look through the earth
