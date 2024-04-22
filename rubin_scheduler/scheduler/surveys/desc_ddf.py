@@ -47,7 +47,7 @@ class DescDdf(BaseSurvey):
         self.simple_obs["dec"] = np.radians(dec)
         self.simple_obs["exptime"] = exptime
         self.simple_obs["nexp"] = nexp
-        self.simple_obs["note"] = survey_name
+        self.simple_obs["scheduler_note"] = survey_name
 
         # Define the sequences we would like to do
         if sequences is None:

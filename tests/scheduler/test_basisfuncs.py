@@ -53,7 +53,7 @@ class TestBasis(unittest.TestCase):
 
         observation = empty_observation()
         observation["filter"] = "r"
-        observation["note"] = "foo"
+        observation["scheduler_note"] = "foo"
         observation["mjd"] = 59000.0
 
         visit_gap.add_observation(observation=observation)
@@ -61,7 +61,7 @@ class TestBasis(unittest.TestCase):
         # observation with the wrong note
         assert visit_gap.check_feasibility(conditions=conditions)
 
-        observation["note"] = "test"
+        observation["scheduler_note"] = "test"
         visit_gap.add_observation(observation=observation)
 
         # now observation with the correct note
@@ -83,7 +83,7 @@ class TestBasis(unittest.TestCase):
 
         observation = empty_observation()
         observation["filter"] = "r"
-        observation["note"] = "foo"
+        observation["scheduler_note"] = "foo"
         observation["mjd"] = 59000.0
 
         visit_gap.add_observation(observation=observation)
@@ -91,7 +91,7 @@ class TestBasis(unittest.TestCase):
         # observation with the wrong note
         assert visit_gap.check_feasibility(conditions=conditions)
 
-        observation["note"] = "test"
+        observation["scheduler_note"] = "test"
         visit_gap.add_observation(observation=observation)
 
         # observation with the wrong filter
@@ -119,7 +119,7 @@ class TestBasis(unittest.TestCase):
 
         observation = empty_observation()
         observation["filter"] = "r"
-        observation["note"] = "foo"
+        observation["scheduler_note"] = "foo"
         observation["mjd"] = 59000.0
 
         visit_gap.add_observation(observation=observation)
@@ -127,7 +127,7 @@ class TestBasis(unittest.TestCase):
         # observation with the wrong note
         assert visit_gap.check_feasibility(conditions=conditions)
 
-        observation["note"] = "test"
+        observation["scheduler_note"] = "test"
         visit_gap.add_observation(observation=observation)
 
         # observation with the wrong filter

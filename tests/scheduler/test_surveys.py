@@ -44,7 +44,7 @@ class TestSurveys(unittest.TestCase):
         fields = empty_observation(n=10)
         fields["RA"] = np.arange(0, fields.size) / fields.size * 2.0 * np.pi
         fields["dec"] = -0.01
-        fields["note"] = ["test%i" % ind for ind in range(fields.size)]
+        fields["scheduler_note"] = ["test%i" % ind for ind in range(fields.size)]
         fields["filter"] = "r"
         survey = surveys.PointingsSurvey(fields)
 
@@ -54,7 +54,7 @@ class TestSurveys(unittest.TestCase):
         obs = survey.generate_observations(conditions)
         # Confirm that our desired input values got passed through
         assert obs[0]["dec"] < 0
-        assert obs[0]["note"][0][0:4] == "test"
+        assert obs[0]["scheduler_note"][0][0:4] == "test"
 
         # Adding observations
         assert np.sum(survey.n_obs) == 0

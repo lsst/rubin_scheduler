@@ -93,7 +93,7 @@ class DeepDrillingSurvey(BaseSurvey):
                     obs["RA"] = self.ra
                     obs["dec"] = self.dec
                     obs["nexp"] = nexp
-                    obs["note"] = survey_name
+                    obs["scheduler_note"] = survey_name
                     self.observations.append(obs)
         else:
             self.observations = sequence
@@ -410,7 +410,7 @@ def generate_dd_surveys(
                 obs["RA"] = ra
                 obs["dec"] = dec
                 obs["nexp"] = nexp
-                obs["note"] = survey_name + suffix
+                obs["scheduler_note"] = survey_name + suffix
                 sequence.append(obs)
 
     ha_limits = ([0.0, 1.5], [22.5, 24.0])
