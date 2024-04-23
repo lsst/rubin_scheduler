@@ -73,8 +73,8 @@ class PointingsSurvey(BaseSurvey):
     ):
         # Not doing a super here, don't want to even have an nside defined.
 
-        # Check that observations["scheduler_note"] are unique, otherwise incoming
-        # observations will get double-counted
+        # Check that observations["scheduler_note"] are unique, otherwise
+        # incoming observations will get double-counted
         if np.size(np.unique(observations["scheduler_note"])) != np.size(observations):
             raise ValueError("observations['scheduler_note'] values are not unique")
 
