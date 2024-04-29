@@ -180,6 +180,9 @@ class Conditions:
             The MJD of moonrise during the current night. From interpolation.
         moonset : float
             The MJD of moonset during the current night. From interpolation.
+        moon_phase_sunset : float
+            The phase of the moon (0-100 illuminater) at sunset.
+            Useful for setting which filters should be loaded.
         targets_of_opportunity : list of rubin_scheduler.scheduler.targetoO
             targetoO objects.
         planet_positions : dict
@@ -326,6 +329,7 @@ class Conditions:
         self.sunrise = None
         self.moonrise = None
         self.moonset = None
+        self.moon_phase_sunset = None
 
         self.planet_positions = None
 

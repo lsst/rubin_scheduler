@@ -150,7 +150,6 @@ class ModelObservatory:
         starting_time_key="sun_n12_setting",
         ending_time_key="sun_n12_rising",
     ):
-
         if nside is None:
             nside = set_default_nside()
         self.nside = nside
@@ -423,6 +422,8 @@ class ModelObservatory:
         self.conditions.sunrise = self.almanac.sunsets["sunrise"][self.almanac_indx]
         self.conditions.moonrise = self.almanac.sunsets["moonrise"][self.almanac_indx]
         self.conditions.moonset = self.almanac.sunsets["moonset"][self.almanac_indx]
+        sun_moon_info_start_of_night = self.almanac.get_sun_moon_positions(self.conditions.sunset)
+        self.conditions.moon_phase_sunset = sun_moon_info_start_of_night["moon_phase"]
 
         self.conditions.mjd_start = self.mjd_start
 

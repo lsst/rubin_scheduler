@@ -84,6 +84,11 @@ def sim_runner(
     obs_rewards = {}
     reward_dfs = []
 
+    # Make sure correct filters are mounted
+    conditions = observatory.return_conditions()
+    filters_needed = filter_scheduler(conditions)
+    observatory.observatory.mount_filters(filters_needed)
+
     counter = 0
     while mjd < end_mjd:
         if not scheduler._check_queue_mjd_only(observatory.mjd):
