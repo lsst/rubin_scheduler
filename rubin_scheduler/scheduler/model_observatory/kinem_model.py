@@ -3,7 +3,13 @@ import warnings
 import numpy as np
 
 from rubin_scheduler.scheduler.utils import smallest_signed_angle
-from rubin_scheduler.utils import Site, _approx_altaz2pa, _approx_ra_dec2_alt_az, approx_alt_az2_ra_dec
+from rubin_scheduler.utils import (
+    Site,
+    _approx_altaz2pa,
+    _approx_ra_dec2_alt_az,
+    approx_alt_az2_ra_dec,
+    rotation_converter,
+)
 
 from .jerk import jerk_time
 
@@ -25,23 +31,6 @@ class Radec2altazpa:
         return alt, az, pa
 
 
-def _get_rot_sky_pos(pa_rad, rot_tel_rad):
-    """
-    Parameters
-    ----------
-    pa_rad : float or array
-        The parallactic angle
-    """
-    return (rot_tel_rad - pa_rad) % two_pi
-
-
-def _get_rot_tel_pos(pa_rad, rot_sky_rad):
-    """return between -pi and pi"""
-    result = (rot_sky_rad + pa_rad) % two_pi
-    result[np.where(result > np.pi)] -= two_pi
-    return result
-
-
 class KinemModel:
     """A Kinematic model of the telescope.
 
@@ -58,6 +47,8 @@ class KinemModel:
         The filter that gets loaded when the telescope is parked
     mjd0 : `float` (0)
         The MJD to assume we are starting from
+    telescope : `str'
+        The telescope name to use for sky rotation conversion. Default "rubin"
 
     Note
     ----
@@ -66,7 +57,9 @@ class KinemModel:
     Just breaking it up a bit to make it more readable.
     """
 
-    def __init__(self, location=None, park_alt=86.5, park_az=0.0, start_filter="r", mjd0=0):
+    def __init__(
+        self, location=None, park_alt=86.5, park_az=0.0, start_filter="r", mjd0=0, telescope="rubin"
+    ):
         self.park_alt_rad = np.radians(park_alt)
         self.park_az_rad = np.radians(park_az)
         self.start_filter = start_filter
@@ -86,6 +79,9 @@ class KinemModel:
         # Park the telescope
         self.park()
         self.last_mjd = mjd0
+
+        # Rotation conversion
+        self.rc = rotation_converter(telescope=telescope)
 
     def mount_filters(self, filter_list):
         """Change which filters are mounted
@@ -314,7 +310,7 @@ class KinemModel:
             return self.last_alt_rad, self.last_az_rad, self.last_rot_tel_pos_rad
         else:
             alt_rad, az_rad, pa = self.radec2altaz(self.current_ra_rad, self.current_dec_rad, mjd)
-            rot_tel_pos = _get_rot_tel_pos(pa, self.last_rot_tel_pos_rad)
+            rot_tel_pos = self.rc._rotskypos2rottelpos(self.current_rot_sky_pos_rad, pa)
             return alt_rad, az_rad, rot_tel_pos
 
     def slew_times(
@@ -562,9 +558,9 @@ class KinemModel:
         if (rot_sky_pos is not None) | (rot_tel_pos is not None):
             if rot_tel_pos is None:
                 # This is now between -pi and pi
-                rot_tel_pos = _get_rot_tel_pos(pa, rot_sky_pos)
+                rot_tel_pos = self.rc._rotskypos2rottelpos(rot_sky_pos, pa)
             if rot_sky_pos is None:
-                rot_sky_pos = _get_rot_sky_pos(pa, rot_tel_pos)
+                rot_sky_pos = self.rc._rottelpos2rotskypos(rot_tel_pos, pa)
 
             # Is the new rot_tel_pos reachable? If not return NaN
             if (rot_tel_pos < self.telrot_minpos_rad) | (rot_tel_pos > self.telrot_maxpos_rad):
@@ -576,7 +572,9 @@ class KinemModel:
                     current_rot_tel_pos = self.last_rot_tel_pos_rad
                 else:
                     # We have been tracking, so rot_tel_pos needs to be updated
-                    current_rot_tel_pos = _get_rot_tel_pos(starting_pa, self.current_rot_sky_pos_rad)
+                    current_rot_tel_pos = self.rc._rotskypos2rottelpos(
+                        self.current_rot_sky_pos_rad, starting_pa
+                    )
             else:
                 # kwarg overrides if it was supplied
                 current_rot_tel_pos = starting_rot_tel_pos_rad

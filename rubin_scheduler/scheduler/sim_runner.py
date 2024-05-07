@@ -5,11 +5,17 @@ import sys
 import time
 import warnings
 
+import astropy.units as u
 import numpy as np
 import pandas as pd
+from astroplan import FixedTarget, Observer
+from astropy.coordinates import SkyCoord
+from astropy.time import Time
+from astropy.utils.iers import conf
 
 from rubin_scheduler.scheduler.schedulers import SimpleFilterSched
 from rubin_scheduler.scheduler.utils import SchemaConverter, empty_observation, run_info_table
+from rubin_scheduler.utils import Site, rotation_converter
 
 
 def sim_runner(
@@ -29,6 +35,7 @@ def sim_runner(
     start_result_size=int(2e5),
     append_result_size=int(2.5e6),
     anomalous_overhead_func=None,
+    telescope="rubin",
 ):
     """
     run a simulation
@@ -58,6 +65,8 @@ def sim_runner(
         (in seconds) as argument, and returns and additional offset (also
         in seconds) to be applied as addinional overhead between exposures.
         Defaults to None.
+    telescope : `str`
+        Name of telecope for camera rotation. Default "rubin".
     """
 
     if extra_info is None:
@@ -89,6 +98,8 @@ def sim_runner(
     last_obs_queue_fill_mjd_ns = None
     obs_rewards = {}
     reward_dfs = []
+
+    rc = rotation_converter(telescope=telescope)
 
     # Make sure correct filters are mounted
     conditions = observatory.return_conditions()
@@ -163,6 +174,23 @@ def sim_runner(
 
     # trim off any observations that were pre-allocated but not used
     observations = observations[0:counter]
+
+    # Compute alt,az,pa, rottelpos for observations
+    # Only warn if it's a low-accuracy conversion
+    conf.iers_degraded_accuracy = "warn"
+    lsst = Site("LSST")
+    observer = Observer(
+        longitude=lsst.longitude * u.deg, latitude=lsst.latitude * u.deg, elevation=lsst.height * u.m
+    )
+    coords = SkyCoord(observations["RA"] * u.rad, observations["dec"] * u.rad, frame="icrs")
+    targets = FixedTarget(coords)
+    times = Time(observations["mjd"], format="mjd")
+    altaz = observer.altaz(times, targets)
+    pa = observer.parallactic_angle(times, targets)
+    observations["alt"] = altaz.alt.rad
+    observations["az"] = altaz.az.rad
+    observations["pa"] = pa.rad
+    observations["rotTelPos"] = rc._rotskypos2rottelpos(observations["rotSkyPos"], observations["pa"])
 
     runtime = time.time() - t0
     print("Skipped %i observations" % nskip)

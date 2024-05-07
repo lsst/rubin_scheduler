@@ -19,7 +19,12 @@ import copy
 import numpy as np
 
 from rubin_scheduler.scheduler.utils import IntRounded
-from rubin_scheduler.utils import _angular_separation, _approx_altaz2pa, _approx_ra_dec2_alt_az
+from rubin_scheduler.utils import (
+    _angular_separation,
+    _approx_altaz2pa,
+    _approx_ra_dec2_alt_az,
+    rotation_converter,
+)
 
 
 class BaseDetailer:
@@ -100,6 +105,10 @@ class FlushByDetailer(BaseDetailer):
 class ParallacticRotationDetailer(BaseDetailer):
     """Set the rotator to near the parallactic angle"""
 
+    def __init__(self, telescope="rubin"):
+        self.rc = rotation_converter(telescope=telescope)
+        self.survey_features = {}
+
     def __call__(self, observation_list, conditions, limits=[-270, 270]):
         limits = np.radians(limits)
         for obs in observation_list:
@@ -113,7 +122,7 @@ class ParallacticRotationDetailer(BaseDetailer):
             obs_pa = _approx_altaz2pa(alt, az, conditions.site.latitude_rad)
             obs["rotSkyPos_desired"] = obs_pa
 
-            resulting_rot_tel_pos = obs["rotSkyPos_desired"] + obs_pa
+            resulting_rot_tel_pos = self.rc._rotskypos2rottelpos(obs["rotSkyPos_desired"], obs_pa)
 
             if resulting_rot_tel_pos > np.max(limits):
                 resulting_rot_tel_pos -= 2 * np.pi
@@ -135,6 +144,10 @@ class ParallacticRotationDetailer(BaseDetailer):
 class Rottep2RotspDesiredDetailer(BaseDetailer):
     """Convert all the rotTelPos values to rotSkyPos_desired"""
 
+    def __init__(self, telescope="rubin"):
+        self.rc = rotation_converter(telescope=telescope)
+        self.survey_features = {}
+
     def __call__(self, observation_list, conditions):
         obs_array = np.concatenate(observation_list)
 
@@ -147,7 +160,7 @@ class Rottep2RotspDesiredDetailer(BaseDetailer):
         )
         obs_pa = _approx_altaz2pa(alt, az, conditions.site.latitude_rad)
 
-        rot_sky_pos_desired = (obs_array["rotTelPos"] - obs_pa) % (2.0 * np.pi)
+        rot_sky_pos_desired = self.rc._rotskypos2rottelpos(obs_array["rotTelPos"], obs_pa)
 
         for obs, rotsp_d in zip(observation_list, rot_sky_pos_desired):
             obs["rotTelPos_backup"] = obs["rotTelPos"] + 0
