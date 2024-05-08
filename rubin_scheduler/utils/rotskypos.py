@@ -23,7 +23,7 @@ def _wrap_180(in_angle):
             return in_angle
     else:
         indx = np.where(in_angle > np.pi)[0]
-        result = in_angle + 0
+        result = in_angle.copy()
         result[indx] = result[indx] - 2.0 * np.pi
         return result
 
