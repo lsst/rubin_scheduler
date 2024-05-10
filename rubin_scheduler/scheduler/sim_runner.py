@@ -5,17 +5,12 @@ import sys
 import time
 import warnings
 
-import astropy.units as u
 import numpy as np
 import pandas as pd
-from astroplan import FixedTarget, Observer
-from astropy.coordinates import SkyCoord
-from astropy.time import Time
-from astropy.utils.iers import conf
 
 from rubin_scheduler.scheduler.schedulers import SimpleFilterSched
 from rubin_scheduler.scheduler.utils import SchemaConverter, empty_observation, run_info_table
-from rubin_scheduler.utils import Site, rotation_converter
+from rubin_scheduler.utils import Site, pseudo_parallactic_angle, rotation_converter
 
 
 def sim_runner(
@@ -176,20 +171,21 @@ def sim_runner(
     observations = observations[0:counter]
 
     # Compute alt,az,pa, rottelpos for observations
-    # Only warn if it's a low-accuracy conversion
-    conf.iers_degraded_accuracy = "warn"
+    # Only warn if it's a low-accuracy astropy conversion
     lsst = Site("LSST")
-    observer = Observer(
-        longitude=lsst.longitude * u.deg, latitude=lsst.latitude * u.deg, elevation=lsst.height * u.m
+
+    # Using pseudo_parallactic_angle, see https://smtn-019.lsst.io/v/DM-44258/index.html
+    pa, alt, az = pseudo_parallactic_angle(
+        np.degrees(observations["RA"]),
+        np.degrees(observations["dec"]),
+        observations["mjd"],
+        lon=lsst.longitude,
+        lat=lsst.latitude,
+        height=lsst.height,
     )
-    coords = SkyCoord(observations["RA"] * u.rad, observations["dec"] * u.rad, frame="icrs")
-    targets = FixedTarget(coords)
-    times = Time(observations["mjd"], format="mjd")
-    altaz = observer.altaz(times, targets)
-    pa = observer.parallactic_angle(times, targets)
-    observations["alt"] = altaz.alt.rad
-    observations["az"] = altaz.az.rad
-    observations["pa"] = pa.rad
+    observations["alt"] = np.radians(alt)
+    observations["az"] = np.radians(az)
+    observations["pa"] = np.radians(pa)
     observations["rotTelPos"] = rc._rotskypos2rottelpos(observations["rotSkyPos"], observations["pa"])
 
     runtime = time.time() - t0

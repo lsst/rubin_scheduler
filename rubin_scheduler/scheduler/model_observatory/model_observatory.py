@@ -688,8 +688,15 @@ class ModelObservatory:
             # were computed before the slew was executed
             # so will be off by seconds to minutes. And they
             # shouldn't be needed by the scheduler.
+
             observation["rotSkyPos"] = self.observatory.current_rot_sky_pos_rad
             observation["cummTelAz"] = self.observatory.cumulative_azimuth_rad
+
+            # But we do need the altitude to
+            # get the airmass and then 5-sigma depth
+            # this altitude should get clobbered later
+            # by sim_runner.
+            observation["alt"] = self.observatory.last_alt_rad
 
             # Metadata on observation is after slew and settle,
             # so at start of exposure.
