@@ -11,10 +11,13 @@ import h5py
 import healpy as hp
 import numpy as np
 import requests
+from astropy import units as u
+from astropy.coordinates import AltAz, EarthLocation, SkyCoord, get_sun
+from astropy.time import Time
 
 import rubin_scheduler.data.rs_download_sky
 from rubin_scheduler.data import get_data_dir
-from rubin_scheduler.utils import _angular_separation, _hpid2_ra_dec, survey_start_mjd
+from rubin_scheduler.utils import Site, _angular_separation, _hpid2_ra_dec, survey_start_mjd
 
 try:
     from lsst.resources import ResourcePath
@@ -73,6 +76,34 @@ def interp_angle(x_out, xp, anglep, degrees=False):
     return result
 
 
+def simple_daytime(sky_alt, sky_az, sun_alt, sun_az, filter_name="r", bright_val=2.0, sky_alt_min=20.0):
+    """A simple function to return a sky brightness map when the sun is up
+
+    Parameters
+    ----------
+    sky_alt : `float`
+        Altitude of poistion(s) on the sky. Degrees.
+    sky_az : `float`
+        Azimuth of poistion(s) on the sky. Degrees.
+    sun_alt : `float`
+        Altitude of the sun. Degrees.
+    sun_az : `float`
+        Azimuth of the sun. Degrees.
+    filter_name : `str`
+        Name of the filter, default "r". Currently unused, but
+        could be useful in the future if a more complicated function
+        gets subbed in.
+    bright_val : `float`
+        The value to plug into the sky. Default 2 mag/sq arcsec.
+    sky_alt_min : `float`
+        Set all sky below the alt limit to NaN. Default 20 degrees.
+    """
+
+    result = np.full_like(sky_alt, np.nan)
+    result[np.where(sky_alt > sky_alt_min)] = bright_val
+    return result
+
+
 class SkyModelPreBase(abc.ABC):
     """Load pre-computed sky brighntess maps for the LSST site
     and use them to interpolate to arbitrary dates.
@@ -91,6 +122,12 @@ class SkyModelPreBase(abc.ABC):
     mjd0 : `float` (None)
         The starting MJD to load on initilization (days). Uses
         util to lookup default if None.
+    location : `astropy.EarthLocation`
+        The location of the telescope. Default of None will load
+        Rubin position.
+    sun_alt_limit : `float`
+            The altitude limit to use a "bright" sky function. Default
+            of -8 degrees
     """
 
     def __init__(
@@ -100,12 +137,21 @@ class SkyModelPreBase(abc.ABC):
         load_length=365,
         verbose=False,
         mjd0=None,
+        location=None,
+        sun_alt_limit=-8.0,
     ):
         self.info = None
         self.sb = None
         self.header = None
         self.filter_names = None
         self.verbose = verbose
+        self.sun_alt_limit = np.radians(sun_alt_limit)
+
+        if location is None:
+            site = Site("LSST")
+            self.location = EarthLocation(lat=site.latitude, lon=site.longitude, height=site.height)
+        else:
+            self.location = location
 
         # Look in default location for .npz files to load
         if data_path is not None:
@@ -142,6 +188,7 @@ class SkyModelPreBase(abc.ABC):
         self.nside = 32
         hpid = np.arange(hp.nside2npix(self.nside))
         self.ra, self.dec = _hpid2_ra_dec(self.nside, hpid)
+        self.skycoord = SkyCoord(ra=self.ra * u.rad, dec=self.dec * u.rad)
 
     def _load_data(self, mjd, filename=None, npyfile=None):
         """Load up the h5 file to interpolate things.
@@ -280,14 +327,36 @@ class SkyModelPreBase(abc.ABC):
 
         # Check if we are between sunrise/set
         if baseline > self.timestep_max + 1e-6:
-            warnings.warn("Requested MJD between sunrise and sunset, returning closest maps")
-            diff = np.abs(self.mjds[left.max() : right.max() + 1] - mjd)
-            closest_indx = np.array([left, right])[np.where(diff == np.min(diff))].min()
-            sbs = {}
-            for filter_name in filters:
-                sbs[filter_name] = self.sb[filter_name][closest_indx, indx]
-                sbs[filter_name][np.isinf(sbs[filter_name])] = badval
-                sbs[filter_name][np.where(sbs[filter_name] == hp.UNSEEN)] = badval
+
+            # Check if sun is really high:
+            obstime = Time(mjd, format="mjd")
+            sun = get_sun(obstime)
+            aa = AltAz(location=self.location, obstime=obstime)
+            sun_alt_az = sun.transform_to(aa)
+
+            if sun_alt_az.alt.rad > self.sun_alt_limit:
+                warnings.warn("Sun high, using bright sky approx")
+                hp_aa = self.skycoord.transform_to(aa)
+
+                sbs = {}
+                for filter_name in filters:
+                    sbs[filter_name] = simple_daytime(
+                        hp_aa.alt.deg,
+                        hp_aa.az.deg,
+                        sun_alt_az.alt.deg,
+                        sun_alt_az.az.deg,
+                        filter_name=filter_name,
+                    )
+
+            else:
+                warnings.warn("Requested MJD between sunrise and sunset, returning closest maps")
+                diff = np.abs(self.mjds[left.max() : right.max() + 1] - mjd)
+                closest_indx = np.array([left, right])[np.where(diff == np.min(diff))].min()
+                sbs = {}
+                for filter_name in filters:
+                    sbs[filter_name] = self.sb[filter_name][closest_indx, indx]
+                    sbs[filter_name][np.isinf(sbs[filter_name])] = badval
+                    sbs[filter_name][np.where(sbs[filter_name] == hp.UNSEEN)] = badval
         else:
             wterm = (mjd - self.mjds[left]) / baseline
             w1 = 1.0 - wterm

@@ -61,6 +61,34 @@ class TestSkyPre(unittest.TestCase):
                                     np.size(indx),
                                 )
 
+    def test_bright_sky(self):
+        """Test that things behave if request a time with
+        a high sun altitude
+        """
+        # Find an MJD where the sun is high
+        diff = np.diff(self.sm.mjds)
+        mjd_indx = np.min(np.where(diff == diff.max())[0])
+        mjd = np.mean(self.sm.mjds[mjd_indx : mjd_indx + 2])
+
+        with self.assertWarns(Warning):
+            mags = self.sm.return_mags(mjd)
+            assert np.nanmin(mags["r"]) < 4.0
+
+        # Check that a little over raises the warning and returns
+        # closest map
+        mjd1 = self.sm.mjds[mjd_indx] - 0.001
+        mjd2 = self.sm.mjds[mjd_indx] + 0.001
+
+        # At a valid mjd
+        mags1 = self.sm.return_mags(mjd1)
+
+        # MJD slightly beyond where sky was calculated
+        with self.assertWarns(Warning):
+            mags2 = self.sm.return_mags(mjd2)
+
+        for key in mags1:
+            np.allclose(mags1[key], mags2[key])
+
     def test_various(self):
         """
         Test some various loading things
