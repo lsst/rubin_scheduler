@@ -35,7 +35,7 @@ try:
 except ModuleNotFoundError:
     get_baseline = partial(warn, "Cannot find default baseline because rubin_sim is not installed.")
 
-DEFAULT_ARCHIVE_URI = "file:///sdf/data/rubin/user/neilsen/data/test_sim_archive/"
+DEFAULT_ARCHIVE_URI = "s3://rubin-scheduler-prenight/opsim/"
 
 
 def _run_sim(
