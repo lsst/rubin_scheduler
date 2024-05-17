@@ -81,7 +81,7 @@ def _mjd_now() -> float:
 
 def _iso8601_now() -> str:
     # Used instead of just Time.now().mjd to make type checker happy.
-    now_iso = Time.now().mjd
+    now_iso = Time.now().iso
     assert isinstance(now_iso, str)
     return now_iso
 
@@ -210,7 +210,7 @@ def run_prenights(
 
     exec_time: str = _iso8601_now()
     mjd_start: float = day_obs_mjd + 0.5
-    scheduler_io = _create_scheduler_io(day_obs_mjd, scheduler_file, opsim_db)
+    scheduler_io = _create_scheduler_io(day_obs_mjd, scheduler_fname=scheduler_file, opsim_db=opsim_db)
 
     # Assign args common to all sims for this execution.
     run_sim = partial(_run_sim, archive_uri=archive_uri, scheduler_io=scheduler_io)
