@@ -13,16 +13,13 @@ import pickle
 from datetime import datetime
 from functools import partial
 from tempfile import TemporaryFile
-from typing import (
-    Callable,
-    Optional,
-    Sequence,
-)
+from typing import Callable, Optional, Sequence
 from warnings import warn
 
-from matplotlib.pylab import Generator
 import numpy as np
 from astropy.time import Time
+from matplotlib.pylab import Generator
+
 from rubin_scheduler.scheduler.example import example_scheduler
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
 from rubin_scheduler.scheduler.schedulers.core_scheduler import CoreScheduler

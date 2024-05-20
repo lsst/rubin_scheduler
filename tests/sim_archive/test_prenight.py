@@ -6,6 +6,7 @@ from rubin_scheduler.sim_archive import prenight_sim_cli
 
 try:
     from lsst.resources import ResourcePath
+
     HAVE_RESOURCES = True
 except ModuleNotFoundError:
     HAVE_RESOURCES = False
