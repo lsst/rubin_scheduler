@@ -31,7 +31,7 @@ from rubin_scheduler.sim_archive import drive_sim
 from rubin_scheduler.site_models import Almanac
 
 try:
-    from rubin_sim.data import get_baseline # type: ignore
+    from rubin_sim.data import get_baseline  # type: ignore
 except ModuleNotFoundError:
     get_baseline = partial(warn, "Cannot find default baseline because rubin_sim is not installed.")
 
@@ -92,7 +92,6 @@ def _create_scheduler_io(
     scheduler_instance: Optional[CoreScheduler] = None,
     opsim_db=None,
 ) -> io.BufferedRandom:
-
     if scheduler_instance is not None:
         scheduler: CoreScheduler = scheduler_instance
     elif scheduler_fname is None:
@@ -148,7 +147,6 @@ class AnomalousOverheadFunc:
         slew_loc: float = 0.0,
         visit_loc: float = 0.0,
     ) -> None:
-
         self.rng: Generator = np.random.default_rng(seed)
         self.visit_loc: float = visit_loc
         self.visit_scale: float = visit_scale
@@ -188,7 +186,7 @@ class AnomalousOverheadFunc:
 
 
 def run_prenights(
-    day_obs_mjd: float, archive_uri: str, scheduler_file: Optional[str] = None, opsim_db=None
+    day_obs_mjd: float, archive_uri: str, scheduler_file: Optional[str] = None, opsim_db: Optional[str] = None
 ) -> None:
     """Run the set of scheduler simulations needed to prepare for a night.
 
@@ -259,12 +257,12 @@ def run_prenights(
         )
 
 
-def _parse_dayobs_to_mjd(dayobs) -> float:
+def _parse_dayobs_to_mjd(dayobs: str | float) -> float:
     try:
         day_obs_mjd = Time(dayobs).mjd
     except ValueError:
         try:
-            day_obs_mjd = Time(datetime.strptime(dayobs, "%Y%m%d"))
+            day_obs_mjd = Time(datetime.strptime(str(dayobs), "%Y%m%d"))
         except ValueError:
             day_obs_mjd = Time(dayobs, format="mjd")
 
@@ -296,13 +294,10 @@ def prenight_sim_cli(*args):
     parser.add_argument("--scheduler", type=str, default=None, help="pickle file of the scheduler to run.")
 
     # Only pass a default if we have an opsim
-    opsim_arg_kwargs = {
-        "type": str,
-        "help": "Opsim database from which to load previous visits."
-    }
-    baseline= get_baseline()
+    opsim_arg_kwargs = {"type": str, "help": "Opsim database from which to load previous visits."}
+    baseline = get_baseline()
     if baseline is not None:
-        opsim_arg_kwargs['default'] = baseline
+        opsim_arg_kwargs["default"] = baseline
 
     parser.add_argument("--opsim", **opsim_arg_kwargs)
     args = parser.parse_args() if len(args) == 0 else parser.parse_args(args)
