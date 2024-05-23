@@ -28,6 +28,7 @@ def sim_runner(
     record_rewards=False,
     start_result_size=int(2e5),
     append_result_size=int(2.5e6),
+    anomalous_overhead_func=None,
 ):
     """
     run a simulation
@@ -52,6 +53,11 @@ def sim_runner(
     append_result_size : int
         Size of observations array to append if start_result_size is
         too small. Default 2.5e6.
+    anomalous_overhead_func: `Callable` or None
+        A function or callable object that takes the visit time and slew time
+        (in seconds) as argument, and returns and additional offset (also
+        in seconds) to be applied as addinional overhead between exposures.
+        Defaults to None.
     """
 
     if extra_info is None:
@@ -107,7 +113,14 @@ def sim_runner(
             nskip += 1
             continue
         completed_obs, new_night = observatory.observe(desired_obs)
+
         if completed_obs is not None:
+
+            if anomalous_overhead_func is not None:
+                observatory.mjd += (
+                    anomalous_overhead_func(completed_obs["visittime"], completed_obs["slewtime"]) / 86400
+                )
+
             scheduler.add_observation(completed_obs[0])
             observations[counter] = completed_obs[0]
             filter_scheduler.add_observation(completed_obs[0])
