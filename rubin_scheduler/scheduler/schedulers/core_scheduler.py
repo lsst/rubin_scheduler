@@ -246,7 +246,7 @@ class CoreScheduler:
                     mjd,
                 )
                 obs_pa = _approx_altaz2pa(alt, az, self.conditions.site.latitude_rad)
-                rot_tel_pos_expected = self.rc.rotskypos2rottelpos(observation["rotSkyPos"], obs_pa)
+                rot_tel_pos_expected = self.rc._rotskypos2rottelpos(observation["rotSkyPos"], obs_pa)
                 if np.isfinite(observation["rotSkyPos"]):
                     if (IntRounded(rot_tel_pos_expected) > IntRounded(self.rotator_limits[0])) & (
                         IntRounded(rot_tel_pos_expected) < IntRounded(self.rotator_limits[1])

@@ -22,8 +22,8 @@ from rubin_scheduler.utils import (
     _angular_separation,
     _approx_altaz2pa,
     _approx_ra_dec2_alt_az,
-    rotation_converter,
     pseudo_parallactic_angle,
+    rotation_converter,
 )
 
 
@@ -210,21 +210,27 @@ class Comcam90rotDetailer(BaseDetailer):
     270 degrees. Whatever is closest to rotTelPos of zero.
     """
 
+    def __init__(self, telescope="rubin", nside=32):
+        self.rc = rotation_converter(telescope=telescope)
+        self.survey_features = {}
+
     def __call__(self, observation_list, conditions):
         favored_rot_sky_pos = np.radians([0.0, 90.0, 180.0, 270.0, 360.0]).reshape(5, 1)
         obs_array = np.concatenate(observation_list)
-        alt, az = _approx_ra_dec2_alt_az(
-            obs_array["RA"],
-            obs_array["dec"],
-            conditions.site.latitude_rad,
-            conditions.site.longitude_rad,
-            conditions.mjd,
+
+        parallactic_angle, alt, az = np.radians(
+            pseudo_parallactic_angle(
+                obs_array["RA"],
+                obs_array["dec"],
+                conditions.mjd,
+                np.degrees(conditions.site.longitude_rad),
+                np.degrees(conditions.site.latitude_rad),
+            )
         )
-        parallactic_angle = _approx_altaz2pa(alt, az, conditions.site.latitude_rad)
-        # If we set rotSkyPos to parallactic angle, rotTelPos will be zero.
-        # So, find the favored rotSkyPos that is closest to PA to keep
-        # rotTelPos as close as possible to zero.
-        ang_diff = np.abs(parallactic_angle - favored_rot_sky_pos)
+
+        # need to find the
+
+        ang_diff = np.abs(self.rc._rotskypos2rottelpos(favored_rot_sky_pos, parallactic_angle))
         min_indxs = np.argmin(ang_diff, axis=0)
         # can swap 360 and zero if needed?
         final_rot_sky_pos = favored_rot_sky_pos[min_indxs]
