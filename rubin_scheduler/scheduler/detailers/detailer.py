@@ -24,6 +24,7 @@ from rubin_scheduler.utils import (
     _approx_altaz2pa,
     _approx_ra_dec2_alt_az,
     rotation_converter,
+    pseudo_parallactic_angle,
 )
 
 
@@ -174,24 +175,32 @@ class Rottep2RotspDesiredDetailer(BaseDetailer):
 class ZeroRotDetailer(BaseDetailer):
     """
     Detailer to set the camera rotation to be apporximately zero in
-    rotTelPos. Because it can never be written too many times:
-    rotSkyPos = rotTelPos - ParallacticAngle
-    But, wait, what? Is it really the other way?
+    rotTelPos.
+
+    Parameters
+    ----------
+    telescope : `str`
+        Which telescope convention to use for setting the conversion
+        between rotTelPos and rotSkyPos. Default "rubin".
     """
+
+    def __init__(self, telescope="rubin", nside=32):
+        self.rc = rotation_converter(telescope=telescope)
+        self.survey_features = {}
 
     def __call__(self, observation_list, conditions):
         # XXX--should I convert the list into an array and get rid of this
         # loop?
         for obs in observation_list:
-            alt, az = _approx_ra_dec2_alt_az(
+            obs_pa, alt, az = pseudo_parallactic_angle(
                 obs["RA"],
                 obs["dec"],
-                conditions.site.latitude_rad,
-                conditions.site.longitude_rad,
                 conditions.mjd,
+                np.degrees(conditions.site.longitude_rad),
+                np.degrees(conditions.site.latitude_rad),
             )
-            obs_pa = _approx_altaz2pa(alt, az, conditions.site.latitude_rad)
-            obs["rotSkyPos"] = obs_pa
+
+            obs["rotSkyPos"] = self.rc.rottelpos2rotskypos(0.0, obs_pa)
 
         return observation_list
 
