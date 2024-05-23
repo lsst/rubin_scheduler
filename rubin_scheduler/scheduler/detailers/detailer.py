@@ -6,7 +6,6 @@ __all__ = (
     "CloseAltDetailer",
     "TakeAsPairsDetailer",
     "TwilightTripleDetailer",
-    "SpiderRotDetailer",
     "FlushForSchedDetailer",
     "FilterNexp",
     "FixedSkyAngleDetailer",
@@ -201,23 +200,6 @@ class ZeroRotDetailer(BaseDetailer):
             )
 
             obs["rotSkyPos"] = self.rc.rottelpos2rotskypos(0.0, obs_pa)
-
-        return observation_list
-
-
-class SpiderRotDetailer(BaseDetailer):
-    """
-    Set the camera rotation to +/- 45 degrees so diffraction spikes
-    align along chip rows and columns
-    """
-
-    def __call__(self, observation_list, conditions):
-        indx = int(conditions.night % 2)
-        rot_tel_pos = np.radians([45.0, 315.0][indx])
-
-        for obs in observation_list:
-            obs["rotSkyPos"] = np.nan
-            obs["rot_tel_pos"] = rot_tel_pos
 
         return observation_list
 
