@@ -12,7 +12,7 @@ import pandas as pd
 from astropy.time import Time
 
 from rubin_scheduler.scheduler.utils import HpInComcamFov, HpInLsstFov, IntRounded, set_default_nside
-from rubin_scheduler.utils import _approx_altaz2pa, _approx_ra_dec2_alt_az, _hpid2_ra_dec
+from rubin_scheduler.utils import _approx_altaz2pa, _approx_ra_dec2_alt_az, _hpid2_ra_dec, rotation_converter
 
 
 class CoreScheduler:
@@ -40,6 +40,9 @@ class CoreScheduler:
     keep_rewards : `bool`
         Flag whether to record the rewards and basis function values
         (this can be useful for schedview).
+    telescope : `str`
+        Which telescope model to use for rotTelPos/rotSkyPos conversions.
+        Default "rubin".
     """
 
     def __init__(
@@ -50,6 +53,7 @@ class CoreScheduler:
         rotator_limits=[85.0, 275.0],
         log=None,
         keep_rewards=False,
+        telescope="rubin",
     ):
         self.keep_rewards = keep_rewards
         # Use integer ns just to be sure there are no rounding issues.
@@ -85,6 +89,8 @@ class CoreScheduler:
             self.pointing2hpindx = HpInComcamFov(nside=nside)
         else:
             raise ValueError("camera %s not implamented" % camera)
+
+        self.rc = rotation_converter(telescope=telescope)
 
         # keep track of how many observations get flushed from the queue
         self.flushed = 0
@@ -240,14 +246,16 @@ class CoreScheduler:
                     mjd,
                 )
                 obs_pa = _approx_altaz2pa(alt, az, self.conditions.site.latitude_rad)
-                rot_tel_pos_expected = (obs_pa - observation["rotSkyPos"]) % (2.0 * np.pi)
+                rot_tel_pos_expected = self.rc.rotskypos2rottelpos(observation["rotSkyPos"], obs_pa)
                 if np.isfinite(observation["rotSkyPos"]):
                     if (IntRounded(rot_tel_pos_expected) > IntRounded(self.rotator_limits[0])) & (
                         IntRounded(rot_tel_pos_expected) < IntRounded(self.rotator_limits[1])
                     ):
                         diff = np.abs(self.rotator_limits - rot_tel_pos_expected)
                         limit_indx = np.min(np.where(diff == np.min(diff))[0])
-                        observation["rotSkyPos"] = (obs_pa - self.rotator_limits[limit_indx]) % (2.0 * np.pi)
+                        observation["rotSkyPos"] = self.rc.rottelpos2rotskypos(
+                            self.rotator_limits[limit_indx], obs_pa
+                        )
             return observation
 
     def _fill_queue(self):
