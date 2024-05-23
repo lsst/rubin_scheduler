@@ -53,6 +53,11 @@ def sim_runner(
     append_result_size : int
         Size of observations array to append if start_result_size is
         too small. Default 2.5e6.
+    anomalous_overhead_func: `Callable` or None
+        A function or callable object that takes the visit time and slew time
+        (in seconds) as argument, and returns and additional offset (also
+        in seconds) to be applied as addinional overhead between exposures.
+        Defaults to None.
     """
 
     if extra_info is None:
