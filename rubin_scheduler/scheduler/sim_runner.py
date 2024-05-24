@@ -10,7 +10,7 @@ import pandas as pd
 
 from rubin_scheduler.scheduler.schedulers import SimpleFilterSched
 from rubin_scheduler.scheduler.utils import SchemaConverter, empty_observation, run_info_table
-from rubin_scheduler.utils import Site, pseudo_parallactic_angle, rotation_converter
+from rubin_scheduler.utils import Site, _approx_altaz2pa, pseudo_parallactic_angle, rotation_converter
 
 
 def sim_runner(
@@ -185,8 +185,12 @@ def sim_runner(
     )
     observations["alt"] = np.radians(alt)
     observations["az"] = np.radians(az)
-    observations["pa"] = np.radians(pa)
-    observations["rotTelPos"] = rc._rotskypos2rottelpos(observations["rotSkyPos"], observations["pa"])
+    observations["psudo_pa"] = np.radians(pa)
+    observations["rotTelPos"] = rc._rotskypos2rottelpos(observations["rotSkyPos"], observations["psudo_pa"])
+
+    # Also include traditional parallactic angle
+    pa = _approx_altaz2pa(observations["alt"], observations["az"], lsst.latitude_rad)
+    observations["pa"] = pa
 
     runtime = time.time() - t0
     print("Skipped %i observations" % nskip)
