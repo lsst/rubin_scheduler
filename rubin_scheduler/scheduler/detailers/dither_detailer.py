@@ -10,6 +10,7 @@ from rubin_scheduler.utils import (
     bearing,
     dest_latlon,
     gnomonic_project_tosky,
+    rotation_converter,
 )
 
 
@@ -53,7 +54,6 @@ class DitherDetailer(BaseDetailer):
                 self.offset = np.array([radius * np.cos(angle), radius * np.sin(angle)])
             offsets = np.tile(self.offset, (n_offsets, 1))
         else:
-            self.rng = np.random.default_rng()
             angle = self.rng.random(n_offsets) * 2 * np.pi
             radius = self.max_dither * np.sqrt(self.rng.random(n_offsets))
             offsets = np.array([radius * np.cos(angle), radius * np.sin(angle)]).T
@@ -212,9 +212,11 @@ class CameraRotDetailer(BaseDetailer):
     per_night : `bool` (True)
         If True, only set a new offset per night. If False, randomly
         rotates every observation.
+    telescope : `str`
+        Telescope name. Options of "rubin" or "auxtel". Default "rubin".
     """
 
-    def __init__(self, max_rot=90.0, min_rot=-90.0, per_night=True, seed=42, nnights=7305):
+    def __init__(self, max_rot=90.0, min_rot=-90.0, per_night=True, seed=42, nnights=7305, telescope="rubin"):
         self.survey_features = {}
 
         self.current_night = -1
@@ -226,6 +228,7 @@ class CameraRotDetailer(BaseDetailer):
         self.offsets = self.rng.random(nnights)
 
         self.offset = None
+        self.rc = rotation_converter(telescope=telescope)
 
     def _generate_offsets(self, n_offsets, night):
         if self.per_night:
@@ -252,7 +255,7 @@ class CameraRotDetailer(BaseDetailer):
                 conditions.mjd,
             )
             obs_pa = _approx_altaz2pa(alt, az, conditions.site.latitude_rad)
-            obs["rotSkyPos"] = (offsets[i] - obs_pa) % (2.0 * np.pi)
+            obs["rotSkyPos"] = self.rc._rottelpos2rotskypos(offsets[i], obs_pa)
             obs["rotTelPos"] = offsets[i]
 
         return observation_list

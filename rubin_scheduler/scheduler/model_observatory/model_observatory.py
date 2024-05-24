@@ -34,6 +34,7 @@ from rubin_scheduler.utils import (
     calc_lmst,
     calc_season,
     m5_flat_sed,
+    rotation_converter,
     survey_start_mjd,
 )
 
@@ -125,6 +126,8 @@ class ModelObservatory:
         to the next night. Default "sun_n12_rising", e.g., sun at
         -12 degrees and rising. Other options are "sun_n18_rising"
         and "sunrise".
+    telescope : `str`
+        Telescope name for rotation computations. Default "rubin".
     """
 
     def __init__(
@@ -149,6 +152,7 @@ class ModelObservatory:
         wind_data=None,
         starting_time_key="sun_n12_setting",
         ending_time_key="sun_n12_rising",
+        telescope="rubin",
     ):
         if nside is None:
             nside = set_default_nside()
@@ -175,6 +179,9 @@ class ModelObservatory:
         self.sim__to_o = sim_to_o
 
         self.park_after = park_after / 60.0 / 24.0  # To days
+
+        # Rotation converter
+        self.rc = rotation_converter(telescope=telescope)
 
         # Create an astropy location
         self.site = Site("LSST")
@@ -607,11 +614,11 @@ class ModelObservatory:
         # If the observation has a rotTelPos set, use it to compute
         # rotSkyPos
         if np.isfinite(observation["rotTelPos"]):
-            observation["rotSkyPos"] = (obs_pa + observation["rotTelPos"]) % (2 * np.pi)
+            observation["rotSkyPos"] = self.rc._rottelpos2rotskypos(observation["rotTelPos"], obs_pa)
             observation["rotTelPos"] = np.nan
         else:
             # Fall back to rotSkyPos_desired
-            possible_rot_tel_pos = (observation["rotSkyPos_desired"] + obs_pa) % (2.0 * np.pi)
+            possible_rot_tel_pos = self.rc._rotskypos2rottelpos(observation["rotSkyPos_desired"], obs_pa)
 
             if (possible_rot_tel_pos > rot_limit[0]) | (possible_rot_tel_pos < rot_limit[1]):
                 observation["rotSkyPos"] = observation["rotSkyPos_desired"]
@@ -677,13 +684,19 @@ class ModelObservatory:
             self.mjd = self.mjd + slewtime / 24.0 / 3600.0
             # Reach into the observatory model to pull out the
             # relevant data it has calculated
-            # Note, this might be after the observation has been completed.
-            observation["alt"] = self.observatory.last_alt_rad
-            observation["az"] = self.observatory.last_az_rad
-            observation["pa"] = self.observatory.last_pa_rad
-            observation["rotTelPos"] = self.observatory.last_rot_tel_pos_rad
+            # Not bothering to fetch alt,az,pa,rottelpos as those
+            # were computed before the slew was executed
+            # so will be off by seconds to minutes. And they
+            # shouldn't be needed by the scheduler.
+
             observation["rotSkyPos"] = self.observatory.current_rot_sky_pos_rad
             observation["cummTelAz"] = self.observatory.cumulative_azimuth_rad
+
+            # But we do need the altitude to
+            # get the airmass and then 5-sigma depth
+            # this altitude should get clobbered later
+            # by sim_runner.
+            observation["alt"] = self.observatory.last_alt_rad
 
             # Metadata on observation is after slew and settle,
             # so at start of exposure.

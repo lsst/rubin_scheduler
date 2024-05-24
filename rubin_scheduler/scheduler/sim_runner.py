@@ -10,6 +10,7 @@ import pandas as pd
 
 from rubin_scheduler.scheduler.schedulers import SimpleFilterSched
 from rubin_scheduler.scheduler.utils import SchemaConverter, empty_observation, run_info_table
+from rubin_scheduler.utils import Site, _approx_altaz2pa, pseudo_parallactic_angle, rotation_converter
 
 
 def sim_runner(
@@ -29,6 +30,7 @@ def sim_runner(
     start_result_size=int(2e5),
     append_result_size=int(2.5e6),
     anomalous_overhead_func=None,
+    telescope="rubin",
 ):
     """
     run a simulation
@@ -58,6 +60,8 @@ def sim_runner(
         (in seconds) as argument, and returns and additional offset (also
         in seconds) to be applied as addinional overhead between exposures.
         Defaults to None.
+    telescope : `str`
+        Name of telecope for camera rotation. Default "rubin".
     """
 
     if extra_info is None:
@@ -89,6 +93,8 @@ def sim_runner(
     last_obs_queue_fill_mjd_ns = None
     obs_rewards = {}
     reward_dfs = []
+
+    rc = rotation_converter(telescope=telescope)
 
     # Make sure correct filters are mounted
     conditions = observatory.return_conditions()
@@ -163,6 +169,28 @@ def sim_runner(
 
     # trim off any observations that were pre-allocated but not used
     observations = observations[0:counter]
+
+    # Compute alt,az,pa, rottelpos for observations
+    # Only warn if it's a low-accuracy astropy conversion
+    lsst = Site("LSST")
+
+    # Using pseudo_parallactic_angle, see https://smtn-019.lsst.io/v/DM-44258/index.html
+    pa, alt, az = pseudo_parallactic_angle(
+        np.degrees(observations["RA"]),
+        np.degrees(observations["dec"]),
+        observations["mjd"],
+        lon=lsst.longitude,
+        lat=lsst.latitude,
+        height=lsst.height,
+    )
+    observations["alt"] = np.radians(alt)
+    observations["az"] = np.radians(az)
+    observations["psudo_pa"] = np.radians(pa)
+    observations["rotTelPos"] = rc._rotskypos2rottelpos(observations["rotSkyPos"], observations["psudo_pa"])
+
+    # Also include traditional parallactic angle
+    pa = _approx_altaz2pa(observations["alt"], observations["az"], lsst.latitude_rad)
+    observations["pa"] = pa
 
     runtime = time.time() - t0
     print("Skipped %i observations" % nskip)

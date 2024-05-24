@@ -6,7 +6,6 @@ __all__ = (
     "CloseAltDetailer",
     "TakeAsPairsDetailer",
     "TwilightTripleDetailer",
-    "SpiderRotDetailer",
     "FlushForSchedDetailer",
     "FilterNexp",
     "FixedSkyAngleDetailer",
@@ -19,7 +18,13 @@ import copy
 import numpy as np
 
 from rubin_scheduler.scheduler.utils import IntRounded
-from rubin_scheduler.utils import _angular_separation, _approx_altaz2pa, _approx_ra_dec2_alt_az
+from rubin_scheduler.utils import (
+    _angular_separation,
+    _approx_altaz2pa,
+    _approx_ra_dec2_alt_az,
+    pseudo_parallactic_angle,
+    rotation_converter,
+)
 
 
 class BaseDetailer:
@@ -100,6 +105,10 @@ class FlushByDetailer(BaseDetailer):
 class ParallacticRotationDetailer(BaseDetailer):
     """Set the rotator to near the parallactic angle"""
 
+    def __init__(self, telescope="rubin"):
+        self.rc = rotation_converter(telescope=telescope)
+        self.survey_features = {}
+
     def __call__(self, observation_list, conditions, limits=[-270, 270]):
         limits = np.radians(limits)
         for obs in observation_list:
@@ -113,7 +122,7 @@ class ParallacticRotationDetailer(BaseDetailer):
             obs_pa = _approx_altaz2pa(alt, az, conditions.site.latitude_rad)
             obs["rotSkyPos_desired"] = obs_pa
 
-            resulting_rot_tel_pos = obs["rotSkyPos_desired"] + obs_pa
+            resulting_rot_tel_pos = self.rc._rotskypos2rottelpos(obs["rotSkyPos_desired"], obs_pa)
 
             if resulting_rot_tel_pos > np.max(limits):
                 resulting_rot_tel_pos -= 2 * np.pi
@@ -135,6 +144,10 @@ class ParallacticRotationDetailer(BaseDetailer):
 class Rottep2RotspDesiredDetailer(BaseDetailer):
     """Convert all the rotTelPos values to rotSkyPos_desired"""
 
+    def __init__(self, telescope="rubin"):
+        self.rc = rotation_converter(telescope=telescope)
+        self.survey_features = {}
+
     def __call__(self, observation_list, conditions):
         obs_array = np.concatenate(observation_list)
 
@@ -147,7 +160,7 @@ class Rottep2RotspDesiredDetailer(BaseDetailer):
         )
         obs_pa = _approx_altaz2pa(alt, az, conditions.site.latitude_rad)
 
-        rot_sky_pos_desired = (obs_array["rotTelPos"] - obs_pa) % (2.0 * np.pi)
+        rot_sky_pos_desired = self.rc._rotskypos2rottelpos(obs_array["rotTelPos"], obs_pa)
 
         for obs, rotsp_d in zip(observation_list, rot_sky_pos_desired):
             obs["rotTelPos_backup"] = obs["rotTelPos"] + 0
@@ -161,41 +174,32 @@ class Rottep2RotspDesiredDetailer(BaseDetailer):
 class ZeroRotDetailer(BaseDetailer):
     """
     Detailer to set the camera rotation to be apporximately zero in
-    rotTelPos. Because it can never be written too many times:
-    rotSkyPos = rotTelPos - ParallacticAngle
-    But, wait, what? Is it really the other way?
+    rotTelPos.
+
+    Parameters
+    ----------
+    telescope : `str`
+        Which telescope convention to use for setting the conversion
+        between rotTelPos and rotSkyPos. Default "rubin".
     """
+
+    def __init__(self, telescope="rubin", nside=32):
+        self.rc = rotation_converter(telescope=telescope)
+        self.survey_features = {}
 
     def __call__(self, observation_list, conditions):
         # XXX--should I convert the list into an array and get rid of this
         # loop?
         for obs in observation_list:
-            alt, az = _approx_ra_dec2_alt_az(
+            obs_pa, alt, az = pseudo_parallactic_angle(
                 obs["RA"],
                 obs["dec"],
-                conditions.site.latitude_rad,
-                conditions.site.longitude_rad,
                 conditions.mjd,
+                np.degrees(conditions.site.longitude_rad),
+                np.degrees(conditions.site.latitude_rad),
             )
-            obs_pa = _approx_altaz2pa(alt, az, conditions.site.latitude_rad)
-            obs["rotSkyPos"] = obs_pa
 
-        return observation_list
-
-
-class SpiderRotDetailer(BaseDetailer):
-    """
-    Set the camera rotation to +/- 45 degrees so diffraction spikes
-    align along chip rows and columns
-    """
-
-    def __call__(self, observation_list, conditions):
-        indx = int(conditions.night % 2)
-        rot_tel_pos = np.radians([45.0, 315.0][indx])
-
-        for obs in observation_list:
-            obs["rotSkyPos"] = np.nan
-            obs["rot_tel_pos"] = rot_tel_pos
+            obs["rotSkyPos"] = self.rc.rottelpos2rotskypos(0.0, obs_pa)
 
         return observation_list
 
@@ -206,21 +210,27 @@ class Comcam90rotDetailer(BaseDetailer):
     270 degrees. Whatever is closest to rotTelPos of zero.
     """
 
+    def __init__(self, telescope="rubin", nside=32):
+        self.rc = rotation_converter(telescope=telescope)
+        self.survey_features = {}
+
     def __call__(self, observation_list, conditions):
         favored_rot_sky_pos = np.radians([0.0, 90.0, 180.0, 270.0, 360.0]).reshape(5, 1)
         obs_array = np.concatenate(observation_list)
-        alt, az = _approx_ra_dec2_alt_az(
-            obs_array["RA"],
-            obs_array["dec"],
-            conditions.site.latitude_rad,
-            conditions.site.longitude_rad,
-            conditions.mjd,
+
+        parallactic_angle, alt, az = np.radians(
+            pseudo_parallactic_angle(
+                obs_array["RA"],
+                obs_array["dec"],
+                conditions.mjd,
+                np.degrees(conditions.site.longitude_rad),
+                np.degrees(conditions.site.latitude_rad),
+            )
         )
-        parallactic_angle = _approx_altaz2pa(alt, az, conditions.site.latitude_rad)
-        # If we set rotSkyPos to parallactic angle, rotTelPos will be zero.
-        # So, find the favored rotSkyPos that is closest to PA to keep
-        # rotTelPos as close as possible to zero.
-        ang_diff = np.abs(parallactic_angle - favored_rot_sky_pos)
+
+        # need to find the
+
+        ang_diff = np.abs(self.rc._rotskypos2rottelpos(favored_rot_sky_pos, parallactic_angle))
         min_indxs = np.argmin(ang_diff, axis=0)
         # can swap 360 and zero if needed?
         final_rot_sky_pos = favored_rot_sky_pos[min_indxs]
