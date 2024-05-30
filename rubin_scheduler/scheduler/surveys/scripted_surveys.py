@@ -42,7 +42,7 @@ class ScriptedSurvey(BaseSurvey):
         basis_functions,
         basis_weights=None,
         reward=1e6,
-        ignore_obs="dummy",
+        ignore_obs=None,
         nside=None,
         detailers=None,
         id_start=1,
@@ -221,6 +221,10 @@ class ScriptedSurvey(BaseSurvey):
             ir = np.where((az[in_range] >= np.min(limits)) & (az[in_range] <= np.max(limits)))[0]
             count[ir] += 1
         good = np.where(count > 0)[0]
+        in_range = in_range[good]
+
+        # Check that filter needed is mounted
+        good = np.isin(observation["filter"][in_range], conditions.mounted_filters)
         in_range = in_range[good]
 
         return in_range
