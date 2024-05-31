@@ -504,9 +504,15 @@ class SchemaConverter:
         con = sqlite3.connect(filename)
         df = pd.read_sql("select * from observations;", con)
         for key in self.angles_rad2deg:
-            df[key] = np.radians(df[key])
+            try:
+                df[key] = np.radians(df[key])
+            except KeyError:
+                df[key] = np.nan
         for key in self.angles_hours2deg:
-            df[key] = df[key] * 24.0 / 360.0
+            try:
+                df[key] = df[key] * 24.0 / 360.0
+            except KeyError:
+                df[key] = np.nan
 
         df = df.rename(index=str, columns=self.convert_dict)
 
