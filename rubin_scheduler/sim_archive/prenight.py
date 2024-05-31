@@ -190,7 +190,7 @@ def run_prenights(
     Parameters
     ----------
     day_obs_mjd : `float`
-        The starting MJD>
+        The starting MJD.
     archive_uri : `str`
         The URI of visits completed before this night.
     scheduler_file : `str`, optional
