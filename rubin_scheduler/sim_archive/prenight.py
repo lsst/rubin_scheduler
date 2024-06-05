@@ -7,9 +7,14 @@ __all__ = [
 ]
 
 import argparse
+import bz2
+import gzip
 import io
 import logging
+import lzma
+import os
 import pickle
+import typing
 from datetime import datetime
 from functools import partial
 from tempfile import TemporaryFile
@@ -17,6 +22,7 @@ from typing import Callable, Optional, Sequence
 from warnings import warn
 
 import numpy as np
+import numpy.typing as npt
 from astropy.time import Time
 from matplotlib.pylab import Generator
 
@@ -26,6 +32,8 @@ from rubin_scheduler.scheduler.schedulers.core_scheduler import CoreScheduler
 from rubin_scheduler.scheduler.utils import SchemaConverter
 from rubin_scheduler.sim_archive.sim_archive import drive_sim
 from rubin_scheduler.site_models import Almanac
+
+from .make_snapshot import add_make_scheduler_snapshot_args, get_scheduler, save_scheduler
 
 try:
     from rubin_sim.data import get_baseline  # type: ignore
@@ -43,17 +51,19 @@ def _run_sim(
     tags: Sequence[str] = tuple(),
     sim_length: float = 2,
     anomalous_overhead_func: Optional[Callable] = None,
+    opsim_metadata: dict | None = None,
 ) -> None:
     logging.info(f"Running {label}.")
 
+    scheduler_io.seek(0)
+    scheduler = pickle.load(scheduler_io)
+
     observatory = ModelObservatory(
+        nside=scheduler.nside,
         cloud_data="ideal",
         seeing_data="ideal",
         downtimes="ideal",
     )
-
-    scheduler_io.seek(0)
-    scheduler = pickle.load(scheduler_io)
 
     drive_sim(
         observatory=observatory,
@@ -66,6 +76,7 @@ def _run_sim(
         survey_length=sim_length,
         record_rewards=True,
         anomalous_overhead_func=anomalous_overhead_func,
+        opsim_metadata=opsim_metadata,
     )
 
 
@@ -87,18 +98,28 @@ def _create_scheduler_io(
     day_obs_mjd: float,
     scheduler_fname: Optional[str] = None,
     scheduler_instance: Optional[CoreScheduler] = None,
-    opsim_db=None,
+    opsim_db: str | None = None,
 ) -> io.BufferedRandom:
     if scheduler_instance is not None:
-        scheduler: CoreScheduler = scheduler_instance
+        scheduler = scheduler_instance
     elif scheduler_fname is None:
         sample_scheduler = example_scheduler()
         if not isinstance(sample_scheduler, CoreScheduler):
             raise TypeError()
 
-        scheduler: CoreScheduler = sample_scheduler
+        scheduler = sample_scheduler
+
     else:
-        with open(scheduler_fname, "rb") as sched_io:
+        opener: typing.Callable = open
+
+        if scheduler_fname.endswith(".bz2"):
+            opener = bz2.open
+        elif scheduler_fname.endswith(".xz"):
+            opener = lzma.open
+        elif scheduler_fname.endswith(".gz"):
+            opener = gzip.open
+
+        with opener(scheduler_fname, "rb") as sched_io:
             scheduler = pickle.load(sched_io)
 
     scheduler.keep_rewards = True
@@ -183,7 +204,14 @@ class AnomalousOverheadFunc:
 
 
 def run_prenights(
-    day_obs_mjd: float, archive_uri: str, scheduler_file: Optional[str] = None, opsim_db: Optional[str] = None
+    day_obs_mjd: float,
+    archive_uri: str,
+    scheduler_file: Optional[str] = None,
+    opsim_db: Optional[str] = None,
+    minutes_delays: tuple[float, ...] = (0, 1, 10, 60, 240),
+    anomalous_overhead_seeds: tuple[int, ...] = (101, 102, 103, 104, 105),
+    sim_nights: int = 2,
+    opsim_metadata: dict | None = None,
 ) -> None:
     """Run the set of scheduler simulations needed to prepare for a night.
 
@@ -201,36 +229,60 @@ def run_prenights(
         The file name of the visit database for visits preceeding the
         simulation.
         The default is None.
+    minutes_delays : `tuple` of `float`
+        Delayed starts to be simulated.
+    anomalous_overhead_seeds: `tuple` of `int`
+        Random number seeds to use for anomalous overhead runs.
+    sim_nights: `int`
+        Number of nights to simulate. Defaults to 2.
+    opsim_metadata: `dict`
+        Extra metadata for the archive
     """
 
     exec_time: str = _iso8601_now()
-    mjd_start: float = day_obs_mjd + 0.5
-    scheduler_io = _create_scheduler_io(day_obs_mjd, scheduler_fname=scheduler_file, opsim_db=opsim_db)
-
-    # Assign args common to all sims for this execution.
-    run_sim = partial(_run_sim, archive_uri=archive_uri, scheduler_io=scheduler_io)
-
-    # Begin with an ideal pure model sim
-    run_sim(
-        mjd_start,
-        label=f"Nominal start and overhead, ideal conditions, run at {exec_time}",
-        tags=["ideal", "nominal"],
+    scheduler_io: io.BufferedRandom = _create_scheduler_io(
+        day_obs_mjd, scheduler_fname=scheduler_file, opsim_db=opsim_db
     )
 
-    # Delayed start
+    # Assign args common to all sims for this execution.
+    run_sim = partial(
+        _run_sim, archive_uri=archive_uri, scheduler_io=scheduler_io, opsim_metadata=opsim_metadata
+    )
+
+    # Find the start of observing for the specified day_obs.
     # Almanac.get_sunset_info does not use day_obs, so just index
     # Almanac.sunsets for what we want directly.
-    all_sun_n12_setting = Almanac().sunsets["sun_n12_setting"]
-    before_day_obs = all_sun_n12_setting < day_obs_mjd + 0.5
-    after_day_obs = all_sun_n12_setting > day_obs_mjd + 1.5
-    on_day_obs = ~(before_day_obs | after_day_obs)
-    sun_n12_setting = all_sun_n12_setting[on_day_obs].item()
+    all_sun_n12_setting: npt.NDArray[np.float_] = Almanac().sunsets["sun_n12_setting"]
+    before_first_day_obs: npt.NDArray[np.bool_] = all_sun_n12_setting < day_obs_mjd + 0.5
+    after_first_day_obs: npt.NDArray[np.bool_] = all_sun_n12_setting > day_obs_mjd + 1.5
+    on_first_day_obs: npt.NDArray[np.bool_] = ~(before_first_day_obs | after_first_day_obs)
+    mjd_start: float = all_sun_n12_setting[on_first_day_obs].item()
 
-    for minutes_delay in (0, 1, 10, 60, 240):
-        delayed_mjd_start = sun_n12_setting + minutes_delay / (24.0 * 60)
+    all_sun_n12_rising: npt.NDArray[np.float_] = Almanac().sunsets["sun_n12_rising"]
+    before_last_day_obs: npt.NDArray[np.bool_] = all_sun_n12_setting < day_obs_mjd + sim_nights + 0.5
+    after_last_day_obs: npt.NDArray[np.bool_] = all_sun_n12_setting > day_obs_mjd + sim_nights + 1.5
+    on_last_day_obs: npt.NDArray[np.bool_] = ~(before_last_day_obs | after_last_day_obs)
+    mjd_end: float = all_sun_n12_rising[on_last_day_obs].item()
+    sim_length: float = mjd_end - mjd_start
 
-        # 2 nights of observing, 0.5 nights to shift to the day_obs rollover
-        sim_length = day_obs_mjd + 2.5 - delayed_mjd_start
+    # Begin with an ideal pure model sim.
+    completed_run_without_delay: bool = False
+    if len(minutes_delays) == 0 or (np.array(minutes_delays) == 0).any():
+        run_sim(
+            mjd_start,
+            label=f"Nominal start and overhead, ideal conditions, run at {exec_time}",
+            tags=["ideal", "nominal"],
+        )
+        completed_run_without_delay = True
+
+    # Delayed start
+    for minutes_delay in minutes_delays:
+        if completed_run_without_delay and minutes_delay == 0:
+            # Did this already.
+            continue
+
+        delayed_mjd_start = mjd_start + minutes_delay / (24.0 * 60)
+        sim_length = mjd_end - delayed_mjd_start
 
         run_sim(
             delayed_mjd_start,
@@ -242,7 +294,7 @@ def run_prenights(
 
     # Run a few different scatters of visit time
     anomalous_overhead_scale = 0.1
-    for anomalous_overhead_seed in range(101, 106):
+    for anomalous_overhead_seed in anomalous_overhead_seeds:
         anomalous_overhead_func = AnomalousOverheadFunc(anomalous_overhead_seed, anomalous_overhead_scale)
         run_sim(
             mjd_start,
@@ -250,7 +302,7 @@ def run_prenights(
             + f" Nominal start, ideal conditions, run at {exec_time}",
             tags=["ideal", "anomalous_overhead"],
             anomalous_overhead_func=anomalous_overhead_func,
-            sim_length=2,
+            sim_length=sim_length,
         )
 
 
@@ -269,13 +321,10 @@ def _parse_dayobs_to_mjd(dayobs: str | float) -> float:
     return day_obs_mjd
 
 
-def prenight_sim_cli(*args):
-    if Time.now() >= Time("2025-05-01"):
-        default_time = Time(int(_mjd_now() - 0.5), format="mjd")
-    else:
-        default_time = Time("2025-05-14")
+def prenight_sim_cli(cli_args: list = []) -> None:
 
     parser = argparse.ArgumentParser(description="Run prenight simulations")
+    default_time = Time(int(_mjd_now() - 0.5), format="mjd")
     parser.add_argument(
         "--dayobs",
         type=str,
@@ -291,20 +340,47 @@ def prenight_sim_cli(*args):
     parser.add_argument("--scheduler", type=str, default=None, help="pickle file of the scheduler to run.")
 
     # Only pass a default if we have an opsim
-    opsim_arg_kwargs = {"type": str, "help": "Opsim database from which to load previous visits."}
     baseline = get_baseline()
     if baseline is not None:
-        opsim_arg_kwargs["default"] = baseline
+        parser.add_argument(
+            "--opsim", default=baseline, type=str, help="Opsim database from which to load previous visits."
+        )
+    else:
+        parser.add_argument("--opsim", type=str, help="Opsim database from which to load previous visits.")
 
-    parser.add_argument("--opsim", **opsim_arg_kwargs)
-    args = parser.parse_args() if len(args) == 0 else parser.parse_args(args)
+    add_make_scheduler_snapshot_args(parser)
+
+    args = parser.parse_args() if len(cli_args) == 0 else parser.parse_args(cli_args)
 
     day_obs_mjd = _parse_dayobs_to_mjd(args.dayobs)
     archive_uri = args.archive
-    scheduler_file = args.scheduler
-    opsim_db = args.opsim
+    opsim_db = None if args.opsim in ("", "None") else args.opsim
 
-    run_prenights(day_obs_mjd, archive_uri, scheduler_file, opsim_db)
+    scheduler_file = args.scheduler
+    if args.repo is not None:
+        if os.path.exists(scheduler_file):
+            raise ValueError(f"File {scheduler_file} already exists!")
+
+        scheduler: CoreScheduler = get_scheduler(args.repo, args.script, args.branch)
+        save_scheduler(scheduler, scheduler_file)
+
+        opsim_metadata = {
+            "opsim_config_repository": args.repo,
+            "opsim_config_script": args.script,
+            "opsim_config_branch": args.branch,
+        }
+    else:
+        opsim_metadata = None
+
+    run_prenights(
+        day_obs_mjd,
+        archive_uri,
+        scheduler_file,
+        opsim_db,
+        minutes_delays=(0,),
+        anomalous_overhead_seeds=(1,),
+        opsim_metadata=opsim_metadata,
+    )
 
 
 if __name__ == "__main__":
