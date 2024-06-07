@@ -239,7 +239,7 @@ def make_sim_archive_dir(
 def transfer_archive_dir(archive_dir, archive_base_uri="s3://rubin-scheduler-prenight/opsim/"):
     """Transfer the contents of an archive directory to an resource.
 
-    Parameters:
+    Parameters
     ----------
     archive_dir : `str`
         The path to the archive directory containing the files to be
@@ -248,7 +248,7 @@ def transfer_archive_dir(archive_dir, archive_base_uri="s3://rubin-scheduler-pre
         The base URI where the archive files will be transferred to.
         Default is "s3://rubin-scheduler-prenight/opsim/".
 
-    Returns:
+    Returns
     -------
     resource_rpath : `ResourcePath`
         The destination resource.
@@ -298,12 +298,12 @@ def transfer_archive_dir(archive_dir, archive_base_uri="s3://rubin-scheduler-pre
 def check_opsim_archive_resource(archive_uri):
     """Check the contents of an opsim archive resource.
 
-    Parameters:
+    Parameters
     ----------
     archive_uri : `str`
         The URI of the archive resource to be checked.
 
-    Returns:
+    Returns
     -------
     validity: `dict`
         A dictionary of files checked, and their validity.
@@ -350,7 +350,7 @@ def _build_archived_sim_label(base_uri, metadata_resource, metadata):
 def read_archived_sim_metadata(base_uri, latest=None, num_nights=5):
     """Read metadata for a time range of archived opsim output.
 
-    Parameters:
+    Parameters
     ----------
     base_uri : `str`
         The base URI of the archive resource to be checked.
@@ -363,7 +363,7 @@ def read_archived_sim_metadata(base_uri, latest=None, num_nights=5):
     num_nights : `int`
         The number of nights of the date window to load.
 
-    Returns:
+    Returns
     -------
     sim_metadata: `dict`
         A dictionary of metadata for simulations in the date range.
@@ -512,7 +512,7 @@ def drive_sim(
         The model for the observatory.
     scheduler : `CoreScheduler`
         The scheduler used.
-    observations : `foo`
+    observations : `numpy.recarray`
         The observations produced.
     reward_df : `pandas.DataFrame`, optional
         The table of rewards. Present if `record_rewards`
