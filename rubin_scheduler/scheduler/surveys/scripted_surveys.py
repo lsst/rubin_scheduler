@@ -131,8 +131,8 @@ class ScriptedSurvey(BaseSurvey):
                     detailer.add_observation(observation, **kwargs)
                 self.reward_checked = False
 
-                # find the index
-                indx = np.searchsorted(self.obs_wanted["scripted_id"], observation["scripted_id"])
+                # Find the index
+                indx = np.where(self.obs_wanted["scripted_id"] == observation["scripted_id"])[0]
                 # If it matches scripted_id, note, and filter, mark it as
                 # observed and update scheduled observation list.
                 if indx < self.obs_wanted["scripted_id"].size:
