@@ -377,8 +377,8 @@ def prenight_sim_cli(cli_args: list = []) -> None:
         archive_uri,
         scheduler_file,
         opsim_db,
-        minutes_delays=(0,),
-        anomalous_overhead_seeds=(1,),
+        minutes_delays=(0, 1, 10, 60),
+        anomalous_overhead_seeds=(101, 102),
         opsim_metadata=opsim_metadata,
     )
 
