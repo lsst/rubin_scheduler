@@ -506,12 +506,12 @@ class SchemaConverter:
         for key in self.angles_rad2deg:
             try:
                 df[key] = np.radians(df[key])
-            except KeyError:
+            except (KeyError, TypeError):
                 df[key] = np.nan
         for key in self.angles_hours2deg:
             try:
                 df[key] = df[key] * 24.0 / 360.0
-            except KeyError:
+            except (KeyError, TypeError):
                 df[key] = np.nan
 
         df = df.rename(index=str, columns=self.convert_dict)
