@@ -28,7 +28,7 @@ dependencies = [
     "matplotlib",
     "healpy",
     "numexpr",
-    "scipy",
+    "scipy<1.14",
     "astropy",
     "astroplan",
     "tables",
