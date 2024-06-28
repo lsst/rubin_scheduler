@@ -3,6 +3,7 @@ __all__ = [
     "save_scheduler",
     "add_make_scheduler_snapshot_args",
     "make_scheduler_snapshot_cli",
+    "get_scheduler_instance_from_repo",
 ]
 
 import argparse
