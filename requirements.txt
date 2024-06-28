@@ -13,4 +13,5 @@ h5py
 requests
 shapely
 tqdm
+gitpython
 conda

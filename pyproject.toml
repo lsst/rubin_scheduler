@@ -36,6 +36,7 @@ dependencies = [
     "requests",
     "shapely",
     "tqdm",
+    "gitpython",
 ]
 
 [project.optional-dependencies]
@@ -56,7 +57,7 @@ scheduler_download_data = "rubin_scheduler.data.scheduler_download_data:schedule
 rs_download_sky = "rubin_scheduler.data.rs_download_sky:rs_download_sky"
 archive_sim = "rubin_scheduler.sim_archive:make_sim_archive_cli"
 prenight_sim = "rubin_scheduler.sim_archive:prenight_sim_cli"
-
+scheduler_snapshot = "rubin_scheduler.sim_archive:make_scheduler_snapshot_cli"   
 
 [tool.setuptools.dynamic]
 version = { attr = "setuptools_scm.get_version" }
