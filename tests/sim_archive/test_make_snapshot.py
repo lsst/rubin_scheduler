@@ -8,6 +8,7 @@ HAVE_TS = importlib.util.find_spec('lsst.ts') is not None
 
 class TestMakeSnapshot(unittest.TestCase):
 
+    @unittest.skip("Skipping because test depends on external repo.")
     @unittest.skipIf(not HAVE_TS, "No lsst.ts")
     def test_get_scheduler_instance_photcal(self):
         scheduler = get_scheduler_instance_from_repo(
