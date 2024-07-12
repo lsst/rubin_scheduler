@@ -2,7 +2,6 @@ import importlib.util
 import unittest
 from tempfile import TemporaryDirectory
 
-
 try:
     from lsst.resources import ResourcePath
 
