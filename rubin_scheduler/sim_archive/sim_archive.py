@@ -62,6 +62,7 @@ def make_sim_archive_dir(
     label=None,
     data_path=None,
     capture_env=True,
+    opsim_metadata=None,
 ):
     """Create or fill a local simulation archive directory.
 
@@ -89,6 +90,8 @@ def make_sim_archive_dir(
     capture_env : `bool`
         Use the current environment as the sim environment.
         Defaults to True.
+    opsim_metadata : `dict`
+        Metadata to be included.
 
     Returns
     -------
@@ -175,7 +178,9 @@ def make_sim_archive_dir(
         evening_local_iso = Time(evening_local_mjd, format="mjd").iso[:10]
         return evening_local_iso
 
-    opsim_metadata = {}
+    if opsim_metadata is None:
+        opsim_metadata = {}
+
     if capture_env:
         opsim_metadata["scheduler_version"] = rubin_scheduler.__version__
         opsim_metadata["host"] = socket.getfqdn()
@@ -481,7 +486,15 @@ def make_sim_archive_cli(*args):
 
 
 def drive_sim(
-    observatory, scheduler, archive_uri=None, label=None, tags=[], script=None, notebook=None, **kwargs
+    observatory,
+    scheduler,
+    archive_uri=None,
+    label=None,
+    tags=[],
+    script=None,
+    notebook=None,
+    opsim_metadata=None,
+    **kwargs,
 ):
     """Run a simulation and archive the results.
 
@@ -505,6 +518,8 @@ def drive_sim(
     notebook : `str`, optional
         The filename of the notebook producing the simulation.
         Defaults to None.
+    opsim_metadata : `dict`, optional
+        Extra metadata to store in the archive.
 
     Returns
     -------
@@ -574,6 +589,7 @@ def drive_sim(
             tags=tags,
             label=label,
             capture_env=True,
+            opsim_metadata=opsim_metadata,
         )
 
         if archive_uri is not None:
