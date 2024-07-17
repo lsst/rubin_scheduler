@@ -354,7 +354,7 @@ class KinemModel:
         dec_rad : `np.ndarray`
             The declination(s) of the location(s) we wish to slew to (radians)
         mjd : `float`
-            The current moodified julian date (days)
+            The current modified julian date (days)
         rot_sky_pos : `np.ndarray`
             The desired rot_sky_pos(s) (radians).
             Angle between up on the chip and North.

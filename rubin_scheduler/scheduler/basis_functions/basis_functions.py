@@ -2026,7 +2026,17 @@ class TemplateGenerateBasisFunction(BaseBasisFunction):
 
 
 class LimitRepeatBasisFunction(BaseBasisFunction):
-    """Mask out pixels that haven't been observed in the night"""
+    """Mask out pixels that haven't been observed in the night.
+
+    Parameters
+    ----------
+    nside : `int` or None
+        Nside for the basis function values. Default None will use
+        default nside.
+    filtername : `str` or None
+        Filter to consider when tracking number of acquired observations.
+
+    """
 
     def __init__(self, nside=None, filtername="r", n_limit=2):
         super(LimitRepeatBasisFunction, self).__init__(nside=nside)
