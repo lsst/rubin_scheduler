@@ -1270,7 +1270,7 @@ def generate_twilight_near_sun(
         bfs.append((bf.FilterDistBasisFunction(filtername=filtername), filter_dist_weight))
         # Need a toward the sun, reward high airmass, with an
         # airmass cutoff basis function.
-        bfs.append((bf.NearSunTwilightBasisFunction(nside=nside, max_airmass=max_airmass), 0))
+        bfs.append((bf.NearSunHighAirmassBasisFunction(nside=nside, max_airmass=max_airmass), 0))
         bfs.append(
             (
                 bf.AltAzShadowMaskBasisFunction(nside=nside, shadow_minutes=shadow_minutes, max_alt=max_alt),
@@ -1288,10 +1288,15 @@ def generate_twilight_near_sun(
         )
 
         bfs.append((bf.NightModuloBasisFunction(pattern=night_pattern), 0))
-        # Do not attempt unless the sun is getting high
+        # Do not attempt unless the sun is getting high and there is at least
+        # a given amount of time until twilight remaining.
         bfs.append(
             (
-                (bf.SunHighLimitBasisFunction(sun_alt_limit=sun_alt_limit, time_to_12deg=time_to_12deg)),
+                (
+                    bf.CloseToTwilightBasisFunction(
+                        max_sun_alt_limit=sun_alt_limit, max_time_to_12deg=time_to_12deg
+                    )
+                ),
                 0,
             )
         )
