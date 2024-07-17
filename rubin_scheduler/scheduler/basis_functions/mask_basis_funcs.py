@@ -203,18 +203,23 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
     mask so if observations are taken in pairs, the second in the pair will
     not have moved into a masked region.
 
-    Masks any alt/az regions as specified by the conditions object, then
-    applies any additional altitude masking as suppied by the kwargs.
+    Masks any alt/az regions as specified by the conditions object, or
+    values as provided by the kwargs. If both are provided,
+    the most restrictive of each will be used.
     This mask is then extended using `shadow minutes`.
 
     Parameters
     ----------
-    nside : `int`
+    nside : `int` or None
         HEALpix nside. Default None will look up the package-wide default.
     min_alt : `float`
         Minimum altitude to apply to the mask. Default 20 (degrees).
     max_alt : `float`
         Maximum altitude to allow. Default 82 (degrees).
+    min_az : `float`
+        Minimum azimuth value to apply to the mask. Default 0 (degrees).
+    max_az : `float`
+        Maximum azimuth value to apply to the mask. Default 360 (degrees).
     shadow_minutes : `float`
         How long to extend masked area in longitude. Default 40 (minutes).
     """
@@ -224,11 +229,15 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         nside=None,
         min_alt=20.0,
         max_alt=82.0,
+        min_az=0,
+        max_az=360,
         shadow_minutes=40.0,
     ):
-        super(AltAzShadowMaskBasisFunction, self).__init__(nside=nside)
+        super().__init__(nside=nside)
         self.min_alt = np.radians(min_alt)
         self.max_alt = np.radians(max_alt)
+        self.min_az = np.radians(min_az)
+        self.max_az = np.radians(max_az)
         self.shadow_time = shadow_minutes / 60.0 / 24.0  # To days
 
     def _calc_value(self, conditions, indx=None):
@@ -244,41 +253,29 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         # very narrow or shadow time is very large.
         future_alt, future_az = conditions.future_alt_az(np.max(conditions.mjd + self.shadow_time))
 
-        # apply limits from the conditions object
-        for limits in conditions.tel_alt_limits:
-            good = np.where(
-                (IntRounded(conditions.alt) >= IntRounded(np.min(limits)))
-                & (IntRounded(conditions.alt) <= IntRounded(np.max(limits)))
-            )[0]
-            in_range_alt[good] += 1
-            good = np.where(
-                (IntRounded(future_alt) >= IntRounded(np.min(limits)))
-                & (IntRounded(future_alt) <= IntRounded(np.max(limits)))
-            )[0]
-            in_range_alt[good] += 1
+        # find minimum alt limits
+        min_alt = IntRounded(np.max([np.min(conditions.tel_alt_limits), self.min_alt]))
+        max_alt = IntRounded(np.min([np.max(conditions.tel_alt_limits), self.max_alt]))
+        min_az = IntRounded(np.max([np.min(conditions.tel_az_limits), self.min_az]))
+        max_az = IntRounded(np.min([np.max(conditions.tel_az_limits), self.max_az]))
 
-        for limits in conditions.tel_az_limits:
-            good = np.where(
-                (IntRounded(conditions.az) >= IntRounded(np.min(limits)))
-                & (IntRounded(conditions.az) <= IntRounded(np.max(limits)))
-            )[0]
-            in_range_az[good] += 1
-            good = np.where(
-                (IntRounded(future_az) >= IntRounded(np.min(limits)))
-                & (IntRounded(future_az) <= IntRounded(np.max(limits)))
-            )[0]
-            in_range_az[good] += 1
+        good = np.where((IntRounded(conditions.alt) >=  min_alt) &
+                        (IntRounded(conditions.alt) <= max_alt))[0]
+        in_range_alt[good] += 1
+        good = np.where((IntRounded(future_alt) >= min_alt) &
+                        (IntRounded(future_alt) <= max_alt))[0]
+        in_range_alt[good] += 1
+
+        good = np.where((IntRounded(conditions.az) >= min_az) &
+                        (IntRounded(conditions.az) <= max_az))[0]
+        in_range_az[good] += 1
+        good = np.where((IntRounded(future_az) >= min_az) &
+                        (IntRounded(future_az) <= max_az))[0]
+        in_range_az[good] += 1
 
         passed_all = np.where((in_range_alt > 1) & (in_range_az > 1))[0]
+        # Unmask the parts of the sky which are and will remain in alt/az range
         result[passed_all] = 0
-
-        # Apply additional alt constraint in case we want to be more
-        # conservative than the limit
-        result[np.where(IntRounded(conditions.alt) < IntRounded(self.min_alt))] = np.nan
-        result[np.where(IntRounded(conditions.alt) > IntRounded(self.max_alt))] = np.nan
-
-        result[np.where(IntRounded(future_alt) < IntRounded(self.min_alt))] = np.nan
-        result[np.where(IntRounded(future_alt) > IntRounded(self.max_alt))] = np.nan
 
         return result
 
