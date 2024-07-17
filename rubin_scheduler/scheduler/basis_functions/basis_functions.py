@@ -30,7 +30,7 @@ __all__ = (
     "SeasonCoverageBasisFunction",
     "NObsPerYearBasisFunction",
     "CadenceInSeasonBasisFunction",
-    "NearSunTwilightBasisFunction",
+    "NearSunHighAirmassBasisFunction",
     "NObsHighAmBasisFunction",
     "GoodSeeingBasisFunction",
     "ObservedTwiceBasisFunction",
@@ -948,7 +948,7 @@ class AvoidFastRevisitsBasisFunction(BaseBasisFunction):
         return result
 
 
-class NearSunTwilightBasisFunction(BaseBasisFunction):
+class NearSunHighAirmassBasisFunction(BaseBasisFunction):
     """Reward areas on the sky at high airmass, within 90 degrees azimuth
     of the Sun, such as suitable for the near-sun twilight microsurvey for
     near- or interior-to earth asteroids.
@@ -966,7 +966,7 @@ class NearSunTwilightBasisFunction(BaseBasisFunction):
     """
 
     def __init__(self, nside=None, max_airmass=2.5, penalty=np.nan):
-        super(NearSunTwilightBasisFunction, self).__init__(nside=nside)
+        super().__init__(nside=nside)
         self.max_airmass = IntRounded(max_airmass)
         self.result = np.empty(hp.nside2npix(self.nside))
         self.result.fill(penalty)
