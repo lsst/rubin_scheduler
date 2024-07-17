@@ -518,7 +518,7 @@ class CloudedOutBasisFunction(BaseBasisFunction):
 
 
 class RisingMoreBasisFunction(BaseBasisFunction):
-    """Say a spot is not available if it will rise substatially before
+    """Say a spot is not available if it will rise substantially before
     twilight.
 
     Parameters
@@ -537,6 +537,8 @@ class RisingMoreBasisFunction(BaseBasisFunction):
 
     def check_feasibility(self, conditions):
         result = True
+        # Calculating hour angle instead of using conditions.HA
+        # because want -12 to +12 hours instead of 0 - 2pi values.
         hour_angle = conditions.lmst - self.ra_hours
         # If it's rising, and twilight is well beyond when it crosses
         # the meridian
