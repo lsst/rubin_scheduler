@@ -119,7 +119,7 @@ class ScriptedSurvey(BaseSurvey):
 
     def add_observation(self, observation, indx=None, **kwargs):
         """Check if observation matches a scripted observation"""
-        if self.obs_wanted is not None:
+        if (self.obs_wanted is not None) & (np.size(self.obs_wanted) > 0):
             # From base class
             checks = [io not in str(observation["note"]) for io in self.ignore_obs]
             if all(checks):
@@ -135,7 +135,7 @@ class ScriptedSurvey(BaseSurvey):
                 indx = np.where(self.obs_wanted["scripted_id"] == observation["scripted_id"])[0]
                 # If it matches scripted_id, note, and filter, mark it as
                 # observed and update scheduled observation list.
-                if indx < self.obs_wanted["scripted_id"].size:
+                if indx.size > 0:
                     if (
                         (self.obs_wanted["scripted_id"][indx] == observation["scripted_id"])
                         & (self.obs_wanted["note"][indx] == observation["note"])
