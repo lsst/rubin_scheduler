@@ -259,18 +259,14 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         min_az = IntRounded(np.max([np.min(conditions.tel_az_limits), self.min_az]))
         max_az = IntRounded(np.min([np.max(conditions.tel_az_limits), self.max_az]))
 
-        good = np.where((IntRounded(conditions.alt) >=  min_alt) &
-                        (IntRounded(conditions.alt) <= max_alt))[0]
+        good = np.where((IntRounded(conditions.alt) >= min_alt) & (IntRounded(conditions.alt) <= max_alt))[0]
         in_range_alt[good] += 1
-        good = np.where((IntRounded(future_alt) >= min_alt) &
-                        (IntRounded(future_alt) <= max_alt))[0]
+        good = np.where((IntRounded(future_alt) >= min_alt) & (IntRounded(future_alt) <= max_alt))[0]
         in_range_alt[good] += 1
 
-        good = np.where((IntRounded(conditions.az) >= min_az) &
-                        (IntRounded(conditions.az) <= max_az))[0]
+        good = np.where((IntRounded(conditions.az) >= min_az) & (IntRounded(conditions.az) <= max_az))[0]
         in_range_az[good] += 1
-        good = np.where((IntRounded(future_az) >= min_az) &
-                        (IntRounded(future_az) <= max_az))[0]
+        good = np.where((IntRounded(future_az) >= min_az) & (IntRounded(future_az) <= max_az))[0]
         in_range_az[good] += 1
 
         passed_all = np.where((in_range_alt > 1) & (in_range_az > 1))[0]
