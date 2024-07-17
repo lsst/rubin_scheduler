@@ -6,7 +6,7 @@ __all__ = (
     "DelayStartBasisFunction",
     "TargetMapBasisFunction",
     "AvoidLongGapsBasisFunction",
-    "AvoidFastRevisits",
+    "AvoidFastRevisitsBasisFunction",
     "VisitRepeatBasisFunction",
     "M5DiffBasisFunction",
     "M5DiffAtHpixBasisFunction",
@@ -906,19 +906,20 @@ class ThirdObservationBasisFunction(BaseBasisFunction):
         return result
 
 
-class AvoidFastRevisits(BaseBasisFunction):
+class AvoidFastRevisitsBasisFunction(BaseBasisFunction):
     """Marks targets as unseen if they are in a specified time window
     in order to avoid fast revisits.
 
     Parameters
     ----------
-    filtername: `str` ('r')
+    filtername: `str` or None
         The name of the filter for this target map.
-    gap_min : `float` (25.)
+        Using None will match visits in any filter.
+    gap_min : `float`
         Minimum time for the gap (minutes).
-    nside: `int` (default_nside)
+    nside: `int` or None
         The healpix resolution.
-    penalty_val : `float` (np.nan)
+    penalty_val : `float`
         The reward value to use for regions to penalize.
         Will be masked if set to np.nan (default).
     """
@@ -933,7 +934,8 @@ class AvoidFastRevisits(BaseBasisFunction):
         self.nside = nside
 
         self.survey_features = dict()
-        self.survey_features["Last_observed"] = features.LastObserved(filtername=filtername, nside=nside)
+        self.survey_features["Last_observed"] = features.LastObserved(filtername=filtername,
+            nside=nside, fill=0)
 
     def _calc_value(self, conditions, indx=None):
         result = np.ones(hp.nside2npix(self.nside), dtype=float)
@@ -941,7 +943,14 @@ class AvoidFastRevisits(BaseBasisFunction):
             indx = np.arange(result.size)
         diff = IntRounded(conditions.mjd - self.survey_features["Last_observed"].feature[indx])
         bad = np.where(diff < self.gap_min)[0]
-        result[indx[bad]] = self.penalty_val
+        # If this is used with a FieldSurvey or if indx is single value:
+        if isinstance(indx, np.int64):
+            if diff < self.gap_min:
+                result = self.penalty_val
+            else:
+                result = 0
+        else:
+            result[indx[bad]] = self.penalty_val
         return result
 
 
