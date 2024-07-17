@@ -935,8 +935,9 @@ class AvoidFastRevisitsBasisFunction(BaseBasisFunction):
         self.nside = nside
 
         self.survey_features = dict()
-        self.survey_features["Last_observed"] = features.LastObserved(filtername=filtername,
-            nside=nside, fill=0)
+        self.survey_features["Last_observed"] = features.LastObserved(
+            filtername=filtername, nside=nside, fill=0
+        )
 
     def _calc_value(self, conditions, indx=None):
         result = np.ones(hp.nside2npix(self.nside), dtype=float)
