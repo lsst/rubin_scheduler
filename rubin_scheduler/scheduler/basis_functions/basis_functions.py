@@ -44,6 +44,7 @@ __all__ = (
     "BalanceVisits",
     "RewardNObsSequence",
     "FilterDistBasisFunction",
+    "RewardRisingBasisFunction",
 )
 
 import warnings
@@ -2261,3 +2262,44 @@ class RewardNObsSequence(BaseBasisFunction):
 
     def _calc_value(self, conditions, indx=None):
         return self.survey_features["n_obs_survey"].feature % self.n_obs_survey
+
+
+class RewardRisingBasisFunction(BaseBasisFunction):
+    """Reward parts of the sky that are rising.
+    Optionally, mask out parts of the sky that are not rising.
+
+    This produces a reward that increases
+    as the field rises toward zenith, then abruptly
+    falls as the field passes zenith.
+    Negative hour angles (or hour angles > 180 degrees)
+    indicate a rising point on the sky.
+
+    Parameters
+    ----------
+    slope : `float`
+        Sets the 'slope' of how fast the basis function
+        value changes with hour angle.
+    penalty_val : `float` or `np.nan`, optional
+        Sets the value for the part of the sky which is
+        not rising (hour angle between 0 and 180).
+        Using a value of np.nan will mask this region of sky,
+        a value of 0 will just make this non-rewarding.
+    nside : `int` or None, optional
+        Nside for the healpix map, default of None uses scheduler default.
+    """
+
+    def __init__(self, slope=0.1, penalty_val=0, nside=None):
+        super().__init__(nside=nside)
+        self.slope = slope
+        self.penalty_val = penalty_val
+
+    # Probably not needed
+    def check_feasibility(self, conditions):
+        return True
+
+    def _calc_value(self, conditions, indx=None):
+        # HA should be available in the conditions object
+        value = self.slope * conditions.HA
+        past_zenith = np.where(conditions.HA < np.pi)
+        value[past_zenith] = self.penalty_val
+        return value
