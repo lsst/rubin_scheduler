@@ -2,9 +2,14 @@ import importlib.util
 import unittest
 
 from rubin_scheduler.scheduler.schedulers.core_scheduler import CoreScheduler
-from rubin_scheduler.sim_archive import get_scheduler_instance_from_repo
 
-HAVE_TS = importlib.util.find_spec("lsst.ts") is not None
+if importlib.util.find_spec("lsst"):
+    HAVE_TS = importlib.util.find_spec("lsst.ts")
+else:
+    HAVE_TS = False
+
+if HAVE_TS:
+    from rubin_scheduler.sim_archive import get_scheduler_instance_from_repo
 
 
 class TestMakeSnapshot(unittest.TestCase):
