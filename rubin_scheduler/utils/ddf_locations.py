@@ -1,4 +1,4 @@
-__all__ = ("ddf_locations_skycoord", "ddf_locations", "ddf_locations_vA")
+__all__ = ("ddf_locations_skycoord", "ddf_locations", "ddf_locations_pre3_5")
 
 import astropy.units as u
 from astropy.coordinates import SkyCoord
@@ -31,7 +31,7 @@ def ddf_locations():
     return result
 
 
-def ddf_locations_vA():
+def ddf_locations_pre3_5():
     """Return the DDF locations used for v1 to v3.4 simulations."""
     ddf = {}
     ddf["ELAISS1"] = (9.45, -44.0)
@@ -40,3 +40,4 @@ def ddf_locations_vA():
     ddf["COSMOS"] = (150.1, 2.0 + 10.0 / 60.0 + 55 / 3600.0)
     ddf["EDFS_a"] = (58.90, -49.315)
     ddf["EDFS_b"] = (63.6, -47.60)
+    return ddf
