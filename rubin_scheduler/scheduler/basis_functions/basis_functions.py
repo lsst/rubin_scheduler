@@ -941,18 +941,9 @@ class AvoidFastRevisitsBasisFunction(BaseBasisFunction):
 
     def _calc_value(self, conditions, indx=None):
         result = np.ones(hp.nside2npix(self.nside), dtype=float)
-        if indx is None:
-            indx = np.arange(result.size)
-        diff = IntRounded(conditions.mjd - self.survey_features["Last_observed"].feature[indx])
+        diff = IntRounded(conditions.mjd - self.survey_features["Last_observed"].feature)
         bad = np.where(diff < self.gap_min)[0]
-        # If this is used with a FieldSurvey or if indx is single value:
-        if isinstance(indx, np.int64):
-            if diff < self.gap_min:
-                result = self.penalty_val
-            else:
-                result = 0
-        else:
-            result[indx[bad]] = self.penalty_val
+        result[bad] = self.penalty_val
         return result
 
 
