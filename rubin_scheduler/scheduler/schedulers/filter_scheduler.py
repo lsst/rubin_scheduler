@@ -1,4 +1,6 @@
-__all__ = ("FilterSwapScheduler", "SimpleFilterSched", "FilterSchedUzy")
+__all__ = ("FilterSwapScheduler", "SimpleFilterSched", "ComCamFilterSched", "FilterSchedUzy")
+
+import numpy as np
 
 from rubin_scheduler.scheduler.utils import IntRounded
 
@@ -30,6 +32,29 @@ class SimpleFilterSched(FilterSwapScheduler):
             result = ["g", "r", "i", "z", "y"]
         else:
             result = ["u", "g", "r", "i", "z"]
+        return result
+
+
+class ComCamFilterSched(FilterSwapScheduler):
+    """ComCam can only hold 3 filters at a time.
+
+    Pretend we will cycle from ugr, gri, riz, izy
+    depending on lunar phase.
+    """
+
+    def __init__(self, illum_bins=np.arange(0, 100 + 1, 25),
+                 filter_sets=(("u", "g", "r"),
+                              ("g", "r", "i"),
+                              ("r", "i", "z"),
+                              ("i", "z", "y"))):
+        self.illum_bins = illum_bins
+        self.filter_sets = filter_sets
+
+    def __call__(self, conditions):
+        moon_at_sunset = conditions.moon_phase_sunset
+        indx = np.searchsorted(self.illum_bins, moon_at_sunset, side="left")
+        indx = np.max([0, indx - 1])
+        result = list(self.filter_sets[indx])
         return result
 
 
