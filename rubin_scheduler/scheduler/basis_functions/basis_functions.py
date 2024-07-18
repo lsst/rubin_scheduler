@@ -945,7 +945,14 @@ class AvoidFastRevisitsBasisFunction(BaseBasisFunction):
             indx = np.arange(result.size)
         diff = IntRounded(conditions.mjd - self.survey_features["Last_observed"].feature[indx])
         bad = np.where(diff < self.gap_min)[0]
-        result[indx[bad]] = self.penalty_val
+        # If this is used with a FieldSurvey or if indx is single value:
+        if isinstance(indx, np.int64):
+            if diff < self.gap_min:
+                result = self.penalty_val
+            else:
+                result = 0
+        else:
+            result[indx[bad]] = self.penalty_val
         return result
 
 
