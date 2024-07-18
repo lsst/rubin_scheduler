@@ -117,6 +117,7 @@ class FieldSurvey(BaseSurvey):
         self.ra_hours = RA / 360.0 * 24.0
         self.dec = np.radians(dec)
         self.ra_deg, self.dec_deg = RA, dec
+        self.indx = ra_dec2_hpid(self.nside, self.ra_deg, self.dec_deg)
 
         # Set up target_name and survey_name before super
         self.target_name = target_name
@@ -305,6 +306,7 @@ class FieldSurvey(BaseSurvey):
         self.reward_checked = False
 
     def calc_reward_function(self, conditions):
+        # only calculates reward at the index for the RA/Dec of the field
         self.reward_checked = True
         if self._check_feasibility(conditions):
             self.reward = 0

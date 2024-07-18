@@ -86,7 +86,6 @@ def sim_runner(
     step_none = step_none / 60.0 / 24.0  # to days
     mjd_run = end_mjd - mjd_start
     nskip = 0
-    new_night = False
 
     mjd_last_flush = -1
 

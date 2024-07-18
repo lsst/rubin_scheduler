@@ -191,8 +191,8 @@ class NObsCount(BaseSurveyFeature):
 
     Parameters
     ----------
-    filtername : `str` (None)
-        The filter to count (if None, all filters counted)
+    filtername : `str` or None
+        The filter to count. Default None, all filters counted.
 
     """
 
@@ -319,10 +319,18 @@ class NObsCountSeason(BaseSurveyFeature):
 class NObsSurvey(BaseSurveyFeature):
     """Count the number of observations, whole sky (not per pixel).
 
+    Because this feature will belong to a survey, it would count all
+    observations that are counted for that survey.
+
     Parameters
     ----------
     note : `str` (None)
         Only count observations that contain str in their note field
+
+
+    Notes
+    -----
+    add_observations_array may not work in the same manner as add_observation.
     """
 
     def __init__(self, note=None):
@@ -354,6 +362,8 @@ class LastObservation(BaseSurveyFeature):
     ----------
     survey_name : `str` (None)
         Only records if the survey name matches (or survey_name set to None)
+
+    add_observations_array may not work in the same manner as add_observation.
     """
 
     def __init__(self, survey_name=None):
@@ -417,11 +427,19 @@ class NObservations(BaseSurveyFeature):
 
     Parameters
     ----------
-    filtername : `str` ('r')
+    filtername : `str` or `list` [`str`] or None
         String or list that has all the filters that can count.
-    nside : `int` (32)
-        The nside of the healpixel map to use
+        Default None counts all filters.
+    nside : `int`
+        The nside of the healpixel map to use.
+        Default None uses scheduler default.
+    survey_name : `str` or None
+        Value to match for scheduler note.
+        (.. this need reconciling of survey_name and note).
 
+    Notes
+    -----
+    add_observations_array may not work in the same manner as add_observation.
     """
 
     def __init__(self, filtername=None, nside=None, survey_name=None):
