@@ -120,9 +120,9 @@ class SurveyInNight(BaseSurveyFeature):
     Parameters
     ----------
     survey_str : `str`, optional
-        String to search for in observation `note`.
-        String does not have to match `note` exactly,
-        just be contained in `note`.
+        String to search for in observation `scheduler_note`.
+        String does not have to match `scheduler_note` exactly,
+        just be contained in `scheduler_note`.
         Default of "" means any observation will match.
     """
 
@@ -137,13 +137,15 @@ class SurveyInNight(BaseSurveyFeature):
             self.night = observation["night"]
             self.feature = 0
 
-        if self.survey_str in observation["note"]:
+        if self.survey_str in observation["scheduler_note"]:
             self.feature += 1
 
 
 class NoteInNight(BaseSurveyFeature):
-    """Count appearances of any of `notes` in observation `note` in the
-    current night; `note` must match one of `notes` exactly.
+    """Count appearances of any of `scheduler_notes` in
+    observation `scheduler_note` in the
+    current night; `note` must match one of `scheduler_notes`
+    exactly.
 
     Useful for keeping track of how many times a survey or other subset
     of visits has executed in a given night.
@@ -151,9 +153,9 @@ class NoteInNight(BaseSurveyFeature):
     Parameters
     ----------
     notes : `list` [`str`], optional
-        List of strings to match against observation `note` values.
-        The `note` must match one of the items in notes exactly.
-        Default of None uses `[]` and will match any note.
+        List of strings to match against observation `scheduler_note`
+        values. The `scheduler_note` must match one of the items
+        in notes exactly. Default of None uses `[]` and will match any note.
     """
 
     def __init__(self, notes=None):
@@ -172,14 +174,14 @@ class NoteInNight(BaseSurveyFeature):
         indx = np.where(observations_array["night"] == observations_array["night"][-1])[0]
         # Count observations that match notes.
         for ind in indx:
-            if observations_array["note"][ind] in self.notes:
+            if observations_array["scheduler_note"][ind] in self.notes:
                 self.feature += 1
 
     def add_observation(self, observation, indx=None):
         if self.current_night != observation["night"]:
             self.current_night = observation["night"].copy()
             self.feature = 0
-        if observation["note"] in self.notes:
+        if observation["scheduler_note"] in self.notes:
             self.feature += 1
 
 
@@ -332,7 +334,7 @@ class NObsSurvey(BaseSurveyFeature):
         if self.note is None:
             self.feature += 1
         else:
-            if self.note in observation["note"]:
+            if self.note in observation["scheduler_note"]:
                 self.feature += 1
 
 
@@ -356,7 +358,7 @@ class LastObservation(BaseSurveyFeature):
 
     def add_observations_array(self, observations_array, observations_hpid):
         if self.survey_name is not None:
-            good = np.where(observations_array["note"] == self.survey_name)[0]
+            good = np.where(observations_array["scheduler_note"] == self.survey_name)[0]
             if np.size(good) < 0:
                 self.feature = observations_array[good[-1]]
         else:
@@ -365,7 +367,7 @@ class LastObservation(BaseSurveyFeature):
 
     def add_observation(self, observation, indx=None):
         if self.survey_name is not None:
-            if self.survey_name in observation["note"]:
+            if self.survey_name in observation["scheduler_note"]:
                 self.feature = observation
         else:
             self.feature = observation
@@ -429,7 +431,7 @@ class NObservations(BaseSurveyFeature):
         if self.filtername is not None:
             valid_indx[np.where(observations_hpid["filter"] != self.filtername)[0]] = False
         if self.survey_name is not None:
-            tmp = [name in self.survey_name for name in observations_hpid["note"]]
+            tmp = [name in self.survey_name for name in observations_hpid["scheduler_note"]]
             valid_indx = valid_indx * np.array(tmp)
         data = observations_hpid[valid_indx]
         if np.size(data) > 0:
@@ -440,7 +442,7 @@ class NObservations(BaseSurveyFeature):
 
     def add_observation(self, observation, indx=None):
         if self.filtername is None or observation["filter"][0] in self.filtername:
-            if self.survey_name is None or observation["note"] in self.survey_name:
+            if self.survey_name is None or observation["scheduler_note"] in self.survey_name:
                 self.feature[indx] += 1
 
 
@@ -850,7 +852,7 @@ class NoteLastObserved(BaseSurveyFeature):
         self.feature = None
 
     def add_observation(self, observation, indx=None):
-        if self.note in observation["note"] and (
+        if self.note in observation["scheduler_note"] and (
             self.filtername is None or self.filtername == observation["filter"]
         ):
             self.feature = observation["mjd"]

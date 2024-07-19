@@ -42,7 +42,7 @@ class TestUtils(unittest.TestCase):
         mjd_start = survey_start_mjd()
         scheduler = example_scheduler(mjd_start=mjd_start)
         observatory, scheduler, observations = run_sched(scheduler, mjd_start=mjd_start, survey_length=7)
-        u_notes = np.unique(observations["note"])
+        u_notes = np.unique(observations["scheduler_note"])
 
         # Note that some of these may change and need to be updated if
         # survey start date changes, e.g., different DDFs in season,
@@ -118,7 +118,11 @@ class TestUtils(unittest.TestCase):
         # Let a few pairs try to complete since by default we don't
         # use an agressive shadow_minutes
         n_forbidden = np.size(
-            [obs for obs in observations[forbidden]["note"] if (("pair_33" not in obs) | (", b" not in obs))]
+            [
+                obs
+                for obs in observations[forbidden]["scheduler_note"]
+                if (("pair_33" not in obs) | (", b" not in obs))
+            ]
         )
 
         assert n_forbidden == 0

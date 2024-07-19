@@ -88,8 +88,7 @@ class GreedySurvey(BaseMarkovSurvey):
                 obs["filter"] = self.filtername
                 obs["nexp"] = self.nexp
                 obs["exptime"] = self.exptime
-                obs["field_id"] = -1
-                obs["note"] = self.survey_name
+                obs["scheduler_note"] = self.survey_name
 
                 observations.append(obs)
                 break
@@ -490,14 +489,9 @@ class BlobSurvey(GreedySurvey):
             else:
                 obs["nexp"] = self.nexp_dict[self.filtername1]
             obs["exptime"] = self.exptime
-            obs["field_id"] = -1
-            obs["note"] = "%s" % (self.survey_note)
+            obs["scheduler_note"] = "%s" % (self.survey_note)
             obs["block_id"] = self.counter
             obs["flush_by_mjd"] = flush_time
-            # Add the mjd for debugging
-            # obs['mjd'] = conditions.mjd
-            # XXX temp debugging line
-            obs["survey_id"] = i
             observations.append(obs)
             counter2 += 1
 

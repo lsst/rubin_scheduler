@@ -87,7 +87,7 @@ class ScriptedSurvey(BaseSurvey):
     def add_observations_array(self, observations_array_in, observations_hpid_in):
         if self.obs_wanted is not None:
             # toss out things that should be ignored
-            to_ignore = np.in1d(observations_array_in["note"], self.ignore_obs)
+            to_ignore = np.in1d(observations_array_in["scheduler_note"], self.ignore_obs)
             observations_array = observations_array_in[~to_ignore]
 
             good = np.in1d(observations_hpid_in["ID"], observations_array["ID"])
@@ -106,11 +106,13 @@ class ScriptedSurvey(BaseSurvey):
             # the observation completed.
             completed = np.char.add(
                 observations_array["scripted_id"].astype(str),
-                observations_array["note"],
+                observations_array["scheduler_note"],
             )
             completed = np.char.add(completed, observations_array["filter"])
 
-            wanted = np.char.add(self.obs_wanted["scripted_id"].astype(str), self.obs_wanted["note"])
+            wanted = np.char.add(
+                self.obs_wanted["scripted_id"].astype(str), self.obs_wanted["scheduler_note"]
+            )
             wanted = np.char.add(wanted, self.obs_wanted["filter"])
 
             indx = np.in1d(wanted, completed)
@@ -121,7 +123,7 @@ class ScriptedSurvey(BaseSurvey):
         """Check if observation matches a scripted observation"""
         if (self.obs_wanted is not None) & (np.size(self.obs_wanted) > 0):
             # From base class
-            checks = [io not in str(observation["note"]) for io in self.ignore_obs]
+            checks = [io not in str(observation["scheduler_note"]) for io in self.ignore_obs]
             if all(checks):
                 for feature in self.extra_features:
                     self.extra_features[feature].add_observation(observation, **kwargs)
@@ -138,7 +140,7 @@ class ScriptedSurvey(BaseSurvey):
                 if indx.size > 0:
                     if (
                         (self.obs_wanted["scripted_id"][indx] == observation["scripted_id"])
-                        & (self.obs_wanted["note"][indx] == observation["note"])
+                        & (self.obs_wanted["scheduler_note"][indx] == observation["scheduler_note"])
                         & (self.obs_wanted["filter"][indx] == observation["filter"])
                     ):
                         self.obs_wanted["observed"][indx] = True
@@ -163,7 +165,7 @@ class ScriptedSurvey(BaseSurvey):
             "filter",
             "exptime",
             "nexp",
-            "note",
+            "scheduler_note",
             "target",
             "rotSkyPos",
             "rotTelPos",

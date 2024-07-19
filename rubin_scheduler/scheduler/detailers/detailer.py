@@ -361,20 +361,16 @@ class TakeAsPairsDetailer(BaseDetailer):
                 obs["nexp"] = self.nexp_dict[self.filtername]
         if conditions.current_filter == self.filtername:
             for obs in paired:
-                obs["note"] = obs["note"][0] + ", a"
+                obs["scheduler_note"] = obs["scheduler_note"][0] + ", a"
             for obs in observation_list:
-                obs["note"] = obs["note"][0] + ", b"
+                obs["scheduler_note"] = obs["scheduler_note"][0] + ", b"
             result = paired + observation_list
         else:
             for obs in paired:
-                obs["note"] = obs["note"][0] + ", b"
+                obs["scheduler_note"] = obs["scheduler_note"][0] + ", b"
             for obs in observation_list:
-                obs["note"] = obs["note"][0] + ", a"
+                obs["scheduler_note"] = obs["scheduler_note"][0] + ", a"
             result = observation_list + paired
-        # XXX--maybe a temp debugging thing, label what part of sequence
-        # each observation is.
-        for i, obs in enumerate(result):
-            obs["survey_id"] = i
         return result
 
 
@@ -420,6 +416,6 @@ class TwilightTripleDetailer(BaseDetailer):
             sub_list = copy.deepcopy(observation_list)
             if self.update_note:
                 for obs in sub_list:
-                    obs["note"][0] += ", %i" % i
+                    obs["scheduler_note"][0] += ", %i" % i
             out_obs.extend(sub_list)
         return out_obs

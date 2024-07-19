@@ -73,10 +73,10 @@ class PointingsSurvey(BaseSurvey):
     ):
         # Not doing a super here, don't want to even have an nside defined.
 
-        # Check that observations["note"] are unique, otherwise incoming
-        # observations will get double-counted
-        if np.size(np.unique(observations["note"])) != np.size(observations):
-            raise ValueError("observations['note'] values are not unique")
+        # Check that observations["scheduler_note"] are unique, otherwise
+        # incoming observations will get double-counted
+        if np.size(np.unique(observations["scheduler_note"])) != np.size(observations):
+            raise ValueError("observations['scheduler_note'] values are not unique")
 
         self.observations = observations
         self.gap_min = gap_min / 60.0 / 24.0  # to days
@@ -100,7 +100,7 @@ class PointingsSurvey(BaseSurvey):
             self.sequence_mapping[key] = []
         for i, obs in enumerate(observations):
             for key in self.sequence_mapping:
-                if key in obs["note"]:
+                if key in obs["scheduler_note"]:
                     self.sequence_mapping[key].append(i)
 
         # convert hour angle limits to radians and 0-2pi
@@ -189,22 +189,22 @@ class PointingsSurvey(BaseSurvey):
     def add_observation(self, observation, indx=None):
         """Let survey know about a completed observation."""
         # Check for a nore match
-        indx = np.where(observation["note"] == self.observations["note"])[0]
+        indx = np.where(observation["scheduler_note"] == self.observations["scheduler_note"])[0]
         # Tracking arrays
         self.n_obs[indx] += 1
         self.last_observed[indx] = observation["mjd"]
 
         # If we are tracking n observations of some type:
         for key in self.tracking_notes:
-            if key in observation["note"]:
+            if key in observation["scheduler_note"]:
                 self.tracking_notes[key] += 1
 
     def add_observations_array(self, observations_array_in, observations_hpid_in):
         """Like `add_observation`, but for a large array of completed
         observations."""
-        for unote in np.unique(observations_array_in["note"]):
-            matching = np.where(observations_array_in["note"] == unote)[0]
-            indx = np.where(self.observations["note"] == unote)[0]
+        for unote in np.unique(observations_array_in["scheduler_note"]):
+            matching = np.where(observations_array_in["scheduler_note"] == unote)[0]
+            indx = np.where(self.observations["scheduler_note"] == unote)[0]
             self.n_obs[indx] += np.size(matching)
             self.last_observed[indx] = observations_array_in["mjd"][matching].max()
 

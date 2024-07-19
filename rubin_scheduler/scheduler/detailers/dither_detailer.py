@@ -188,10 +188,10 @@ class EuclidDitherDetailer(BaseDetailer):
         ra_a, dec_a, ra_b, dec_b = self._generate_offsets(len(observation_list), conditions.night)
 
         for i, obs in enumerate(observation_list):
-            if obs[0]["note"][-1] == "a":
+            if obs[0]["scheduler_note"][-1] == "a":
                 observation_list[i]["RA"] = ra_a
                 observation_list[i]["dec"] = dec_a
-            elif obs[0]["note"][-1] == "b":
+            elif obs[0]["scheduler_note"][-1] == "b":
                 observation_list[i]["RA"] = ra_b
                 observation_list[i]["dec"] = dec_b
             else:

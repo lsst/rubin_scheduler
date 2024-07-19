@@ -1115,8 +1115,12 @@ def generate_twi_blobs(
 def ddf_surveys(detailers=None, season_unobs_frac=0.2, euclid_detailers=None, nside=None):
     obs_array = generate_ddf_scheduled_obs(season_unobs_frac=season_unobs_frac)
 
-    euclid_obs = np.where((obs_array["note"] == "DD:EDFS_b") | (obs_array["note"] == "DD:EDFS_a"))[0]
-    all_other = np.where((obs_array["note"] != "DD:EDFS_b") & (obs_array["note"] != "DD:EDFS_a"))[0]
+    euclid_obs = np.where(
+        (obs_array["scheduler_note"] == "DD:EDFS_b") | (obs_array["scheduler_note"] == "DD:EDFS_a")
+    )[0]
+    all_other = np.where(
+        (obs_array["scheduler_note"] != "DD:EDFS_b") & (obs_array["scheduler_note"] != "DD:EDFS_a")
+    )[0]
 
     survey1 = ScriptedSurvey([bf.AvoidDirectWind(nside=nside)], nside=nside, detailers=detailers)
     survey1.set_script(obs_array[all_other])

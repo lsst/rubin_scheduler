@@ -415,6 +415,7 @@ class SchemaConverter:
             "sunAz": "sunAz",
             "solarElong": "solarElong",
             "note": "note",
+            "scheduler_note": "scheduler_note",
             "target": "target",
         }
         # Column(s) not bothering to remap:
@@ -575,9 +576,11 @@ def empty_observation(n=1):
         Number of exposures in the visit.
     flush_by_mjd : `float`
         If we hit this MJD, we should flush the queue and refill it.
-    note : `str` (optional)
+    scheduler_note : `str` (optional)
         Usually good to set the note field so one knows which survey
         object generated the observation.
+    note : `str`
+        Deprecated in favor of `scheduler_note`.
     target : `str` (optional)
         A note about what target is being observed.
 
@@ -628,9 +631,8 @@ def empty_observation(n=1):
         "moonAlt",
         "sunAlt",
         "note",
+        "scheduler_note",
         "target",
-        "field_id",
-        "survey_id",
         "block_id",
         "lmst",
         "rotTelPos",
@@ -678,8 +680,7 @@ def empty_observation(n=1):
         float,
         "U40",
         "U40",
-        int,
-        int,
+        "U40",
         int,
         float,
         float,
@@ -758,7 +759,7 @@ def scheduled_observation(n=1):
         "rotTelPos_backup",
         "rotSkyPos_desired",
         "nexp",
-        "note",
+        "scheduler_note",
         "target",
     ]
     types = [
