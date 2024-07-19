@@ -42,16 +42,21 @@ class ComCamFilterSched(FilterSwapScheduler):
     depending on lunar phase.
     """
 
-    def __init__(self, illum_bins=np.arange(0, 100 + 1, 25),
-                 filter_sets=(("u", "g", "r"),
-                              ("g", "r", "i"),
-                              ("r", "i", "z"),
-                              ("i", "z", "y"))):
+    def __init__(
+        self,
+        illum_bins=np.arange(0, 100 + 1, 25),
+        filter_sets=(("u", "g", "r"), ("g", "r", "i"), ("r", "i", "z"), ("i", "z", "y")),
+    ):
         self.illum_bins = illum_bins
         self.filter_sets = filter_sets
 
     def __call__(self, conditions):
         moon_at_sunset = conditions.moon_phase_sunset
+        try:
+            if len(moon_at_sunset) > 0:
+                moon_at_sunset = moon_at_sunset[0]
+        except TypeError:
+            pass
         indx = np.searchsorted(self.illum_bins, moon_at_sunset, side="left")
         indx = np.max([0, indx - 1])
         result = list(self.filter_sets[indx])
