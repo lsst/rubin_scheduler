@@ -327,14 +327,16 @@ class CameraSmallRotPerObservationListDetailer(BaseDetailer):
         self.current_night = -1
         self.max_rot = np.radians(max_rot)
         self.min_rot = np.radians(min_rot)
-        self.range = self.max_rot - self.min_rot
+        self.rot_range = self.max_rot - self.min_rot
         self.seed = seed
-        self.per_visit_rot = per_visit_rot
+        self.per_visit_rot = np.radians(per_visit_rot)
         self.offset = None
         self.rc = rotation_converter(telescope=telescope)
 
     def _generate_offsets_filter_change(self, filter_list, mjd, initial_offset):
-        """Generate a random camera rotation for each filter change."""
+        """Generate a random camera rotation for each filter change
+        or add a small offset for each sequential observation.
+        """
         mjd_hash = round(100 * (np.asarray(mjd).item() % 100))
         rng = np.random.default_rng(mjd_hash * self.seed)
 
@@ -342,14 +344,23 @@ class CameraSmallRotPerObservationListDetailer(BaseDetailer):
         offset = np.asarray(initial_offset).item()
         offsets[0] = offset
 
-        for ii in range(1, len(offsets)):
-            if filter_list[ii] != filter_list[ii - 1]:
-                # Filter change
-                offset = (rng.random() * self.range) + self.min_rot
-            else:
-                # If no filter change, apply a small a small rotation
-                offset += np.radians(self.per_visit_rot)
-            offsets[ii] = offset
+        # Find the locations of the filter changes
+        filter_changes = np.concatenate([np.array([-1]),
+                                         np.where(filter_list[:-1] != filter_list[1:])[0]])
+        # But add one because of counting and offsets above.
+        filter_changes += 1
+        # Count visits per filter in the sequence.
+        nvis_per_filter = np.concatenate([np.diff(filter_changes),
+                                          np.array([len(filter_list) - 1 - filter_changes[-1]])])
+        # Set up the random rotator offsets for each filter change
+        # This includes first rotation .. maybe not needed?
+        for fchange_idx, nvis_f in zip(filter_changes, nvis_per_filter):
+            rot_range = self.rot_range - self.per_visit_rot * nvis_f
+            # At the filter change spot, update to random offset
+            offsets[fchange_idx] = rng.random() * rot_range + self.min_rot
+            # After the filter change point, add incremental rotation
+            # (we'll wipe this when we get to next fchange_idx)
+            offsets[fchange_idx:] += self.per_visit_rot * np.arange(len(filter_list) - fchange_idx)
 
         return offsets
 
