@@ -13,7 +13,11 @@ from rubin_scheduler.utils import (
 
 from .jerk import jerk_time
 
-__all__ = ("KinemModel",)
+__all__ = (
+    "tma_movement",
+    "rotator_movement",
+    "KinemModel",
+)
 two_pi = 2.0 * np.pi
 
 
