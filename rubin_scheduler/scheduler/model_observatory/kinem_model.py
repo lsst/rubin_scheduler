@@ -76,7 +76,8 @@ def rotator_movement(percent=100):
         A dictionary which can be passed as kwargs to
         KinematicModel.setup_camera(**rot).
     """
-    # Kevin and Brian say these can run 100% and are independent of TMA movement
+    # Kevin and Brian say these can run 100%
+    # and are independent of TMA movement
     if percent > 125:
         percent = 125
         print("Cannot exceed 125 percent, by requirements.")
