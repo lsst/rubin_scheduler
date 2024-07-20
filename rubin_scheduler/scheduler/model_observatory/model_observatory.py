@@ -345,7 +345,7 @@ class ModelObservatory:
         # Clouds. XXX--just the raw value
         self.conditions.bulk_cloud = self.cloud_data(current_time)
 
-        # use conditions object itself to get aprox altitude of each
+        # use conditions object itself to get approx altitude of each
         # healpx
         alts = self.conditions.alt
         azs = self.conditions.az
@@ -436,8 +436,10 @@ class ModelObservatory:
         self.conditions.mjd_start = self.mjd_start
 
         # Telescope limits
-        self.conditions.tel_az_limits = self.observatory.az_limits
-        self.conditions.tel_alt_limits = self.observatory.alt_limits
+        self.conditions.tel_az_min = self.observatory.telaz_minpos_rad
+        self.conditions.tel_az_max = self.observatory.telaz_maxpos_rad
+        self.conditions.tel_alt_min = self.observatory.telalt_minpos_rad
+        self.conditions.tel_alt_max = self.observatory.telalt_maxpos_rad
 
         # Planet positions from almanac
         self.conditions.planet_positions = self.almanac.get_planet_positions(self.mjd)

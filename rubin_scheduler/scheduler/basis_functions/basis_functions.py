@@ -1393,8 +1393,13 @@ class SlewtimeBasisFunction(BaseBasisFunction):
     def _calc_value(self, conditions, indx=None):
         # If we are in a different filter, the
         # FilterChangeBasisFunction will take it
+        # But we can still use the MASK returned by
+        # the slewtime map to remove inaccessible parts of the sky
         if conditions.current_filter != self.filtername:
-            result = 0
+            if np.size(conditions.slewtime) > 1:
+                result = np.where(np.isfinite(conditions.slewtime), 0, np.nan)
+            else:
+                result = 0
         else:
             # Need to make sure smaller slewtime is larger reward.
             if np.size(conditions.slewtime) > 1:

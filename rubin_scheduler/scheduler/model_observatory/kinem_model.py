@@ -7,7 +7,7 @@ from rubin_scheduler.utils import (
     Site,
     _approx_altaz2pa,
     _approx_ra_dec2_alt_az,
-    approx_alt_az2_ra_dec,
+    _approx_alt_az2_ra_dec,
     rotation_converter,
 )
 
@@ -76,7 +76,8 @@ def rotator_movement(percent=100):
         A dictionary which can be passed as kwargs to
         KinematicModel.setup_camera(**rot).
     """
-    # Kevin and Brian say these can run 100%, are independent of TMA movement
+    # Kevin and Brian say these can run 100%
+    # and are independent of TMA movement
     if percent > 125:
         percent = 125
         print("Cannot exceed 125 percent, by requirements.")
@@ -124,7 +125,6 @@ class KinemModel:
     ----
     Note there are additional parameters in the methods setup_camera,
     setup_dome, setup_telescope, and setup_optics.
-    Just breaking it up a bit to make it more readable.
     """
 
     def __init__(
@@ -181,7 +181,8 @@ class KinemModel:
         shutter_2motion_min_time=15.0,
         jerk=4.0,
     ):
-        """
+        """Configure the camera.
+
         Parameters
         ----------
         readtime : `float`
@@ -236,7 +237,7 @@ class KinemModel:
         azimuth_freerange=4.0,
         settle_time=1.0,
     ):
-        """Parameters to define the DOME movement.
+        """Configure the dome.
 
         Parameters
         ----------
@@ -284,37 +285,45 @@ class KinemModel:
         azimuth_accel=7.0,
         azimuth_jerk=40.0,
         settle_time=3.0,
-        az_limits=None,
-        alt_limits=None,
     ):
-        """Parameters to define the TELESCOPE movement and position.
+        """Configure the telescope (TMA) movement and position.
 
         Parameters
         ----------
         altitude_minpos : `float`
-            Minimum altitude for the telescope (degrees)
+            Minimum altitude for the telescope (degrees).
         altitude_maxpos : `float`
-            Maximum altitude for the telescope (degrees)
+            Maximum altitude for the telescope (degrees).
+            Maximum position of 86.5 is limited due to slew
+            requirements near the zenith with an alt-az mount.
         azimuth_minpos : `float`
-            Minimum azimuth position (degrees)
+            Minimum azimuth position (degrees).
+            Note this value is related to cumulative azimuth range,
+            for cable wrap.
         azimuth_maxpos : `float`
-            Maximum azimuth position (degrees)
+            Maximum azimuth position (degrees).
+            Note this value is related to cumulative azimuth range,
+            for cable wrap. Defaults -270 and 270 include 0-360
+            for all-sky azimuth positions, reachable via multiple
+            routes.
         altitude_maxspeed : `float`
             Maximum speed for altitude movement (degrees/second)
         altitude_accel : `float`
             Maximum acceleration for altitude movement (degrees/second**2)
         altitude_jerk : `float`
             Jerk for altitude movement (degrees/second**2). None will
-            treat jerk as infinite. Defualt 20.
+            treat jerk as infinite. Default 20.
         azimuth_maxspeed : `float`
             Maximum speed for azimuth movement (degrees/second)
         azimuth_accel : `float`
             Maximum acceleration for azimuth movement (degrees/second**2)
         azimuth_jerk : `float`
             Jerk for azimuth movement (degrees/second**2). None will
-            treat jerk as infinite. Defualt 40.
+            treat jerk as infinite. Default 40.
         settle_time : `float`
             Settle time required for telescope after movement (seconds)
+            See also `tma_movement` for definitions for the speed,
+            acceleration and jerk.
         """
         self.telalt_minpos_rad = np.radians(altitude_minpos)
         self.telalt_maxpos_rad = np.radians(altitude_maxpos)
@@ -327,17 +336,10 @@ class KinemModel:
         self.telaz_accel_rad = np.radians(azimuth_accel)
         self.telaz_jerk_rad = np.radians(azimuth_jerk) if azimuth_jerk is not None else None
         self.mount_settletime = settle_time
-        if alt_limits is None:
-            self.alt_limits = [[self.telalt_minpos_rad, self.telalt_maxpos_rad]]
-        else:
-            self.alt_limits = np.radians(alt_limits)
-        if az_limits is None:
-            self.az_limits = [[0, 2.0 * np.pi]]
-        else:
-            self.az_limits = np.radians(az_limits)
 
     def setup_optics(self, ol_slope=1.0 / 3.5, cl_delay=[0.0, 36.0], cl_altlimit=[0.0, 9.0, 90.0]):
-        """
+        """Configure parameters for the optics closed and open loops.
+
         Parameters
         ----------
         ol_slope : `float` (1.0/3.5)
@@ -440,11 +442,14 @@ class KinemModel:
             The desired rot_sky_pos(s) (radians).
             Angle between up on the chip and North.
             Note, it is possible to set a rot_sky_pos outside the allowed
-            camera rotator range, in which case the slewtime will be np.inf.
+            camera rotator range, in which case the slewtime will be masked.
             If both rot_sky_pos and rot_tel_pos are set,
             rot_tel_pos will be used.
         rot_tel_pos : `np.ndarray`
             The desired rot_tel_pos(s) (radians).
+            This overrides rot_sky_pos, if set.
+            If neither rot_sky_pos nor rot_tel_pos are set, no rotation
+            time is added (equivalent to using current rot_tel_pos).
         filtername : `str`
             The filter(s) of the desired observations.
             Set to None to compute only telescope and dome motion times.
@@ -483,24 +488,29 @@ class KinemModel:
         elif filtername not in self.mounted_filters:
             return np.nan
 
-        # Don't trust folks to do pa calculation correctly, if both
-        # rotations set, rot_sky_pos wins
-        if (rot_tel_pos is not None) & (rot_sky_pos is not None):
-            if np.isfinite(rot_tel_pos):
-                rot_sky_pos = None
-            else:
-                rot_tel_pos = None
-
-        # alt,az not provided, calculate from RA,Dec
+        # if alt,az not provided, then calculate from RA,Dec
         if alt_rad is None:
             alt_rad, az_rad, pa = self.radec2altaz(ra_rad, dec_rad, mjd)
         else:
             pa = _approx_altaz2pa(alt_rad, az_rad, self.location.lat_rad)
             if update_tracking:
-                ra_rad, dec_rad = approx_alt_az2_ra_dec(
+                ra_rad, dec_rad = _approx_alt_az2_ra_dec(
                     alt_rad, az_rad, self.location.lat_rad, self.location.lon_rad, mjd
                 )
 
+        # If either rot_tel_pos or rot_sky_pos are set, we will
+        # calculate slewtime with rotator movement.
+        # Setting rot_tel_pos allows any slew position on-sky.
+        # Setting rot_sky_pos can restrict slew range on-sky
+        # as some rot_tel_pos values that result will be out of bounds.
+        # Use rot_tel_pos first if available, to override rot_sky_pos.
+        if (rot_tel_pos is not None) & (rot_sky_pos is not None):
+            if np.isfinite(rot_tel_pos):
+                rot_sky_pos = self.rc._rottelpos2rotskypos(rot_tel_pos, pa)
+            else:
+                rot_tel_pos = self.rc._rotskypos2rottelpos(rot_sky_pos, pa)
+
+        # Find the current location of the telescope.
         if starting_alt_rad is None:
             if self.parked:
                 starting_alt_rad = self.park_alt_rad
@@ -510,34 +520,58 @@ class KinemModel:
                     self.current_ra_rad, self.current_dec_rad, mjd
                 )
 
+        # Now calculate how far we need to move,
+        # in altitude, azimuth, and camera rotator (if applicable).
+        # Delta Altitude
         delta_alt = np.abs(alt_rad - starting_alt_rad)
+        # Delta Azimuth - there are two different 'directions'
+        # possible to travel for azimuth. First calculate the shortest.
         delta_az_short = smallest_signed_angle(starting_az_rad, az_rad)
-        delta_az_long = delta_az_short - two_pi
-        daslz = np.where(delta_az_short < 0)[0]
-        delta_az_long[daslz] = two_pi + delta_az_short[daslz]
-        # So, for every position, we can get there by slewing long or
-        # short way
-        cummulative_az_short = delta_az_short + self.cumulative_azimuth_rad
-        oob = np.where(
-            (cummulative_az_short < self.telaz_minpos_rad) | (cummulative_az_short > self.telaz_maxpos_rad)
-        )[0]
-        # Set out of bounds azimuths to infinite distance
-        delta_az_short[oob] = np.inf
-        cummulative_az_long = delta_az_long + self.cumulative_azimuth_rad
-        oob = np.where(
-            (cummulative_az_long < self.telaz_minpos_rad) | (cummulative_az_long > self.telaz_maxpos_rad)
-        )[0]
-        delta_az_long[oob] = np.inf
-
-        # Find minimum azimuth slew out of long/short direction (use
-        # absolute, because these can be negative)
-        # Note that with an impaired telescope with az range<180,
-        # infinite slewtimes can propagate
-        delta_aztel = np.where(
-            np.abs(delta_az_short) < np.abs(delta_az_long),
-            delta_az_short,
-            delta_az_long,
-        )
+        # And then calculate the "long way around"
+        delta_az_long = np.where(delta_az_short < 0, two_pi + delta_az_short, delta_az_short - two_pi)
+        # Slew can go long or short direction, but azimuth range
+        # could limit which is possible.
+        # e.g. 70 degrees reached by going the long way around from 0 means
+        # the cumulative azimuth is 290, but if we went the short way it would
+        # be 70 .. actual 'azimuth' is still 70. It also matters about
+        # which direction previous slews went (imagine a previous slew to 180).
+        # First evaluate if azimuth range is > 360 degrees --
+        if np.abs(self.telaz_maxpos_rad - self.telaz_minpos_rad) >= two_pi:
+            # Can spin past 360 degrees, track cumulative azimuth
+            # Note that minpos will be less than maxpos always in this case.
+            cummulative_az_short = delta_az_short + self.cumulative_azimuth_rad
+            out_of_bounds = np.where(
+                (cummulative_az_short < self.telaz_minpos_rad)
+                | (cummulative_az_short > self.telaz_maxpos_rad)
+            )[0]
+            # Set short direction out of bounds azimuths to infinite distance.
+            delta_az_short[out_of_bounds] = np.inf
+            cummulative_az_long = delta_az_long + self.cumulative_azimuth_rad
+            out_of_bounds = np.where(
+                (cummulative_az_long < self.telaz_minpos_rad) | (cummulative_az_long > self.telaz_maxpos_rad)
+            )[0]
+            # Set long direction out of bounds azimuths to infinite distance
+            delta_az_long[out_of_bounds] = np.inf
+            # Now pick the shortest allowable direction
+            # (use absolute value of each az, because values can be negative)
+            delta_aztel = np.where(
+                np.abs(delta_az_short) < np.abs(delta_az_long),
+                delta_az_short,
+                delta_az_long,
+            )
+            az_flag = "delta"
+        # Now evaluate the options if we have an impaired telescope with
+        # azimuth range < 360 degrees.
+        else:
+            # Note that minpos will be the starting angle, but
+            # depending on cw/ccw - maxpos might be < minpos.
+            az_range = (self.telaz_maxpos_rad - self.telaz_minpos_rad) % (two_pi)
+            out_of_bounds = np.where((az_rad - self.telaz_minpos_rad) % (two_pi) > az_range)[0]
+            d1 = (az_rad - self.telaz_minpos_rad) % (two_pi)
+            d2 = (starting_az_rad - self.telaz_minpos_rad) % (two_pi)
+            delta_aztel = d2 - d1
+            delta_aztel[out_of_bounds] = np.nan
+            az_flag = "restricted"
 
         # Calculate how long the telescope will take to slew to this
         # position.
@@ -619,6 +653,7 @@ class KinemModel:
                 dom_az_slew_time,
             )
             tot_dom_time = np.maximum(dom_alt_slew_time, dom_az_slew_time)
+
         # Find the max of the above for slew time.
         slew_time = np.maximum(tot_tel_time, tot_dom_time)
         # include filter change time if necessary. Assume no filter
@@ -636,18 +671,19 @@ class KinemModel:
         # Mask min/max altitude limits so slewtime = np.nan
         outside_limits = np.where((alt_rad > self.telalt_maxpos_rad) | (alt_rad < self.telalt_minpos_rad))[0]
         slew_time[outside_limits] = np.nan
+        # Azimuth limits already masked through cumulative azimuth
+        # calculation above (although it is inf, not nan, so let's swap).
+        slew_time = np.where(np.isfinite(slew_time), slew_time, np.nan)
 
         # If we want to include the camera rotation time
-        if (rot_sky_pos is not None) | (rot_tel_pos is not None):
-            if rot_tel_pos is None:
-                # This is now between -pi and pi
-                rot_tel_pos = self.rc._rotskypos2rottelpos(rot_sky_pos, pa)
-            if rot_sky_pos is None:
-                rot_sky_pos = self.rc._rottelpos2rotskypos(rot_tel_pos, pa)
-
-            # Is the new rot_tel_pos reachable? If not return NaN
-            if (rot_tel_pos < self.telrot_minpos_rad) | (rot_tel_pos > self.telrot_maxpos_rad):
-                return np.nan
+        # We will have already set rot_tel_pos above, if either
+        # rot_sky_pos or rot_tel_pos is set.
+        if rot_tel_pos is not None:
+            # rot_tel_pos will be
+            outside_limits = np.where(
+                (rot_tel_pos < self.telrot_minpos_rad) | (rot_tel_pos > self.telrot_maxpos_rad)
+            )
+            slew_time[outside_limits] = np.nan
             # If there was no kwarg for starting rotator position
             if starting_rot_tel_pos_rad is None:
                 # If there is no current rot_sky_pos, we were parked
@@ -667,9 +703,13 @@ class KinemModel:
             )
             slew_time = np.maximum(slew_time, rotator_time)
 
+            # Recreate how this happened to work previously with single targets
+            if len(slew_time) == 1:
+                slew_time = slew_time[0]
+
         # Update the internal attributes to note that we are now pointing
         # and tracking at the requested RA,Dec,rot_sky_pos
-        if update_tracking:
+        if update_tracking and np.isfinite(slew_time):
             self.current_ra_rad = ra_rad
             self.current_dec_rad = dec_rad
             self.current_rot_sky_pos_rad = rot_sky_pos
@@ -680,7 +720,10 @@ class KinemModel:
             self.last_alt_rad = alt_rad
             self.last_pa_rad = pa
             # Track the cumulative azimuth
-            self.cumulative_azimuth_rad += delta_aztel
+            if az_flag == "restricted":
+                self.cumulative_azimuth_rad = az_rad
+            else:
+                self.cumulative_azimuth_rad += delta_aztel
             self.current_filter = filtername
             self.last_mjd = mjd
 

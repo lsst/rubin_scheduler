@@ -212,15 +212,17 @@ class ScriptedSurvey(BaseSurvey):
 
         # Also check the alt,az limits given by the conditions object
         count = in_range * 0
-        for limits in conditions.tel_alt_limits:
-            ir = np.where((alt[in_range] >= np.min(limits)) & (alt[in_range] <= np.max(limits)))[0]
-            count[ir] += 1
+        ir = np.where((alt[in_range] >= conditions.tel_az_min) & (alt[in_range] <= conditions.tel_az_max))[0]
+        count[ir] += 1
         good = np.where(count > 0)[0]
         in_range = in_range[good]
 
         count = in_range * 0
-        for limits in conditions.tel_az_limits:
-            ir = np.where((az[in_range] >= np.min(limits)) & (az[in_range] <= np.max(limits)))[0]
+        if (conditions.tel_az_max - conditions.tel_az_min) >= (2 * np.pi):
+            count += 1
+        else:
+            az_range = (conditions.tel_az_max - conditions.tel_az_min) % (2 * np.pi)
+            ir = np.where((az[in_range] - conditions.tel_az_min) % (2 * np.pi) <= az_range)[0]
             count[ir] += 1
         good = np.where(count > 0)[0]
         in_range = in_range[good]
