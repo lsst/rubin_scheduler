@@ -463,7 +463,7 @@ class CoreScheduler:
         if len(self.queue) > 0:
             print(
                 pd.concat(pd.DataFrame(q) for q in self.queue)[
-                    ["ID", "flush_by_mjd", "RA", "dec", "filter", "exptime", "note"]
+                    ["ID", "flush_by_mjd", "RA", "dec", "filter", "exptime", "scheduler_note"]
                 ]
                 .set_index("ID")
                 .to_markdown(),
