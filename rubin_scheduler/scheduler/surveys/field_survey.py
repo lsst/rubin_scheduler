@@ -136,7 +136,7 @@ class FieldSurvey(BaseSurvey):
                     obs["dec"] = self.dec
                     obs["nexp"] = nexps[filtername]
                     obs["target"] = self.survey_name
-                    obs["note"] = self.scheduler_note
+                    obs["scheduler_note"] = self.scheduler_note
                     self.observations.append(obs)
         else:
             self.observations = sequence
@@ -188,12 +188,12 @@ class FieldSurvey(BaseSurvey):
     def add_observation(self, observation, **kwargs):
         """Add observation one at a time."""
         # Check each posible ignore string
-        checks = [io not in str(observation["note"]) for io in self.ignore_obs]
+        checks = [io not in str(observation["scheduler_note"]) for io in self.ignore_obs]
         passed_ignore = all(checks)
         passed_accept = True
         if passed_ignore and self.accept_obs is not None:
             # Check if this observation matches any accept string.
-            checks = [io == str(observation["note"]) for io in self.accept_obs]
+            checks = [io == str(observation["scheduler_note"]) for io in self.accept_obs]
             passed_accept = any(checks)
         # I think here I have to assume observation is an
         # array and not a dict.
@@ -231,17 +231,17 @@ class FieldSurvey(BaseSurvey):
         observations_hpid = observations_hpid_in.copy()
 
         for ig in self.ignore_obs:
-            not_ignore = np.where(np.char.find(observations_array["note"], ig) == -1)[0]
+            not_ignore = np.where(np.char.find(observations_array["scheduler_note"], ig) == -1)[0]
             observations_array = observations_array[not_ignore]
 
-            not_ignore = np.where(np.char.find(observations_hpid["note"], ig) == -1)[0]
+            not_ignore = np.where(np.char.find(observations_hpid["scheduler_note"], ig) == -1)[0]
             observations_hpid = observations_hpid[not_ignore]
 
         for acc in self.accept_obs:
-            accept = np.where(np.char.find(observations_array["note"], acc) == 1)[0]
+            accept = np.where(np.char.find(observations_array["scheduler_note"], acc) == 1)[0]
             observations_array = observations_array[accept]
 
-            accept = np.where(np.char.find(observations_hpid["note"], acc) == 1)[0]
+            accept = np.where(np.char.find(observations_hpid["scheduler_note"], acc) == 1)[0]
             observations_hpid = observations_hpid[accept]
 
         for feature in self.extra_features:

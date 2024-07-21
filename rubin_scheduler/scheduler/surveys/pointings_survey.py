@@ -22,7 +22,8 @@ class PointingsSurvey(BaseSurvey):
     observations : `np.array`
         An array of observations, from e.g.,
         rubin_scheduler.scheduler.utils.empty_observation
-        expect "RA", "dec", and "note" to be filled, other columns ignored.
+        expect "RA", "dec", and "scheduler_note" to be filled,
+        other columns ignored.
     gap_min : `float`
         The minimum gap to force between observations of the same
         spot (minutes)

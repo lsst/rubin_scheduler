@@ -368,7 +368,7 @@ class LastObservation(BaseSurveyFeature):
 
     def __init__(self, survey_name=None):
         # Will this work for observations read from a database???
-        # "note" is definitely NOT guaranteed to match the survey_name.
+        # "scheduler_note" is definitely NOT guaranteed to match survey_name.
         self.survey_name = survey_name
         # Start out with an empty observation
         self.feature = utils.empty_observation()
