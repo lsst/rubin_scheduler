@@ -102,7 +102,7 @@ class TestUtils(unittest.TestCase):
         mjd_start = survey_start_mjd()
         scheduler = example_scheduler(mjd_start=mjd_start)
         km = KinemModel(mjd0=mjd_start)
-        km.setup_telescope(az_limits=[[0.0, 90.0], [270.0, 360.0]])
+        km.setup_telescope(azimuth_minpos=270, azimuth_maxpos=90)
         mo = ModelObservatory(mjd_start=mjd_start, kinem_model=km)
 
         mo, scheduler, observations = sim_runner(
@@ -114,16 +114,22 @@ class TestUtils(unittest.TestCase):
         )
 
         az = np.degrees(observations["az"])
+        forbidden = np.where((az > 90) & (az < 270))[0]
 
         # Let a few pairs try to complete since by default we don't
-        # use an agressive shadow_minutes
-        pad = 2
-        forbidden = np.where((az > 90 + pad) & (az < 270 - pad))[0]
+        # use an aggressive shadow_minutes
+        n_forbidden = np.size(
+            [
+                obs
+                for obs in observations[forbidden]["scheduler_note"]
+                if (("pair_33" not in obs) | (", b" not in obs))
+            ]
+        )
 
         assert forbidden.size == 0
 
         km = KinemModel(mjd0=mjd_start)
-        km.setup_telescope(alt_limits=[[40.0, 70.0]])
+        km.setup_telescope(altitude_minpos=40.0, altitude_maxpos=70.0)
         mo = ModelObservatory(mjd_start=mjd_start, kinem_model=km)
 
         mo, scheduler, observations = sim_runner(
