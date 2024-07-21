@@ -17,7 +17,8 @@ class TestSurveys(unittest.TestCase):
 
         bfs = []
         bfs.append(basis_functions.M5DiffBasisFunction(nside=nside))
-        survey = surveys.FieldSurvey(bfs, RA=90.0, dec=-30.0, reward_value=1)
+
+        survey = surveys.FieldSurvey(bfs, RA=90.0, dec=-30.0)
 
         observatory = ModelObservatory()
 
@@ -29,7 +30,6 @@ class TestSurveys(unittest.TestCase):
         conditions = observatory.return_conditions()
         reward = survey.calc_reward_function(conditions)
         self.assertIsInstance(reward, float)
-        reward_df = survey.reward_changes(conditions)
         reward_df = survey.make_reward_df(conditions)
         self.assertIsInstance(reward_df, pd.DataFrame)
         reward_df = survey.make_reward_df(conditions, accum=False)
@@ -89,14 +89,14 @@ class TestSurveys(unittest.TestCase):
         for i in range(3):
             hpix = rng.integers(npix)
             ra, decl = hp.pix2ang(nside, hpix, lonlat=True)
-            survey = surveys.FieldSurvey(bfs, RA=ra, dec=decl, reward_value=1)
+            survey = surveys.FieldSurvey(bfs, RA=ra, dec=decl)
             reward_df = survey.make_reward_df(conditions)
             for value, max_basis_reward in zip(bf_values[:, hpix], reward_df["max_basis_reward"]):
                 self.assertEqual(max_basis_reward, value)
 
         # One case with an ROI with only an infeasible healpix
         ra, decl = hp.pix2ang(nside, infeasible_hpix, lonlat=True)
-        survey = surveys.FieldSurvey(bfs, RA=ra, dec=decl, reward_value=1)
+        survey = surveys.FieldSurvey(bfs, RA=ra, dec=decl)
         reward_df = survey.make_reward_df(conditions)
         for max_basis_reward in reward_df["max_basis_reward"]:
             self.assertEqual(max_basis_reward, -np.inf)
