@@ -8,6 +8,7 @@ from rubin_scheduler.utils import (
     _approx_altaz2pa,
     _approx_ra_dec2_alt_az,
     bearing,
+    ddf_locations,
     dest_latlon,
     gnomonic_project_tosky,
     rotation_converter,
@@ -82,8 +83,25 @@ class EuclidDitherDetailer(BaseDetailer):
 
     Parameters
     ----------
-    XXX--fill in docstring
-
+    dither_bearing_dir : `list`
+        A list with the dither amplitude in along the axis
+        connecting the two positions. Default [-0.25, 1] in degrees.
+    dither_bearing_perp : `list`
+        A list with the dither amplitude perpendicular to the
+        axis connecting the two positions. Default [-0.25, 1]
+        in degrees.
+    seed : `float`
+        Random number seed to use (42).
+    per_night : `bool`
+        If dither shifts should be per night (default True),
+        or if dithers should be every pointing (False).
+    ra_a, dec_a, ra_b, dec_b : `float`
+        Positions for the two field centers. Default None
+        will load the positions from
+        rubin_scheduler.utils.ddf_locations
+    nnights : `int`
+        Number of nights to generate dither positions for.
+        Default 7305 (20 years).
     """
 
     def __init__(
@@ -92,18 +110,32 @@ class EuclidDitherDetailer(BaseDetailer):
         dither_bearing_perp=[-0.25, 0.25],
         seed=42,
         per_night=True,
-        ra_a=58.90,
-        dec_a=-49.315,
-        ra_b=63.6,
-        dec_b=-47.60,
+        ra_a=None,
+        dec_a=None,
+        ra_b=None,
+        dec_b=None,
         nnights=7305,
     ):
         self.survey_features = {}
 
-        self.ra_a = np.radians(ra_a)
-        self.ra_b = np.radians(ra_b)
-        self.dec_a = np.radians(dec_a)
-        self.dec_b = np.radians(dec_b)
+        default_locations = ddf_locations()
+
+        if ra_a is None:
+            self.ra_a = np.radians(default_locations["EDFS_a"][0])
+        else:
+            self.ra_a = np.radians(ra_a)
+        if ra_b is None:
+            self.ra_b = np.radians(default_locations["EDFS_b"][0])
+        else:
+            self.ra_b = np.radians(ra_b)
+        if dec_a is None:
+            self.dec_a = np.radians(default_locations["EDFS_a"][1])
+        else:
+            self.dec_a = np.radians(dec_a)
+        if dec_b is None:
+            self.dec_b = np.radians(default_locations["EDFS_b"][1])
+        else:
+            self.dec_b = np.radians(dec_b)
 
         self.dither_bearing_dir = np.radians(dither_bearing_dir)
         self.dither_bearing_perp = np.radians(dither_bearing_perp)
@@ -173,7 +205,6 @@ class EuclidDitherDetailer(BaseDetailer):
                     self.shifted_ra_b,
                 )
         else:
-            # XXX--not implamented
             ValueError("not implamented")
 
         return (
