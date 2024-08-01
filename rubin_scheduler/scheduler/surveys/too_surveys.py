@@ -100,7 +100,7 @@ class TooSurvey(BlobSurvey):
         filtername2=None,
         slew_approx=7.5,
         filter_change_approx=140.0,
-        read_approx=2.0,
+        read_approx=2.4,
         exptime=30.0,
         nexp=2,
         ideal_pair_time=22.0,

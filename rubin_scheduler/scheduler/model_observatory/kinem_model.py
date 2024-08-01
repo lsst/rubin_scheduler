@@ -95,7 +95,7 @@ class KinemModel:
 
     def setup_camera(
         self,
-        readtime=2.0,
+        readtime=2.4,
         shuttertime=1.0,
         filter_changetime=120.0,
         fov=3.5,

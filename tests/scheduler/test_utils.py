@@ -114,18 +114,13 @@ class TestUtils(unittest.TestCase):
         )
 
         az = np.degrees(observations["az"])
-        forbidden = np.where((az > 90) & (az < 270))[0]
+
         # Let a few pairs try to complete since by default we don't
         # use an agressive shadow_minutes
-        n_forbidden = np.size(
-            [
-                obs
-                for obs in observations[forbidden]["scheduler_note"]
-                if (("pair_33" not in obs) | (", b" not in obs))
-            ]
-        )
+        pad = 2
+        forbidden = np.where((az > 90 + pad) & (az < 270 - pad))[0]
 
-        assert n_forbidden == 0
+        assert forbidden.size == 0
 
         km = KinemModel(mjd0=mjd_start)
         km.setup_telescope(alt_limits=[[40.0, 70.0]])
