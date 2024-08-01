@@ -7,9 +7,9 @@ from astropy.time import Time
 
 
 def pseudo_parallactic_angle(
-    ra: float,
-    dec: float,
-    mjd: float,
+    ra: float | np.ndarray,
+    dec: float | np.ndarray,
+    mjd: float | np.ndarray,
     lon: float = -70.7494,
     lat: float = -30.2444,
     height: float = 2650.0,

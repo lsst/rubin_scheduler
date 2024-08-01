@@ -1,8 +1,9 @@
 import importlib.util
-import urllib
+import urllib.parse
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import cached_property
+from math import log, sqrt
 
 import numpy as np
 import pandas as pd
@@ -22,31 +23,39 @@ from rubin_scheduler.utils import (
     survey_start_mjd,
 )
 
-SUPPORT_HTTP = (
-    importlib.util.find_spec("lsst")
-    and importlib.util.find_spec("lsst.summit")
-    and importlib.util.find_spec("lsst.summit.utils")
-)
-if SUPPORT_HTTP:
-    from lsst.summit.utils import ConsDbClient
-
-SUPPORT_POSTGRESQL = importlib.util.find_spec("sqlalchemy") and importlib.util.find_spec("psycopg2")
-if SUPPORT_POSTGRESQL:
-    import sqlalchemy
+GAUSSIAN_FWHM_OVER_SIGMA: float = 2.0 * sqrt(2.0 * log(2.0))
 
 
 def query_consdb(query: str, url: str = "postgresql://usdf@usdf-summitdb.slac.stanford.edu:5432/exposurelog"):
     url_scheme: str = urllib.parse.urlparse(url).scheme
     match url_scheme:
         case "postgresql":
-            if not SUPPORT_POSTGRESQL:
+            can_support_postgresql: bool = bool(
+                importlib.util.find_spec("sqlalchemy") and importlib.util.find_spec("psycopg2")
+            )
+            if not can_support_postgresql:
                 raise RuntimeError("Optional dependencies required for postgresql access not installed")
+
+            # import sqlalchemy here rather than at the top to keep mypy happy.
+            # Add the type: ignore so IDEs do not complain when running in an
+            # environment without it.
+            import sqlalchemy # type: ignore
 
             connection = sqlalchemy.create_engine(url)
             query_results: pd.DataFrame = pd.read_sql(query, connection)
         case "http" | "https":
-            if not SUPPORT_HTTP:
+            can_support_http: bool = bool(
+                importlib.util.find_spec("lsst")
+                and importlib.util.find_spec("lsst.summit")
+                and importlib.util.find_spec("lsst.summit.utils")
+            )
+            if not can_support_http:
                 raise RuntimeError("Optional dependencies required for ConsDB access not installed")
+
+            # import ConsDbClient here rather than at the top to satisfy mypy.
+            # Add the type: ignore so IDEs do not complain when running in an
+            # environment without it.
+            from lsst.summit.utils import ConsDbClient # type: ignore
 
             consdb = ConsDbClient(url)
             query_results: pd.DataFrame = consdb.query(query).to_pandas()
@@ -68,22 +77,24 @@ class ConsDBVisits(ABC):
     day_obs: str | int
     url: str = "postgresql://usdf@usdf-summitdb.slac.stanford.edu:5432/exposurelog"
 
-    @classmethod
     @property
     @abstractmethod
-    def instrument(cls) -> str:
+    def instrument(self) -> str:
         raise NotImplementedError
 
-    @classmethod
     @property
     @abstractmethod
-    def num_exposures(cls) -> int:
+    def num_exposures(self) -> int:
         raise NotImplementedError
 
-    @classmethod
     @property
     @abstractmethod
-    def telescope(cls) -> str:
+    def telescope(self) -> str:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def site(self):
         raise NotImplementedError
 
     @cached_property
@@ -91,21 +102,25 @@ class ConsDBVisits(ABC):
         return Almanac()
 
     @cached_property
-    @abstractmethod
-    def site(self):
-        raise NotImplementedError
-
-    @cached_property
     def location(self):
         return EarthLocation(lat=self.site.latitude, lon=self.site.longitude, height=self.site.height)
 
     @cached_property
+    def day_obs_time(self) -> Time:
+        time: Time = Time(self.day_obs)
+        return time
+
+    @cached_property
     def day_obs_mjd(self) -> int:
-        return int(Time(self.day_obs).mjd)
+        # make mypy happy
+        assert isinstance(self.day_obs_time.mjd, float)
+        return int(self.day_obs_time.mjd)
 
     @cached_property
     def day_obs_int(self) -> int:
-        return int(Time(self.day_obs_mjd, format="mjd").iso[:10].replace("-", ""))
+        # make mypy happy
+        assert isinstance(self.day_obs_time.iso, str)
+        return int(self.day_obs_time.iso[:10].replace("-", ""))
 
     @cached_property
     def consdb_visits(self) -> pd.DataFrame:
@@ -124,12 +139,11 @@ class ConsDBVisits(ABC):
                 AND ((e.band IS NOT NULL) OR (e.physical_filter IS NOT NULL))
                 AND e.day_obs = {self.day_obs_int}
         """
-        return query_consdb(consdb_visits_query, self.url)  # .set_index("visit_id")
+        return query_consdb(consdb_visits_query, self.url)
 
     @cached_property
     def visit_id(self):
         return self.consdb_visits["visit_id"]
-        #        return self.consdb_visits.index.to_series()
 
     @cached_property
     def ra(self) -> pd.Series:
@@ -213,6 +227,12 @@ class ConsDBVisits(ABC):
     def pseudo_parallactic_angle(self):
         # Following sim_runner
         # Using pseudo_parallactic_angle, see https://smtn-019.lsst.io/v/DM-44258/index.html
+
+        # make mypy happy
+        assert isinstance(self.decl.values, np.ndarray)
+        assert isinstance(self.ra.values, np.ndarray)
+        assert isinstance(self.obs_start_mjd.values, np.ndarray)
+
         pa, alt, az = pseudo_parallactic_angle(
             self.ra.values,
             self.decl.values,
@@ -262,95 +282,41 @@ class ConsDBVisits(ABC):
 
     @cached_property
     def moon_distance(self) -> pd.Series:
+        # make mypy happy
+        assert isinstance(self.decl.values, np.ndarray)
+        assert isinstance(self.ra.values, np.ndarray)
+
+        moon_ra = self.sun_moon_positions["moon_RA"].values
+        moon_decl = self.sun_moon_positions["moon_dec"].values
+        assert isinstance(moon_ra, np.ndarray)
+        assert isinstance(moon_decl, np.ndarray)
+
         moon_distance_rad = _angular_separation(
             np.radians(self.ra.values),
             np.radians(self.decl.values),
-            np.radians(self.sun_moon_positions["moon_RA"].values),
-            np.radians(self.sun_moon_positions["sun_dec"].values),
+            np.radians(moon_ra),
+            np.radians(moon_decl),
         )
         return pd.Series(np.degrees(moon_distance_rad), index=self.consdb_visits.index)
 
     @cached_property
     def solar_elong(self) -> pd.Series:
+        # make mypy happy
+        assert isinstance(self.decl.values, np.ndarray)
+        assert isinstance(self.ra.values, np.ndarray)
+
+        sun_ra = self.sun_moon_positions["sun_RA"].values
+        sun_decl = self.sun_moon_positions["sun_dec"].values
+        assert isinstance(sun_ra, np.ndarray)
+        assert isinstance(sun_decl, np.ndarray)
+
         solar_elong_rad = _angular_separation(
             np.radians(self.ra.values),
             np.radians(self.decl.values),
-            np.radians(self.sun_moon_positions["sun_RA"].values),
-            np.radians(self.sun_moon_positions["sun_dec"].values),
+            np.radians(sun_ra),
+            np.radians(sun_decl),
         )
         return pd.Series(np.degrees(solar_elong_rad), index=self.consdb_visits.index)
-
-    @property
-    def visits(self) -> pd.DataFrame:
-
-        visits: pd.DataFrame = pd.DataFrame(
-            {
-                v: self.consdb_visits[k]
-                for k, v in self.exposure_opsimdb_map.items()
-                if k in self.consdb_visits
-            }
-        )
-
-        self._replace_missing_filters(visits, self.consdb_visits)
-
-        if "visitTime" not in visits.columns:
-            visits["visitTime"] = self._compute_visit_times(self.consdb_visits)
-
-        self._replace_missing_visit_exposure_times(visits, self.consdb_visits)
-
-        if "slewDistance" not in visits.columns:
-            visits["slewDistance"] = self._compute_slew_distance(visits)
-
-        start_times = Time(visits["observationStartMJD"], format="mjd")
-
-        if "observationStartLST" not in visits.columns:
-            visits["observationStartLST"] = self._compute_observation_start_lst(start_times)
-
-        if "cloud" not in visits.columns:
-            visits["cloud"] = self._compute_cloud(visits)
-
-        if "num_exposures" not in visits.columns:
-            visits["numExposures"] = self.num_exposures
-
-        # Locations of sun and moon
-        coord_map = {"alt": "Alt", "az": "Az", "RA": "RA", "dec": "Dec"}
-        sun_moon_positions = self.almanac.get_sun_moon_positions(visits["observationStartMJD"])
-        for body in "moon", "sun":
-            for almanac_coord in coord_map:
-                opsim_coord = coord_map[almanac_coord]
-                opsim_key = f"{body}{opsim_coord}"
-                almanac_key = f"{body}_{almanac_coord}"
-                if opsim_key not in visits.columns:
-                    visits[opsim_key] = np.degrees(sun_moon_positions[almanac_key])
-
-        if "moonPhase" not in visits.columns:
-            visits["moonPhase"] = sun_moon_positions["moon_phase"]
-
-        if "moonDistance" not in visits.columns:
-            visits["moonDistance"] = self._compute_moon_distance(visits)
-
-        if "solarElong" not in visits.columns:
-            visits["solarElong"] = self._compute_solar_elong(visits)
-
-        if "psudoParaAngle" not in visits.columns:
-            visits["psudoParaAngle"] = self._compute_psudo_pa(visits)
-
-        if "paraAngle" not in visits.columns:
-            visits["paraAngle"] = self._compute_pa(visits)
-
-        if "retTolPos" not in visits.columns:
-            visits["rotTelPos"] = self._compute_rot_tel_pos(visits)
-
-        if "night" not in visits.columns:
-            visits["night"] = self._compute_night(self.day_obs_mjd)
-
-        if self.stackers is not None:
-            visit_records: np.recarray = visits.to_records()
-            for stacker in self.stackers:
-                visit_records = stacker.run(visit_records)
-            visits = pd.DataFrame(visit_records)
-
-        return visits
 
     @cached_property
     def opsim(self) -> pd.DataFrame:
@@ -413,12 +379,25 @@ class ConsDBVisits(ABC):
 
 
 class ComcamSimConsDBVisits(ConsDBVisits):
-    instrument: str = "lsstcomcamsim"
-    num_exposures: int = 1
-    telescope: str = "rubin"
 
-    @cached_property
-    @abstractmethod
+    # Set "constant" properties using cached_property rather
+    # than actual attributes, because abstract "members" can only be declared
+    # as such using properties, and overriding a property with an actual
+    # attribute confuses type checkers.
+
+    @property
+    def instrument(self) -> str:
+        return "lsstcomcamsim"
+
+    @property
+    def num_exposures(self) -> int:
+        return 1
+
+    @property
+    def telescope(self) -> str:
+        return "rubin"
+
+    @property
     def site(self):
         return Site("LSST")
 
