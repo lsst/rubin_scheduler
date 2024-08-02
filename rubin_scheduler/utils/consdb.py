@@ -576,7 +576,7 @@ class ComcamSimConsDBVisits(ConsDBVisits):
         else:
             # From SMTN-002
             ref_mags = {"u": 23.70, "g": 24.97, "r": 24.52, "i": 24.13, "z": 23.56, "y": 22.55}
-            eff_time = self.band.map(ref_mags) + 1.25 * np.log10(self.consdb_visits["eff_time_median"])
+            eff_time = self.band.map(ref_mags) + 1.25 * np.log10(self.consdb_visits["eff_time_median"]/30)
 
         return eff_time
 
