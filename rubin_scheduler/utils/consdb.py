@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import cache, cached_property
 from math import log, sqrt
+from warnings import warn
 
 import healpy as hp
 import numpy as np
@@ -175,31 +176,24 @@ class ConsDBVisits(ABC):
         return self.consdb_visits["obs_start_mjd"]
 
     @cached_property
-    def exp_time(self) -> pd.Series:
-        return self.consdb_visits["exp_time"]
+    def shut_time(self) -> pd.Series:
+        return self.consdb_visits["shut_time"]
+
+    @cached_property
+    def obs_midpt_mjd(self) -> pd.Series:
+        return self.consdb_visits["obs_midpt_mjd"]
 
     @cached_property
     def sky_rotation(self) -> pd.Series:
         return self.consdb_visits["sky_rotation"]
 
     @cached_property
+    def target_name(self) -> pd.Series:
+        return self.consdb_visits["target_name"]
+
+    @cached_property
     def airmass(self) -> pd.Series:
-        consdb_value_dtype = self.consdb_visits["airmass"].dtype
-
-        # Avoid confusing mypy:
-        assert isinstance(consdb_value_dtype, np.dtype)
-
-        if np.issubdtype(consdb_value_dtype, np.floating):
-            airmass = self.consdb_visits["airmass"]
-        else:
-            # Calculate airmass using Kirstensen (1998), good to the horizon.
-            # Models the atmosphere with a uniform spherical shell with a
-            # height 1/470 of the radius of the earth.
-            # https://doi.org/10.1002/asna.2123190313
-            a_cos_zd = 470 * np.cos(np.radians(self.zd))
-            airmass = pd.Series(np.sqrt(a_cos_zd**2 + 941) - a_cos_zd, index=self.consdb_visits.index)
-
-        return airmass
+        return self.consdb_visits["airmass"]
 
     @cached_property
     def band(self) -> pd.Series:
@@ -207,11 +201,11 @@ class ConsDBVisits(ABC):
 
     @cached_property
     def azimuth(self) -> pd.Series:
-        return self.consdb_visits["azimuth_start"]
+        return self.consdb_visits["azimuth"]
 
     @cached_property
     def altitude(self) -> pd.Series:
-        return self.consdb_visits["altitude_start"]
+        return self.consdb_visits["altitude"]
 
     @cached_property
     def zd(self) -> pd.Series:
@@ -302,7 +296,7 @@ class ConsDBVisits(ABC):
     @cached_property
     def sun_moon_positions(self) -> pd.DataFrame:
         sun_moon = pd.DataFrame(
-            self.almanac.get_sun_moon_positions(self.obs_start_mjd.values), index=self.consdb_visits.index
+            self.almanac.get_sun_moon_positions(self.obs_midpt_mjd.values), index=self.consdb_visits.index
         )
 
         # Convert to degrees, because everything else is in degrees
@@ -357,7 +351,7 @@ class ConsDBVisits(ABC):
 
     @cached_property
     def instrumental_zeropoint_e(self) -> pd.Series:
-        return self.band.apply(self.instrumental_zeropoint_for_band) + 2.5 * np.log10(self.exp_time)
+        return self.band.apply(self.instrumental_zeropoint_for_band) + 2.5 * np.log10(self.shut_time)
 
     @cached_property
     def sky_e_per_pixel(self) -> pd.Series:
@@ -397,6 +391,10 @@ class ConsDBVisits(ABC):
         return self.consdb_visits["seeing_zenith_500nm_median"] * GAUSSIAN_FWHM_OVER_SIGMA * self.pixel_scale
 
     @cached_property
+    def eff_time_m5(self) -> pd.Series:
+        return self.consdb_visits["eff_time_m5"]
+
+    @cached_property
     def opsim(self) -> pd.DataFrame:
 
         opsim_df = pd.DataFrame(
@@ -406,7 +404,7 @@ class ConsDBVisits(ABC):
                 "fieldDec": self.decl,
                 "observationStartMJD": self.obs_start_mjd,
                 "flush_by_mjd": np.nan,
-                "visitExposureTime": self.exp_time,
+                "visitExposureTime": self.shut_time,
                 "filter": self.band,
                 "rotSkyPos": self.sky_rotation,
                 "rotSkyPos_desired": np.nan,
@@ -420,7 +418,7 @@ class ConsDBVisits(ABC):
                 "slewTime": np.nan,
                 "visitTime": self.visit_time,
                 "slewDistance": self.slew_distance,
-                "fiveSigmaDepth": None,
+                "fiveSigmaDepth": self.eff_time_m5,
                 "altitude": self.altitude,
                 "azimuth": self.azimuth,
                 "paraAngle": self.parallactic_angle,
@@ -429,7 +427,7 @@ class ConsDBVisits(ABC):
                 "moonAlt": self.sun_moon_positions["moon_alt"],
                 "sunAlt": self.sun_moon_positions["sun_alt"],
                 "note": self.note,
-                "target": None,
+                "target": self.target_name,
                 "fieldId": None,
                 "proposalId": None,
                 "block_id": None,
@@ -458,6 +456,23 @@ class ConsDBVisits(ABC):
 
 
 class ComcamSimConsDBVisits(ConsDBVisits):
+
+    def _have_numeric_values(self, column) -> bool:
+        if column not in self.consdb_visits.columns:
+            return False
+
+        # Called to see if we need to guess values because the
+        # consdb doesn't yet fill in what we need
+        value_dtype = self.consdb_visits[column].dtype
+
+        # Needed to make mypy happy
+        assert isinstance(value_dtype, np.dtype)
+
+        have_values = isinstance(value_dtype, np.number)
+        if not have_values:
+            warn(f"Consdb does not have values for {column}, guessing values instead")
+
+        return isinstance(value_dtype, np.number)
 
     # Set "constant" properties using cached_property rather
     # than actual attributes, because abstract "members" can only be declared
@@ -492,18 +507,78 @@ class ComcamSimConsDBVisits(ConsDBVisits):
         return Site("LSST")
 
     @cached_property
-    def exp_time(self) -> pd.Series:
-        consdb_value_dtype = self.consdb_visits["exp_time"].dtype
-
-        # Avoid confusing mypy:
-        assert isinstance(consdb_value_dtype, np.dtype)
-
-        if np.issubdtype(consdb_value_dtype, np.number):
-            exp_time = self.consdb_visits["exp_time"]
+    def azimuth(self) -> pd.Series:
+        if self._have_numeric_values("azimuth"):
+            azimuth = super().azimuth
+        elif self._have_numeric_values("azimuth_start"):
+            if self._have_numeric_values("azimuth_end"):
+                azimuth = (self.consdb_visits["azimuth_start"] + self.consdb_visits["azimuth_end"]) / 2
+            else:
+                azimuth = self.consdb_visits["azimuth_start"]
         else:
-            exp_time = pd.Series(30, index=self.consdb_visits.index)
+            azimuth = pd.Series(np.nan, index=self.consdb_visits.index)
 
-        return exp_time
+        return azimuth
+
+    @cached_property
+    def altitude(self) -> pd.Series:
+        if self._have_numeric_values("altitude"):
+            altitude = super().altitude
+        elif self._have_numeric_values("altitude_start"):
+            if self._have_numeric_values("altitude_end"):
+                altitude = (self.consdb_visits["altitude_start"] + self.consdb_visits["altitude_end"]) / 2
+            else:
+                altitude = self.consdb_visits["altitude_start"]
+        else:
+            altitude = pd.Series(np.nan, index=self.consdb_visits.index)
+
+        return altitude
+
+    @cached_property
+    def airmass(self) -> pd.Series:
+        if self._have_numeric_values("airmass"):
+            airmass = super().airmass
+        else:
+            # Calculate airmass using Cassini's model.
+            # Models the atmosphere with a uniform spherical shell with a
+            # height 1/470 of the radius of the earth.
+            # Described in Kirstensen https://doi.org/10.1002/asna.2123190313
+            # and https://doi.org/10.2172/1574836
+            a_cos_zd = 470 * np.cos(np.radians(self.zd))
+            airmass = pd.Series(np.sqrt(a_cos_zd**2 + 941) - a_cos_zd, index=self.consdb_visits.index)
+
+        return airmass
+
+    @cached_property
+    def shut_time(self) -> pd.Series:
+        if self._have_numeric_values("shut_time"):
+            shut_time = super().shut_time
+        else:
+            shut_time = pd.Series(SysEngVals().exptime, index=self.consdb_visits.index)
+
+        return shut_time
+
+    @cached_property
+    def obs_midpt_mjd(self) -> pd.Series:
+        if self._have_numeric_values("obs_midpt_mjd"):
+            mjd = super().obs_midpt_mjd
+        elif self._have_numeric_values("obs_end_mjd"):
+            mjd = (self.obs_start_mjd + self.consdb_visits["obs_end_mjd"]) / 2
+        else:
+            mjd = self.obs_start_mjd + (0.5 * self.shut_time) / 86400
+
+        return mjd
+
+    @cached_property
+    def eff_time_m5(self):
+        if self._have_numeric_values("eff_time_m5"):
+            eff_time = super().eff_time_m5
+        else:
+            # From SMTN-002
+            ref_mags = {"u": 23.70, "g": 24.97, "r": 24.52, "i": 24.13, "z": 23.56, "y": 22.55}
+            eff_time = self.band.map(ref_mags) + 1.25 * np.log10(self.consdb_visits["eff_time_median"])
+
+        return eff_time
 
     @cached_property
     def band(self) -> pd.Series:
