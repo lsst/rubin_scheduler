@@ -2,9 +2,10 @@ import importlib.util
 import urllib.parse
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from functools import cached_property
+from functools import cache, cached_property
 from math import log, sqrt
 
+import healpy as hp
 import numpy as np
 import pandas as pd
 
@@ -13,9 +14,11 @@ from astropy.coordinates import angular_separation
 from astropy.coordinates.earth import EarthLocation
 from astropy.time import Time
 
-from rubin_scheduler.site_models import Almanac
+from rubin_scheduler.site_models import Almanac, SeeingModel
+from rubin_scheduler.skybrightness_pre import SkyModelPre
 from rubin_scheduler.utils import (
     Site,
+    SysEngVals,
     _angular_separation,
     _approx_altaz2pa,
     pseudo_parallactic_angle,
@@ -39,7 +42,7 @@ def query_consdb(query: str, url: str = "postgresql://usdf@usdf-summitdb.slac.st
             # import sqlalchemy here rather than at the top to keep mypy happy.
             # Add the type: ignore so IDEs do not complain when running in an
             # environment without it.
-            import sqlalchemy # type: ignore
+            import sqlalchemy  # type: ignore
 
             connection = sqlalchemy.create_engine(url)
             query_results: pd.DataFrame = pd.read_sql(query, connection)
@@ -55,7 +58,7 @@ def query_consdb(query: str, url: str = "postgresql://usdf@usdf-summitdb.slac.st
             # import ConsDbClient here rather than at the top to satisfy mypy.
             # Add the type: ignore so IDEs do not complain when running in an
             # environment without it.
-            from lsst.summit.utils import ConsDbClient # type: ignore
+            from lsst.summit.utils import ConsDbClient  # type: ignore
 
             consdb = ConsDbClient(url)
             query_results: pd.DataFrame = consdb.query(query).to_pandas()
@@ -90,6 +93,20 @@ class ConsDBVisits(ABC):
     @property
     @abstractmethod
     def telescope(self) -> str:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def gain(self) -> pd.Series:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def pixel_scale(self) -> pd.Series:
+        raise NotImplementedError
+
+    @abstractmethod
+    def instrumental_zeropoint_for_band(self, band: str) -> float:
         raise NotImplementedError
 
     @property
@@ -167,14 +184,26 @@ class ConsDBVisits(ABC):
 
     @cached_property
     def airmass(self) -> pd.Series:
-        return self.consdb_visits["airmass"]
+        consdb_value_dtype = self.consdb_visits["airmass"].dtype
+
+        # Avoid confusing mypy:
+        assert isinstance(consdb_value_dtype, np.dtype)
+
+        if np.issubdtype(consdb_value_dtype, np.floating):
+            airmass = self.consdb_visits["airmass"]
+        else:
+            # Calculate airmass using Kirstensen (1998), good to the horizon.
+            # Models the atmosphere with a uniform spherical shell with a
+            # height 1/470 of the radius of the earth.
+            # https://doi.org/10.1002/asna.2123190313
+            a_cos_zd = 470 * np.cos(np.radians(self.zd))
+            airmass = pd.Series(np.sqrt(a_cos_zd**2 + 941) - a_cos_zd, index=self.consdb_visits.index)
+
+        return airmass
 
     @cached_property
-    def inferred_band(self) -> pd.Series:
-        band = self.consdb_visits["band"].copy()
-        missing_band: pd.Series[bool] = band.isna()
-        band[missing_band] = self.consdb_visits.loc[missing_band, "physical_filter"].str.get(0)
-        return band
+    def band(self) -> pd.Series:
+        return self.consdb_visits["band"]
 
     @cached_property
     def azimuth(self) -> pd.Series:
@@ -183,6 +212,10 @@ class ConsDBVisits(ABC):
     @cached_property
     def altitude(self) -> pd.Series:
         return self.consdb_visits["altitude_start"]
+
+    @cached_property
+    def zd(self) -> pd.Series:
+        return 90 - self.altitude
 
     @cached_property
     def note(self) -> pd.Series:
@@ -319,6 +352,51 @@ class ConsDBVisits(ABC):
         return pd.Series(np.degrees(solar_elong_rad), index=self.consdb_visits.index)
 
     @cached_property
+    def zeropoint_e(self) -> pd.Series:
+        return self.consdb_visits["zero_point_median"] + 2.5 * np.log10(self.gain)
+
+    @cached_property
+    def instrumental_zeropoint_e(self) -> pd.Series:
+        return self.band.apply(self.instrumental_zeropoint_for_band) + 2.5 * np.log10(self.exp_time)
+
+    @cached_property
+    def sky_e_per_pixel(self) -> pd.Series:
+        return self.consdb_visits["sky_bg_median"] * self.gain
+
+    @cached_property
+    def sky_mag_per_asec(self) -> pd.Series:
+        return self.instrumental_zeropoint_e - 2.5 * np.log10(self.sky_e_per_pixel / (self.pixel_scale**2))
+
+    @cache
+    def hpix(self, nside) -> pd.Series:
+        return pd.Series(hp.ang2pix(nside, self.ra, self.decl, lonlat=True), index=self.consdb_visits.index)
+
+    @cached_property
+    def pre_sky_mag_per_asec(self) -> pd.Series:
+        sky_model_pre = SkyModelPre(init_load_length=2, load_length=2)
+        sky_model_values = pd.Series(np.nan, dtype=float, index=self.consdb_visits.index)
+
+        for id in sky_model_values.index:
+            mjd = self.obs_start_mjd[id]
+            hpix = self.hpix(sky_model_pre.nside)[id]
+            band = self.band[id]
+            sky_model_values[id] = sky_model_pre.return_mags(mjd, hpix, [band])[band]
+
+        return sky_model_values
+
+    @cached_property
+    def fwhm_eff(self) -> pd.Series:
+        return self.consdb_visits["psf_sigma_median"] * GAUSSIAN_FWHM_OVER_SIGMA * self.pixel_scale
+
+    @cached_property
+    def fwhm_geom(self) -> pd.Series:
+        return SeeingModel.fwhm_eff_to_fwhm_geom(self.fwhm_eff)
+
+    @cached_property
+    def fwhm_500(self) -> pd.Series:
+        return self.consdb_visits["seeing_zenith_500nm_median"] * GAUSSIAN_FWHM_OVER_SIGMA * self.pixel_scale
+
+    @cached_property
     def opsim(self) -> pd.DataFrame:
 
         opsim_df = pd.DataFrame(
@@ -329,15 +407,15 @@ class ConsDBVisits(ABC):
                 "observationStartMJD": self.obs_start_mjd,
                 "flush_by_mjd": np.nan,
                 "visitExposureTime": self.exp_time,
-                "filter": self.inferred_band,
+                "filter": self.band,
                 "rotSkyPos": self.sky_rotation,
                 "rotSkyPos_desired": np.nan,
                 "numExposures": self.num_exposures,
                 "airmass": self.airmass,
-                "seeingFwhm500": None,
-                "seeingFwhmEff": None,
-                "seeingFwhmGeom": None,
-                "skyBrightness": None,
+                "seeingFwhm500": self.fwhm_500,
+                "seeingFwhmEff": self.fwhm_eff,
+                "seeingFwhmGeom": self.fwhm_geom,
+                "skyBrightness": self.sky_mag_per_asec,
                 "night": self.night,
                 "slewTime": np.nan,
                 "visitTime": self.visit_time,
@@ -372,6 +450,7 @@ class ConsDBVisits(ABC):
                 "start_date": self.consdb_visits["obs_start"],
                 "t_eff": self.consdb_visits["eff_time_median"],
                 "seq_num": self.consdb_visits["seq_num"],
+                "skyBrightnessPre": self.pre_sky_mag_per_asec,
             }
         )
 
@@ -398,8 +477,40 @@ class ComcamSimConsDBVisits(ConsDBVisits):
         return "rubin"
 
     @property
+    def gain(self) -> pd.Series:
+        return pd.Series(1.67, index=self.consdb_visits.index)
+
+    @property
+    def pixel_scale(self) -> pd.Series:
+        return pd.Series(0.2, index=self.consdb_visits.index)
+
+    def instrumental_zeropoint_for_band(self, band: str) -> float:
+        return SysEngVals().zp_t[band]
+
+    @property
     def site(self):
         return Site("LSST")
+
+    @cached_property
+    def exp_time(self) -> pd.Series:
+        consdb_value_dtype = self.consdb_visits["exp_time"].dtype
+
+        # Avoid confusing mypy:
+        assert isinstance(consdb_value_dtype, np.dtype)
+
+        if np.issubdtype(consdb_value_dtype, np.number):
+            exp_time = self.consdb_visits["exp_time"]
+        else:
+            exp_time = pd.Series(30, index=self.consdb_visits.index)
+
+        return exp_time
+
+    @cached_property
+    def band(self) -> pd.Series:
+        band = self.consdb_visits["band"].copy()
+        missing_band: pd.Series[bool] = band.isna()
+        band[missing_band] = self.consdb_visits.loc[missing_band, "physical_filter"].str.get(0)
+        return band
 
 
 # Different subclasses of ConsDBOpsimConverter are needed for
