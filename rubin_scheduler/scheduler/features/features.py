@@ -329,6 +329,13 @@ class NObsSurvey(BaseSurveyFeature):
         self.feature = 0
         self.note = note
 
+    def add_observations_array(self, observations_array, observations_hpid):
+        if self.note is None:
+            self.feature += observations_array.size
+        else:
+            count = [self.note in note for note in observations_array["scheduler_note"]]
+            self.feature += np.sum(count)
+
     def add_observation(self, observation, indx=None):
         # Track all observations
         if self.note is None:
@@ -732,12 +739,15 @@ class NObservationsCurrentSeason(BaseSurveyFeature):
             check_hp = np.where(penalty > self.m5_penalty_max, False, check_hp)
 
         # Bin up the observations per hpid and add them to the feature.
-        result, _be, _bn = binned_statistic(
-            observations_hpid["hpid"][check_hp],
-            observations_hpid["hpid"][check_hp],
-            bins=self.bins,
-            statistic=np.size,
-        )
+        if np.sum(observations_hpid["hpid"][check_hp]) > 0:
+            result, _be, _bn = binned_statistic(
+                observations_hpid["hpid"][check_hp],
+                observations_hpid["hpid"][check_hp],
+                bins=self.bins,
+                statistic=np.size,
+            )
+        else:
+            result = 0
         # Add the resulting observations to feature.
         self.feature += result
 
