@@ -590,9 +590,9 @@ class ConsDBVisits(ABC):
             Telescope rotator position (degrees).
         """
         rot_tel_pos = rotation_converter(telescope=self.telescope)._rotskypos2rottelpos(
-            self.sky_rotation, self.pseudo_parallactic_angle
+            np.radians(self.sky_rotation), np.radians(self.pseudo_parallactic_angle)
         )
-        return rot_tel_pos
+        return np.degrees(rot_tel_pos)
 
     @cached_property
     def parallactic_angle(self) -> pd.Series:
