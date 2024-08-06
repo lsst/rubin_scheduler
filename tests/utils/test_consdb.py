@@ -19,4 +19,3 @@ class TestConsdb(unittest.TestCase):
 
         obs: np.recarray = consdb_visits.obs
         schema_converter.obs2opsim(obs)
-

@@ -94,6 +94,7 @@ def query_consdb(query: str, url: str = "postgresql://usdf@usdf-summitdb.slac.st
 # different methods to make it easy to individually override them by
 # instrument.
 
+
 # cached_properties are a way to compute values when and only when needed
 # but these won't update if the date is changed. In my expected use, that's
 # fine; the user should just instantiate another ConsDBVisits instance if
@@ -860,9 +861,9 @@ class ConsDBVisits(ABC):
                 "sunAlt": self.sun_moon_positions["sun_alt"],
                 "note": self.note,
                 "target": self.target_name,
-#                "fieldId": None,
-#                "proposalId": None,
-#                "block_id": None,
+                #                "fieldId": None,
+                #                "proposalId": None,
+                #                "block_id": None,
                 "observationStartLST": self.observation_start_lst,
                 "rotTelPos": self.rot_tel_pos,
                 "rotTelPos_backup": None,
@@ -875,8 +876,8 @@ class ConsDBVisits(ABC):
                 "moonDistance": self.moon_distance,
                 "solarElong": self.solar_elong,
                 "moonPhase": self.sun_moon_positions["moon_phase"],
-#                "cummTelAz": None,
-#                "scripted_id": None,
+                #                "cummTelAz": None,
+                #                "scripted_id": None,
                 "start_date": self.consdb_visits["obs_start"],
                 "t_eff": self.consdb_visits["eff_time_median"],
                 "seq_num": self.consdb_visits["seq_num"],
