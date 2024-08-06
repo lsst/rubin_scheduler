@@ -15,6 +15,7 @@ from astropy.coordinates import angular_separation
 from astropy.coordinates.earth import EarthLocation
 from astropy.time import Time
 
+from rubin_scheduler.scheduler.utils import SchemaConverter
 from rubin_scheduler.site_models import Almanac, SeeingModel
 from rubin_scheduler.skybrightness_pre import SkyModelPre
 from rubin_scheduler.utils import (
@@ -37,7 +38,7 @@ def query_consdb(query: str, url: str = "postgresql://usdf@usdf-summitdb.slac.st
     ----------
     query : `str`
         The SQL query to send to the consdb.
-    url : `str``, optional
+    url : `str`, optional
         The database connection string,
         by default "postgresql://usdf@usdf-summitdb.slac.stanford.edu:5432/exposurelog"
 
@@ -490,13 +491,6 @@ class ConsDBVisits(ABC):
 
         Returns
         -------
-        """Slew distance to reach each visit (degrees).
-
-        Returns
-        -------
-        slew_distance : `pd.Series`
-            Slew distance to reach each visit (degrees).
-        """
         cloud : `pd.Series`
             Fractional cloud cover of the sky for each visit.
         """
@@ -866,9 +860,9 @@ class ConsDBVisits(ABC):
                 "sunAlt": self.sun_moon_positions["sun_alt"],
                 "note": self.note,
                 "target": self.target_name,
-                "fieldId": None,
-                "proposalId": None,
-                "block_id": None,
+#                "fieldId": None,
+#                "proposalId": None,
+#                "block_id": None,
                 "observationStartLST": self.observation_start_lst,
                 "rotTelPos": self.rot_tel_pos,
                 "rotTelPos_backup": None,
@@ -881,8 +875,8 @@ class ConsDBVisits(ABC):
                 "moonDistance": self.moon_distance,
                 "solarElong": self.solar_elong,
                 "moonPhase": self.sun_moon_positions["moon_phase"],
-                "cummTelAz": None,
-                "scripted_id": None,
+#                "cummTelAz": None,
+#                "scripted_id": None,
                 "start_date": self.consdb_visits["obs_start"],
                 "t_eff": self.consdb_visits["eff_time_median"],
                 "seq_num": self.consdb_visits["seq_num"],
