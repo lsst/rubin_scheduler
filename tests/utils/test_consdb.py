@@ -9,6 +9,7 @@ from rubin_scheduler.utils.consdb import ConsDBVisits, load_consdb_visits
 
 class TestConsdb(unittest.TestCase):
 
+    @unittest.skip("avoid requiring access to consdb for tests.")
     def test_consdb_read_visits_quick(self):
         day_obs: str = "2024-06-26"
         consdb_visits: ConsDBVisits = load_consdb_visits("lsstcomcamsim", day_obs)
