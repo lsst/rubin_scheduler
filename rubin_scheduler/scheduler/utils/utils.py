@@ -494,16 +494,20 @@ class SchemaConverter:
         else:
             return df
 
-    def opsim2obs(self, filename):
+    def opsimdf2obs(self, df) -> np.recarray:
         """convert an opsim schema dataframe into an observation array.
+
         Parameters
         ----------
-        filename : `str`
-            Sqlite file containing opsim output observations.
+        df : `pd.DataFrame`
+            Data frame containing opsim output observations.
+
+        Returns
+        -------
+        obs : `np.recarray`
+            Numpy array with OpSim observations.
         """
 
-        con = sqlite3.connect(filename)
-        df = pd.read_sql("select * from observations;", con)
         for key in self.angles_rad2deg:
             try:
                 df[key] = np.radians(df[key])
@@ -521,9 +525,23 @@ class SchemaConverter:
         final_result = np.empty(df.shape[0], dtype=blank.dtype)
         # XXX-ugh, there has to be a better way.
         for key in df.columns:
-            final_result[key] = df[key].values
+            if key in final_result.dtype.names:
+                final_result[key] = df[key].values
 
         return final_result
+
+    def opsim2obs(self, filename):
+        """convert an opsim schema dataframe into an observation array.
+
+        Parameters
+        ----------
+        filename : `str`
+            Sqlite file containing opsim output observations.
+        """
+
+        con = sqlite3.connect(filename)
+        df = pd.read_sql("select * from observations;", con)
+        return self.opsimdf2obs(df)
 
 
 def empty_observation(n=1):
