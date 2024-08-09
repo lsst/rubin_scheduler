@@ -13,8 +13,79 @@ from rubin_scheduler.utils import (
 
 from .jerk import jerk_time
 
-__all__ = ("KinemModel",)
+__all__ = (
+    "tma_movement",
+    "rotator_movement",
+    "KinemModel",
+)
 two_pi = 2.0 * np.pi
+
+
+def tma_movement(percent=70):
+    """Get a dictionary of parameters to pass to `setup_telescope`
+     defining altitude and azimuth speed, acceleration, and jerk
+     in terms of 'percent' of total performance.
+
+     Parameters
+     ----------
+     percent : `float`, optional
+        Default performance for the scheduler simulations for operations
+        has been 70% (70, default).
+        Expected performance at the start of comcam on-sky
+        science operations is about 10%.
+
+    Returns
+    -------
+    tma : `dict` {`str`: `float`}
+        A dictionary which can be passed as kwargs to
+        KinematicModel.setup_telescope(**tma).
+    """
+    # See https://confluence.lsstcorp.org/display/LSSTCOM/TMA+Motion+Settings
+    # Expected performance at end of comcam on-sky is probably 10%
+    if percent > 125:
+        percent = 125
+        print("Cannot exceed 125 percent, by requirements.")
+    tma = {}
+    scale = percent / 100.0
+    tma["azimuth_maxspeed"] = np.min([10.0 * scale, 7.0])
+    tma["azimuth_accel"] = 10.0 * scale
+    tma["azimuth_jerk"] = np.max([1.0, 40.0 * scale])
+    tma["altitude_maxspeed"] = 5.0 * scale
+    tma["altitude_accel"] = 5.0 * scale
+    tma["altitude_jerk"] = np.max([1.0, 20.0 * scale])
+    tma["settle_time"] = 3.0
+    return tma
+
+
+def rotator_movement(percent=100):
+    """Get a dictionary of parameters to pass to `setup_camera`
+     defining rotator max speed, acceleration and jerk,
+     in terms of 'percent' of total performance.
+
+     Parameters
+     ----------
+     percent : `float`, optional
+        Default performance for the scheduler simulations for operations
+        has been 100% (100, default).
+        Expected performance at the start of comcam on-sky
+        science operations is approximately full performance.
+
+    Returns
+    -------
+    rot : `dict` {`str`: `float`}
+        A dictionary which can be passed as kwargs to
+        KinematicModel.setup_camera(**rot).
+    """
+    # Kevin and Brian say these can run 100%
+    # and are independent of TMA movement
+    if percent > 125:
+        percent = 125
+        print("Cannot exceed 125 percent, by requirements.")
+    rot = {}
+    rot["maxspeed"] = 3.5 * percent / 100
+    rot["accel"] = 1.0 * percent / 100
+    rot["jerk"] = 4.0 * percent / 100
+    return rot
 
 
 class Radec2altazpa:
@@ -209,8 +280,6 @@ class KinemModel:
         azimuth_accel=7.0,
         azimuth_jerk=None,
         settle_time=3.0,
-        az_limits=None,
-        alt_limits=None,
     ):
         """Parameters to define the TELESCOPE movement and position.
 
@@ -246,14 +315,6 @@ class KinemModel:
         self.telaz_accel_rad = np.radians(azimuth_accel)
         self.telaz_jerk_rad = np.radians(azimuth_jerk) if azimuth_jerk is not None else None
         self.mount_settletime = settle_time
-        if alt_limits is None:
-            self.alt_limits = [[self.telalt_minpos_rad, self.telalt_maxpos_rad]]
-        else:
-            self.alt_limits = np.radians(alt_limits)
-        if az_limits is None:
-            self.az_limits = [[0, 2.0 * np.pi]]
-        else:
-            self.az_limits = np.radians(az_limits)
 
     def setup_optics(self, ol_slope=1.0 / 3.5, cl_delay=[0.0, 36.0], cl_altlimit=[0.0, 9.0, 90.0]):
         """
@@ -354,7 +415,7 @@ class KinemModel:
         dec_rad : `np.ndarray`
             The declination(s) of the location(s) we wish to slew to (radians)
         mjd : `float`
-            The current moodified julian date (days)
+            The current modified julian date (days)
         rot_sky_pos : `np.ndarray`
             The desired rot_sky_pos(s) (radians).
             Angle between up on the chip and North.
@@ -397,7 +458,9 @@ class KinemModel:
             The number of seconds between the two specified exposures.
             Will be np.nan or np.inf if slew is not possible.
         """
-        if filtername not in self.mounted_filters:
+        if filtername is None:
+            filtername = self.current_filter
+        elif filtername not in self.mounted_filters:
             return np.nan
 
         # Don't trust folks to do pa calculation correctly, if both
@@ -563,8 +626,8 @@ class KinemModel:
                 rot_sky_pos = self.rc._rottelpos2rotskypos(rot_tel_pos, pa)
 
             # Is the new rot_tel_pos reachable? If not return NaN
-            if (rot_tel_pos < self.telrot_minpos_rad) | (rot_tel_pos > self.telrot_maxpos_rad):
-                return np.nan
+            outside_limits = np.where((rot_tel_pos < self.telrot_minpos_rad) | (rot_tel_pos > self.telrot_maxpos_rad))
+            slew_time[outside_limits] = np.nan
             # If there was no kwarg for starting rotator position
             if starting_rot_tel_pos_rad is None:
                 # If there is no current rot_sky_pos, we were parked

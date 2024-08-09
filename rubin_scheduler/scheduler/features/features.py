@@ -191,8 +191,8 @@ class NObsCount(BaseSurveyFeature):
 
     Parameters
     ----------
-    filtername : `str` (None)
-        The filter to count (if None, all filters counted)
+    filtername : `str` or None
+        The filter to count. Default None, all filters counted.
 
     """
 
@@ -319,10 +319,18 @@ class NObsCountSeason(BaseSurveyFeature):
 class NObsSurvey(BaseSurveyFeature):
     """Count the number of observations, whole sky (not per pixel).
 
+    Because this feature will belong to a survey, it would count all
+    observations that are counted for that survey.
+
     Parameters
     ----------
     note : `str` (None)
         Only count observations that contain str in their note field
+
+
+    Notes
+    -----
+    add_observations_array may not work in the same manner as add_observation.
     """
 
     def __init__(self, note=None):
@@ -354,11 +362,13 @@ class LastObservation(BaseSurveyFeature):
     ----------
     survey_name : `str` (None)
         Only records if the survey name matches (or survey_name set to None)
+
+    add_observations_array may not work in the same manner as add_observation.
     """
 
     def __init__(self, survey_name=None):
         # Will this work for observations read from a database???
-        # "note" is definitely NOT guaranteed to match the survey_name.
+        # "scheduler_note" is definitely NOT guaranteed to match survey_name.
         self.survey_name = survey_name
         # Start out with an empty observation
         self.feature = utils.empty_observation()
@@ -417,11 +427,19 @@ class NObservations(BaseSurveyFeature):
 
     Parameters
     ----------
-    filtername : `str` ('r')
+    filtername : `str` or `list` [`str`] or None
         String or list that has all the filters that can count.
-    nside : `int` (32)
-        The nside of the healpixel map to use
+        Default None counts all filters.
+    nside : `int`
+        The nside of the healpixel map to use.
+        Default None uses scheduler default.
+    survey_name : `str` or None
+        Value to match for scheduler note.
+        (.. this need reconciling of survey_name and note).
 
+    Notes
+    -----
+    add_observations_array may not work in the same manner as add_observation.
     """
 
     def __init__(self, filtername=None, nside=None, survey_name=None):
@@ -815,8 +833,17 @@ class CoaddedDepth(BaseSurveyFeature):
 
 class LastObserved(BaseSurveyFeature):
     """
-    Track when a pixel was last observed.
+    Track the MJD when a pixel was last observed.
     Assumes observations are added in chronological order.
+
+    Parameters
+    ----------
+    filtername : `str` or None
+        Track visits in a particular filter or any filter (None).
+    nside : `int` or None
+        Nside for the healpix map, default of None uses the scheduler default.
+    fill : `float`
+        Fill value to use where no observations have been found.
     """
 
     def __init__(self, filtername="r", nside=None, fill=np.nan):
@@ -870,16 +897,16 @@ class NoteLastObserved(BaseSurveyFeature):
 
 class NObsNight(BaseSurveyFeature):
     """
-    Track how many times something has been observed in a night
+    Track how many times a healpixel has been observed in a night
     (Note, even if there are two, it might not be a good pair.)
 
     Parameters
     ----------
-    filtername : `str` ('r')
-        Filter to track.
-    nside : `int` (32)
-        Scale of the healpix map
-
+    filtername : `str` or None
+        Filter to track. None tracks observations in any filter.
+    nside : `int` or NOne
+        Scale of the healpix map. Default of None uses the scheduler
+        default nside.
     """
 
     def __init__(self, filtername="r", nside=None):
@@ -902,7 +929,7 @@ class NObsNight(BaseSurveyFeature):
 
 class PairInNight(BaseSurveyFeature):
     """
-    Track how many pairs have been observed within a night
+    Track how many pairs have been observed within a night at a given healpix.
 
     Parameters
     ----------
@@ -931,6 +958,7 @@ class PairInNight(BaseSurveyFeature):
     def add_observations_array(self, observations_array, observations_hpid):
         # ok, let's just find the largest night and toss all those in one
         # at a time
+        ## THIS IGNORES FILTER??
         most_recent_night = np.where(observations_hpid["night"] == np.max(observations_hpid["night"]))[0]
         obs_hpid = observations_hpid[most_recent_night]
         uid = np.unique(obs_hpid["ID"])

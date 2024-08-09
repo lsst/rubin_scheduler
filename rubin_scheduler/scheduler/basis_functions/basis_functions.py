@@ -6,7 +6,7 @@ __all__ = (
     "DelayStartBasisFunction",
     "TargetMapBasisFunction",
     "AvoidLongGapsBasisFunction",
-    "AvoidFastRevisits",
+    "AvoidFastRevisitsBasisFunction",
     "VisitRepeatBasisFunction",
     "M5DiffBasisFunction",
     "M5DiffAtHpixBasisFunction",
@@ -30,7 +30,7 @@ __all__ = (
     "SeasonCoverageBasisFunction",
     "NObsPerYearBasisFunction",
     "CadenceInSeasonBasisFunction",
-    "NearSunTwilightBasisFunction",
+    "NearSunHighAirmassBasisFunction",
     "NObsHighAmBasisFunction",
     "GoodSeeingBasisFunction",
     "ObservedTwiceBasisFunction",
@@ -42,6 +42,7 @@ __all__ = (
     "BalanceVisits",
     "RewardNObsSequence",
     "FilterDistBasisFunction",
+    "RewardRisingBasisFunction",
 )
 
 import warnings
@@ -906,19 +907,20 @@ class ThirdObservationBasisFunction(BaseBasisFunction):
         return result
 
 
-class AvoidFastRevisits(BaseBasisFunction):
+class AvoidFastRevisitsBasisFunction(BaseBasisFunction):
     """Marks targets as unseen if they are in a specified time window
     in order to avoid fast revisits.
 
     Parameters
     ----------
-    filtername: `str` ('r')
+    filtername: `str` or None
         The name of the filter for this target map.
-    gap_min : `float` (25.)
+        Using None will match visits in any filter.
+    gap_min : `float`
         Minimum time for the gap (minutes).
-    nside: `int` (default_nside)
+    nside: `int` or None
         The healpix resolution.
-    penalty_val : `float` (np.nan)
+    penalty_val : `float`
         The reward value to use for regions to penalize.
         Will be masked if set to np.nan (default).
     """
@@ -933,19 +935,19 @@ class AvoidFastRevisits(BaseBasisFunction):
         self.nside = nside
 
         self.survey_features = dict()
-        self.survey_features["Last_observed"] = features.LastObserved(filtername=filtername, nside=nside)
+        self.survey_features["Last_observed"] = features.LastObserved(
+            filtername=filtername, nside=nside, fill=0
+        )
 
     def _calc_value(self, conditions, indx=None):
         result = np.ones(hp.nside2npix(self.nside), dtype=float)
-        if indx is None:
-            indx = np.arange(result.size)
-        diff = IntRounded(conditions.mjd - self.survey_features["Last_observed"].feature[indx])
+        diff = IntRounded(conditions.mjd - self.survey_features["Last_observed"].feature)
         bad = np.where(diff < self.gap_min)[0]
-        result[indx[bad]] = self.penalty_val
+        result[bad] = self.penalty_val
         return result
 
 
-class NearSunTwilightBasisFunction(BaseBasisFunction):
+class NearSunHighAirmassBasisFunction(BaseBasisFunction):
     """Reward areas on the sky at high airmass, within 90 degrees azimuth
     of the Sun, such as suitable for the near-sun twilight microsurvey for
     near- or interior-to earth asteroids.
@@ -963,7 +965,7 @@ class NearSunTwilightBasisFunction(BaseBasisFunction):
     """
 
     def __init__(self, nside=None, max_airmass=2.5, penalty=np.nan):
-        super(NearSunTwilightBasisFunction, self).__init__(nside=nside)
+        super().__init__(nside=nside)
         self.max_airmass = IntRounded(max_airmass)
         self.result = np.empty(hp.nside2npix(self.nside))
         self.result.fill(penalty)
@@ -2017,7 +2019,17 @@ class TemplateGenerateBasisFunction(BaseBasisFunction):
 
 
 class LimitRepeatBasisFunction(BaseBasisFunction):
-    """Mask out pixels that haven't been observed in the night"""
+    """Mask out pixels that haven't been observed in the night.
+
+    Parameters
+    ----------
+    nside : `int` or None
+        Nside for the basis function values. Default None will use
+        default nside.
+    filtername : `str` or None
+        Filter to consider when tracking number of acquired observations.
+
+    """
 
     def __init__(self, nside=None, filtername="r", n_limit=2):
         super(LimitRepeatBasisFunction, self).__init__(nside=nside)
@@ -2224,3 +2236,44 @@ class RewardNObsSequence(BaseBasisFunction):
 
     def _calc_value(self, conditions, indx=None):
         return self.survey_features["n_obs_survey"].feature % self.n_obs_survey
+
+
+class RewardRisingBasisFunction(BaseBasisFunction):
+    """Reward parts of the sky that are rising.
+    Optionally, mask out parts of the sky that are not rising.
+
+    This produces a reward that increases
+    as the field rises toward zenith, then abruptly
+    falls as the field passes zenith.
+    Negative hour angles (or hour angles > 180 degrees)
+    indicate a rising point on the sky.
+
+    Parameters
+    ----------
+    slope : `float`
+        Sets the 'slope' of how fast the basis function
+        value changes with hour angle.
+    penalty_val : `float` or `np.nan`, optional
+        Sets the value for the part of the sky which is
+        not rising (hour angle between 0 and 180).
+        Using a value of np.nan will mask this region of sky,
+        a value of 0 will just make this non-rewarding.
+    nside : `int` or None, optional
+        Nside for the healpix map, default of None uses scheduler default.
+    """
+
+    def __init__(self, slope=0.1, penalty_val=0, nside=None):
+        super().__init__(nside=nside)
+        self.slope = slope
+        self.penalty_val = penalty_val
+
+    # Probably not needed
+    def check_feasibility(self, conditions):
+        return True
+
+    def _calc_value(self, conditions, indx=None):
+        # HA should be available in the conditions object
+        value = self.slope * conditions.HA
+        past_zenith = np.where(conditions.HA < np.pi)
+        value[past_zenith] = self.penalty_val
+        return value
