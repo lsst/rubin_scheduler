@@ -416,7 +416,7 @@ class SchemaConverter:
             "solarElong": "solarElong",
             "note": "note",
             "scheduler_note": "scheduler_note",
-            "target": "target",
+            "target_name": "target_name",
         }
         # Column(s) not bothering to remap:
         # 'observationStartTime': None,
@@ -581,7 +581,7 @@ def empty_observation(n=1):
         object generated the observation.
     note : `str`
         Deprecated in favor of `scheduler_note`.
-    target : `str` (optional)
+    target_name : `str` (optional)
         A note about what target is being observed.
 
     Notes
@@ -632,7 +632,7 @@ def empty_observation(n=1):
         "sunAlt",
         "note",
         "scheduler_note",
-        "target",
+        "target_name",
         "block_id",
         "lmst",
         "rotTelPos",
@@ -760,7 +760,7 @@ def scheduled_observation(n=1):
         "rotSkyPos_desired",
         "nexp",
         "scheduler_note",
-        "target",
+        "target_name",
     ]
     types = [
         int,

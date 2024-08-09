@@ -166,7 +166,7 @@ class ScriptedSurvey(BaseSurvey):
             "exptime",
             "nexp",
             "scheduler_note",
-            "target",
+            "target_name",
             "rotSkyPos",
             "rotTelPos",
             "flush_by_mjd",
