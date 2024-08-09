@@ -416,8 +416,10 @@ class SchemaConverter:
             "solarElong": "solarElong",
             "note": "note",
             "scheduler_note": "scheduler_note",
-            "target": "target",
+            "target_name": "target_name",
         }
+        # For backwards compatibility
+        self.backwards = {"target": "target_name"}
         # Column(s) not bothering to remap:
         # 'observationStartTime': None,
         self.inv_map = {v: k for k, v in self.convert_dict.items()}
@@ -504,6 +506,13 @@ class SchemaConverter:
 
         con = sqlite3.connect(filename)
         df = pd.read_sql("select * from observations;", con)
+
+        # Make it backwards compatible if there are
+        # columns that have changed names
+        for key in self.backwards:
+            if key in df.columns:
+                df = df.rename(index=str, columns={key: self.backwards[key]})
+
         for key in self.angles_rad2deg:
             try:
                 df[key] = np.radians(df[key])
@@ -520,7 +529,7 @@ class SchemaConverter:
         blank = empty_observation()
         final_result = np.empty(df.shape[0], dtype=blank.dtype)
         # XXX-ugh, there has to be a better way.
-        for key in df.columns:
+        for key in final_result.dtype.names:
             final_result[key] = df[key].values
 
         return final_result
@@ -581,7 +590,7 @@ def empty_observation(n=1):
         object generated the observation.
     note : `str`
         Deprecated in favor of `scheduler_note`.
-    target : `str` (optional)
+    target_name : `str` (optional)
         A note about what target is being observed.
 
     Notes
@@ -632,7 +641,7 @@ def empty_observation(n=1):
         "sunAlt",
         "note",
         "scheduler_note",
-        "target",
+        "target_name",
         "block_id",
         "lmst",
         "rotTelPos",
@@ -760,7 +769,7 @@ def scheduled_observation(n=1):
         "rotSkyPos_desired",
         "nexp",
         "scheduler_note",
-        "target",
+        "target_name",
     ]
     types = [
         int,
