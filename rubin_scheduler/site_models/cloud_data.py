@@ -53,7 +53,7 @@ class CloudData:
 
         Parameters
         ----------
-        time : astropy.time.Time
+        time : `astropy.time.Time`
             Time in the simulation for which to find the current cloud
             coverage. The difference between this time and the start_time,
             plus the offset, will be used to query the cloud database
@@ -61,7 +61,7 @@ class CloudData:
 
         Returns
         -------
-        float
+        cloud_value : `float`
             The fraction of the sky that is cloudy (measured in
             steps of 8ths) closest to the specified time.
         """
