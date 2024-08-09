@@ -458,7 +458,9 @@ class KinemModel:
             The number of seconds between the two specified exposures.
             Will be np.nan or np.inf if slew is not possible.
         """
-        if filtername not in self.mounted_filters:
+        if filtername is None:
+            filtername = self.current_filter
+        elif filtername not in self.mounted_filters:
             return np.nan
 
         # Don't trust folks to do pa calculation correctly, if both
