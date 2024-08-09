@@ -1,7 +1,6 @@
 """
-This file contains coordinate transformation methods that are
-very thin wrappers of palpy methods, or that have no
-dependence on palpy at all
+Coordinate transforms that are more accurate but slower than similar
+methods in approx_coord_transforms and may include dependencies on astropy.
 """
 
 __all__ = (
