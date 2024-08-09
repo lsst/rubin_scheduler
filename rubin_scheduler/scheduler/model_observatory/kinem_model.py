@@ -624,8 +624,8 @@ class KinemModel:
                 rot_sky_pos = self.rc._rottelpos2rotskypos(rot_tel_pos, pa)
 
             # Is the new rot_tel_pos reachable? If not return NaN
-            if (rot_tel_pos < self.telrot_minpos_rad) | (rot_tel_pos > self.telrot_maxpos_rad):
-                return np.nan
+            outside_limits = np.where((rot_tel_pos < self.telrot_minpos_rad) | (rot_tel_pos > self.telrot_maxpos_rad))
+            slew_time[outside_limits] = np.nan
             # If there was no kwarg for starting rotator position
             if starting_rot_tel_pos_rad is None:
                 # If there is no current rot_sky_pos, we were parked
