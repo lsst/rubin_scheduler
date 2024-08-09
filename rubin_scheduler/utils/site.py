@@ -2,7 +2,9 @@ __all__ = ("Site",)
 
 import warnings
 
+import astropy.units as u
 import numpy as np
+from astropy.coordinates import EarthLocation
 
 
 class LsstSiteParameters:
@@ -169,6 +171,11 @@ class Site:
             msg += "If you want these to just default to LSST values,\n"
             msg += "instantiate your Site with name='LSST'"
             warnings.warn(msg)
+
+    def to_earth_location(self):
+        return EarthLocation.from_geodetic(
+            lon=self.longitude * u.deg, lat=self.latitude * u.deg, height=self.height * u.meter
+        )
 
     def __eq__(self, other):
         for param in self.__dict__:
