@@ -385,7 +385,6 @@ class SchemaConverter:
             "visitTime": "visittime",
             "visitExposureTime": "exptime",
             "proposalId": "survey_id",
-            "fieldId": "field_id",
             "fieldRA": "RA",
             "fieldDec": "dec",
             "altitude": "alt",
