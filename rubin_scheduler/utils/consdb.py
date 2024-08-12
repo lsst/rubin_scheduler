@@ -17,7 +17,6 @@ from astropy.time import Time
 
 from rubin_scheduler.scheduler.utils import SchemaConverter
 from rubin_scheduler.site_models import Almanac, SeeingModel
-from rubin_scheduler.skybrightness_pre import SkyModelPre
 from rubin_scheduler.utils import (
     Site,
     SysEngVals,
@@ -754,27 +753,6 @@ class ConsDBVisits(ABC):
         return pd.Series(hp.ang2pix(nside, self.ra, self.decl, lonlat=True), index=self.consdb_visits.index)
 
     @cached_property
-    def pre_sky_mag_per_asec(self) -> pd.Series:
-        """Pre-computed model for the sky background for each visit,
-        in mag asec^-2.
-
-        Returns
-        -------
-        model_sky : `pd.Series`
-            Pre-computed model for the sky background for each visit.
-        """
-        sky_model_pre = SkyModelPre(init_load_length=2, load_length=2)
-        sky_model_values = pd.Series(np.nan, dtype=float, index=self.consdb_visits.index)
-
-        for id in sky_model_values.index:
-            mjd = self.obs_start_mjd[id]
-            hpix = self.hpix(sky_model_pre.nside)[id]
-            band = self.band[id]
-            sky_model_values[id] = sky_model_pre.return_mags(mjd, hpix, [band])[band]
-
-        return sky_model_values
-
-    @cached_property
     def fwhm_eff(self) -> pd.Series:
         """Effective PSF FWHM (arcseconds).
 
@@ -881,7 +859,6 @@ class ConsDBVisits(ABC):
                 "start_date": self.consdb_visits["obs_start"],
                 "t_eff": self.consdb_visits["eff_time_median"],
                 "seq_num": self.consdb_visits["seq_num"],
-                "skyBrightnessPre": self.pre_sky_mag_per_asec,
             }
         )
 
