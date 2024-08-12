@@ -510,7 +510,6 @@ class SchemaConverter:
             Numpy array with OpSim observations.
         """
 
-
         # Make it backwards compatible if there are
         # columns that have changed names
         for key in self.backwards:
