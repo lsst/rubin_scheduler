@@ -537,7 +537,7 @@ class SchemaConverter:
             if key in df.columns:
                 final_result[key] = df[key].values
             else:
-                warnings.warn("Column {key} not found.")
+                warnings.warn(f"Column {key} not found.")
 
         return final_result
 
