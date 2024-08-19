@@ -104,7 +104,7 @@ class TestUtils(unittest.TestCase):
         km = KinemModel(mjd0=mjd_start)
         km.setup_telescope(azimuth_minpos=270, azimuth_maxpos=90)
         mo = ModelObservatory(mjd_start=mjd_start, kinem_model=km)
-
+        print('starting first')
         mo, scheduler, observations = sim_runner(
             mo,
             scheduler,
@@ -126,7 +126,7 @@ class TestUtils(unittest.TestCase):
             ]
         )
 
-        assert forbidden.size == 0
+        assert n_forbidden == 0
 
         km = KinemModel(mjd0=mjd_start)
         km.setup_telescope(altitude_minpos=40.0, altitude_maxpos=70.0)
@@ -141,7 +141,6 @@ class TestUtils(unittest.TestCase):
         )
         alt = np.degrees(observations["alt"])
         n_forbidden = np.size(np.where((alt > 70) & (alt < 40))[0])
-
         assert n_forbidden == 0
 
     def test_restore(self):
