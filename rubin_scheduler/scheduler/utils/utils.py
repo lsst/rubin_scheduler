@@ -30,6 +30,7 @@ import datetime
 import os
 import socket
 import sqlite3
+import warnings
 
 import healpy as hp
 import matplotlib.path as mplPath
@@ -533,8 +534,10 @@ class SchemaConverter:
         final_result = np.empty(df.shape[0], dtype=blank.dtype)
         # XXX-ugh, there has to be a better way.
         for key in final_result.dtype.names:
-            if key in final_result.dtype.names:
+            if key in df.columns:
                 final_result[key] = df[key].values
+            else:
+                warnings.warn(f"Column {key} not found.")
 
         return final_result
 
