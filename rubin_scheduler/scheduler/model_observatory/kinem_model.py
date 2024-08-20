@@ -125,7 +125,6 @@ class KinemModel:
     ----
     Note there are additional parameters in the methods setup_camera,
     setup_dome, setup_telescope, and setup_optics.
-    Just breaking it up a bit to make it more readable.
     """
 
     def __init__(
@@ -174,35 +173,36 @@ class KinemModel:
         rotator_max=90,
         maxspeed=3.5,
         accel=1.0,
-        shutter_2motion_min_time=15.0,
         jerk=None,
+        shutter_2motion_min_time=15.0,
     ):
-        """
+        """Configure the camera.
+
         Parameters
         ----------
-        readtime : `float` (2)
+        readtime : `float`
             The readout time of the CCDs (seconds)
-        shuttertime : `float` (1.)
+        shuttertime : `float`
             The time it takes the shutter to go from closed to fully open
             (seconds)
-        filter_changetime : `float` (120)
+        filter_changetime : `float`
             The time it takes to change filters (seconds)
-        fov : `float` (3.5)
+        fov : `float`
             The camera field of view (degrees)
-        rotator_min : `float` (-90)
+        rotator_min : `float`
             The minimum angle the camera rotator (rotTelPos) can move to
             (degrees)
-        rotator_max : `float` (90)
+        rotator_max : `float`
             The maximum angle the camera rotator (rotTelPos) can move to
             degrees)
-        maxspeed : `float` (3.5)
+        maxspeed : `float`
             The maximum speed of the rotator (degrees/s)
-        accel : `float` (1.0)
+        accel : `float`
             The acceleration of the rotator (degrees/s^2)
         jerk : `float`
             The jerk of the rotator (degrees/s^3). Default of None treats
             jerk as infinite
-        shutter_2motion_min_time : `float` (15.)
+        shutter_2motion_min_time : `float`
             The time required for two shutter motions (seconds). If one
             takes a 1-snap 10s exposure, there will be a 5s of overhead
             before the next exposure can start.
@@ -232,29 +232,29 @@ class KinemModel:
         azimuth_freerange=4.0,
         settle_time=1.0,
     ):
-        """Parameters to define the DOME movement.
+        """Configure the dome.
 
         Parameters
         ----------
-        altitude_maxspeed : `float` (1.75)
+        altitude_maxspeed : `float`
             Maximum speed for altitude movement (degrees/second)
-        altitude_accel : `float` (0.875)
+        altitude_accel : `float`
             Maximum acceleration for altitude movement (degrees/second**2)
         altitude_jerk : `float`
             The jerk for the altitude movement (degrees/second**3). Default
             of None treats jerk as infinite.
-        altitude_freerange : `float` (0)
+        altitude_freerange : `float`
             The range over which there is 0 delay
-        azimuth_maxspeed : `float` (1.5)
+        azimuth_maxspeed : `float`
             Maximum speed for azimuth movement (degrees/second)
-        azimuth_accel : `float` (0.75)
+        azimuth_accel : `float`
             Maximum acceleration for azimuth movement (degrees/second**2)
         azimuth_jerk : `float`
             The jerk of the azimuth movement (degrees/second**3). Default
             of None treats jerk as infinite.
-        azimuth_freerange : `float` (4.0)
+        azimuth_freerange : `float`
             The range in which there is 0 delay
-        settle_time : `float` (1.0)
+        settle_time : `float`
             Settle time after movement (seconds)
         """
         self.domalt_maxspeed_rad = np.radians(altitude_maxspeed)
@@ -273,6 +273,8 @@ class KinemModel:
         altitude_maxpos=86.5,
         azimuth_minpos=-250.0,
         azimuth_maxpos=250.0,
+        abs_azimuth_minpos=0.0,
+        abs_azimuth_maxpos=360.0,
         altitude_maxspeed=3.5,
         altitude_accel=3.5,
         altitude_jerk=None,
@@ -281,33 +283,56 @@ class KinemModel:
         azimuth_jerk=None,
         settle_time=3.0,
     ):
-        """Parameters to define the TELESCOPE movement and position.
+        """Configure the telescope (TMA) movement and position.
 
         Parameters
         ----------
-        altitude_minpos : `float` (20.0)
-            Minimum altitude for the telescope (degrees)
-        altitude_maxpos : `float` (86.5)
-            Maximum altitude for the telescope (degrees)
-        azimuth_minpos : `float` (-270.0)
-            Minimum azimuth position (degrees)
-        azimuth_maxpos : `float` (270.0)
-            Maximum azimuth position (degrees)
-        altitude_maxspeed : `float` (3.5)
+        altitude_minpos : `float`
+            Minimum altitude for the telescope (degrees).
+        altitude_maxpos : `float`
+            Maximum altitude for the telescope (degrees).
+            Maximum position of 86.5 is limited due to slew
+            requirements near the zemith with an alt-az mount.
+        azimuth_minpos : `float`
+            Minimum azimuth position (degrees).
+            Note this value is related to cumulative azimuth range,
+            for cable wrap.
+        azimuth_maxpos : `float`
+            Maximum azimuth position (degrees).
+            Note this value is related to cumulative azimuth range,
+            for cable wrap. Defaults -270 and 270 include 0-360
+            for all-sky azimuth positions, reachable via multiple
+            routes.
+        abs_azimuth_minpos : `float`
+            Minimum azimuth position for the mount (degrees).
+            Physical limit for the position of the telescope.
+        abs_azimuth_maxpos : `float`
+            Maximum azimuth position for the mount (degrees).
+            Default is 0 - 360 for min/max.
+            Order matters between min/max here.
+        altitude_maxspeed : `float`
             Maximum speed for altitude movement (degrees/second)
-        altitude_accel : `float` (3.5)
+        altitude_accel : `float`
             Maximum acceleration for altitude movement (degrees/second**2)
-        azimuth_maxspeed : `float` (7.0)
+        altitude_jerk : `float`
+            Maximum jerk for altitude movement (degrees/second**3)
+        azimuth_maxspeed : `float`
             Maximum speed for azimuth movement (degrees/second)
-        azimuth_accel : `float` (7.0)
+        azimuth_accel : `float`
             Maximum acceleration for azimuth movement (degrees/second**2)
-        settle_time : `float` (3.0)
+        azimuth_jerk : `float`
+            Maximum jerk for azimuth movement (degrees/seconds**3)
+        settle_time : `float`
             Settle time required for telescope after movement (seconds)
+            See also `tma_movement` for definitions for the speed,
+            acceleration and jerk.
         """
         self.telalt_minpos_rad = np.radians(altitude_minpos)
         self.telalt_maxpos_rad = np.radians(altitude_maxpos)
         self.telaz_minpos_rad = np.radians(azimuth_minpos)
         self.telaz_maxpos_rad = np.radians(azimuth_maxpos)
+        self.abs_telaz_minpos_rad = np.radians(abs_azimuth_minpos)
+        self.abs_telaz_maxpos_rad = np.radians(abs_azimuth_maxpos)
         self.telalt_maxspeed_rad = np.radians(altitude_maxspeed)
         self.telalt_accel_rad = np.radians(altitude_accel)
         self.telalt_jerk_rad = np.radians(altitude_jerk) if altitude_jerk is not None else None
@@ -317,7 +342,8 @@ class KinemModel:
         self.mount_settletime = settle_time
 
     def setup_optics(self, ol_slope=1.0 / 3.5, cl_delay=[0.0, 36.0], cl_altlimit=[0.0, 9.0, 90.0]):
-        """
+        """Configure parameters for the optics closed and open loops.
+
         Parameters
         ----------
         ol_slope : `float` (1.0/3.5)
@@ -425,6 +451,9 @@ class KinemModel:
             rot_tel_pos will be used.
         rot_tel_pos : `np.ndarray`
             The desired rot_tel_pos(s) (radians).
+            This overrides rot_sky_pos, if set.
+            If neither rot_sky_pos nor rot_tel_pos are set, no rotation
+            time is added (equivalent to using current rot_tel_pos).
         filtername : `str`
             The filter(s) of the desired observations.
             Set to None to compute only telescope and dome motion times.
@@ -463,15 +492,15 @@ class KinemModel:
         elif filtername not in self.mounted_filters:
             return np.nan
 
-        # Don't trust folks to do pa calculation correctly, if both
-        # rotations set, rot_sky_pos wins
+        # If rot_tel_pos and rot_sky_pos are both defined,
+        # use rot_tel_pos
         if (rot_tel_pos is not None) & (rot_sky_pos is not None):
             if np.isfinite(rot_tel_pos):
                 rot_sky_pos = None
             else:
                 rot_tel_pos = None
 
-        # alt,az not provided, calculate from RA,Dec
+        # if alt,az not provided, then calculate from RA,Dec
         if alt_rad is None:
             alt_rad, az_rad, pa = self.radec2altaz(ra_rad, dec_rad, mjd)
         else:
@@ -491,12 +520,14 @@ class KinemModel:
                 )
 
         delta_alt = np.abs(alt_rad - starting_alt_rad)
+        # Calculate shortest angle for change in azimuth
         delta_az_short = smallest_signed_angle(starting_az_rad, az_rad)
+        # And then calculate the "long way around"
         delta_az_long = delta_az_short - two_pi
         daslz = np.where(delta_az_short < 0)[0]
         delta_az_long[daslz] = two_pi + delta_az_short[daslz]
-        # So, for every position, we can get there by slewing long or
-        # short way
+        # Slew can be short or long direction, but cumulative azimuth range
+        # (aka cable wrap) could limit one of these options
         cummulative_az_short = delta_az_short + self.cumulative_azimuth_rad
         oob = np.where(
             (cummulative_az_short < self.telaz_minpos_rad) | (cummulative_az_short > self.telaz_maxpos_rad)
@@ -616,6 +647,13 @@ class KinemModel:
         # Mask min/max altitude limits so slewtime = np.nan
         outside_limits = np.where((alt_rad > self.telalt_maxpos_rad) | (alt_rad < self.telalt_minpos_rad))[0]
         slew_time[outside_limits] = np.nan
+        # Mask alt/az absolute limits
+        az_range = (self.abs_telaz_maxpos_rad - self.abs_telaz_minpos_rad) % (2 * np.pi)
+        if az_range == 0:
+            pass
+        else:
+            outside_limits = np.where((az_rad - self.abs_telaz_minpos_rad) % (2 * np.pi) > az_range)[0]
+            slew_time[outside_limits] = np.nan
 
         # If we want to include the camera rotation time
         if (rot_sky_pos is not None) | (rot_tel_pos is not None):
@@ -626,7 +664,9 @@ class KinemModel:
                 rot_sky_pos = self.rc._rottelpos2rotskypos(rot_tel_pos, pa)
 
             # Is the new rot_tel_pos reachable? If not return NaN
-            outside_limits = np.where((rot_tel_pos < self.telrot_minpos_rad) | (rot_tel_pos > self.telrot_maxpos_rad))
+            outside_limits = np.where(
+                (rot_tel_pos < self.telrot_minpos_rad) | (rot_tel_pos > self.telrot_maxpos_rad)
+            )
             slew_time[outside_limits] = np.nan
             # If there was no kwarg for starting rotator position
             if starting_rot_tel_pos_rad is None:

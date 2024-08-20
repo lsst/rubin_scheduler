@@ -256,37 +256,34 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         # Find minimum alt limits
         min_alt = IntRounded(np.max([conditions.tel_alt_min, self.min_alt]))
         max_alt = IntRounded(np.min([conditions.tel_alt_max, self.max_alt]))
-        # For azimuth limits, we'll find the min/max values a bit differently.
-        # Also, % not supported for IntRounded ...
-        f2pi = 2 * np.pi
-        az = np.arange(0, f2pi, 0.004)
-        if conditions.tel_az_max - conditions.tel_az_min >= f2pi:
-            in_range1 = np.ones(len(az))
-        else:
-            azr = (conditions.tel_az_max - conditions.tel_az_min) % (f2pi)
-            in_range1 = np.where((az - conditions.tel_az_min) % (f2pi) <= azr, 1, 0)
-        if self.max_az - self.min_az >= f2pi:
-            in_range2 = np.ones(len(az))
-        else:
-            azr = (self.max_az - self.min_az) % (f2pi)
-            in_range2 = np.where((az - self.min_az) % (f2pi) <= azr, 1, 0)
-        overlap = np.where(in_range1 + in_range2 == 2)
-        min_az = az[overlap][0]
-        max_az = az[overlap][-1]
 
+        # Check allowable altitude range against current and future alt values
         good = np.where((IntRounded(conditions.alt) >= min_alt) & (IntRounded(conditions.alt) <= max_alt))[0]
         in_range_alt[good] += 1
         good = np.where((IntRounded(future_alt) >= min_alt) & (IntRounded(future_alt) <= max_alt))[0]
         in_range_alt[good] += 1
 
-        az_range = (max_az - min_az) % (f2pi)
-        good = np.where((conditions.az - min_az) % (f2pi) <= az_range)[0]
-        in_range_az[good] += 1
-        good = np.where((future_az - min_az) % (f2pi) <= az_range)[0]
-        in_range_az[good] += 1
+        # Check allowable azimuth range against azimuth values
+        # note that % (mod) is not supported for IntRounded
+        f2pi = 2 * np.pi
+        if2pi = IntRounded(f2pi)
+        if IntRounded(conditions.tel_az_max) - IntRounded(conditions.tel_az_min) >= if2pi:
+            in_range1 = np.zeros(len(conditions.az)) + 2
+        else:
+            azr = (conditions.tel_az_max - conditions.tel_az_min) % (f2pi)
+            # Check current and future
+            in_range1 = np.where((conditions.az - conditions.tel_az_min) % (f2pi) <= azr, 1, 0)
+            in_range1 += np.where((future_az - conditions.tel_az_min) % (f2pi) <= azr, 1, 0)
+        if IntRounded(self.max_az) - IntRounded(self.min_az) >= if2pi:
+            in_range2 = np.zeros(len(conditions.az)) + 2
+        else:
+            azr = (self.max_az - self.min_az) % (f2pi)
+            in_range2 = np.where((conditions.az - self.min_az) % (f2pi) <= azr, 1, 0)
+            in_range2 += np.where((future_az - self.min_az) % (f2pi) <= azr, 1, 0)
+        in_range_az[np.where((in_range1 > 1) & (in_range2 > 1))] = 2
 
         passed_all = np.where((in_range_alt > 1) & (in_range_az > 1))[0]
-        # Unmask the parts of the sky which are and will remain in alt/az range
+        # Unmask the parts of the sky which are and will remain in range
         result[passed_all] = 0
 
         return result
