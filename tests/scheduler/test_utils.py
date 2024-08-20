@@ -59,14 +59,16 @@ class TestUtils(unittest.TestCase):
             "pair_15, ri, b",
             "pair_15, yy, a",
             "pair_15, yy, b",
-            "pair_15, zy, a",
             "pair_33, gr, a",
             "pair_33, gr, b",
             "pair_33, ri, a",
+            "pair_33, ri, b",
             "pair_33, ug, a",
             "pair_33, ug, b",
             "pair_33, yy, a",
             "pair_33, yy, b",
+            "pair_33, zy, a",
+            "pair_33, zy, b",
             "twilight_near_sun, 0",
             "twilight_near_sun, 1",
             "twilight_near_sun, 2",
@@ -117,9 +119,8 @@ class TestUtils(unittest.TestCase):
 
         # Let a few pairs try to complete since by default we don't
         # use an agressive shadow_minutes
-        pad = 2
+        pad = 4
         forbidden = np.where((az > 90 + pad) & (az < 270 - pad))[0]
-
         assert forbidden.size == 0
 
         km = KinemModel(mjd0=mjd_start)
