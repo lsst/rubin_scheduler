@@ -105,9 +105,9 @@ class LongGapSurvey(BaseSurvey):
 
         # Only match if we have completed the second of a pair and are
         # in most recent night.
-        # ugh, stupid np.where doesn't support using scalars anymore
+        # note, np.where doesn't support using scalars
         if np.size(observations) == 1:
-            if (observations["scheduler_note"] == self.blob_survey.survey_note + ", b") & (
+            if (observations["scheduler_note"] == self.blob_survey.scheduler_note + ", b") & (
                 observations["night"] == np.max(observations["night"])
             ):
                 need_to_observe = np.array([0])
@@ -115,7 +115,7 @@ class LongGapSurvey(BaseSurvey):
                 need_to_observe = np.array([])
         else:
             need_to_observe = np.where(
-                (observations["scheduler_note"] == self.blob_survey.survey_note + ", b")
+                (observations["scheduler_note"] == self.blob_survey.scheduler_note + ", b")
                 & (observations["night"] == np.max(observations["night"]))
             )[0]
 
@@ -191,7 +191,9 @@ class LongGapSurvey(BaseSurvey):
                         alts.append(np.max(alt))
             # Make sure these have the note filled in
             sched_array["scheduler_note"] = self.long_name
-
+            sched_array["target_name"] = ""
+            sched_array["observation_reason"] = "FBS"
+            sched_array["json_block"] = "Imaging"
             # See if we need to append things to the scripted survey
             # object
             if self.scripted_survey.obs_wanted is not None:
