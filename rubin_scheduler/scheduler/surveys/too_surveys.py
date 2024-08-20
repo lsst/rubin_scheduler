@@ -114,7 +114,7 @@ class TooSurvey(BlobSurvey):
         dither=True,
         seed=42,
         ignore_obs=None,
-        survey_note="ToO",
+        scheduler_note="ToO",
         detailers=None,
         camera="LSST",
         too_id=None,
@@ -141,19 +141,21 @@ class TooSurvey(BlobSurvey):
             dither=dither,
             seed=seed,
             ignore_obs=ignore_obs,
-            survey_note=survey_note,
+            scheduler_note=scheduler_note,
             detailers=detailers,
             camera=camera,
             survey_name=survey_name,
         )
         # Include the ToO id in the note
-        self.survey_note_base = self.survey_note
+        self.scheduler_note_base = self.scheduler_note
+        if self.survey_name is None:
+            self.survey_name = self.scheduler_note
         self.set_id(too_id)
 
     def set_id(self, newid):
         """Set the id"""
         self.too_id = newid
-        self.survey_note = self.survey_note_base + ", " + str(newid)
+        self.scheduler_note = self.scheduler_note_base + ", " + str(newid)
 
     def set_target_map(self, newmap):
         """

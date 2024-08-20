@@ -77,6 +77,7 @@ class FieldSurvey(BaseSurvey):
         ignore_obs=None,
         accept_obs=None,
         survey_name=None,
+        target_name=None,
         scheduler_note=None,
         readtime=2.4,
         filter_change_time=120.0,
@@ -108,8 +109,14 @@ class FieldSurvey(BaseSurvey):
         self.filter_sequence = []
 
         self.survey_name = survey_name
+        self.target_name = target_name
         if self.survey_name is None:
-            self.survey_name = f"Field {self.ra_deg :.2f} {self.dec_deg :.2f}"
+            if self.target_name is not None:
+                self.survey_name = self.target_name
+            else:
+                self.survey_name = f"Field {self.ra_deg :.2f} {self.dec_deg :.2f}"
+        if self.target_name is None:
+            self.target_name = self.survey_name
         self.scheduler_note = scheduler_note
         if self.scheduler_note is None:
             self.scheduler_note = self.survey_name
@@ -135,8 +142,10 @@ class FieldSurvey(BaseSurvey):
                     obs["RA"] = self.ra
                     obs["dec"] = self.dec
                     obs["nexp"] = nexps[filtername]
-                    obs["target"] = self.survey_name
+                    obs["target_name"] = self.target_name
                     obs["scheduler_note"] = self.scheduler_note
+                    obs["science_program"] = self.science_program
+                    obs["observation_reason"] = self.observation_reason
                     self.observations.append(obs)
         else:
             self.observations = sequence

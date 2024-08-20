@@ -444,9 +444,9 @@ def blob_for_long(
         weights = [val[1] for val in bfs]
         basis_functions = [val[0] for val in bfs]
         if filtername2 is None:
-            survey_name = "blob_long, %s" % filtername
+            scheduler_note = "blob_long, %s" % filtername
         else:
-            survey_name = "blob_long, %s%s" % (filtername, filtername2)
+            scheduler_note = "blob_long, %s%s" % (filtername, filtername2)
         if filtername2 is not None:
             detailer_list.append(detailers.TakeAsPairsDetailer(filtername=filtername2))
 
@@ -460,7 +460,7 @@ def blob_for_long(
                 filtername2=filtername2,
                 exptime=exptime,
                 ideal_pair_time=pair_time,
-                survey_note=survey_name,
+                scheduler_note=scheduler_note,
                 ignore_obs=ignore_obs,
                 nexp=nexp,
                 detailers=detailer_list,
@@ -512,7 +512,10 @@ def gen_long_gaps_survey(
             blob_names=blob_names,
         )
         scripted = ScriptedSurvey(
-            [bf.AvoidDirectWind(nside=nside)], nside=nside, ignore_obs=["blob", "DDF", "twi", "pair"]
+            [bf.AvoidDirectWind(nside=nside), bf.AltAzShadowMaskBasisFunction(nside=nside, shadow_minutes=0)],
+            nside=nside,
+            ignore_obs=["blob", "DDF", "twi", "pair"],
+            survey_name="Scripted_Long",
         )
         surveys.append(LongGapSurvey(blob[0], scripted, gap_range=gap_range, avoid_zenith=True))
 
@@ -585,7 +588,8 @@ def gen_greedy_surveys(
         "seed": 42,
         "camera": "LSST",
         "dither": True,
-        "survey_name": "greedy",
+        "survey_name": "Greedy",
+        "scheduler_note": "greedy",
     }
 
     surveys = []
@@ -871,9 +875,9 @@ def generate_blobs(
         weights = [val[1] for val in bfs]
         basis_functions = [val[0] for val in bfs]
         if filtername2 is None:
-            survey_name = "pair_%i, %s" % (pair_time, filtername)
+            scheduler_note = "pair_%i, %s" % (pair_time, filtername)
         else:
-            survey_name = "pair_%i, %s%s" % (pair_time, filtername, filtername2)
+            scheduler_note = "pair_%i, %s%s" % (pair_time, filtername, filtername2)
         if filtername2 is not None:
             detailer_list.append(detailers.TakeAsPairsDetailer(filtername=filtername2))
 
@@ -887,7 +891,7 @@ def generate_blobs(
                 filtername2=filtername2,
                 exptime=exptime,
                 ideal_pair_time=pair_time,
-                survey_note=survey_name,
+                scheduler_note=scheduler_note,
                 ignore_obs=ignore_obs,
                 nexp=nexp,
                 detailers=detailer_list,
@@ -1088,9 +1092,9 @@ def generate_twi_blobs(
         weights = [val[1] for val in bfs]
         basis_functions = [val[0] for val in bfs]
         if filtername2 is None:
-            survey_name = "pair_%i, %s" % (pair_time, filtername)
+            scheduler_note = "pair_%i, %s" % (pair_time, filtername)
         else:
-            survey_name = "pair_%i, %s%s" % (pair_time, filtername, filtername2)
+            scheduler_note = "pair_%i, %s%s" % (pair_time, filtername, filtername2)
         if filtername2 is not None:
             detailer_list.append(detailers.TakeAsPairsDetailer(filtername=filtername2))
         surveys.append(
@@ -1101,7 +1105,7 @@ def generate_twi_blobs(
                 filtername2=filtername2,
                 exptime=exptime,
                 ideal_pair_time=pair_time,
-                survey_note=survey_name,
+                scheduler_note=scheduler_note,
                 ignore_obs=ignore_obs,
                 nexp=nexp,
                 detailers=detailer_list,
@@ -1231,7 +1235,7 @@ def generate_twilight_near_sun(
     time_to_sunrise : float (25.)
         Do not execute if time to sunrise is greater than (minutes).
     """
-    survey_name = "twilight_near_sun"
+    scheduler_note = "twilight_near_sun"
     footprint = ecliptic_target(nside=nside, mask=footprint_mask)
     constant_fp = ConstantFootprint(nside=nside)
     for filtername in filters:
@@ -1316,7 +1320,7 @@ def generate_twilight_near_sun(
                 ideal_pair_time=ideal_pair_time,
                 nside=nside,
                 exptime=exptime,
-                survey_note=survey_name,
+                scheduler_note=scheduler_note,
                 ignore_obs=ignore_obs,
                 dither=True,
                 nexp=nexp,

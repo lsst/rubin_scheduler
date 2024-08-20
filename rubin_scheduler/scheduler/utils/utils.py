@@ -569,6 +569,7 @@ def empty_observation(n=1):
     The numpy fields have the following labels. These fields are
     required to be set to be a valid observation the model observatory
     can execute.
+
     RA : `float`
        The Right Acension of the observation (center of the field)
        (Radians)
@@ -607,10 +608,24 @@ def empty_observation(n=1):
     scheduler_note : `str` (optional)
         Usually good to set the note field so one knows which survey
         object generated the observation.
-    note : `str`
-        Deprecated in favor of `scheduler_note`.
     target_name : `str` (optional)
         A note about what target is being observed.
+        This maps to target_name in the ConsDB.
+        Generally would be used to identify DD, ToO or special targets.
+    science_program : `str` (optional)
+        Science program being executed.
+        This maps to science_program in the ConsDB, although can
+        be overwritten in JSON BLOCK.
+        Generally would be used to identify a particular program for DM.
+    observation_reason : `str` (optional)
+        General 'reason' for observation, for DM purposes.
+        (for scheduler purposes, use `scheduler_note`).
+        This maps to observation_reason in the ConsDB, although could
+        be overwritten in JSON BLOCK.
+        Most likely this is just "science" when using the FBS.
+    json_block : `str` (optional)
+        The JSON BLOCK id to use to acquire observations.
+        This is for use by the SchedulerCSC.
 
     Notes
     -----
@@ -630,102 +645,58 @@ def empty_observation(n=1):
 
     """
 
-    names = [
-        "ID",
-        "RA",
-        "dec",
-        "mjd",
-        "flush_by_mjd",
-        "exptime",
-        "filter",
-        "rotSkyPos",
-        "rotSkyPos_desired",
-        "nexp",
-        "airmass",
-        "FWHM_500",
-        "FWHMeff",
-        "FWHM_geometric",
-        "skybrightness",
-        "night",
-        "slewtime",
-        "visittime",
-        "slewdist",
-        "fivesigmadepth",
-        "alt",
-        "az",
-        "pa",
-        "psudo_pa",
-        "clouds",
-        "moonAlt",
-        "sunAlt",
-        "note",
-        "scheduler_note",
-        "target_name",
-        "block_id",
-        "lmst",
-        "rotTelPos",
-        "rotTelPos_backup",
-        "moonAz",
-        "sunAz",
-        "sunRA",
-        "sunDec",
-        "moonRA",
-        "moonDec",
-        "moonDist",
-        "solarElong",
-        "moonPhase",
-        "cummTelAz",
-        "scripted_id",
+    dtypes = [
+        ("ID", int),
+        ("RA", float),
+        ("dec", float),
+        ("mjd", float),
+        ("flush_by_mjd", float),
+        ("exptime", float),
+        ("filter", "U40"),
+        ("rotSkyPos", float),
+        ("rotSkyPos_desired", float),
+        ("nexp", int),
+        ("airmass", float),
+        ("FWHM_500", float),
+        ("FWHMeff", float),
+        ("FWHM_geometric", float),
+        ("skybrightness", float),
+        ("night", int),
+        ("slewtime", float),
+        ("visittime", float),
+        ("slewdist", float),
+        ("fivesigmadepth", float),
+        ("alt", float),
+        ("az", float),
+        ("pa", float),
+        ("psudo_pa", float),
+        ("clouds", float),
+        ("moonAlt", float),
+        ("sunAlt", float),
+        ("note", "U40"),
+        ("scheduler_note", "U40"),
+        ("target_name", "U40"),
+        ("block_id", int),
+        ("lmst", float),
+        ("rotTelPos", float),
+        ("rotTelPos_backup", float),
+        ("moonAz", float),
+        ("sunAz", float),
+        ("sunRA", float),
+        ("sunDec", float),
+        ("moonRA", float),
+        ("moonDec", float),
+        ("moonDist", float),
+        ("solarElong", float),
+        ("moonPhase", float),
+        ("cummTelAz", float),
+        ("scripted_id", int),
+        ("observation_reason", "U40"),
+        ("science_program", "U40"),
+        ("json_block", "U40"),
     ]
 
-    types = [
-        int,
-        float,
-        float,
-        float,
-        float,
-        float,
-        "U40",
-        float,
-        float,
-        int,
-        float,
-        float,
-        float,
-        float,
-        float,
-        int,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        "U40",
-        "U40",
-        "U40",
-        int,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        int,
-    ]
-    result = np.zeros(n, dtype=list(zip(names, types)))
+    result = np.zeros(n, dtype=dtypes)
     return result
 
 
@@ -789,6 +760,9 @@ def scheduled_observation(n=1):
         "nexp",
         "scheduler_note",
         "target_name",
+        "science_program",
+        "observation_reason",
+        "json_block",
     ]
     types = [
         int,
@@ -803,6 +777,9 @@ def scheduled_observation(n=1):
         float,
         float,
         int,
+        "U40",
+        "U40",
+        "U40",
         "U40",
         "U40",
     ]
