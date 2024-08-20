@@ -129,7 +129,7 @@ class ZernikePolynomialGenerator:
         Return the value of the radial part of the polynomial at r
         """
         if r > 1.0:
-            return np.NaN
+            return np.nan
 
         r_term = np.power(r, self._powers[nm_tuple])
         return (self._coeffs[nm_tuple] * r_term).sum()
@@ -144,7 +144,7 @@ class ZernikePolynomialGenerator:
         denoting the polynomial to evaluate
 
         Return the values of the radial part of the polynomial at r
-        (returns np.NaN if r>1.0)
+        (returns np.nan if r>1.0)
         """
         if len(r) == 0:
             return np.array([], dtype=float)
@@ -159,7 +159,7 @@ class ZernikePolynomialGenerator:
             r_power = np.exp(np.outer(log_r, self._powers[nm_tuple]))
 
             results = np.dot(r_power, self._coeffs[nm_tuple])
-            return np.where(r < 1.0, results, np.NaN)
+            return np.where(r < 1.0, results, np.nan)
 
     def _evaluate_radial(self, r, n, m):
         """
@@ -172,7 +172,7 @@ class ZernikePolynomialGenerator:
         m is the angular order of the polynomial
 
         Return the value(s) of the radial part of the polynomial at r
-        (returns np.NaN if r>1.0)
+        (returns np.nan if r>1.0)
         """
 
         is_array = False
@@ -207,7 +207,7 @@ class ZernikePolynomialGenerator:
         m is the angular order of the polynomial
 
         Return the value(s) of the polynomial at r, phi
-        (returns np.NaN if r>1.0)
+        (returns np.nan if r>1.0)
         """
         radial_part = self._evaluate_radial(r, n, np.abs(m))
         if m >= 0:
@@ -243,7 +243,7 @@ class ZernikePolynomialGenerator:
         m is the angular order of the polynomial
 
         Return the value(s) of the polynomial at x, y
-        (returns np.NaN if sqrt(x**2+y**2)>1.0)
+        (returns np.nan if sqrt(x**2+y**2)>1.0)
         """
         # since we use np.where to handle r==0 cases,
         # use np.errstate to temporarily turn off the
