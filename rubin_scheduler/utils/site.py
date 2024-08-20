@@ -2,8 +2,8 @@ __all__ = ("Site",)
 
 import warnings
 
-import numpy as np
 import astropy.units as u
+import numpy as np
 from astropy.coordinates import EarthLocation
 
 
@@ -173,8 +173,9 @@ class Site:
             warnings.warn(msg)
 
     def to_earth_location(self):
-        return EarthLocation.from_geodetic(lon=self.longitude * u.deg,
-            lat=self.latitude * u.deg, height=self.height * u.meter)
+        return EarthLocation.from_geodetic(
+            lon=self.longitude * u.deg, lat=self.latitude * u.deg, height=self.height * u.meter
+        )
 
     def __eq__(self, other):
         for param in self.__dict__:
