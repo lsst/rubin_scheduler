@@ -195,8 +195,11 @@ class BlobSurvey(GreedySurvey):
         self.filtername1 = filtername1
         self.filtername2 = filtername2
 
+        self.min_pair_time = min_pair_time
+        self.ideal_pair_time = ideal_pair_time
+
         if survey_name is None:
-            survey_name = self._generate_survey_name()
+            self._generate_survey_name()
 
         super(BlobSurvey, self).__init__(
             basis_functions=basis_functions,
@@ -212,7 +215,7 @@ class BlobSurvey(GreedySurvey):
             camera=camera,
             area_required=area_required,
             fields=fields,
-            survey_name=survey_name,
+            survey_name=self.survey_name,
             scheduler_note=scheduler_note,
         )
         self.flush_time = flush_time / 60.0 / 24.0  # convert to days
@@ -253,8 +256,6 @@ class BlobSurvey(GreedySurvey):
         self.ra, self.dec = _hpid2_ra_dec(self.nside, self.hpids)
 
         self.counter = 1  # start at 1, because 0 is default in empty obs
-        self.min_pair_time = min_pair_time
-        self.ideal_pair_time = ideal_pair_time
 
         self.pixarea = hp.nside2pixarea(self.nside, degrees=True)
 
@@ -263,7 +264,9 @@ class BlobSurvey(GreedySurvey):
             self.filtername = self.filtername1
 
     def _generate_survey_name(self):
-        self.survey_name = f"Blob survey {self.filtername1}"
+        self.survey_name = "Pair survey"
+        self.survey_name += f" {self.ideal_pair_time :.1f}"
+        self.survey_name += f" {self.filtername1}"
         if self.filtername2 is None:
             self.survey_name += f"_{self.filtername1}"
         else:
