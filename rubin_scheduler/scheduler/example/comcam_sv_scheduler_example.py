@@ -84,6 +84,13 @@ def get_model_observatory(
     observatory : `~.scheduler.model_observatory.ModelObservatory`
         A ModelObservatory set up to start operations in the evening
         of DAYOBS.
+
+    Notes
+    -----
+    The time for the model observatory will be advanced to the time
+    of `sunset_start_key` (default -12 degree sunset) in the model
+    observatory. The filters may not be correct however; use
+    `update_model_observatory_sunset` to get filters in place.
     """
     # Set up a fresh model observatory
     mjd_now = Time(f"{dayobs}T12:00:00", format="isot", scale="utc").mjd
