@@ -17,6 +17,72 @@ __all__ = ("KinemModel",)
 two_pi = 2.0 * np.pi
 
 
+def tma_movement(percent=70):
+    """Get a dictionary of parameters to pass to `setup_telescope`
+     defining altitude and azimuth speed, acceleration, and jerk
+     in terms of 'percent' of total performance.
+
+     Parameters
+     ----------
+     percent : `float`, optional
+        Default performance for the scheduler simulations for operations
+        has been 70% (70, default).
+        Expected performance at the start of comcam on-sky
+        science operations is about 10%.
+
+    Returns
+    -------
+    tma : `dict` {`str`: `float`}
+        A dictionary which can be passed as kwargs to
+        KinematicModel.setup_telescope(**tma).
+    """
+    # See https://confluence.lsstcorp.org/display/LSSTCOM/TMA+Motion+Settings
+    # Expected performance at end of comcam on-sky is probably 10%
+    if percent > 125:
+        percent = 125
+        print("Cannot exceed 125 percent, by requirements.")
+    tma = {}
+    scale = percent / 100.0
+    tma["azimuth_maxspeed"] = np.min([10.0 * scale, 7.0])
+    tma["azimuth_accel"] = 10.0 * scale
+    tma["azimuth_jerk"] = np.max([1.0, 40.0 * scale])
+    tma["altitude_maxspeed"] = 5.0 * scale
+    tma["altitude_accel"] = 5.0 * scale
+    tma["altitude_jerk"] = np.max([1.0, 20.0 * scale])
+    tma["settle_time"] = 3.0
+    return tma
+
+
+def rotator_movement(percent=100):
+    """Get a dictionary of parameters to pass to `setup_camera`
+     defining rotator max speed, acceleration and jerk,
+     in terms of 'percent' of total performance.
+
+     Parameters
+     ----------
+     percent : `float`, optional
+        Default performance for the scheduler simulations for operations
+        has been 100% (100, default).
+        Expected performance at the start of comcam on-sky
+        science operations is approximately full performance.
+
+    Returns
+    -------
+    rot : `dict` {`str`: `float`}
+        A dictionary which can be passed as kwargs to
+        KinematicModel.setup_camera(**rot).
+    """
+    # Kevin and Brian say these can run 100%, are independent of TMA movement
+    if percent > 125:
+        percent = 125
+        print("Cannot exceed 125 percent, by requirements.")
+    rot = {}
+    rot["maxspeed"] = 3.5 * percent / 100
+    rot["accel"] = 1.0 * percent / 100
+    rot["jerk"] = 4.0 * percent / 100
+    return rot
+
+
 class Radec2altazpa:
     """Class to make it easy to swap in different alt/az conversion if
     wanted."""
@@ -92,6 +158,11 @@ class KinemModel:
             List of the mounted filters.
         """
         self.mounted_filters = filter_list
+        # Make sure we're using one of the available filters.
+        if self.current_filter not in self.mounted_filters:
+            self.current_filter = self.mounted_filters[-1]
+        if self.start_filter not in self.mounted_filters:
+            self.start_filter = self.mounted_filters[-1]
 
     def setup_camera(
         self,
