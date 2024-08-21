@@ -222,16 +222,14 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         Maximum azimuth value to apply to the mask. Default 360 (degrees).
     shadow_minutes : `float`
         How long to extend masked area in longitude. Default 40 (minutes).
+    pad : `float`
+        Pad the conditions alt/az limits by this amount (degrees).
+        Default is 1.75 degrees, corresponding to approximately the
+        radius of the fov.
     """
 
     def __init__(
-        self,
-        nside=None,
-        min_alt=20.0,
-        max_alt=82.0,
-        min_az=0,
-        max_az=360,
-        shadow_minutes=40.0,
+        self, nside=None, min_alt=20.0, max_alt=82.0, min_az=0, max_az=360, shadow_minutes=40.0, pad=1.75
     ):
         super().__init__(nside=nside)
         self.min_alt = np.radians(min_alt)
@@ -239,6 +237,7 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         self.min_az = np.radians(min_az)
         self.max_az = np.radians(max_az)
         self.shadow_time = shadow_minutes / 60.0 / 24.0  # To days
+        self.pad = np.radians(pad)
 
     def _calc_value(self, conditions, indx=None):
         # Mask everything to start
@@ -254,8 +253,8 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         future_alt, future_az = conditions.future_alt_az(np.max(conditions.mjd + self.shadow_time))
 
         # Find minimum alt limits
-        min_alt = IntRounded(np.max([conditions.tel_alt_min, self.min_alt]))
-        max_alt = IntRounded(np.min([conditions.tel_alt_max, self.max_alt]))
+        min_alt = IntRounded(np.max([conditions.tel_alt_min + self.pad, self.min_alt]))
+        max_alt = IntRounded(np.min([conditions.tel_alt_max - self.pad, self.max_alt]))
 
         # Check allowable altitude range against current and future alt values
         good = np.where((IntRounded(conditions.alt) >= min_alt) & (IntRounded(conditions.alt) <= max_alt))[0]
@@ -270,10 +269,10 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         if IntRounded(conditions.tel_az_max) - IntRounded(conditions.tel_az_min) >= if2pi:
             in_range1 = np.zeros(len(conditions.az)) + 2
         else:
-            azr = (conditions.tel_az_max - conditions.tel_az_min) % (f2pi)
+            azr = (conditions.tel_az_max - conditions.tel_az_min) % (f2pi) - self.pad
             # Check current and future
-            in_range1 = np.where((conditions.az - conditions.tel_az_min) % (f2pi) <= azr, 1, 0)
-            in_range1 += np.where((future_az - conditions.tel_az_min) % (f2pi) <= azr, 1, 0)
+            in_range1 = np.where((conditions.az - conditions.tel_az_min + self.pad) % (f2pi) <= azr, 1, 0)
+            in_range1 += np.where((future_az - conditions.tel_az_min + self.pad) % (f2pi) <= azr, 1, 0)
         if IntRounded(self.max_az) - IntRounded(self.min_az) >= if2pi:
             in_range2 = np.zeros(len(conditions.az)) + 2
         else:
