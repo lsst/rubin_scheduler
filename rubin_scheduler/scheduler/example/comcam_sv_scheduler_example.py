@@ -3,7 +3,7 @@ __all__ = (
     "update_model_observatory_sunset",
     "standard_masks",
     "simple_rewards",
-    "simple_pairs_surveys",
+    "simple_pairs_survey",
     "simple_greedy_survey",
     "get_basis_functions_field_survey",
     "get_field_survey",
@@ -318,7 +318,7 @@ def simple_rewards(
     return reward_functions
 
 
-def simple_pairs_surveys(
+def simple_pairs_survey(
     nside: int = 32,
     filtername: str = "g",
     filtername2: str | None = None,
