@@ -214,8 +214,17 @@ class CoreScheduler:
 
         Returns
         -------
-        observations :  observation object (ra,dec,filter,rotangle)
+        observation :  observation object (ra,dec,filter,rotangle)
             Returns None if the queue fails to fill
+
+        Notes
+        -----
+        Calling request_observation repeatedly, even without updating
+        the time or conditions, can return different requested
+        observations. This is because the internal queue is filled
+        when it becomes empty, and then subsequent calls to
+        request_observation will pop successive visits from this queue,
+        until the queue is empty or is flushed.
         """
         if mjd is None:
             mjd = self.conditions.mjd
@@ -287,7 +296,7 @@ class CoreScheduler:
             rewards = np.zeros(len(surveys))
             for i, survey in enumerate(surveys):
                 rewards[i] = np.nanmax(survey.calc_reward_function(self.conditions))
-            # If we have a good reward, break out of the loop
+            # If we have a tier with a good reward, break out of the loop
             if np.nanmax(rewards) > -np.inf:
                 self.survey_index[0] = ns
                 break
@@ -305,6 +314,7 @@ class CoreScheduler:
             )
 
             self.queue = result
+            self.queue_filled = self.conditions.mjd
 
         if len(self.queue) == 0:
             self.log.warning(f"Failed to fill queue at time {self.conditions.mjd}")
