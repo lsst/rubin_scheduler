@@ -492,7 +492,6 @@ def simple_pairs_survey(
         "slew_approx": 7.5,
         "filter_change_approx": 140.0,
         "read_approx": 2.4,
-        "min_pair_time": 15.0,
         "search_radius": 30.0,
         "flush_time": pair_time * 3,
         "smoothing_kernel": None,
