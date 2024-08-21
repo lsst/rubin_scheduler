@@ -1,6 +1,10 @@
 __all__ = (
     "get_model_observatory",
     "update_model_observatory_sunset",
+    "standard_masks",
+    "simple_rewards",
+    "simple_pairs_survey",
+    "simple_greedy_survey",
     "get_basis_functions_field_survey",
     "get_field_survey",
     "get_sv_fields",
@@ -13,7 +17,8 @@ import copy
 import numpy as np
 from astropy.time import Time
 
-from rubin_scheduler.scheduler import basis_functions
+import rubin_scheduler.scheduler.basis_functions as basis_functions
+import rubin_scheduler.scheduler.detailers as detailers
 from rubin_scheduler.scheduler.detailers import CameraSmallRotPerObservationListDetailer
 from rubin_scheduler.scheduler.model_observatory import (
     KinemModel,
@@ -21,20 +26,22 @@ from rubin_scheduler.scheduler.model_observatory import (
     rotator_movement,
     tma_movement,
 )
-from rubin_scheduler.scheduler.schedulers import ComCamFilterSched, CoreScheduler
-from rubin_scheduler.scheduler.surveys import FieldSurvey
-from rubin_scheduler.site_models import ConstantSeeingData, ConstantWindData
+from rubin_scheduler.scheduler.schedulers import ComCamFilterSched, CoreScheduler, FilterSwapScheduler
+from rubin_scheduler.scheduler.surveys import BlobSurvey, FieldSurvey, GreedySurvey
+from rubin_scheduler.scheduler.utils import Footprint, get_current_footprint
+from rubin_scheduler.site_models import Almanac, ConstantSeeingData, ConstantWindData
+from rubin_scheduler.utils import survey_start_mjd
 
 
 def get_model_observatory(
-    dayobs="2024-09-09",
-    fwhm_500=2.0,
-    wind_speed=5.0,
-    wind_direction=340,
-    tma_percent=10,
-    rotator_percent=100,
-    survey_start=Time("2024-09-09T12:00:00", format="isot", scale="utc").mjd,
-):
+    dayobs: str = "2024-09-09",
+    fwhm_500: float = 2.0,
+    wind_speed: float = 5.0,
+    wind_direction: float = 340,
+    tma_percent: float = 10,
+    rotator_percent: float = 100,
+    survey_start: Time = Time("2024-09-09T12:00:00", format="isot", scale="utc").mjd,
+) -> ModelObservatory:
     """Set up a model observatory with constant seeing and wind speed,
     running on 'dayobs'.
 
@@ -106,7 +113,9 @@ def get_model_observatory(
     return observatory
 
 
-def update_model_observatory_sunset(observatory, filter_scheduler, twilight=-12):
+def update_model_observatory_sunset(
+    observatory: ModelObservatory, filter_scheduler: FilterSwapScheduler, twilight: int | float = -12
+) -> ModelObservatory:
     """Move model observatory to twilight and ensure correct filters are in
     place according to the filter_scheduler.
 
@@ -151,6 +160,494 @@ def update_model_observatory_sunset(observatory, filter_scheduler, twilight=-12)
     filters_needed = filter_scheduler(conditions)
     observatory.observatory.mount_filters(filters_needed)
     return observatory
+
+
+def standard_masks(
+    nside: int,
+    moon_distance: float = 30.0,
+    wind_speed_maximum: float = 20.0,
+    min_alt: float = 20,
+    max_alt: float = 86.5,
+    shadow_minutes: float = 30,
+) -> list[basis_functions.BaseBasisFunction]:
+    """A set of standard mask functions.
+
+    Avoids the moon, high wind, and areas on the sky out of bounds via
+    the slew calculation from the model observatory.
+
+    Parameters
+    ----------
+    nside : `int` or None
+        The healpix nside to use.
+        Default of None uses rubin_scheduler.utils.get_default_nside.
+    moon_distance : `float`, optional
+        Moon avoidance distance, in degrees.
+    wind_speed_maximum : `float`, optional
+        Wind speed maximum to apply to the wind avoidance basis function,
+        in m/s.
+    min_alt : `float`, optional
+        Minimum altitude (in degrees) to observe.
+    max_alt : `float`, optional
+        Maximum altitude (in degrees) to observe.
+    shadow_minutes : `float`, optional
+        Avoid inaccessible alt/az regions, as well as parts of the sky
+        which will move into those regions within `shadow_minutes` (minutes).
+
+    Returns
+    -------
+    mask_basis_functions : `list` [`BaseBasisFunction`]
+        Mask basis functions should always be used with a weight of 0.
+        The masked (np.nan or -np.inf) regions will remain masked,
+        but the basis function values won't influence the reward.
+    """
+    masks = []
+    # Add the Moon avoidance mask
+    masks.append(basis_functions.MoonAvoidanceBasisFunction(nside=nside, moon_distance=moon_distance))
+    # Add a mask around bright planets
+    masks.append(basis_functions.PlanetMaskBasisFunction(nside=nside))
+    # Add the wind avoidance mask
+    masks.append(basis_functions.AvoidDirectWind(nside=nside, wind_speed_maximum=wind_speed_maximum))
+    # Avoid inaccessible parts of the sky, as well as places that will
+    # move into those places within shadow_minutes.
+    masks.append(
+        basis_functions.AltAzShadowMaskBasisFunction(
+            nside=nside,
+            min_alt=min_alt,
+            max_alt=max_alt,
+            min_az=0.0,
+            max_az=360.0,
+            shadow_minutes=shadow_minutes,
+        )
+    )
+    return masks
+
+
+def simple_rewards(
+    footprints: Footprint,
+    filtername: str,
+    nside: int = 32,
+    m5_weight: float = 6.0,
+    footprint_weight: float = 1.5,
+    slewtime_weight: float = 3.0,
+    stayfilter_weight: float = 3.0,
+    repeat_weight: float = -20,
+) -> list[basis_functions.BaseBasisFunction]:
+    """A simple set of rewards for area-based surveys.
+
+    Parameters
+    ----------
+    footprints : `Footprint`
+        A Footprint class, which takes a target map and adds a
+        time-dependent weighting on top (such as seasonal weighting).
+    filtername : `str`
+        The filtername active for these rewards.
+    nside : `int`, optional
+        The nside for the rewards.
+    m5_weight : `float`, optional
+        The weight to give the M5Diff basis function.
+    footprint_weight : `float`, optional
+        The weight to give the footprint basis function.
+    slewtime_weight : `float`, optional
+        The weight to give the slewtime basis function.
+    stayfilter_weight : `float`, optional
+        The weight to give the FilterChange basis function.
+    repeat_weight : `float`, optional
+        The weight to give the VisitRepeat basis function.
+        This is negative by default, to avoid revisiting the same part
+        of the sky within `gap_max` (3 hours) in any filter (except in the
+        pairs survey itself).
+
+    Returns
+    -------
+    reward_functions : `list` [(`BaseBasisFunction`, `float`)]
+        List of tuples, each tuple is a reward function followed by
+        its respective weight.
+
+    Notes
+    -----
+    Increasing the m5_weight moves visits toward darker skies.
+    Increasing the footprint weight distributes visits more evenly.
+    Increasing the slewtime weight acquires visits with shorter slewtime.
+    The balance in the defaults here has worked reasonably for pair
+    surveys in simulations.
+    """
+    reward_functions = []
+    # Add M5 basis function (rewards dark sky)
+    reward_functions.append(
+        (basis_functions.M5DiffBasisFunction(filtername=filtername, nside=nside), m5_weight)
+    )
+    # Add a footprint basis function
+    # (rewards sky with fewer visits)
+    reward_functions.append(
+        (
+            basis_functions.FootprintBasisFunction(
+                filtername=filtername,
+                footprint=footprints,
+                out_of_bounds_val=np.nan,
+                nside=nside,
+            ),
+            footprint_weight,
+        )
+    )
+    # Add a reward function for small slewtimes.
+    reward_functions.append(
+        (
+            basis_functions.SlewtimeBasisFunction(filtername=filtername, nside=nside),
+            slewtime_weight,
+        )
+    )
+    # Add a reward to stay in the same filter as much as possible.
+    reward_functions.append(
+        (basis_functions.FilterChangeBasisFunction(filtername=filtername), stayfilter_weight)
+    )
+    # And this is technically a mask, to avoid asking for observations
+    # which are not possible. However, it depends on the filters
+    # requested, compared to the filters available in the camera.
+    reward_functions.append((basis_functions.FilterLoadedBasisFunction(filternames=filtername), 0))
+    # And add a basis function to avoid repeating the same pointing
+    # (VisitRepeat can be used to either encourage or discourage repeats,
+    # depending on the repeat_weight value).
+    reward_functions.append(
+        (
+            basis_functions.VisitRepeatBasisFunction(
+                gap_min=0, gap_max=3 * 60.0, filtername=None, nside=nside, npairs=20
+            ),
+            repeat_weight,
+        )
+    )
+    return reward_functions
+
+
+def simple_pairs_survey(
+    nside: int = 32,
+    filtername: str = "g",
+    filtername2: str | None = None,
+    mask_basis_functions: list[basis_functions.BaseBasisFunction] | None = None,
+    reward_basis_functions: list[basis_functions.BaseBasisFunction] | None = None,
+    reward_basis_functions_weights: list[float] | None = None,
+    survey_start: float | None = None,
+    footprints_hp: np.ndarray | None = None,
+    camera_rot_limits: list[float] = [-80.0, 80.0],
+    pair_time: float = 30.0,
+    exptime: float = 30.0,
+    nexp: int = 1,
+) -> BlobSurvey:
+    """Set up a simple blob survey to acquire pairs of visits.
+
+    Parameters
+    ----------
+    nside  : `int`, optional
+        Nside for the surveys.
+    filtername : `str`, optional
+        Filtername for the first visit of the pair.
+    filtername2 : `str` or None, optional
+        Filtername for the second visit of the pair. If None, the
+        first filter will be used for both visits.
+    mask_basis_functions : `list` [`BaseBasisFunction`] or None
+        List of basis functions to use as masks (with implied weight 0).
+        If None, `standard_masks` is used with default parameters.
+    reward_basis_functions : `list` [`BaseBasisFunction`] or None
+        List of basis functions to use as rewards.
+        If None, a basic set of basis functions will be used.
+    reward_basis_functions_weights : `list` [`float`] or None
+        List of values to use as weights for the reward basis functions.
+        If None, default values for the basic set will be used.
+    survey_start : `float` or None
+        The start of the survey, in MJD.
+        If None, `survey_start_mjd()` is used.
+        This should be the start of the survey, not the current time.
+    footprints_hp : `np.ndarray` (N,) or None
+        An array of healpix maps with the target survey area, with dtype
+        like [(filtername, '<f8'), (filtername2, '<f8')].
+        If None, `get_current_footprint()` will be used, which will cover
+        the expected LSST survey footprint.
+    camera_rot_limits : `list` [`float`]
+        The rotator limits to expect for the camera.
+        These should be slightly padded from true limits, to allow for
+        slight delays between requesting observations and acquiring them.
+    pair_time : `float`
+        The ideal time between pairs of visits, in minutes.
+    exptime : `float`
+        The on-sky exposure time per visit.
+    nexp : `int`
+        The number of exposures per visit (exptime * nexp = total on-sky time).
+
+    Returns
+    -------
+    pair_survey : `BlobSurvey`
+        A blob survey configured to take pairs at spacing of pair_time,
+        in filtername + filtername2.
+    """
+
+    # Note that survey_start should be the start of the FIRST night of survey.
+    # Not the current night.
+    if survey_start is None:
+        survey_start = survey_start_mjd()
+
+    # Use the Almanac to find the position of the sun at the start of survey.
+    almanac = Almanac(mjd_start=survey_start)
+    sun_moon_info = almanac.get_sun_moon_positions(survey_start)
+    sun_ra_start = sun_moon_info["sun_RA"].copy()
+
+    if footprints_hp is None:
+        footprints_hp, labels = get_current_footprint(nside=nside)
+    footprints = Footprint(mjd_start=survey_start, sun_ra_start=sun_ra_start, nside=nside)
+    for f in footprints_hp.dtype.names:
+        footprints.set_footprint(f, footprints_hp[f])
+
+    if mask_basis_functions is None:
+        mask_basis_functions = standard_masks(nside=nside)
+    # Mask basis functions have zero weights.
+    mask_basis_functions_weights = [0 for mask in mask_basis_functions]
+
+    if reward_basis_functions is None:
+        # Create list of (tuples of) basic reward basis functions and weights.
+        m5_weight = 6.0
+        footprint_weight = 1.5
+        slewtime_weight = 3.0
+        stayfilter_weight = 3.0
+        repeat_weight = -20
+
+        if filtername2 is None:
+            reward_functions = simple_rewards(
+                footprints=footprints,
+                filtername=filtername,
+                nside=nside,
+                m5_weight=m5_weight,
+                footprint_weight=footprint_weight,
+                slewtime_weight=slewtime_weight,
+                stayfilter_weight=stayfilter_weight,
+                repeat_weight=repeat_weight,
+            )
+
+        else:
+            # Add the same basis functions, but M5 and footprint
+            # basis functions need to be added twice, with half the weight.
+            rf1 = simple_rewards(
+                footprints=footprints,
+                filtername=filtername,
+                nside=nside,
+                m5_weight=m5_weight / 2.0,
+                footprint_weight=footprint_weight / 2.0,
+                slewtime_weight=slewtime_weight,
+                stayfilter_weight=stayfilter_weight,
+                repeat_weight=repeat_weight,
+            )
+            rf2 = simple_rewards(
+                footprints=footprints,
+                filtername=filtername2,
+                nside=nside,
+                m5_weight=m5_weight / 2.0,
+                footprint_weight=footprint_weight / 2.0,
+                slewtime_weight=0,
+                stayfilter_weight=0,
+                repeat_weight=0,
+            )
+            # Now clean up and combine these - and remove the separate
+            # BasisFunction for FilterLoadedBasisFunction.
+            reward_functions = [(i[0], i[1]) for i in rf1 if i[1] > 0] + [
+                (i[0], i[1]) for i in rf2 if i[1] > 0
+            ]
+            # Then put back in the FilterLoadedBasisFunction with both filters.
+            filternames = [fn for fn in [filtername, filtername2] if fn is not None]
+            reward_functions.append((basis_functions.FilterLoadedBasisFunction(filternames=filternames), 0))
+
+        # unpack the basis functions and weights
+        reward_basis_functions_weights = [val[1] for val in reward_functions]
+        reward_basis_functions = [val[0] for val in reward_functions]
+
+    # Set up blob surveys.
+    if filtername2 is None:
+        scheduler_note = "pair_%i, %s" % (pair_time, filtername)
+    else:
+        scheduler_note = "pair_%i, %s%s" % (pair_time, filtername, filtername2)
+
+    # Set up detailers for each requested observation.
+    detailer_list = []
+    # Avoid camera rotator limits.
+    detailer_list.append(
+        detailers.CameraRotDetailer(min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits))
+    )
+    # Convert rotTelPos to rotSkyPos_desired
+    detailer_list.append(detailers.Rottep2RotspDesiredDetailer(telescope="rubin"))
+    # Reorder visits in a blob so that closest to current altitude is first.
+    detailer_list.append(detailers.CloseAltDetailer())
+    # Sets a flush-by date to avoid running into prescheduled visits.
+    detailer_list.append(detailers.FlushForSchedDetailer())
+    # Add a detailer to label visits as either first or second of the pair.
+    if filtername2 is not None:
+        detailer_list.append(detailers.TakeAsPairsDetailer(filtername=filtername2))
+
+    # Set up the survey.
+    ignore_obs = ["DD"]
+
+    BlobSurvey_params = {
+        "slew_approx": 7.5,
+        "filter_change_approx": 140.0,
+        "read_approx": 2.4,
+        "min_pair_time": 15.0,
+        "search_radius": 30.0,
+        "flush_time": pair_time * 3,
+        "smoothing_kernel": None,
+        "nside": nside,
+        "seed": 42,
+        "dither": True,
+        "twilight_scale": False,
+    }
+
+    pair_survey = BlobSurvey(
+        reward_basis_functions + mask_basis_functions,
+        reward_basis_functions_weights + mask_basis_functions_weights,
+        filtername1=filtername,
+        filtername2=filtername2,
+        exptime=exptime,
+        ideal_pair_time=pair_time,
+        scheduler_note=scheduler_note,
+        ignore_obs=ignore_obs,
+        nexp=nexp,
+        detailers=detailer_list,
+        **BlobSurvey_params,
+    )
+
+    return pair_survey
+
+
+def simple_greedy_survey(
+    nside: int = 32,
+    filtername: str = "r",
+    mask_basis_functions: list[basis_functions.BaseBasisFunction] | None = None,
+    reward_basis_functions: list[basis_functions.BaseBasisFunction] | None = None,
+    reward_basis_functions_weights: list[float] | None = None,
+    survey_start: float | None = None,
+    footprints_hp: np.ndarray | None = None,
+    camera_rot_limits: list[float] = [-80.0, 80.0],
+    exptime: float = 30.0,
+    nexp: int = 1,
+) -> GreedySurvey:
+    """Set up a simple greedy survey to just observe single visits.
+
+    Parameters
+    ----------
+    nside  : `int`, optional
+        Nside for the surveys.
+    filtername : `str`, optional
+        Filtername for the visits.
+    mask_basis_functions : `list` [`BaseBasisFunction`] or None
+        List of basis functions to use as masks (with implied weight 0).
+        If None, `standard_masks` is used with default parameters.
+    reward_basis_functions : `list` [`BaseBasisFunction`] or None
+        List of basis functions to use as rewards.
+        If None, a basic set of basis functions will be used.
+    reward_basis_functions_weights : `list` [`float`] or None
+        List of values to use as weights for the reward basis functions.
+        If None, default values for the basic set will be used.
+    survey_start : `float` or None
+        The start of the survey, in MJD.
+        If None, `survey_start_mjd()` is used.
+        This should be the start of the survey, not the current time.
+    footprints_hp : `np.ndarray` (N,) or None
+        An array of healpix maps with the target survey area, with dtype
+        like [(filtername, '<f8'), (filtername2, '<f8')].
+        If None, `get_current_footprint()` will be used, which will cover
+        the expected LSST survey footprint.
+    camera_rot_limits : `list` [`float`]
+        The rotator limits to expect for the camera.
+        These should be slightly padded from true limits, to allow for
+        slight delays between requesting observations and acquiring them.
+    exptime : `float`
+        The on-sky exposure time per visit.
+    nexp : `int`
+        The number of exposures per visit (exptime * nexp = total on-sky time).
+
+    Returns
+    -------
+    greedy_survey : `GreedySurvey`
+        A greedy survey configured to take the next best (single) visit
+        in filtername.
+    """
+
+    # Note that survey_start should be the start of the FIRST night of survey.
+    # Not the current night.
+    if survey_start is None:
+        survey_start = survey_start_mjd()
+
+    # Use the Almanac to find the position of the sun at the start of survey.
+    almanac = Almanac(mjd_start=survey_start)
+    sun_moon_info = almanac.get_sun_moon_positions(survey_start)
+    sun_ra_start = sun_moon_info["sun_RA"].copy()
+
+    if footprints_hp is None:
+        footprints_hp, labels = get_current_footprint(nside=nside)
+    footprints = Footprint(mjd_start=survey_start, sun_ra_start=sun_ra_start, nside=nside)
+    for f in footprints_hp.dtype.names:
+        footprints.set_footprint(f, footprints_hp[f])
+
+    if mask_basis_functions is None:
+        mask_basis_functions = standard_masks(nside=nside)
+    # Mask basis functions have zero weights.
+    mask_basis_functions_weights = [0 for mask in mask_basis_functions]
+
+    if reward_basis_functions is None:
+        # Create list of (tuples of) basic reward basis functions and weights.
+        m5_weight = 6.0
+        footprint_weight = 1.5
+        slewtime_weight = 3.0
+        stayfilter_weight = 3.0
+        repeat_weight = -5
+
+        reward_functions = simple_rewards(
+            footprints=footprints,
+            filtername=filtername,
+            nside=nside,
+            m5_weight=m5_weight,
+            footprint_weight=footprint_weight,
+            slewtime_weight=slewtime_weight,
+            stayfilter_weight=stayfilter_weight,
+            repeat_weight=repeat_weight,
+        )
+
+        # unpack the basis functions and weights
+        reward_basis_functions_weights = [val[1] for val in reward_functions]
+        reward_basis_functions = [val[0] for val in reward_functions]
+
+    # Set up scheduler note.
+    scheduler_note = f"greedy {filtername}"
+
+    # Set up detailers for each requested observation.
+    detailer_list = []
+    # Avoid camera rotator limits.
+    detailer_list.append(
+        detailers.CameraRotDetailer(min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits))
+    )
+    # Convert rotTelPos to rotSkyPos_desired
+    detailer_list.append(detailers.Rottep2RotspDesiredDetailer(telescope="rubin"))
+    # Reorder visits in a blob so that closest to current altitude is first.
+    detailer_list.append(detailers.CloseAltDetailer())
+    # Sets a flush-by date to avoid running into prescheduled visits.
+    detailer_list.append(detailers.FlushForSchedDetailer())
+
+    # Set up the survey.
+    ignore_obs = ["DD"]
+
+    GreedySurvey_params = {
+        "nside": nside,
+        "seed": 42,
+        "dither": True,
+    }
+
+    greedy_survey = GreedySurvey(
+        reward_basis_functions + mask_basis_functions,
+        reward_basis_functions_weights + mask_basis_functions_weights,
+        filtername=filtername,
+        exptime=exptime,
+        scheduler_note=scheduler_note,
+        ignore_obs=ignore_obs,
+        nexp=nexp,
+        detailers=detailer_list,
+        **GreedySurvey_params,
+    )
+
+    return greedy_survey
 
 
 def get_basis_functions_field_survey(
@@ -198,7 +695,14 @@ def get_basis_functions_field_survey(
     return bfs
 
 
-def get_field_survey(field_ra_deg, field_dec_deg, field_name, basis_functions, detailers, nside=32):
+def get_field_survey(
+    field_ra_deg: float,
+    field_dec_deg: float,
+    field_name: str,
+    basis_functions: list[basis_functions.BaseBasisFunction],
+    detailers: list[detailers.BaseDetailer],
+    nside: int = 32,
+) -> FieldSurvey:
     """Set up a comcam SV field survey.
 
     Parameters
@@ -257,7 +761,7 @@ def get_field_survey(field_ra_deg, field_dec_deg, field_name, basis_functions, d
     return field_survey
 
 
-def get_sv_fields():
+def get_sv_fields() -> dict[str, dict[str, float]]:
     """Default potential fields for the SV surveys.
 
     Returns
@@ -288,7 +792,9 @@ def get_sv_fields():
     return fields_dict
 
 
-def prioritize_fields(priority_fields=None, field_dict=None):
+def prioritize_fields(
+    priority_fields: list[str] | None = None, field_dict: dict[str, dict[str, float]] | None = None
+) -> list[list[FieldSurvey]]:
     """Add the remaining field names in field_dict into the last
     tier of 'priority_fields' field names, creating a complete
     survey tier list of lists.
@@ -324,7 +830,12 @@ def prioritize_fields(priority_fields=None, field_dict=None):
     return tiers
 
 
-def get_comcam_sv_schedulers(starting_tier=0, tiers=None, field_dict=None, nside=32):
+def get_comcam_sv_schedulers(
+    starting_tier: int = 0,
+    tiers: list[list[str]] | None = None,
+    field_dict: dict[str, dict[str, float]] | None = None,
+    nside: int = 32,
+) -> (CoreScheduler, ComCamFilterSched):
     """Set up a CoreScheduler and FilterScheduler generally
     appropriate for ComCam SV observing.
 
