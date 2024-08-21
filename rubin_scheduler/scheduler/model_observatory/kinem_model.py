@@ -162,6 +162,11 @@ class KinemModel:
             List of the mounted filters.
         """
         self.mounted_filters = filter_list
+        # Make sure we're using one of the available filters.
+        if self.current_filter not in self.mounted_filters:
+            self.current_filter = self.mounted_filters[-1]
+        if self.start_filter not in self.mounted_filters:
+            self.start_filter = self.mounted_filters[-1]
 
     def setup_camera(
         self,
