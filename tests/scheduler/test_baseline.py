@@ -163,9 +163,9 @@ def gen_blob_surveys(nside):
             # Need to scale weights up so filter balancing works properly.
             weights = np.array([6.0, 0.6, 3.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         if filtername2 is None:
-            survey_name = "blob, %s" % filtername
+            scheduler_note = "blob, %s" % filtername
         else:
-            survey_name = "blob, %s%s" % (filtername, filtername2)
+            scheduler_note = "blob, %s%s" % (filtername, filtername2)
         if filtername2 is not None:
             detailer_list.append(detailers.TakeAsPairsDetailer(filtername=filtername2))
 
@@ -176,7 +176,7 @@ def gen_blob_surveys(nside):
                 weights,
                 filtername1=filtername,
                 filtername2=filtername2,
-                survey_note=survey_name,
+                scheduler_note=scheduler_note,
                 ignore_obs="DD",
                 detailers=detailer_list,
                 nside=nside,
@@ -221,7 +221,7 @@ class TestFeatures(unittest.TestCase):
         survey_length = 2.0  # days
 
         surveys = gen_greedy_surveys(nside)
-        # Depreating Pairs_survey_scripted
+        # Deprecating Pairs_survey_scripted
         # surveys.append(Pairs_survey_scripted(None, ignore_obs='DD'))
 
         # Set up the DD
