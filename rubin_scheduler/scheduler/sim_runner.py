@@ -149,6 +149,7 @@ def sim_runner(
             # Flush queue and try to get some new targets.
             scheduler.flush_queue()
             mjd_last_flush = copy.deepcopy(observatory.mjd)
+
         if new_night:
             # find out what filters we want mounted
             conditions = observatory.return_conditions()
