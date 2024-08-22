@@ -343,7 +343,7 @@ class CameraSmallRotPerObservationListDetailer(BaseDetailer):
         offsets = np.zeros(len(filter_list))
 
         # Find the locations of the filter changes
-        filter_changes = np.where(filter_list[:-1] != filter_list[1:])[0]
+        filter_changes = np.where(np.array(filter_list[:-1]) != np.array(filter_list[1:]))[0]
         if len(filter_changes) == 0:
             filter_changes = np.array([0])
             nvis_per_filter = np.array([len(filter_changes)])

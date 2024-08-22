@@ -67,3 +67,7 @@ class TestComCamSurveys(unittest.TestCase):
         all_sv_fields = set(list(get_sv_fields().keys()))
         # Probably won't observe all of the fields.
         assert sv_fields.intersection(all_sv_fields) == sv_fields
+
+
+if __name__ == "__main__":
+    unittest.main()
