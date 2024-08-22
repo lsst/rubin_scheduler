@@ -1,8 +1,51 @@
-__all__ = ("m5_flat_sed", "m5_scale")
+__all__ = ("scaled_zeropoint", "m5_flat_sed", "m5_scale")
 
 import numpy as np
 
 from .sys_eng_vals import SysEngVals
+
+
+def scaled_zeropoint(filtername: str, airmass: float, exptime: float = 1) -> float:
+    """Photometric zeropoint (magnitude that produces 1 electron
+    in a 1 second exposure) for LSST bandpasses (v1.9), using
+    a standard atmosphere scaled for different airmasses and potentially
+    scaled for other exposure times.
+
+    Parameters
+    ----------
+    filtername : `str`
+        The filter for which to return the photometric zeropoint.
+    airmass : `float`
+        The airmass at which to return the photometric zeropoint.
+    exptime : `float`, optioanl
+        The exposure time for which to return the photometric zeropoint.
+        Canonically this should be 1 second, however some uses may
+        find other exposure times useful.
+
+    Notes
+    -----
+    Typically, zeropoints are defined as the magnitude of a source
+    which would produce 1 count in a 1 second exposure -
+    here we use *electron* counts, not ADU counts.
+    """
+    # calculated with syseng_throughputs v1.9
+    extinction_coeff = {
+        "u": -0.458,
+        "g": -0.208,
+        "r": -0.122,
+        "i": -0.074,
+        "z": -0.057,
+        "y": -0.095,
+    }
+    zeropoint_X1 = {
+        "u": 26.524,
+        "g": 28.508,
+        "r": 28.361,
+        "i": 28.171,
+        "z": 27.782,
+        "y": 26.818,
+    }
+    return zeropoint_X1[filtername] + extinction_coeff[filtername] * (airmass - 1) + 2.5 * np.log10(exptime)
 
 
 def m5_scale(
