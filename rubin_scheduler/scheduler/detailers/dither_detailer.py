@@ -333,7 +333,7 @@ class CameraSmallRotPerObservationListDetailer(BaseDetailer):
         self.offset = None
         self.rc = rotation_converter(telescope=telescope)
 
-    def _generate_offsets_filter_change(self, filter_list, mjd, initial_offset):
+    def _generate_offsets_filter_change(self, filter_list, mjd):
         """Generate a random camera rotation for each filter change
         or add a small offset for each sequential observation.
         """
@@ -341,17 +341,20 @@ class CameraSmallRotPerObservationListDetailer(BaseDetailer):
         rng = np.random.default_rng(mjd_hash * self.seed)
 
         offsets = np.zeros(len(filter_list))
-        # offset = np.asarray(initial_offset).item()
-        # offsets[0] = offset
 
         # Find the locations of the filter changes
-        filter_changes = np.concatenate([np.array([-1]), np.where(filter_list[:-1] != filter_list[1:])[0]])
-        # But add one because of counting and offsets above.
-        filter_changes += 1
-        # Count visits per filter in the sequence.
-        nvis_per_filter = np.concatenate(
-            [np.diff(filter_changes), np.array([len(filter_list) - 1 - filter_changes[-1]])]
-        )
+        filter_changes = np.where(filter_list[:-1] != filter_list[1:])[0]
+        if len(filter_changes) == 0:
+            filter_changes = np.array([0])
+            nvis_per_filter = np.array([len(filter_changes)])
+        else:
+            filter_changes = np.concatenate([np.array([-1]), filter_changes])
+            # Add one because of counting and offsets above.
+            filter_changes += 1
+            # Count visits per filter in the sequence.
+            nvis_per_filter = np.concatenate(
+                [np.diff(filter_changes), np.array([len(filter_list) - 1 - filter_changes[-1]])]
+            )
         # Set up the random rotator offsets for each filter change
         # This includes first rotation .. maybe not needed?
         for fchange_idx, nvis_f in zip(filter_changes, nvis_per_filter):
@@ -367,7 +370,7 @@ class CameraSmallRotPerObservationListDetailer(BaseDetailer):
     def __call__(self, observation_list, conditions):
         # Generate offsets in camera rotator
         filter_list = [np.asarray(obs["filter"]).item() for obs in observation_list]
-        offsets = self._generate_offsets_filter_change(filter_list, conditions.mjd, conditions.rot_tel_pos)
+        offsets = self._generate_offsets_filter_change(filter_list, conditions.mjd)
 
         for i, obs in enumerate(observation_list):
             alt, az = _approx_ra_dec2_alt_az(

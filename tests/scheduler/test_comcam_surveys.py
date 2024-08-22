@@ -56,10 +56,12 @@ class TestComCamSurveys(unittest.TestCase):
         scheduler, filter_scheduler = get_comcam_sv_schedulers()
         observatory = get_model_observatory(dayobs=dayobs, survey_start=survey_start)
         observatory = update_model_observatory_sunset(observatory, filter_scheduler)
-
+        # Expect this to give several queue not filled
+        # because of limited fields
         observatory, scheduler, observations = sim_runner(
             observatory, scheduler, filter_scheduler, survey_length=30
         )
+        print(len(observations))
         assert len(observations) > 24000
         sv_fields = set(np.unique(observations["scheduler_note"]))
         all_sv_fields = set(list(get_sv_fields().keys()))
