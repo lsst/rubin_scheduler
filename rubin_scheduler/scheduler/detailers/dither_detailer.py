@@ -308,10 +308,10 @@ class CameraSmallRotPerObservationListDetailer(BaseDetailer):
     ----------
     max_rot : `float`, optional
         The maximum amount to offset the camera (degrees).
-        Default of 85 allows some padding for camera rotator.
+        Default of 80 allows some padding for camera rotator.
     min_rot : `float`, optional
         The minimum to offset the camera (degrees)
-        Default of -85 allows some padding for camera rotator.
+        Default of -80 allows some padding for camera rotator.
     seed : `int`, optional
         Seed for random number generation (per night).
     per_visit_rot : `float`, optional
@@ -321,7 +321,7 @@ class CameraSmallRotPerObservationListDetailer(BaseDetailer):
         This is used to determine conversions between rotSkyPos and rotTelPos.
     """
 
-    def __init__(self, max_rot=85.0, min_rot=-85.0, seed=42, per_visit_rot=0.0, telescope="rubin"):
+    def __init__(self, max_rot=80.0, min_rot=-80.0, seed=42, per_visit_rot=0.0, telescope="rubin"):
         self.survey_features = {}
 
         self.current_night = -1
