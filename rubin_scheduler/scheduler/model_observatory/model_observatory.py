@@ -435,8 +435,8 @@ class ModelObservatory:
         self.conditions.mjd_start = self.mjd_start
 
         # Telescope limits
-        self.conditions.tel_az_min = self.observatory.abs_telaz_minpos_rad
-        self.conditions.tel_az_max = self.observatory.abs_telaz_maxpos_rad
+        self.conditions.tel_az_min = self.observatory.telaz_minpos_rad
+        self.conditions.tel_az_max = self.observatory.telaz_maxpos_rad
         self.conditions.tel_alt_min = self.observatory.telalt_minpos_rad
         self.conditions.tel_alt_max = self.observatory.telalt_maxpos_rad
 

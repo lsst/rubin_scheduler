@@ -278,8 +278,6 @@ class KinemModel:
         altitude_maxpos=86.5,
         azimuth_minpos=-250.0,
         azimuth_maxpos=250.0,
-        abs_azimuth_minpos=0.0,
-        abs_azimuth_maxpos=360.0,
         altitude_maxspeed=3.5,
         altitude_accel=3.5,
         altitude_jerk=None,
@@ -308,13 +306,6 @@ class KinemModel:
             for cable wrap. Defaults -270 and 270 include 0-360
             for all-sky azimuth positions, reachable via multiple
             routes.
-        abs_azimuth_minpos : `float`
-            Minimum azimuth position for the mount (degrees).
-            Physical limit for the position of the telescope.
-        abs_azimuth_maxpos : `float`
-            Maximum azimuth position for the mount (degrees).
-            Default is 0 - 360 for min/max.
-            Order matters between min/max here.
         altitude_maxspeed : `float`
             Maximum speed for altitude movement (degrees/second)
         altitude_accel : `float`
@@ -336,8 +327,6 @@ class KinemModel:
         self.telalt_maxpos_rad = np.radians(altitude_maxpos)
         self.telaz_minpos_rad = np.radians(azimuth_minpos)
         self.telaz_maxpos_rad = np.radians(azimuth_maxpos)
-        self.abs_telaz_minpos_rad = np.radians(abs_azimuth_minpos)
-        self.abs_telaz_maxpos_rad = np.radians(abs_azimuth_maxpos)
         self.telalt_maxspeed_rad = np.radians(altitude_maxspeed)
         self.telalt_accel_rad = np.radians(altitude_accel)
         self.telalt_jerk_rad = np.radians(altitude_jerk) if altitude_jerk is not None else None
@@ -652,13 +641,9 @@ class KinemModel:
         # Mask min/max altitude limits so slewtime = np.nan
         outside_limits = np.where((alt_rad > self.telalt_maxpos_rad) | (alt_rad < self.telalt_minpos_rad))[0]
         slew_time[outside_limits] = np.nan
-        # Mask alt/az absolute limits
-        az_range = (self.abs_telaz_maxpos_rad - self.abs_telaz_minpos_rad) % (2 * np.pi)
-        if az_range == 0:
-            pass
-        else:
-            outside_limits = np.where((az_rad - self.abs_telaz_minpos_rad) % (2 * np.pi) > az_range)[0]
-            slew_time[outside_limits] = np.nan
+        # Azimuth limits already masked through cumulative azimuth
+        # calculation above (although it is inf, not nan, so let's swap).
+        slew_time = np.where(np.isfinite(slew_time), slew_time, np.nan)
 
         # If we want to include the camera rotation time
         if (rot_sky_pos is not None) | (rot_tel_pos is not None):
