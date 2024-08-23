@@ -6,6 +6,7 @@ __all__ = (
     "DelayStartBasisFunction",
     "TargetMapBasisFunction",
     "AvoidLongGapsBasisFunction",
+    "AvoidFastRevisits",
     "AvoidFastRevisitsBasisFunction",
     "VisitRepeatBasisFunction",
     "M5DiffBasisFunction",
@@ -30,6 +31,7 @@ __all__ = (
     "SeasonCoverageBasisFunction",
     "NObsPerYearBasisFunction",
     "CadenceInSeasonBasisFunction",
+    "NearSunTwilightBasisFunction",
     "NearSunHighAirmassBasisFunction",
     "NObsHighAmBasisFunction",
     "GoodSeeingBasisFunction",
@@ -954,6 +956,13 @@ class AvoidFastRevisitsBasisFunction(BaseBasisFunction):
         return result
 
 
+class AvoidFastRevisits(AvoidFastRevisitsBasisFunction):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        warnings.warn("Class has been renamed AvoidFastRevisitsBasisFunction", DeprecationWarning, 2)
+
+
 class NearSunHighAirmassBasisFunction(BaseBasisFunction):
     """Reward areas on the sky at high airmass, within 90 degrees azimuth
     of the Sun, such as suitable for the near-sun twilight microsurvey for
@@ -989,6 +998,13 @@ class NearSunHighAirmassBasisFunction(BaseBasisFunction):
             conditions.airmass[valid_airmass][good_pix] / self.max_airmass.initial
         )
         return result
+
+
+class NearSunTwilightBasisFunction(NearSunHighAirmassBasisFunction):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        warnings.warn("Class has been renamed NearSunHighAirmassBasisFunction", DeprecationWarning, 2)
 
 
 class VisitRepeatBasisFunction(BaseBasisFunction):
