@@ -19,8 +19,11 @@ __all__ = (
     "EndOfEveningBasisFunction",
     "TimeToScheduledBasisFunction",
     "LimitObsPnightBasisFunction",
+    "SunHighLimitBasisFunction",
     "CloseToTwilightBasisFunction",
 )
+
+import warnings
 
 import numpy as np
 
@@ -102,6 +105,17 @@ class CloseToTwilightBasisFunction(BaseBasisFunction):
         if time_left < self.min_time_remaining:
             result = False
         return result
+
+
+class SunHighLimitBasisFunction(CloseToTwilightBasisFunction):
+
+    def __init__(self, sun_alt_limit=-14.8, time_to_12deg=21.0, time_remaining=15.0):
+        super().__init__(
+            max_sun_alt_limit=sun_alt_limit,
+            min_time_remaining=time_remaining,
+            max_time_to_12deg=time_to_12deg,
+        )
+        warnings.warn("Class has been renamed CloseToTwilightBasisFunction", DeprecationWarning, 2)
 
 
 class OnceInNightBasisFunction(BaseBasisFunction):
