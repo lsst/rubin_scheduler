@@ -224,12 +224,11 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         How long to extend masked area in longitude. Default 40 (minutes).
     pad : `float`
         Pad the conditions alt/az limits by this amount (degrees).
-        Default is 1.75 degrees, corresponding to approximately the
-        radius of the fov.
+        Default corresponds to approximately the radius of the fov.
     """
 
     def __init__(
-        self, nside=None, min_alt=20.0, max_alt=82.0, min_az=0, max_az=360, shadow_minutes=40.0, pad=1.75
+        self, nside=None, min_alt=20.0, max_alt=82.0, min_az=0, max_az=360, shadow_minutes=40.0, pad=2.0
     ):
         super().__init__(nside=nside)
         self.min_alt = np.radians(min_alt)
@@ -264,21 +263,21 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
 
         # Check allowable azimuth range against azimuth values
         # note that % (mod) is not supported for IntRounded
-        f2pi = 2 * np.pi
-        if2pi = IntRounded(f2pi)
-        if IntRounded(conditions.tel_az_max) - IntRounded(conditions.tel_az_min) >= if2pi:
+        two_pi = 2 * np.pi
+        itwo_pi = IntRounded(two_pi)
+        if IntRounded(conditions.tel_az_max) - IntRounded(conditions.tel_az_min) >= itwo_pi:
             in_range1 = np.zeros(len(conditions.az)) + 2
         else:
-            azr = (conditions.tel_az_max - conditions.tel_az_min) % (f2pi) - self.pad
+            azr = (conditions.tel_az_max - conditions.tel_az_min) % (two_pi) - 2 * self.pad
             # Check current and future
-            in_range1 = np.where((conditions.az - conditions.tel_az_min + self.pad) % (f2pi) <= azr, 1, 0)
-            in_range1 += np.where((future_az - conditions.tel_az_min + self.pad) % (f2pi) <= azr, 1, 0)
-        if IntRounded(self.max_az) - IntRounded(self.min_az) >= if2pi:
+            in_range1 = np.where((conditions.az - conditions.tel_az_min - self.pad) % (two_pi) <= azr, 1, 0)
+            in_range1 += np.where((future_az - conditions.tel_az_min - self.pad) % (two_pi) <= azr, 1, 0)
+        if IntRounded(self.max_az) - IntRounded(self.min_az) >= itwo_pi:
             in_range2 = np.zeros(len(conditions.az)) + 2
         else:
-            azr = (self.max_az - self.min_az) % (f2pi)
-            in_range2 = np.where((conditions.az - self.min_az) % (f2pi) <= azr, 1, 0)
-            in_range2 += np.where((future_az - self.min_az) % (f2pi) <= azr, 1, 0)
+            azr = (self.max_az - self.min_az) % (two_pi)
+            in_range2 = np.where((conditions.az - self.min_az) % (two_pi) <= azr, 1, 0)
+            in_range2 += np.where((future_az - self.min_az) % (two_pi) <= azr, 1, 0)
         in_range_az[np.where((in_range1 > 1) & (in_range2 > 1))] = 2
 
         passed_all = np.where((in_range_alt > 1) & (in_range_az > 1))[0]
