@@ -568,7 +568,7 @@ def simple_greedy_survey(
     Returns
     -------
     greedy_survey : `GreedySurvey`
-        A greedy survey configured to take the next best (single) visit
+        A greedy survey configured to take the next best visit
         in filtername.
     """
 
@@ -589,7 +589,7 @@ def simple_greedy_survey(
         footprints.set_footprint(f, footprints_hp[f])
 
     if mask_basis_functions is None:
-        mask_basis_functions = standard_masks(nside=nside)
+        mask_basis_functions = standard_masks(nside=nside, shadow_minutes=30)
     # Mask basis functions have zero weights.
     mask_basis_functions_weights = [0 for mask in mask_basis_functions]
 
@@ -639,6 +639,7 @@ def simple_greedy_survey(
         "nside": nside,
         "seed": 42,
         "dither": True,
+        "block_size": 2,
     }
 
     greedy_survey = GreedySurvey(

@@ -6,8 +6,9 @@ import numpy as np
 
 from rubin_scheduler.data import get_data_dir
 from rubin_scheduler.scheduler import sim_runner
-from rubin_scheduler.scheduler.example import example_scheduler, run_sched
+from rubin_scheduler.scheduler.example import example_scheduler, run_sched, simple_pairs_survey
 from rubin_scheduler.scheduler.model_observatory import KinemModel, ModelObservatory
+from rubin_scheduler.scheduler.schedulers import CoreScheduler
 from rubin_scheduler.scheduler.utils import (
     SchemaConverter,
     empty_observation,
@@ -100,9 +101,13 @@ class TestUtils(unittest.TestCase):
         """Test that setting some azimuth limits via the kinematic
         model works"""
         mjd_start = survey_start_mjd()
-        scheduler = example_scheduler(mjd_start=mjd_start)
+        surveys = [simple_pairs_survey(filtername=f) for f in "gri"]
+        scheduler = CoreScheduler(surveys)
         km = KinemModel(mjd0=mjd_start)
-        km.setup_telescope(abs_azimuth_minpos=270, abs_azimuth_maxpos=90)
+        # At exactly 90 for the azimuth limits, it is hard to mask
+        # the azimuth values near the zenith. At the same time,
+        # expanding the mask more than necessary is a bad default.
+        km.setup_telescope(azimuth_minpos=270, azimuth_maxpos=91)
         mo = ModelObservatory(mjd=mjd_start, mjd_start=mjd_start, kinem_model=km)
         mo, scheduler, observations = sim_runner(
             mo,
@@ -111,20 +116,8 @@ class TestUtils(unittest.TestCase):
             verbose=False,
             filename=None,
         )
-
         az = np.degrees(observations["az"])
-        forbidden = np.where((az > 90) & (az < 270))[0]
-
-        # Let a few pairs try to complete since by default we don't
-        # use an aggressive shadow_minutes
-        n_forbidden = np.size(
-            [
-                obs
-                for obs in observations[forbidden]["scheduler_note"]
-                if (("pair_33" not in obs) | (", b" not in obs))
-            ]
-        )
-
+        n_forbidden = np.size(np.where((az <= 91) & (az >= 270))[0])
         assert n_forbidden == 0
 
         km = KinemModel(mjd0=mjd_start)

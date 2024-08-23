@@ -61,7 +61,6 @@ class TestComCamSurveys(unittest.TestCase):
         observatory, scheduler, observations = sim_runner(
             observatory, scheduler, filter_scheduler, survey_length=30
         )
-        print(len(observations))
         assert len(observations) > 24000
         sv_fields = set(np.unique(observations["scheduler_note"]))
         all_sv_fields = set(list(get_sv_fields().keys()))
