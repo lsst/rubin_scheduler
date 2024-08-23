@@ -504,6 +504,7 @@ class KinemModel:
                     alt_rad, az_rad, self.location.lat_rad, self.location.lon_rad, mjd
                 )
 
+        # Find the current location of the telescope.
         if starting_alt_rad is None:
             if self.parked:
                 starting_alt_rad = self.park_alt_rad
@@ -513,36 +514,58 @@ class KinemModel:
                     self.current_ra_rad, self.current_dec_rad, mjd
                 )
 
+        # Now calculate how far we neeed to move,
+        # in altitude, azimuth, and camera rotator (if applicable).
+        # Delta Altitude
         delta_alt = np.abs(alt_rad - starting_alt_rad)
-        # Calculate shortest angle for change in azimuth
+        # Delta Azimuth - there are two different 'directions'
+        # possible to travel for azimuth. First calculate the shortest.
         delta_az_short = smallest_signed_angle(starting_az_rad, az_rad)
         # And then calculate the "long way around"
-        delta_az_long = delta_az_short - two_pi
-        daslz = np.where(delta_az_short < 0)[0]
-        delta_az_long[daslz] = two_pi + delta_az_short[daslz]
-        # Slew can be short or long direction, but cumulative azimuth range
-        # (aka cable wrap) could limit one of these options
-        cummulative_az_short = delta_az_short + self.cumulative_azimuth_rad
-        oob = np.where(
-            (cummulative_az_short < self.telaz_minpos_rad) | (cummulative_az_short > self.telaz_maxpos_rad)
-        )[0]
-        # Set out of bounds azimuths to infinite distance
-        delta_az_short[oob] = np.inf
-        cummulative_az_long = delta_az_long + self.cumulative_azimuth_rad
-        oob = np.where(
-            (cummulative_az_long < self.telaz_minpos_rad) | (cummulative_az_long > self.telaz_maxpos_rad)
-        )[0]
-        delta_az_long[oob] = np.inf
-
-        # Find minimum azimuth slew out of long/short direction (use
-        # absolute, because these can be negative)
-        # Note that with an impaired telescope with az range<180,
-        # infinite slewtimes can propagate
-        delta_aztel = np.where(
-            np.abs(delta_az_short) < np.abs(delta_az_long),
-            delta_az_short,
-            delta_az_long,
-        )
+        delta_az_long = np.where(delta_az_short < 0, two_pi + delta_az_short, delta_az_short - two_pi)
+        # Slew can go long or short direction, but azimuth range
+        # could limit which is possible.
+        # e.g. 70 degrees reached by going the long way around from 0 means
+        # the cumulative azimuth is 290, but if we went the short way it would
+        # be 70 .. actual 'azimuth' is still 70. It also matters about
+        # which direction previous slews went (imagine a previous slew to 180).
+        # First evaluate if azimuth range is > 360 degrees --
+        if np.abs(self.telaz_maxpos_rad - self.telaz_minpos_rad) >= two_pi:
+            # Can spin past 360 degrees, track cumulative azimuth
+            # Note that minpos will be less than maxpos always in this case.
+            cummulative_az_short = delta_az_short + self.cumulative_azimuth_rad
+            out_of_bounds = np.where(
+                (cummulative_az_short < self.telaz_minpos_rad)
+                | (cummulative_az_short > self.telaz_maxpos_rad)
+            )[0]
+            # Set short direction out of bounds azimuths to infinite distance.
+            delta_az_short[out_of_bounds] = np.inf
+            cummulative_az_long = delta_az_long + self.cumulative_azimuth_rad
+            out_of_bounds = np.where(
+                (cummulative_az_long < self.telaz_minpos_rad) | (cummulative_az_long > self.telaz_maxpos_rad)
+            )[0]
+            # Set long direction out of bounds azimuths to infinite distance
+            delta_az_long[out_of_bounds] = np.inf
+            # Now pick the shortest allowable direction
+            # (use absolute value of each az, because values can be negative)
+            delta_aztel = np.where(
+                np.abs(delta_az_short) < np.abs(delta_az_long),
+                delta_az_short,
+                delta_az_long,
+            )
+            cumulative_flag = "delta"
+        # Now evaluate the options if we have an impaired telescope with
+        # azimuth range < 360 degrees.
+        else:
+            # Note that minpos will be the starting angle, but
+            # depending on cw/ccw - maxpos might be < minpos.
+            az_range = (self.telaz_maxpos_rad - self.telaz_minpos_rad) % (two_pi)
+            out_of_bounds = np.where((az_rad - self.telaz_minpos_rad) % (two_pi) > az_range)[0]
+            d1 = (az_rad - self.telaz_minpos_rad) % (two_pi)
+            d2 = (starting_az_rad - self.telaz_minpos_rad) % (two_pi)
+            delta_aztel = d2 - d1
+            delta_aztel[out_of_bounds] = np.nan
+            cumulative_flag = "restricted"
 
         # Calculate how long the telescope will take to slew to this
         # position.
@@ -624,6 +647,7 @@ class KinemModel:
                 dom_az_slew_time,
             )
             tot_dom_time = np.maximum(dom_alt_slew_time, dom_az_slew_time)
+
         # Find the max of the above for slew time.
         slew_time = np.maximum(tot_tel_time, tot_dom_time)
         # include filter change time if necessary. Assume no filter
@@ -679,7 +703,7 @@ class KinemModel:
 
         # Update the internal attributes to note that we are now pointing
         # and tracking at the requested RA,Dec,rot_sky_pos
-        if update_tracking:
+        if update_tracking and np.isfinite(slew_time):
             self.current_ra_rad = ra_rad
             self.current_dec_rad = dec_rad
             self.current_rot_sky_pos_rad = rot_sky_pos
@@ -690,7 +714,10 @@ class KinemModel:
             self.last_alt_rad = alt_rad
             self.last_pa_rad = pa
             # Track the cumulative azimuth
-            self.cumulative_azimuth_rad += delta_aztel
+            if cumulative_flag == "restricted":
+                self.cumulative_azimuth_rad = az_rad
+            else:
+                self.cumulative_azimuth_rad += delta_aztel
             self.current_filter = filtername
             self.last_mjd = mjd
 
