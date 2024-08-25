@@ -7,7 +7,7 @@ from rubin_scheduler.utils import (
     Site,
     _approx_altaz2pa,
     _approx_ra_dec2_alt_az,
-    approx_alt_az2_ra_dec,
+    _approx_alt_az2_ra_dec,
     rotation_converter,
 )
 
@@ -440,7 +440,7 @@ class KinemModel:
             The desired rot_sky_pos(s) (radians).
             Angle between up on the chip and North.
             Note, it is possible to set a rot_sky_pos outside the allowed
-            camera rotator range, in which case the slewtime will be np.inf.
+            camera rotator range, in which case the slewtime will be masked.
             If both rot_sky_pos and rot_tel_pos are set,
             rot_tel_pos will be used.
         rot_tel_pos : `np.ndarray`
@@ -486,23 +486,27 @@ class KinemModel:
         elif filtername not in self.mounted_filters:
             return np.nan
 
-        # If rot_tel_pos and rot_sky_pos are both defined,
-        # use rot_tel_pos
-        if (rot_tel_pos is not None) & (rot_sky_pos is not None):
-            if np.isfinite(rot_tel_pos):
-                rot_sky_pos = None
-            else:
-                rot_tel_pos = None
-
         # if alt,az not provided, then calculate from RA,Dec
         if alt_rad is None:
             alt_rad, az_rad, pa = self.radec2altaz(ra_rad, dec_rad, mjd)
         else:
             pa = _approx_altaz2pa(alt_rad, az_rad, self.location.lat_rad)
             if update_tracking:
-                ra_rad, dec_rad = approx_alt_az2_ra_dec(
+                ra_rad, dec_rad = _approx_alt_az2_ra_dec(
                     alt_rad, az_rad, self.location.lat_rad, self.location.lon_rad, mjd
                 )
+
+        # If either rot_tel_pos or rot_sky_pos are set, we will
+        # calculate slewtime with rotator movement.
+        # Setting rot_tel_pos allows any slew position on-sky.
+        # Setting rot_sky_pos can restrict slew range on-sky
+        # as some rot_tel_pos values that result will be out of bounds.
+        # Use rot_tel_pos first if available, to override rot_sky_pos.
+        if (rot_tel_pos is not None) & (rot_sky_pos is not None):
+            if np.isfinite(rot_tel_pos):
+                rot_sky_pos = self.rc._rottelpos2rotskypos(rot_tel_pos, pa)
+            else:
+                rot_tel_pos = self.rc._rotskypos2rottelpos(rot_sky_pos, pa)
 
         # Find the current location of the telescope.
         if starting_alt_rad is None:
@@ -514,7 +518,7 @@ class KinemModel:
                     self.current_ra_rad, self.current_dec_rad, mjd
                 )
 
-        # Now calculate how far we neeed to move,
+        # Now calculate how far we need to move,
         # in altitude, azimuth, and camera rotator (if applicable).
         # Delta Altitude
         delta_alt = np.abs(alt_rad - starting_alt_rad)
@@ -553,7 +557,7 @@ class KinemModel:
                 delta_az_short,
                 delta_az_long,
             )
-            cumulative_flag = "delta"
+            az_flag = "delta"
         # Now evaluate the options if we have an impaired telescope with
         # azimuth range < 360 degrees.
         else:
@@ -565,7 +569,7 @@ class KinemModel:
             d2 = (starting_az_rad - self.telaz_minpos_rad) % (two_pi)
             delta_aztel = d2 - d1
             delta_aztel[out_of_bounds] = np.nan
-            cumulative_flag = "restricted"
+            az_flag = "restricted"
 
         # Calculate how long the telescope will take to slew to this
         # position.
@@ -670,14 +674,10 @@ class KinemModel:
         slew_time = np.where(np.isfinite(slew_time), slew_time, np.nan)
 
         # If we want to include the camera rotation time
-        if (rot_sky_pos is not None) | (rot_tel_pos is not None):
-            if rot_tel_pos is None:
-                # This is now between -pi and pi
-                rot_tel_pos = self.rc._rotskypos2rottelpos(rot_sky_pos, pa)
-            if rot_sky_pos is None:
-                rot_sky_pos = self.rc._rottelpos2rotskypos(rot_tel_pos, pa)
-
-            # Is the new rot_tel_pos reachable? If not return NaN
+        # We will have already set rot_tel_pos above, if either
+        # rot_sky_pos or rot_tel_pos is set.
+        if rot_tel_pos is not None:
+            # rot_tel_pos will be
             outside_limits = np.where(
                 (rot_tel_pos < self.telrot_minpos_rad) | (rot_tel_pos > self.telrot_maxpos_rad)
             )
@@ -701,6 +701,10 @@ class KinemModel:
             )
             slew_time = np.maximum(slew_time, rotator_time)
 
+            # Recreate how this happened to work previously with single targets
+            if len(slew_time) == 1:
+                slew_time = slew_time[0]
+
         # Update the internal attributes to note that we are now pointing
         # and tracking at the requested RA,Dec,rot_sky_pos
         if update_tracking and np.isfinite(slew_time):
@@ -714,7 +718,7 @@ class KinemModel:
             self.last_alt_rad = alt_rad
             self.last_pa_rad = pa
             # Track the cumulative azimuth
-            if cumulative_flag == "restricted":
+            if az_flag == "restricted":
                 self.cumulative_azimuth_rad = az_rad
             else:
                 self.cumulative_azimuth_rad += delta_aztel
