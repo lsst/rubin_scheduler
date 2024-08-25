@@ -400,7 +400,7 @@ class SchemaConverter:
             "slewTime": "slewtime",
             "slewDistance": "slewdist",
             "paraAngle": "pa",
-            "psudoParaAngle": "psudo_pa",
+            "pseudoParaAngle": "pseudo_pa",
             "rotTelPos": "rotTelPos",
             "rotTelPos_backup": "rotTelPos_backup",
             "rotSkyPos": "rotSkyPos",
@@ -417,6 +417,9 @@ class SchemaConverter:
             "note": "note",
             "scheduler_note": "scheduler_note",
             "target_name": "target_name",
+            "science_program": "science_program",
+            "observation_reason": "observation_reason",
+            "json_block": "json_block",
         }
         # For backwards compatibility
         self.backwards = {"target": "target_name"}
@@ -431,7 +434,7 @@ class SchemaConverter:
             "azimuth",
             "slewDistance",
             "paraAngle",
-            "psudoParaAngle",
+            "pseudoParaAngle",
             "rotTelPos",
             "rotSkyPos",
             "rotSkyPos_desired",
@@ -669,7 +672,7 @@ def empty_observation(n=1):
         ("alt", float),
         ("az", float),
         ("pa", float),
-        ("psudo_pa", float),
+        ("pseudo_pa", float),
         ("clouds", float),
         ("moonAlt", float),
         ("sunAlt", float),
