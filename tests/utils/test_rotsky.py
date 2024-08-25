@@ -59,8 +59,8 @@ class TestRotSkyConvert(unittest.TestCase):
         with self.assertRaises(ValueError):
             rc = rotation_converter(telescope="not_a_telescope_name")
 
-    def test_psudo_pa(self):
-        # Check that the psudo parallactic angle is
+    def test_pseudo_pa(self):
+        # Check that the pseudo parallactic angle is
         # somewhat close to the approx parallactic angle
         lsst = Site("LSST")
         rng = np.random.default_rng(seed=42)

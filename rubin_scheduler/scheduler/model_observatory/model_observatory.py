@@ -611,15 +611,14 @@ class ModelObservatory:
 
         obs_pa = _approx_altaz2pa(alt, az, self.site.latitude_rad)
 
-        # If the observation has a rotTelPos set, use it to compute
-        # rotSkyPos
+        # If the observation has a rotTelPos set, use it to compute rotSkyPos
         if np.isfinite(observation["rotTelPos"]):
             observation["rotSkyPos"] = self.rc._rottelpos2rotskypos(observation["rotTelPos"], obs_pa)
             observation["rotTelPos"] = np.nan
         else:
-            # Fall back to rotSkyPos_desired
+            # Try to fall back to rotSkyPos_desired
             possible_rot_tel_pos = self.rc._rotskypos2rottelpos(observation["rotSkyPos_desired"], obs_pa)
-
+            # If in range, use rotSkyPos_desired for rotSkyPos
             if (possible_rot_tel_pos > rot_limit[0]) | (possible_rot_tel_pos < rot_limit[1]):
                 observation["rotSkyPos"] = observation["rotSkyPos_desired"]
                 observation["rotTelPos"] = np.nan

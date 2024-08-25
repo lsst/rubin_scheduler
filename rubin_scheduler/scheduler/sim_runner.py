@@ -140,6 +140,8 @@ def sim_runner(
             # An observation failed to execute, usually it was outside
             # the altitude limits.
             if observatory.mjd == mjd_last_flush:
+                print(f"failed at {observatory.mjd} on survey {scheduler.survey_index}")
+                return observatory, scheduler, observations, desired_obs
                 raise RuntimeError(
                     "Scheduler has failed to provide a valid observation multiple times "
                     f" at time ({observatory.mjd} from survey {scheduler.survey_index}."
@@ -187,8 +189,8 @@ def sim_runner(
     )
     observations["alt"] = np.radians(alt)
     observations["az"] = np.radians(az)
-    observations["psudo_pa"] = np.radians(pa)
-    observations["rotTelPos"] = rc._rotskypos2rottelpos(observations["rotSkyPos"], observations["psudo_pa"])
+    observations["pseudo_pa"] = np.radians(pa)
+    observations["rotTelPos"] = rc._rotskypos2rottelpos(observations["rotSkyPos"], observations["pseudo_pa"])
 
     # Also include traditional parallactic angle
     pa = _approx_altaz2pa(observations["alt"], observations["az"], lsst.latitude_rad)
