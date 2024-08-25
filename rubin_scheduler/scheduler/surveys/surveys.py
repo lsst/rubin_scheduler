@@ -38,9 +38,6 @@ class GreedySurvey(BaseMarkovSurvey):
     ):
         extra_features = {}
 
-        if survey_name is None:
-            survey_name = f"Greedy {filtername}"
-
         super(GreedySurvey, self).__init__(
             basis_functions=basis_functions,
             basis_weights=basis_weights,
@@ -61,6 +58,9 @@ class GreedySurvey(BaseMarkovSurvey):
         self.block_size = block_size
         self.nexp = nexp
         self.exptime = exptime
+
+    def _generate_survey_name(self):
+        self.survey_name = f"Greedy {self.filtername}"
 
     def generate_observations_rough(self, conditions):
         """
@@ -190,8 +190,18 @@ class BlobSurvey(GreedySurvey):
         area_required=None,
         max_radius_peak=40.0,
         fields=None,
-        **kwargs,
+        survey_note=None,
+        search_radius=None,
+        alt_max=-9999,
+        az_range=-9999,
     ):
+        if search_radius is not None:
+            warnings.warn("search_radius unused, remove kwarg", DeprecationWarning, 2)
+        if alt_max != -9999:
+            warnings.warn("alt_max unused, remove kwarg", DeprecationWarning, 2)
+        if az_range != -9999:
+            warnings.warn("az_range unused, remove kwarg", DeprecationWarning, 2)
+
         self.filtername1 = filtername1
         self.filtername2 = filtername2
 
@@ -200,6 +210,11 @@ class BlobSurvey(GreedySurvey):
 
         if survey_name is None:
             self._generate_survey_name()
+
+        if scheduler_note is None:
+            if survey_note is not None:
+                scheduler_note = survey_note
+                warnings.warn("survey_note is deprecated - use scheduler_note", DeprecationWarning, 2)
 
         super(BlobSurvey, self).__init__(
             basis_functions=basis_functions,
@@ -264,7 +279,7 @@ class BlobSurvey(GreedySurvey):
             self.filtername = self.filtername1
 
     def _generate_survey_name(self):
-        self.survey_name = "Pair survey"
+        self.survey_name = "Pairs"
         self.survey_name += f" {self.ideal_pair_time :.1f}"
         self.survey_name += f" {self.filtername1}"
         if self.filtername2 is None:
