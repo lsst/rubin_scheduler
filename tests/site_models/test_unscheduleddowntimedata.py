@@ -2,7 +2,7 @@ import unittest
 
 from astropy.time import Time, TimeDelta
 
-from rubin_scheduler.site_models import UnscheduledDowntimeData
+from rubin_scheduler.site_models import UnscheduledDowntimeData, UnscheduledDowntimeMoreY1Data
 
 
 class UnscheduledDowntimeDataTest(unittest.TestCase):
@@ -66,6 +66,19 @@ class UnscheduledDowntimeDataTest(unittest.TestCase):
         downtime_data.make_data()
         downtimes = downtime_data()
         self.assertEqual(downtimes["activity"][2], "major event")
+
+    def test_more(self):
+        starting = UnscheduledDowntimeData(self.th)
+        more = UnscheduledDowntimeMoreY1Data(self.th)
+
+        sd = starting()
+        md = more()
+
+        # Check that we do have more downtime events
+        assert len(md) > len(sd)
+
+        # Check there is more total downtime
+        assert more.total_downtime() > starting.total_downtime()
 
 
 if __name__ == "__main__":
