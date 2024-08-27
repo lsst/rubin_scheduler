@@ -37,9 +37,10 @@ class GreedySurvey(BaseMarkovSurvey):
         fields=None,
     ):
         extra_features = {}
-
-        if survey_name is None:
-            survey_name = f"Greedy {filtername}"
+        self.filtername = filtername
+        self.block_size = block_size
+        self.nexp = nexp
+        self.exptime = exptime
 
         super(GreedySurvey, self).__init__(
             basis_functions=basis_functions,
@@ -57,10 +58,9 @@ class GreedySurvey(BaseMarkovSurvey):
             area_required=area_required,
             fields=fields,
         )
-        self.filtername = filtername
-        self.block_size = block_size
-        self.nexp = nexp
-        self.exptime = exptime
+
+    def _generate_survey_name(self):
+        self.survey_name = f"Greedy {self.filtername}"
 
     def generate_observations_rough(self, conditions):
         """

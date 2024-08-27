@@ -111,10 +111,9 @@ class FieldSurvey(BaseSurvey):
         self.survey_name = survey_name
         self.target_name = target_name
         if self.survey_name is None:
-            if self.target_name is not None:
-                self.survey_name = self.target_name
-            else:
-                self.survey_name = f"Field {self.ra_deg :.2f} {self.dec_deg :.2f}"
+            self._generate_survey_name()
+
+        # Backfill target name if it wasn't set
         if self.target_name is None:
             self.target_name = self.survey_name
         self.scheduler_note = scheduler_note
@@ -173,6 +172,12 @@ class FieldSurvey(BaseSurvey):
         # Tucking this here so we can look at how many observations
         # recorded for this field
         self.extra_features["ObsRecord"] = NObsSurvey()
+
+    def _generate_survey_name(self):
+        if self.target_name is not None:
+            self.survey_name = self.target_name
+        else:
+            self.survey_name = f"Field {self.ra_deg :.2f} {self.dec_deg :.2f}"
 
     @cached_property
     def roi_hpid(self):
