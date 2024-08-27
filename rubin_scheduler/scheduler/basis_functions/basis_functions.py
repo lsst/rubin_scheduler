@@ -857,8 +857,8 @@ class FootprintNvisBasisFunction(BaseBasisFunction):
         # Have a feature that tracks how many observations we have
         self.survey_features = {}
         # Map of the number of observations in filter
-        self.survey_features["n_obs"] = features.n_observations(filtername=filtername, nside=self.nside)
-        self.result = np.zeros(hp.nside2npix(nside))
+        self.survey_features["n_obs"] = features.NObservations(filtername=filtername, nside=self.nside)
+        self.result = np.zeros(hp.nside2npix(self.nside))
         self.result.fill(out_of_bounds_val)
         self.out_of_bounds_val = out_of_bounds_val
         send_unused_deprecation_warning(self.__class__.__name__)
@@ -894,8 +894,8 @@ class ThirdObservationBasisFunction(BaseBasisFunction):
         self.gap_max = IntRounded(gap_max / 60.0 / 24.0)
 
         self.survey_features = {}
-        self.survey_features["last_obs_f1"] = features.Last_observed(filtername=filtername1, nside=nside)
-        self.survey_features["last_obs_f2"] = features.Last_observed(filtername=filtername2, nside=nside)
+        self.survey_features["last_obs_f1"] = features.LastObserved(filtername=filtername1, nside=nside)
+        self.survey_features["last_obs_f2"] = features.LastObserved(filtername=filtername2, nside=nside)
         self.result = np.empty(hp.nside2npix(self.nside))
         self.result.fill(np.nan)
 
@@ -1234,7 +1234,7 @@ class GoalStrictFilterBasisFunction(BaseBasisFunction):
         self.aways_available = aways_available
 
         self.survey_features = {}
-        self.survey_features["Last_observation"] = features.Last_observation()
+        self.survey_features["Last_observation"] = features.LastObservation()
         self.survey_features["Last_filter_change"] = features.LastFilterChange()
         self.survey_features["n_obs_all"] = features.NObsCount(filtername=None)
         # Tag is not actually supported at observation level.
