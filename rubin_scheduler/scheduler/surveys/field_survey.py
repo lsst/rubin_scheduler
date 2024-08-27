@@ -86,36 +86,39 @@ class FieldSurvey(BaseSurvey):
         detailers=None,
     ):
         default_nvisits = {"u": 20, "g": 20, "r": 20, "i": 20, "z": 20, "y": 20}
-        default_exptimes = {"u": 38, "g": 30, "r": 30, "i": 30, "z": 30, "y": 30}
+        default_exptimes = {"u": 38, "g": 29.2, "r": 29.2, "i": 29.2, "z": 29.2, "y": 29.2}
         default_nexps = {"u": 1, "g": 2, "r": 2, "i": 2, "z": 2, "y": 2}
-
-        super().__init__(
-            nside=nside,
-            basis_functions=basis_functions,
-            detailers=detailers,
-            ignore_obs=ignore_obs,
-        )
-        self.accept_obs = accept_obs
-
-        # Set all basis function equal.
-        self.basis_weights = np.ones(len(basis_functions)) / len(basis_functions)
 
         self.ra = np.radians(RA)
         self.ra_hours = RA / 360.0 * 24.0
         self.dec = np.radians(dec)
         self.ra_deg, self.dec_deg = RA, dec
 
-        self.flush_pad = flush_pad / 60.0 / 24.0  # To days
-        self.filter_sequence = []
-
+        # Set up target_name and survey_name before super
+        self.target_name = target_name
         self.survey_name = survey_name
         self.target_name = target_name
         if self.survey_name is None:
             self._generate_survey_name()
-
         # Backfill target name if it wasn't set
         if self.target_name is None:
             self.target_name = self.survey_name
+
+        super().__init__(
+            nside=nside,
+            basis_functions=basis_functions,
+            detailers=detailers,
+            ignore_obs=ignore_obs,
+            survey_name=self.survey_name,
+        )
+        self.accept_obs = accept_obs
+
+        # Set all basis function equal.
+        self.basis_weights = np.ones(len(basis_functions)) / len(basis_functions)
+
+        self.flush_pad = flush_pad / 60.0 / 24.0  # To days
+        self.filter_sequence = []
+
         self.scheduler_note = scheduler_note
         if self.scheduler_note is None:
             self.scheduler_note = self.survey_name
