@@ -259,8 +259,7 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         good = np.where((IntRounded(conditions.alt) >= min_alt) & (IntRounded(conditions.alt) <= max_alt))[0]
 
         in_range_alt[good] += 1
-        good = np.where((IntRounded(future_alt) >= min_alt) &
-                        (IntRounded(future_alt) <= max_alt))[0]
+        good = np.where((IntRounded(future_alt) >= min_alt) & (IntRounded(future_alt) <= max_alt))[0]
         in_range_alt[good] += 1
 
         # Check allowable azimuth range against azimuth values

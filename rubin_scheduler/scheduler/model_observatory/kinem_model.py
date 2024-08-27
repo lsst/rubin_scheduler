@@ -5,9 +5,9 @@ import numpy as np
 from rubin_scheduler.scheduler.utils import smallest_signed_angle
 from rubin_scheduler.utils import (
     Site,
+    _approx_alt_az2_ra_dec,
     _approx_altaz2pa,
     _approx_ra_dec2_alt_az,
-    _approx_alt_az2_ra_dec,
     rotation_converter,
 )
 
