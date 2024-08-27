@@ -22,7 +22,7 @@ from rubin_scheduler.site_models import (
     ScheduledDowntimeData,
     SeeingData,
     SeeingModel,
-    UnscheduledDowntimeData,
+    UnscheduledDowntimeMoreY1Data,
 )
 from rubin_scheduler.utils import (
     Site,
@@ -209,7 +209,7 @@ class ModelObservatory:
         elif downtimes is None:
             self.down_nights = []
             self.sched_downtime_data = ScheduledDowntimeData(mjd_start_time)
-            self.unsched_downtime_data = UnscheduledDowntimeData(mjd_start_time)
+            self.unsched_downtime_data = UnscheduledDowntimeMoreY1Data(mjd_start_time)
 
             sched_downtimes = self.sched_downtime_data()
             unsched_downtimes = self.unsched_downtime_data()
