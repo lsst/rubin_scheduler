@@ -190,13 +190,13 @@ class TestBasis(unittest.TestCase):
             basis_functions.AvoidFastRevisits,
             basis_functions.AvoidLongGapsBasisFunction,
             basis_functions.FootprintNvisBasisFunction,
-            #basis_functions.FootprintRollingBasisFunction,
+            # basis_functions.FootprintRollingBasisFunction,
             basis_functions.GoalStrictFilterBasisFunction,
         ]
         for dep_bf in deprecated_basis_functions:
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
-                bf = dep_bf()
+                dep_bf()
                 # Verify deprecation warning
                 assert len(w) == 1
                 assert issubclass(w[-1].category, (DeprecationWarning, FutureWarning))
