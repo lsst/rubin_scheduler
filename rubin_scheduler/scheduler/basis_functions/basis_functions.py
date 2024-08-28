@@ -7,6 +7,7 @@ __all__ = (
     "TargetMapBasisFunction",
     "AvoidLongGapsBasisFunction",
     "AvoidFastRevisits",
+    "AvoidFastRevisitsBasisFunction",
     "VisitRepeatBasisFunction",
     "M5DiffBasisFunction",
     "M5DiffAtHpixBasisFunction",
@@ -31,6 +32,7 @@ __all__ = (
     "NObsPerYearBasisFunction",
     "CadenceInSeasonBasisFunction",
     "NearSunTwilightBasisFunction",
+    "NearSunHighAirmassBasisFunction",
     "NObsHighAmBasisFunction",
     "GoodSeeingBasisFunction",
     "ObservedTwiceBasisFunction",
@@ -855,8 +857,8 @@ class FootprintNvisBasisFunction(BaseBasisFunction):
         # Have a feature that tracks how many observations we have
         self.survey_features = {}
         # Map of the number of observations in filter
-        self.survey_features["n_obs"] = features.n_observations(filtername=filtername, nside=self.nside)
-        self.result = np.zeros(hp.nside2npix(nside))
+        self.survey_features["n_obs"] = features.NObservations(filtername=filtername, nside=self.nside)
+        self.result = np.zeros(hp.nside2npix(self.nside))
         self.result.fill(out_of_bounds_val)
         self.out_of_bounds_val = out_of_bounds_val
         send_unused_deprecation_warning(self.__class__.__name__)
@@ -892,10 +894,11 @@ class ThirdObservationBasisFunction(BaseBasisFunction):
         self.gap_max = IntRounded(gap_max / 60.0 / 24.0)
 
         self.survey_features = {}
-        self.survey_features["last_obs_f1"] = features.Last_observed(filtername=filtername1, nside=nside)
-        self.survey_features["last_obs_f2"] = features.Last_observed(filtername=filtername2, nside=nside)
+        self.survey_features["last_obs_f1"] = features.LastObserved(filtername=filtername1, nside=nside)
+        self.survey_features["last_obs_f2"] = features.LastObserved(filtername=filtername2, nside=nside)
         self.result = np.empty(hp.nside2npix(self.nside))
         self.result.fill(np.nan)
+        send_unused_deprecation_warning(self.__class__.__name__)
 
     def _calc_value(self, conditions, indx=None):
         result = self.result.copy()
@@ -906,19 +909,20 @@ class ThirdObservationBasisFunction(BaseBasisFunction):
         return result
 
 
-class AvoidFastRevisits(BaseBasisFunction):
+class AvoidFastRevisitsBasisFunction(BaseBasisFunction):
     """Marks targets as unseen if they are in a specified time window
     in order to avoid fast revisits.
 
     Parameters
     ----------
-    filtername: `str` ('r')
+    filtername: `str` or None
         The name of the filter for this target map.
-    gap_min : `float` (25.)
+        Using None will match visits in any filter.
+    gap_min : `float`
         Minimum time for the gap (minutes).
-    nside: `int` (default_nside)
+    nside: `int` or None
         The healpix resolution.
-    penalty_val : `float` (np.nan)
+    penalty_val : `float`
         The reward value to use for regions to penalize.
         Will be masked if set to np.nan (default).
     """
@@ -933,7 +937,9 @@ class AvoidFastRevisits(BaseBasisFunction):
         self.nside = nside
 
         self.survey_features = dict()
-        self.survey_features["Last_observed"] = features.LastObserved(filtername=filtername, nside=nside)
+        self.survey_features["Last_observed"] = features.LastObserved(
+            filtername=filtername, nside=nside, fill=0
+        )
 
     def _calc_value(self, conditions, indx=None):
         result = np.ones(hp.nside2npix(self.nside), dtype=float)
@@ -941,11 +947,25 @@ class AvoidFastRevisits(BaseBasisFunction):
             indx = np.arange(result.size)
         diff = IntRounded(conditions.mjd - self.survey_features["Last_observed"].feature[indx])
         bad = np.where(diff < self.gap_min)[0]
-        result[indx[bad]] = self.penalty_val
+        # If this is used with a FieldSurvey or if indx is single value:
+        if isinstance(indx, np.int64):
+            if diff < self.gap_min:
+                result = self.penalty_val
+            else:
+                result = 0
+        else:
+            result[indx[bad]] = self.penalty_val
         return result
 
 
-class NearSunTwilightBasisFunction(BaseBasisFunction):
+class AvoidFastRevisits(AvoidFastRevisitsBasisFunction):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        warnings.warn("Class has been renamed AvoidFastRevisitsBasisFunction", DeprecationWarning, 2)
+
+
+class NearSunHighAirmassBasisFunction(BaseBasisFunction):
     """Reward areas on the sky at high airmass, within 90 degrees azimuth
     of the Sun, such as suitable for the near-sun twilight microsurvey for
     near- or interior-to earth asteroids.
@@ -963,7 +983,7 @@ class NearSunTwilightBasisFunction(BaseBasisFunction):
     """
 
     def __init__(self, nside=None, max_airmass=2.5, penalty=np.nan):
-        super(NearSunTwilightBasisFunction, self).__init__(nside=nside)
+        super().__init__(nside=nside)
         self.max_airmass = IntRounded(max_airmass)
         self.result = np.empty(hp.nside2npix(self.nside))
         self.result.fill(penalty)
@@ -980,6 +1000,13 @@ class NearSunTwilightBasisFunction(BaseBasisFunction):
             conditions.airmass[valid_airmass][good_pix] / self.max_airmass.initial
         )
         return result
+
+
+class NearSunTwilightBasisFunction(NearSunHighAirmassBasisFunction):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        warnings.warn("Class has been renamed NearSunHighAirmassBasisFunction", DeprecationWarning, 2)
 
 
 class VisitRepeatBasisFunction(BaseBasisFunction):
@@ -1208,7 +1235,7 @@ class GoalStrictFilterBasisFunction(BaseBasisFunction):
         self.aways_available = aways_available
 
         self.survey_features = {}
-        self.survey_features["Last_observation"] = features.Last_observation()
+        self.survey_features["Last_observation"] = features.LastObservation()
         self.survey_features["Last_filter_change"] = features.LastFilterChange()
         self.survey_features["n_obs_all"] = features.NObsCount(filtername=None)
         # Tag is not actually supported at observation level.
@@ -2017,7 +2044,17 @@ class TemplateGenerateBasisFunction(BaseBasisFunction):
 
 
 class LimitRepeatBasisFunction(BaseBasisFunction):
-    """Mask out pixels that haven't been observed in the night"""
+    """Mask out pixels that haven't been observed in the night.
+
+    Parameters
+    ----------
+    nside : `int` or None
+        Nside for the basis function values. Default None will use
+        default nside.
+    filtername : `str` or None
+        Filter to consider when tracking number of acquired observations.
+
+    """
 
     def __init__(self, nside=None, filtername="r", n_limit=2):
         super(LimitRepeatBasisFunction, self).__init__(nside=nside)

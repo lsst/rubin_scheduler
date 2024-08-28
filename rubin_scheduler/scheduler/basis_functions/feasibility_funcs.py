@@ -20,7 +20,10 @@ __all__ = (
     "TimeToScheduledBasisFunction",
     "LimitObsPnightBasisFunction",
     "SunHighLimitBasisFunction",
+    "CloseToTwilightBasisFunction",
 )
+
+import warnings
 
 import numpy as np
 
@@ -54,7 +57,7 @@ class FilterLoadedBasisFunction(BaseBasisFunction):
         return result
 
 
-class SunHighLimitBasisFunction(BaseBasisFunction):
+class CloseToTwilightBasisFunction(BaseBasisFunction):
     """Only execute if the sun is higher than `sun_alt_limit`,
     the current time is within `time_to_12deg` of -12 degree twilight,
     and there is at least `time_remaining` time left before -12 degree
@@ -64,13 +67,13 @@ class SunHighLimitBasisFunction(BaseBasisFunction):
 
     Parameters
     ----------
-    sun_alt_limit : `float`
+    max_sun_alt_limit : `float`
         The sun altitude limit (degrees). Sun must be higher than this
         at sunset to execute
-    time_to_12deg : `float`
+    max_time_to_12deg : `float`
         How much time must be remaining before 12 degree twilight in
         the morning (minutes)
-    time_remaining : `float`
+    min_time_remaining : `float`
         Minimum about of time that must be available before trying to
         execute (minutes)
 
@@ -80,29 +83,39 @@ class SunHighLimitBasisFunction(BaseBasisFunction):
     limits of -12 degree twilight.
     """
 
-    def __init__(self, sun_alt_limit=-14.8, time_to_12deg=21.0, time_remaining=15.0):
-        super(SunHighLimitBasisFunction, self).__init__()
-        if time_to_12deg < time_remaining:
+    def __init__(self, max_sun_alt_limit=-14.8, max_time_to_12deg=21.0, min_time_remaining=15.0):
+        super().__init__()
+        if max_time_to_12deg < min_time_remaining:
             raise ValueError(
                 "time_to_12deg value of %f is less than time_remaining value of %f."
-                % (time_to_12deg, time_remaining)
+                % (max_time_to_12deg, min_time_remaining)
             )
-        self.sun_alt_limit = np.radians(sun_alt_limit)
-        self.time_to_12deg = time_to_12deg / 60.0 / 24.0
-        self.time_remaining = time_remaining / 60.0 / 24.0
+        self.sun_alt_limit = np.radians(max_sun_alt_limit)
+        self.time_to_12deg = max_time_to_12deg / 60.0 / 24.0
+        self.min_time_remaining = min_time_remaining / 60.0 / 24.0
 
     def check_feasibility(self, conditions):
         result = False
-
         # If the sun is high, it's ok to execute
         if conditions.sun_alt > self.sun_alt_limit:
             result = True
         time_left = conditions.sun_n12_rising - conditions.mjd
         if time_left < self.time_to_12deg:
             result = True
-        if time_left < self.time_remaining:
+        if time_left < self.min_time_remaining:
             result = False
         return result
+
+
+class SunHighLimitBasisFunction(CloseToTwilightBasisFunction):
+
+    def __init__(self, sun_alt_limit=-14.8, time_to_12deg=21.0, time_remaining=15.0):
+        super().__init__(
+            max_sun_alt_limit=sun_alt_limit,
+            min_time_remaining=time_remaining,
+            max_time_to_12deg=time_to_12deg,
+        )
+        warnings.warn("Class has been renamed CloseToTwilightBasisFunction", DeprecationWarning, 2)
 
 
 class OnceInNightBasisFunction(BaseBasisFunction):
@@ -519,7 +532,7 @@ class CloudedOutBasisFunction(BaseBasisFunction):
 
 
 class RisingMoreBasisFunction(BaseBasisFunction):
-    """Say a spot is not available if it will rise substatially before
+    """Say a spot is not available if it will rise substantially before
     twilight.
 
     Parameters
@@ -538,6 +551,8 @@ class RisingMoreBasisFunction(BaseBasisFunction):
 
     def check_feasibility(self, conditions):
         result = True
+        # Calculating hour angle instead of using conditions.HA
+        # because want -12 to +12 hours instead of 0 - 2pi values.
         hour_angle = conditions.lmst - self.ra_hours
         # If it's rising, and twilight is well beyond when it crosses
         # the meridian
@@ -548,7 +563,13 @@ class RisingMoreBasisFunction(BaseBasisFunction):
 
 
 class SunAltLimitBasisFunction(BaseBasisFunction):
-    """Don't try unless the sun is below some limit"""
+    """Only observe if the sun is below a given altitude limit.
+
+    Parameters
+    ----------
+    alt_limit : `float`
+        The maximum altitude for the sun.
+    """
 
     def __init__(self, alt_limit=-12.1):
         super(SunAltLimitBasisFunction, self).__init__()

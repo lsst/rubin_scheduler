@@ -1,4 +1,5 @@
 import unittest
+import warnings
 
 import numpy as np
 
@@ -166,6 +167,38 @@ class TestBasis(unittest.TestCase):
         assert ~sunaltbf.check_feasibility(conditions)
         conditions.sun_alt = np.radians(-10)
         assert sunaltbf.check_feasibility(conditions)
+
+    def test_close_to_twilight(self):
+        bf = basis_functions.CloseToTwilightBasisFunction(
+            max_sun_alt_limit=-14.8, max_time_to_12deg=21.0, min_time_remaining=15.0
+        )
+        conditions = Conditions()
+        conditions.mjd = 520900.00
+        conditions.sun_alt = -14
+        conditions.sun_n12_rising = conditions.mjd + 16.0 / 60 / 24
+        assert bf.check_feasibility(conditions)
+        conditions.sun_n12_rising = conditions.mjd + 14.0 / 60 / 24
+        assert ~bf.check_feasibility(conditions)
+        conditions.mjd = 520900.00
+        conditions.sun_n12_rising = conditions.mjd + 16.0 / 60 / 24
+        conditions.sun_alt = -20
+        assert ~bf.check_feasibility(conditions)
+
+    def test_deprecated(self):
+        deprecated_basis_functions = [
+            basis_functions.NearSunTwilightBasisFunction,
+            basis_functions.AvoidFastRevisits,
+            basis_functions.AvoidLongGapsBasisFunction,
+            basis_functions.FootprintNvisBasisFunction,
+            basis_functions.GoalStrictFilterBasisFunction,
+        ]
+        for dep_bf in deprecated_basis_functions:
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                dep_bf()
+                # Verify deprecation warning
+                assert len(w) == 1
+                assert issubclass(w[-1].category, (DeprecationWarning, FutureWarning))
 
 
 if __name__ == "__main__":

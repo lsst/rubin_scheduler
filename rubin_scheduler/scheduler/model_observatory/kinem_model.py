@@ -354,7 +354,7 @@ class KinemModel:
         dec_rad : `np.ndarray`
             The declination(s) of the location(s) we wish to slew to (radians)
         mjd : `float`
-            The current moodified julian date (days)
+            The current modified julian date (days)
         rot_sky_pos : `np.ndarray`
             The desired rot_sky_pos(s) (radians).
             Angle between up on the chip and North.
@@ -397,7 +397,9 @@ class KinemModel:
             The number of seconds between the two specified exposures.
             Will be np.nan or np.inf if slew is not possible.
         """
-        if filtername not in self.mounted_filters:
+        if filtername is None:
+            filtername = self.current_filter
+        elif filtername not in self.mounted_filters:
             return np.nan
 
         # Don't trust folks to do pa calculation correctly, if both
