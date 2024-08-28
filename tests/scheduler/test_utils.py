@@ -60,6 +60,7 @@ class TestUtils(unittest.TestCase):
             "pair_15, ri, b",
             "pair_15, yy, a",
             "pair_15, yy, b",
+            "pair_15, zy, a",
             "pair_33, gr, a",
             "pair_33, gr, b",
             "pair_33, ri, a",
