@@ -898,6 +898,7 @@ class ThirdObservationBasisFunction(BaseBasisFunction):
         self.survey_features["last_obs_f2"] = features.LastObserved(filtername=filtername2, nside=nside)
         self.result = np.empty(hp.nside2npix(self.nside))
         self.result.fill(np.nan)
+        send_unused_deprecation_warning(self.__class__.__name__)
 
     def _calc_value(self, conditions, indx=None):
         result = self.result.copy()
