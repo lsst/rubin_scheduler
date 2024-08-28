@@ -49,6 +49,7 @@ class TestUtils(unittest.TestCase):
         # or different lunar phase means different filters get picked
         # for the blobs
         notes_to_check = [
+            "DD:COSMOS",
             "blob_long, gr, a",
             "blob_long, gr, b",
             "greedy",

@@ -28,6 +28,7 @@ class GreedySurvey(BaseMarkovSurvey):
         seed=42,
         ignore_obs=None,
         survey_name=None,
+        scheduler_note=None,
         nexp=2,
         exptime=30.0,
         detailers=None,
@@ -36,9 +37,10 @@ class GreedySurvey(BaseMarkovSurvey):
         fields=None,
     ):
         extra_features = {}
-
-        if survey_name == "":
-            survey_name = f"Greedy {filtername}"
+        self.filtername = filtername
+        self.block_size = block_size
+        self.nexp = nexp
+        self.exptime = exptime
 
         super(GreedySurvey, self).__init__(
             basis_functions=basis_functions,
@@ -48,16 +50,17 @@ class GreedySurvey(BaseMarkovSurvey):
             ignore_obs=ignore_obs,
             nside=nside,
             survey_name=survey_name,
+            scheduler_note=scheduler_note,
             dither=dither,
+            seed=seed,
             detailers=detailers,
             camera=camera,
             area_required=area_required,
             fields=fields,
         )
-        self.filtername = filtername
-        self.block_size = block_size
-        self.nexp = nexp
-        self.exptime = exptime
+
+    def _generate_survey_name(self):
+        self.survey_name = f"Greedy {self.filtername}"
 
     def generate_observations_rough(self, conditions):
         """
@@ -72,8 +75,8 @@ class GreedySurvey(BaseMarkovSurvey):
 
         # Let's find the best N from the fields
         order = np.argsort(self.reward)[::-1]
-        # Crop off any NaNs
-        order = order[~np.isnan(self.reward[order])]
+        # Crop off any NaNs or Infs
+        order = order[np.isfinite(self.reward[order])]
 
         iter = 0
         while True:
@@ -88,7 +91,11 @@ class GreedySurvey(BaseMarkovSurvey):
                 obs["filter"] = self.filtername
                 obs["nexp"] = self.nexp
                 obs["exptime"] = self.exptime
-                obs["scheduler_note"] = self.survey_name
+                obs["scheduler_note"] = self.scheduler_note
+                obs["target_name"] = self.target_name
+                obs["science_program"] = self.science_program
+                obs["observation_reason"] = self.observation_reason
+                obs["json_block"] = self.json_block
 
                 observations.append(obs)
                 break
@@ -171,7 +178,8 @@ class BlobSurvey(GreedySurvey):
         dither=True,
         seed=42,
         ignore_obs=None,
-        survey_note="blob",
+        survey_name=None,
+        scheduler_note=None,
         detailers=None,
         camera="LSST",
         twilight_scale=True,
@@ -182,11 +190,13 @@ class BlobSurvey(GreedySurvey):
         area_required=None,
         max_radius_peak=40.0,
         fields=None,
-        survey_name="",
         **kwargs,
     ):
         self.filtername1 = filtername1
         self.filtername2 = filtername2
+
+        if survey_name is None:
+            survey_name = self._generate_survey_name()
 
         super(BlobSurvey, self).__init__(
             basis_functions=basis_functions,
@@ -202,6 +212,8 @@ class BlobSurvey(GreedySurvey):
             camera=camera,
             area_required=area_required,
             fields=fields,
+            survey_name=survey_name,
+            scheduler_note=scheduler_note,
         )
         self.flush_time = flush_time / 60.0 / 24.0  # convert to days
         self.nexp = nexp
@@ -240,7 +252,6 @@ class BlobSurvey(GreedySurvey):
 
         self.ra, self.dec = _hpid2_ra_dec(self.nside, self.hpids)
 
-        self.survey_note = survey_note
         self.counter = 1  # start at 1, because 0 is default in empty obs
         self.min_pair_time = min_pair_time
         self.ideal_pair_time = ideal_pair_time
@@ -392,14 +403,14 @@ class BlobSurvey(GreedySurvey):
     def simple_order_sort(self):
         """Fall back if we can't link contiguous blobs in the reward map"""
 
-        # Assuming reward has already been calcualted
+        # Assuming reward has already been calculated
 
         potential_hp = np.where(np.isfinite(self.reward))[0]
 
         # Note, using nanmax, so masked pixels might be included in
         # the pointing. I guess I should document that it's not
         # "NaN pixels can't be observed", but
-        # "non-NaN pixles CAN be observed", which probably is
+        # "non-NaN pixels CAN be observed", which probably is
         # not intuitive.
         ufields, reward_by_field = int_binned_stat(
             self.hp2fields[potential_hp], self.reward[potential_hp], statistic=np.nanmax
@@ -489,9 +500,13 @@ class BlobSurvey(GreedySurvey):
             else:
                 obs["nexp"] = self.nexp_dict[self.filtername1]
             obs["exptime"] = self.exptime
-            obs["scheduler_note"] = "%s" % (self.survey_note)
+            obs["scheduler_note"] = self.scheduler_note
             obs["block_id"] = self.counter
             obs["flush_by_mjd"] = flush_time
+            obs["target_name"] = self.target_name
+            obs["science_program"] = self.science_program
+            obs["observation_reason"] = self.observation_reason
+            obs["json_block"] = self.json_block
             observations.append(obs)
             counter2 += 1
 

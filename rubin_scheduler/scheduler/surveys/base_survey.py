@@ -52,6 +52,7 @@ class BaseSurvey:
         extra_basis_functions=None,
         ignore_obs=None,
         survey_name=None,
+        scheduler_note=None,
         nside=None,
         detailers=None,
         scheduled_obs=None,
@@ -69,6 +70,10 @@ class BaseSurvey:
             self._generate_survey_name()
         else:
             self.survey_name = survey_name
+        self.scheduler_note = scheduler_note
+        if self.scheduler_note is None:
+            self.scheduler_note = survey_name
+
         self.ignore_obs = ignore_obs
 
         self.reward = None
@@ -98,6 +103,12 @@ class BaseSurvey:
 
         # Scheduled observations
         self.scheduled_obs = scheduled_obs
+
+        # Information to override in subclass if desired.
+        self.target_name = ""
+        self.science_program = "FBS"
+        self.observation_reason = "FBS"
+        self.json_block = "Imaging"
 
     @cached_property
     def roi_hpid(self):
@@ -219,6 +230,10 @@ class BaseSurvey:
         if not self.reward_checked:
             self.reward = self.calc_reward_function(conditions)
         obs = empty_observation()
+        obs["target_name"] = self.target_name
+        obs["science_program"] = self.science_program
+        obs["observation_reason"] = self.observation_reason
+        obs["json_block"] = self.json_block
         return [obs]
 
     def generate_observations(self, conditions):
@@ -229,10 +244,7 @@ class BaseSurvey:
         return observations
 
     def viz_config(self):
-        # XXX--zomg, we should have a method that goes through all
-        # the objects and
-        # makes plots/prints info so there can be a little
-        # notebook showing the config!
+        # This primarily lives in schedview but could be somewhat added here
         pass
 
     def __repr__(self):
@@ -424,7 +436,7 @@ class BaseMarkovSurvey(BaseSurvey):
 
     Parameters
     ----------
-    basis_function : list of rubin_scheduler.schuler.basis_function
+    basis_function : list of rubin_scheduler.scheduler.basis_function
 
     basis_weights : list of float
         Must be same length as basis_function
@@ -453,6 +465,7 @@ class BaseMarkovSurvey(BaseSurvey):
         smoothing_kernel=None,
         ignore_obs=None,
         survey_name=None,
+        scheduler_note=None,
         nside=None,
         seed=42,
         dither=True,
@@ -467,6 +480,7 @@ class BaseMarkovSurvey(BaseSurvey):
             extra_features=extra_features,
             ignore_obs=ignore_obs,
             survey_name=survey_name,
+            scheduler_note=scheduler_note,
             nside=nside,
             detailers=detailers,
         )
