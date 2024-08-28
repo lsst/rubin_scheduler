@@ -105,39 +105,45 @@ class TestUtils(unittest.TestCase):
         mjd_start = survey_start_mjd()
         scheduler = example_scheduler(mjd_start=mjd_start)
         km = KinemModel(mjd0=mjd_start)
-        km.setup_telescope(abs_azimuth_minpos=270, abs_azimuth_maxpos=90)
+        az_min = 260
+        az_max = 80
+        km.setup_telescope(azimuth_minpos=az_min, azimuth_maxpos=az_max)
         mo = ModelObservatory(mjd=mjd_start, mjd_start=mjd_start, kinem_model=km)
-        mo, scheduler, observations = sim_runner(
-            mo,
-            scheduler,
-            survey_length=3.0,
-            verbose=False,
-            filename=None,
-        )
+        try:
+            mo, scheduler, observations = sim_runner(
+                mo,
+                scheduler,
+                survey_length=3.0,
+                verbose=False,
+                filename=None,
+            )
+        except RuntimeError as e:
+            print("Failed in az limits test")
+            raise e
 
         az = np.degrees(observations["az"])
-        forbidden = np.where((az > 90) & (az < 270))[0]
-
-        # Let a few pairs try to complete since by default we don't
-        # use an agressive shadow_minutes
-        pad = 4
-        forbidden = np.where((az > 90 + pad) & (az < 270 - pad))[0]
+        forbidden = np.where((az > az_max) & (az < az_min))[0]
         assert forbidden.size == 0
 
         km = KinemModel(mjd0=mjd_start)
-        km.setup_telescope(altitude_minpos=40.0, altitude_maxpos=70.0)
+        alt_min = 40
+        alt_max = 70
+        km.setup_telescope(altitude_minpos=alt_min, altitude_maxpos=alt_max)
         mo = ModelObservatory(mjd=observations[-1]["mjd"], mjd_start=mjd_start, kinem_model=km)
         scheduler.flush_queue()
-
-        mo, scheduler, observations = sim_runner(
-            mo,
-            scheduler,
-            survey_length=3.0,
-            verbose=False,
-            filename=None,
-        )
+        try:
+            mo, scheduler, observations = sim_runner(
+                mo,
+                scheduler,
+                survey_length=3.0,
+                verbose=False,
+                filename=None,
+            )
+        except RuntimeError as e:
+            print("Failed in altitude test")
+            raise e
         alt = np.degrees(observations["alt"])
-        n_forbidden = np.size(np.where((alt > 70) & (alt < 40))[0])
+        n_forbidden = np.size(np.where((alt > alt_max) & (alt < alt_min))[0])
         assert n_forbidden == 0
 
     def test_restore(self):

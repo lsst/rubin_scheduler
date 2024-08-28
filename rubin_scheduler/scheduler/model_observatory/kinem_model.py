@@ -303,7 +303,7 @@ class KinemModel:
         azimuth_maxpos : `float`
             Maximum azimuth position (degrees).
             Note this value is related to cumulative azimuth range,
-            for cable wrap. Defaults -270 and 270 include 0-360
+            for cable wrap. Defaults -250/250 include 0-360
             for all-sky azimuth positions, reachable via multiple
             routes.
         altitude_maxspeed : `float`
@@ -450,7 +450,7 @@ class KinemModel:
             This overrides rot_sky_pos, if set.
             If neither rot_sky_pos nor rot_tel_pos are set, no rotation
             time is added (equivalent to using current rot_tel_pos).
-        filtername : `str`
+        filtername : `str` or None
             The filter(s) of the desired observations.
             Set to None to compute only telescope and dome motion times.
         alt_rad : `np.ndarray`
@@ -564,7 +564,7 @@ class KinemModel:
         # azimuth range < 360 degrees.
         else:
             # Note that minpos will be the starting angle, but
-            # depending on cw/ccw - maxpos might be < minpos.
+            # depending on direction available - maxpos might be < minpos.
             az_range = (self.telaz_maxpos_rad - self.telaz_minpos_rad) % (two_pi)
             out_of_bounds = np.where((az_rad - self.telaz_minpos_rad) % (two_pi) > az_range)[0]
             d1 = (az_rad - self.telaz_minpos_rad) % (two_pi)
@@ -672,7 +672,7 @@ class KinemModel:
         outside_limits = np.where((alt_rad > self.telalt_maxpos_rad) | (alt_rad < self.telalt_minpos_rad))[0]
         slew_time[outside_limits] = np.nan
         # Azimuth limits already masked through cumulative azimuth
-        # calculation above (although it is inf, not nan, so let's swap).
+        # calculation above (it might be inf, not nan, so let's swap).
         slew_time = np.where(np.isfinite(slew_time), slew_time, np.nan)
 
         # If we want to include the camera rotation time
