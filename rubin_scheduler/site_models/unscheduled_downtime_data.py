@@ -209,18 +209,19 @@ class UnscheduledDowntimeMoreY1Data(UnscheduledDowntimeData):
                 continue
 
             if night < end_of_start:
-                # Estimate a threshold probability of having some downtime -
-                # 50% at start, dropping until end_of_start, where it should be .. 5%?
+                # Estimate a threshold probability of having some downtime
+                # 50% at start, dropping until end_of_start, where it
+                # should be .. 5%?
                 nightly_threshold = 0.5 * (1 - night / (end_of_start + 45))
                 if prob <= nightly_threshold:
                     # Generate an estimate of how long the downtime should be
-                    # prob_time = self.rng.uniform(low=1, high=hours_in_night, size=1)[0]
                     prob_time = self.rng.gumbel(loc=1, scale=6, size=1)[0]
                     if prob_time >= hours_in_night:
                         prob_time = hours_in_night
                     if prob_time <= 1:
                         prob_time = 1.0
-                    # And generate a starting time during the night for this event
+                    # And generate a starting time during the night for
+                    # this event
                     tmax = hours_in_night - prob_time
                     if tmax <= 0:
                         starts.append(Time(sunset, format="mjd", scale="utc"))
