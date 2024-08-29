@@ -280,10 +280,10 @@ class KinemModel:
         azimuth_maxpos=250.0,
         altitude_maxspeed=3.5,
         altitude_accel=3.5,
-        altitude_jerk=20.0,
+        altitude_jerk=14.0,
         azimuth_maxspeed=7.0,
         azimuth_accel=7.0,
-        azimuth_jerk=40.0,
+        azimuth_jerk=28.0,
         settle_time=3.0,
     ):
         """Configure the telescope (TMA) movement and position.
@@ -570,7 +570,7 @@ class KinemModel:
             d1 = (az_rad - self.telaz_minpos_rad) % (two_pi)
             d2 = (starting_az_rad - self.telaz_minpos_rad) % (two_pi)
             delta_aztel = d2 - d1
-            delta_aztel[out_of_bounds] = np.nan
+            delta_aztel[out_of_bounds] = np.inf
             az_flag = "restricted"
 
         # Calculate how long the telescope will take to slew to this
