@@ -104,34 +104,34 @@ class KinemModel:
         maxspeed=3.5,
         accel=1.0,
         shutter_2motion_min_time=15.0,
-        jerk=None,
+        jerk=4.0,
     ):
         """
         Parameters
         ----------
-        readtime : `float` (2)
+        readtime : `float`
             The readout time of the CCDs (seconds)
-        shuttertime : `float` (1.)
+        shuttertime : `float`
             The time it takes the shutter to go from closed to fully open
             (seconds)
-        filter_changetime : `float` (120)
+        filter_changetime : `float`
             The time it takes to change filters (seconds)
-        fov : `float` (3.5)
+        fov : `float`
             The camera field of view (degrees)
-        rotator_min : `float` (-90)
+        rotator_min : `float`
             The minimum angle the camera rotator (rotTelPos) can move to
             (degrees)
-        rotator_max : `float` (90)
+        rotator_max : `float`
             The maximum angle the camera rotator (rotTelPos) can move to
             degrees)
-        maxspeed : `float` (3.5)
+        maxspeed : `float`
             The maximum speed of the rotator (degrees/s)
-        accel : `float` (1.0)
+        accel : `float`
             The acceleration of the rotator (degrees/s^2)
         jerk : `float`
-            The jerk of the rotator (degrees/s^3). Default of None treats
-            jerk as infinite
-        shutter_2motion_min_time : `float` (15.)
+            The jerk of the rotator (degrees/s^3). None treats
+            jerk as infinite. Default 4.0.
+        shutter_2motion_min_time : `float`
             The time required for two shutter motions (seconds). If one
             takes a 1-snap 10s exposure, there will be a 5s of overhead
             before the next exposure can start.
@@ -165,25 +165,25 @@ class KinemModel:
 
         Parameters
         ----------
-        altitude_maxspeed : `float` (1.75)
+        altitude_maxspeed : `float`
             Maximum speed for altitude movement (degrees/second)
-        altitude_accel : `float` (0.875)
+        altitude_accel : `float`
             Maximum acceleration for altitude movement (degrees/second**2)
         altitude_jerk : `float`
-            The jerk for the altitude movement (degrees/second**3). Default
-            of None treats jerk as infinite.
-        altitude_freerange : `float` (0)
+            The jerk for the altitude movement (degrees/second**3).
+            None treats jerk as infinite. Default None
+        altitude_freerange : `float`
             The range over which there is 0 delay
-        azimuth_maxspeed : `float` (1.5)
+        azimuth_maxspeed : `float`
             Maximum speed for azimuth movement (degrees/second)
-        azimuth_accel : `float` (0.75)
+        azimuth_accel : `float`
             Maximum acceleration for azimuth movement (degrees/second**2)
         azimuth_jerk : `float`
             The jerk of the azimuth movement (degrees/second**3). Default
             of None treats jerk as infinite.
-        azimuth_freerange : `float` (4.0)
+        azimuth_freerange : `float`
             The range in which there is 0 delay
-        settle_time : `float` (1.0)
+        settle_time : `float`
             Settle time after movement (seconds)
         """
         self.domalt_maxspeed_rad = np.radians(altitude_maxspeed)
@@ -204,10 +204,10 @@ class KinemModel:
         azimuth_maxpos=250.0,
         altitude_maxspeed=3.5,
         altitude_accel=3.5,
-        altitude_jerk=None,
+        altitude_jerk=20.0,
         azimuth_maxspeed=7.0,
         azimuth_accel=7.0,
-        azimuth_jerk=None,
+        azimuth_jerk=40.0,
         settle_time=3.0,
         az_limits=None,
         alt_limits=None,
@@ -216,23 +216,29 @@ class KinemModel:
 
         Parameters
         ----------
-        altitude_minpos : `float` (20.0)
+        altitude_minpos : `float`
             Minimum altitude for the telescope (degrees)
-        altitude_maxpos : `float` (86.5)
+        altitude_maxpos : `float`
             Maximum altitude for the telescope (degrees)
-        azimuth_minpos : `float` (-270.0)
+        azimuth_minpos : `float`
             Minimum azimuth position (degrees)
-        azimuth_maxpos : `float` (270.0)
+        azimuth_maxpos : `float`
             Maximum azimuth position (degrees)
-        altitude_maxspeed : `float` (3.5)
+        altitude_maxspeed : `float`
             Maximum speed for altitude movement (degrees/second)
-        altitude_accel : `float` (3.5)
+        altitude_accel : `float`
             Maximum acceleration for altitude movement (degrees/second**2)
-        azimuth_maxspeed : `float` (7.0)
+        altitude_jerk : `float`
+            Jerk for altitude movement (degrees/second**2). None will
+            treat jerk as infinite. Defualt 20.
+        azimuth_maxspeed : `float`
             Maximum speed for azimuth movement (degrees/second)
-        azimuth_accel : `float` (7.0)
+        azimuth_accel : `float`
             Maximum acceleration for azimuth movement (degrees/second**2)
-        settle_time : `float` (3.0)
+        azimuth_jerk : `float`
+            Jerk for azimuth movement (degrees/second**2). None will
+            treat jerk as infinite. Defualt 40.
+        settle_time : `float`
             Settle time required for telescope after movement (seconds)
         """
         self.telalt_minpos_rad = np.radians(altitude_minpos)

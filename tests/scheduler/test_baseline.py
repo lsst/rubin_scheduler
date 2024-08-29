@@ -218,7 +218,7 @@ class TestFeatures(unittest.TestCase):
         """
         mjd_start = utils.survey_start_mjd()
         nside = 32
-        survey_length = 2.0  # days
+        survey_length = 3.0  # days
 
         surveys = gen_greedy_surveys(nside)
         # Deprecating Pairs_survey_scripted
@@ -248,7 +248,7 @@ class TestFeatures(unittest.TestCase):
         """
         mjd_start = utils.survey_start_mjd()
         nside = 32
-        survey_length = 2.0  # days
+        survey_length = 3.0  # days
 
         surveys = []
         # Set up the DD
@@ -319,7 +319,7 @@ class TestFeatures(unittest.TestCase):
         """
         mjd_start = utils.survey_start_mjd()
         nside = 64
-        survey_length = 2.0  # days
+        survey_length = 3.0  # days
 
         surveys = []
         # Set up the DD
