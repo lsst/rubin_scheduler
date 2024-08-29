@@ -21,6 +21,9 @@ __all__ = (
     "LimitObsPnightBasisFunction",
     "SunHighLimitBasisFunction",
     "CloseToTwilightBasisFunction",
+    "MoonDistPointRangeBasisFunction",
+    "AirmassPointRangeBasisFunction",
+    "InSeasonBasisFunction",
 )
 
 import warnings
@@ -30,6 +33,8 @@ import numpy as np
 from rubin_scheduler.scheduler import features
 from rubin_scheduler.scheduler.basis_functions import BaseBasisFunction
 from rubin_scheduler.scheduler.utils import IntRounded
+from rubin_scheduler.utils import _angular_separation, ra_dec2_hpid
+
 
 
 class FilterLoadedBasisFunction(BaseBasisFunction):
@@ -54,6 +59,54 @@ class FilterLoadedBasisFunction(BaseBasisFunction):
             result = filtername in conditions.mounted_filters
             if result is False:
                 return result
+        return result
+
+
+class InSeasonBasisFunction(BaseBasisFunction):
+    """Only let a survey go if it is in a defined season"""
+
+    def __init__(self, seasons=[]):
+        super().__init__()
+        self.seasons = seasons
+
+    def check_feasibility(self, conditions):
+        result = False
+        for season_range in self.seasons:
+            if np.min(season_range) <= conditions.mjd <= np.max(season_range):
+                result = True
+        return result
+
+
+class AirmassPointRangeBasisFunction(BaseBasisFunction):
+    """set an airmass limit for a single point"""
+
+    def __init__(self, ra, dec, airmass_range=[1.05, 2.7], nside=32):
+        super().__init__()
+        self.hpid = ra_dec2_hpid(nside, ra, dec)
+        self.airmass_range = airmass_range
+
+    def check_feasibility(self, conditions):
+        result = False
+        airmass = conditions.airmass[self.hpid]
+        if (np.min(self.airmass_range) <= airmass) & (airmass <= np.max(self.airmass_range)):
+            result = True
+        return result
+
+
+class MoonDistPointRangeBasisFunction(BaseBasisFunction):
+    """set an airmass limit for a single point"""
+
+    def __init__(self, ra, dec, moon_limit=15.0):
+        super().__init__()
+        self.ra = np.radians(ra)
+        self.dec = np.radians(dec)
+        self.moon_limit = np.radians(moon_limit)
+
+    def check_feasibility(self, conditions):
+        result = False
+        moon_dist = _angular_separation(self.ra, self.dec, conditions.moon_ra, conditions.moon_dec)
+        if moon_dist > self.moon_limit:
+            result = True
         return result
 
 
