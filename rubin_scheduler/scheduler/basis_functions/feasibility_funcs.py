@@ -36,7 +36,6 @@ from rubin_scheduler.scheduler.utils import IntRounded
 from rubin_scheduler.utils import _angular_separation, ra_dec2_hpid
 
 
-
 def send_unused_deprecation_warning(name):
     message = (
         f"The feasibility basis function {name} is not in use, "
@@ -73,7 +72,16 @@ class FilterLoadedBasisFunction(BaseBasisFunction):
 
 
 class InSeasonBasisFunction(BaseBasisFunction):
-    """Only let a survey go if it is in a defined season"""
+    """Only let a survey go if it is in a defined season
+
+    Parameters
+    ----------
+    seasons : `list`
+        List of mjd pairs. feasability will only pass if the
+        current MJD falls in a viable range, e.g.
+        seaons=[[1,2], [10,13]], means observations can happen
+        on mjd=1,2,10,11,12,13.
+    """
 
     def __init__(self, seasons=[]):
         super().__init__()
@@ -88,7 +96,17 @@ class InSeasonBasisFunction(BaseBasisFunction):
 
 
 class AirmassPointRangeBasisFunction(BaseBasisFunction):
-    """set an airmass limit for a single point"""
+    """set an airmass limit for a single point
+
+    Parameters
+    ----------
+    ra : `float`
+        The RA of the point (degrees)
+    dec : `float`
+        The Dec of the point (degrees)
+    airmass_range : `list`
+        The valid airmass range, default [1.05, 2.7].
+    """
 
     def __init__(self, ra, dec, airmass_range=[1.05, 2.7], nside=32):
         super().__init__()
@@ -104,7 +122,18 @@ class AirmassPointRangeBasisFunction(BaseBasisFunction):
 
 
 class MoonDistPointRangeBasisFunction(BaseBasisFunction):
-    """set an airmass limit for a single point"""
+    """set an airmass limit for a single point
+
+    Parameters
+    ----------
+    ra : `float`
+        The RA of the point (degrees)
+    dec : `float`
+        The Dec of the point (degrees)
+    moon_limit : `float`
+        The angular distance to demand from the moon (degrees).
+        Default 15.
+    """
 
     def __init__(self, ra, dec, moon_limit=15.0):
         super().__init__()
