@@ -130,8 +130,6 @@ class BlobSurvey(GreedySurvey):
     ideal_pair_time : `float`
         The ideal time gap wanted between observations to the same
         pointing (minutes)
-    min_pair_time : `float`
-        The minimum acceptable pair time (minutes)
     flush_time : `float`
         The time past the final expected exposure to flush the queue.
         Keeps observations from lingering past when they should be
@@ -171,7 +169,6 @@ class BlobSurvey(GreedySurvey):
         nexp=2,
         nexp_dict=None,
         ideal_pair_time=22.0,
-        min_pair_time=15.0,
         flush_time=30.0,
         smoothing_kernel=None,
         nside=None,
@@ -240,10 +237,10 @@ class BlobSurvey(GreedySurvey):
         # then repeat.)
         if filtername2 is not None:
             self.time_needed = (
-                (min_pair_time * 60.0 * 2.0 + exptime + read_approx + filter_change_approx) / 24.0 / 3600.0
+                (ideal_pair_time * 60.0 * 2.0 + exptime + read_approx + filter_change_approx) / 24.0 / 3600.0
             )  # Days
         else:
-            self.time_needed = (min_pair_time * 60.0 + exptime + read_approx) / 24.0 / 3600.0  # Days
+            self.time_needed = (ideal_pair_time * 60.0 + exptime + read_approx) / 24.0 / 3600.0  # Days
         self.filter_set = set(filtername1)
         if filtername2 is None:
             self.filter2_set = self.filter_set
@@ -253,7 +250,6 @@ class BlobSurvey(GreedySurvey):
         self.ra, self.dec = _hpid2_ra_dec(self.nside, self.hpids)
 
         self.counter = 1  # start at 1, because 0 is default in empty obs
-        self.min_pair_time = min_pair_time
         self.ideal_pair_time = ideal_pair_time
 
         self.pixarea = hp.nside2pixarea(self.nside, degrees=True)
@@ -484,10 +480,8 @@ class BlobSurvey(GreedySurvey):
         # the nearest/fastest slew from current position.
         observations = []
         counter2 = 0
-        approx_end_time = np.size(better_order) * (
-            self.slew_approx + self.exptime + self.read_approx * (self.nexp - 1)
-        )
-        flush_time = conditions.mjd + approx_end_time / 3600.0 / 24.0 + self.flush_time
+        flush_time = conditions.mjd + self.time_needed + self.flush_time
+
         for i, indx in enumerate(better_order):
             field = self.best_fields[indx]
             obs = empty_observation()
@@ -511,5 +505,4 @@ class BlobSurvey(GreedySurvey):
             counter2 += 1
 
         result = observations
-
         return result
