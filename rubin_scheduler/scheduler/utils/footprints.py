@@ -521,16 +521,6 @@ class Footprints(Footprint):
                     self.current_footprints = self.current_footprints / c_sum
 
 
-def ra_dec_hp_map(nside=None):
-    """
-    Return all the RA,dec points for the centers of a healpix map, in radians.
-    """
-    if nside is None:
-        nside = set_default_nside()
-    ra, dec = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(nside)))
-    return ra, dec
-
-
 def calc_norm_factor(goal_dict, radius=1.75):
     """Calculate how to normalize a Target_map_basis_function.
     This is basically:

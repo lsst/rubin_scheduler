@@ -10,4 +10,5 @@ from .pointings_survey import *
 from .roman_surveys import *
 from .scripted_surveys import *
 from .surveys import *
+from .too_scripted_surveys import *
 from .too_surveys import *

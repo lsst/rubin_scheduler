@@ -36,7 +36,6 @@ from rubin_scheduler.scheduler.utils import IntRounded
 from rubin_scheduler.utils import _angular_separation, ra_dec2_hpid
 
 
-
 class FilterLoadedBasisFunction(BaseBasisFunction):
     """Check that the filter(s) needed are loaded.
 
