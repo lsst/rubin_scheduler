@@ -21,6 +21,8 @@ from rubin_scheduler.scheduler.basis_functions import BaseBasisFunction
 from rubin_scheduler.scheduler.utils import HpInLsstFov, IntRounded
 from rubin_scheduler.utils import Site, _angular_separation, _hpid2_ra_dec
 
+from .basis_functions import send_unused_deprecation_warning
+
 
 class SolarElongMaskBasisFunction(BaseBasisFunction):
     """Mask regions larger than some solar elongation limit
@@ -137,6 +139,8 @@ class SolarElongationMaskBasisFunction(BaseBasisFunction):
 class ZenithMaskBasisFunction(BaseBasisFunction):
     """Just remove the area near zenith.
 
+    Superceded by the ZenithShadowMask basis function.
+
     Parameters
     ----------
     min_alt : float (20.)
@@ -151,6 +155,7 @@ class ZenithMaskBasisFunction(BaseBasisFunction):
         self.min_alt = np.radians(min_alt)
         self.max_alt = np.radians(max_alt)
         self.result = np.empty(hp.nside2npix(self.nside), dtype=float).fill(self.penalty)
+        send_unused_deprecation_warning()
 
     def _calc_value(self, conditions, indx=None):
         result = self.result.copy()
@@ -163,7 +168,7 @@ class ZenithMaskBasisFunction(BaseBasisFunction):
 
 
 class PlanetMaskBasisFunction(BaseBasisFunction):
-    """Mask the bright planets
+    """Mask the bright planets.
 
     Parameters
     ----------
@@ -171,7 +176,7 @@ class PlanetMaskBasisFunction(BaseBasisFunction):
         The radius to mask around a planet (degrees).
     planets : list of str (None)
         A list of planet names to mask. Defaults to ['venus', 'mars',
-        'jupiter']. Not including Saturn because it moves really slow
+        'jupiter']. Not including Saturn because it moves really slowly
         and has average apparent mag of ~0.4, so fainter than Vega.
 
     """
@@ -218,10 +223,18 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         Maximum altitude to allow. Default 82 (degrees).
     min_az : `float`
         Minimum azimuth value to apply to the mask. Default 0 (degrees).
+        These azimuth values are absolute azimuth, not cumulative.
+        The limits in the telescope model are based on cumulative azimuth.
+        The absolute and cumulative azimuth only diverge if the azimuth
+        range is greater than 360 degrees.
     max_az : `float`
         Maximum azimuth value to apply to the mask. Default 360 (degrees).
     shadow_minutes : `float`
         How long to extend masked area in longitude. Default 40 (minutes).
+        Choose this value based on the time between when a field might
+        be chosen to be scheduled and when it might be observed.
+        For pairs, the minimum pair time + some buffer is good.
+        For sequences, try the length of the sequence + some buffer.
     pad : `float`
         Pad the conditions alt/az limits by this amount (degrees).
         Default corresponds to approximately the radius of the fov.
@@ -359,15 +372,22 @@ class ZenithShadowMaskBasisFunction(BaseBasisFunction):
 
 
 class MoonAvoidanceBasisFunction(BaseBasisFunction):
-    """Avoid looking too close to the moon.
+    """Avoid observing within `moon_distance` of the moon.
 
     Parameters
     ----------
     moon_distance: float (30.)
         Minimum allowed moon distance. (degrees)
 
-    XXX--TODO:  This could be a more complicated function of filter
-    and moon phase.
+    Notes
+    -----
+    As the current specified requirements for the observatory
+    are "observe more than 30 degrees from the moon", this basis
+    function simply does that at present. This includes
+    times the moon is below the horizon or if the moon close to new.
+    Most likely, this avoidance region should depend on lunar phase,
+    the filter used for observations, and whether the moon is above
+    or below the horizon.
     """
 
     def __init__(self, nside=None, moon_distance=30.0):
@@ -487,7 +507,10 @@ class MapCloudBasisFunction(BaseBasisFunction):
 
 
 class MaskAzimuthBasisFunction(BaseBasisFunction):
-    """Mask pixels based on azimuth"""
+    """Mask pixels based on azimuth.
+
+    Superseded by AltAzShadowMaskBasisFunction.
+    """
 
     def __init__(self, nside=None, out_of_bounds_val=np.nan, az_min=0.0, az_max=180.0):
         super(MaskAzimuthBasisFunction, self).__init__(nside=nside)
@@ -495,6 +518,7 @@ class MaskAzimuthBasisFunction(BaseBasisFunction):
         self.az_max = IntRounded(np.radians(az_max))
         self.out_of_bounds_val = out_of_bounds_val
         self.result = np.ones(hp.nside2npix(self.nside))
+        send_unused_deprecation_warning()
 
     def _calc_value(self, conditions, indx=None):
         to_mask = np.where(

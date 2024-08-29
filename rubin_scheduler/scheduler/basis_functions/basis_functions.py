@@ -45,6 +45,7 @@ __all__ = (
     "RewardNObsSequence",
     "FilterDistBasisFunction",
     "RewardRisingBasisFunction",
+    "send_unused_deprecation_warning",
 )
 
 import warnings

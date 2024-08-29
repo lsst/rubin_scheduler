@@ -191,6 +191,9 @@ class TestBasis(unittest.TestCase):
             basis_functions.AvoidLongGapsBasisFunction,
             basis_functions.FootprintNvisBasisFunction,
             basis_functions.GoalStrictFilterBasisFunction,
+            basis_functions.ZenithMaskBasisFunction,
+            basis_functions.ZenithShadowMaskBasisFunction,
+            basis_functions.MaskAzimuthBasisFunction,
         ]
         for dep_bf in deprecated_basis_functions:
             with warnings.catch_warnings(record=True) as w:
