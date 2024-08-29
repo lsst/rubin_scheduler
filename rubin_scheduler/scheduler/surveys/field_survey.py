@@ -117,7 +117,6 @@ class FieldSurvey(BaseSurvey):
         self.ra_hours = RA / 360.0 * 24.0
         self.dec = np.radians(dec)
         self.ra_deg, self.dec_deg = RA, dec
-        self.indx = ra_dec2_hpid(self.nside, self.ra_deg, self.dec_deg)
 
         # Set up target_name and survey_name before super
         self.target_name = target_name
@@ -137,6 +136,9 @@ class FieldSurvey(BaseSurvey):
             survey_name=self.survey_name,
         )
         self.accept_obs = accept_obs
+        if isinstance(self.accept_obs, str):
+            self.accept_obs = [self.accept_obs]
+        self.indx = ra_dec2_hpid(self.nside, self.ra_deg, self.dec_deg)
 
         # Set all basis function equal.
         self.basis_weights = np.ones(len(basis_functions)) / len(basis_functions)
@@ -238,7 +240,7 @@ class FieldSurvey(BaseSurvey):
 
     def add_observation(self, observation, **kwargs):
         """Add observation one at a time."""
-        # Check each posible ignore string
+        # Check each possible ignore string
         checks = [io not in str(observation["scheduler_note"]) for io in self.ignore_obs]
         passed_ignore = all(checks)
         passed_accept = True
