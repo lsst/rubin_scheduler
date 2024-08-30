@@ -195,6 +195,7 @@ class TestBasis(unittest.TestCase):
             basis_functions.MaskAzimuthBasisFunction,
         ]
         for dep_bf in deprecated_basis_functions:
+            print(dep_bf)
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
                 dep_bf()

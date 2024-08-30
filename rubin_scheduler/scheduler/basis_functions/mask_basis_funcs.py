@@ -306,7 +306,7 @@ class ZenithShadowMaskBasisFunction(BaseBasisFunction):
 
         self.min_alt = np.radians(min_alt)
         self.max_alt = np.radians(max_alt)
-        self.ra, self.dec = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(nside)))
+        self.ra, self.dec = _hpid2_ra_dec(self.nside, np.arange(hp.nside2npix(self.nside)))
         self.shadow_minutes = np.radians(shadow_minutes / 60.0 * 360.0 / 24.0)
         # Compute the declination band where things could drift into zenith
         self.decband = np.zeros(self.dec.size, dtype=float)
@@ -486,7 +486,7 @@ class MaskAzimuthBasisFunction(BaseBasisFunction):
         self.az_max = IntRounded(np.radians(az_max))
         self.out_of_bounds_val = out_of_bounds_val
         self.result = np.ones(hp.nside2npix(self.nside))
-        send_unused_deprecation_warning()
+        send_unused_deprecation_warning(self.__class__.__name__)
 
     def _calc_value(self, conditions, indx=None):
         to_mask = np.where(
