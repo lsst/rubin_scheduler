@@ -188,7 +188,11 @@ class BaseSurvey:
 
     def _check_feasibility(self, conditions):
         """
-        Check if the survey is feasable in the current conditions
+        Check if the survey is feasible in the current conditions
+
+        Returns
+        -------
+        result : `bool`
         """
         result = True
         for bf in self.basis_functions:

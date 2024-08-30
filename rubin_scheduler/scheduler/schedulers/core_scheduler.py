@@ -295,6 +295,7 @@ class CoreScheduler:
         for ns, surveys in enumerate(self.survey_lists):
             rewards = np.zeros(len(surveys))
             for i, survey in enumerate(surveys):
+                # For each survey, find the highest reward value.
                 rewards[i] = np.nanmax(survey.calc_reward_function(self.conditions))
             # If we have a tier with a good reward, break out of the loop
             if np.nanmax(rewards) > -np.inf:

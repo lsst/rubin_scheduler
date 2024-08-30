@@ -262,10 +262,14 @@ class BlobSurvey(GreedySurvey):
         # then repeat.)
         if filtername2 is not None:
             self.time_needed = (
-                (self.ideal_pair_time * 60.0 * 2.0 + self.exptime + self.read_approx + filter_change_approx) / 24.0 / 3600.0
+                (self.ideal_pair_time * 60.0 * 2.0 + self.exptime + self.read_approx + filter_change_approx)
+                / 24.0
+                / 3600.0
             )  # Days
         else:
-            self.time_needed = (self.ideal_pair_time * 60.0 + self.exptime + self.read_approx) / 24.0 / 3600.0  # Days
+            self.time_needed = (
+                (self.ideal_pair_time * 60.0 + self.exptime + self.read_approx) / 24.0 / 3600.0
+            )  # Days
         self.filter_set = set(filtername1)
         if filtername2 is None:
             self.filter2_set = self.filter_set
