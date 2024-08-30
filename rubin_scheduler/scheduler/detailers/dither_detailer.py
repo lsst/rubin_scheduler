@@ -345,7 +345,8 @@ class CameraSmallRotPerObservationListDetailer(BaseDetailer):
         # offsets[0] = offset
 
         # Find the locations of the filter changes
-        filter_changes = np.concatenate([np.array([-1]), np.where(filter_list[:-1] != filter_list[1:])[0]])
+        filter_changes = np.where(np.array(filter_list[:-1]) != np.array(filter_list[1:]))[0]
+        filter_changes = np.concatenate([np.array([-1]), filter_changes])
         # But add one because of counting and offsets above.
         filter_changes += 1
         # Count visits per filter in the sequence.
