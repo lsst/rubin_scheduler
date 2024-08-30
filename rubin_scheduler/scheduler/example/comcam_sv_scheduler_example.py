@@ -97,7 +97,7 @@ def get_model_observatory(
 
     kinematic_model = KinemModel(mjd0=mjd_now)
     rot = rotator_movement(rotator_percent)
-    kinematic_model.setup_camera(readtime=2.4, **rot)
+    kinematic_model.setup_camera(**rot)
     tma = tma_movement(tma_percent)
     kinematic_model.setup_telescope(**tma)
 
@@ -175,12 +175,16 @@ def standard_masks(
     wind_speed_maximum: float = 20.0,
     min_alt: float = 20,
     max_alt: float = 86.5,
+    min_az: float = 0,
+    max_az: float = 360,
     shadow_minutes: float = 30,
 ) -> list[basis_functions.BaseBasisFunction]:
     """A set of standard mask functions.
 
-    Avoids the moon, high wind, and areas on the sky out of bounds via
-    the slew calculation from the model observatory.
+    Avoids the moon, bright planets, high wind, and
+    areas on the sky out of bounds, using
+    the MoonAvoidanceBasisFunction, PlanetMaskBasisFunction,
+    AvoidDirectWindBasisFunction, and the AltAzShadowMaskBasisFunction.
 
     Parameters
     ----------
@@ -196,6 +200,10 @@ def standard_masks(
         Minimum altitude (in degrees) to observe.
     max_alt : `float`, optional
         Maximum altitude (in degrees) to observe.
+    min_az : `float`, optional
+        Minimum azimuth angle (in degrees) to observe.
+    max_az : `float`, optional
+        Maximum azimuth angle (in degrees) to observe.
     shadow_minutes : `float`, optional
         Avoid inaccessible alt/az regions, as well as parts of the sky
         which will move into those regions within `shadow_minutes` (minutes).
@@ -221,8 +229,8 @@ def standard_masks(
             nside=nside,
             min_alt=min_alt,
             max_alt=max_alt,
-            min_az=0.0,
-            max_az=360.0,
+            # min_az=min_az,
+            # max_az=max_az,
             shadow_minutes=shadow_minutes,
         )
     )
@@ -659,6 +667,12 @@ def simple_greedy_survey(
 def get_basis_functions_field_survey(
     nside: int = 32,
     wind_speed_maximum: float = 10,
+    moon_distance: float = 30,
+    min_alt: float = 20,
+    max_alt: float = 86,
+    min_az: float = 0,
+    max_az: float = 360,
+    shadow_minutes: float = 60,
 ) -> list[basis_functions.BaseBasisFunction]:
     """Get the basis functions for a comcam SV field survey.
 
@@ -669,6 +683,22 @@ def get_basis_functions_field_survey(
     wind_speed_maximum : `float`
         Maximum wind speed tolerated for the observations of the survey,
         in m/s.
+    moon_distance : `float`, optional
+        Moon avoidance distance, in degrees.
+    min_alt : `float`, optional
+        Minimum altitude (in degrees) to observe.
+    max_alt : `float`, optional
+        Maximum altitude (in degrees) to observe.
+    min_az : `float`, optional
+        Minimum azimuth angle (in degrees) to observe.
+    max_az : `float`, optional
+        Maximum azimuth angle (in degrees) to observe.
+    shadow_minutes : `float`, optional
+        Avoid inaccessible alt/az regions, as well as parts of the sky
+        which will move into those regions within `shadow_minutes` (minutes).
+        For the FieldSurvey, this should probably be the length of time
+        required by the sequence in the FieldSurvey, to avoid tracking into
+        inaccessible areas of sky.
 
     Returns
     -------
@@ -677,24 +707,26 @@ def get_basis_functions_field_survey(
     sun_alt_limit = -12.0
     moon_distance = 30
 
-    bfs = [
+    bfs = standard_masks(
+        nside=nside,
+        moon_distance=moon_distance,
+        wind_speed_maximum=wind_speed_maximum,
+        min_alt=min_alt,
+        max_alt=max_alt,
+        min_az=min_az,
+        max_az=max_az,
+        shadow_minutes=shadow_minutes,
+    )
+
+    bfs += [
         basis_functions.NotTwilightBasisFunction(sun_alt_limit=sun_alt_limit),
-        basis_functions.MoonAvoidanceBasisFunction(nside=nside, moon_distance=moon_distance),
-        basis_functions.AvoidDirectWind(wind_speed_maximum=wind_speed_maximum, nside=nside),
-        # Mask parts of the sky in alt/az, including parts of the sky that
-        # will move into this area
-        # (replaces azimuth mask and zenith shadow mask,
-        # should also be able to replace airmass basis function)
-        basis_functions.AltAzShadowMaskBasisFunction(
-            nside=nside, min_alt=22, max_alt=83, min_az=0.0, max_az=360.0, shadow_minutes=30
-        ),
         # Avoid revisits within 30 minutes
         basis_functions.AvoidFastRevisitsBasisFunction(nside=nside, filtername=None, gap_min=30.0),
         # reward fields which are rising, but don't mask out after zenith
         basis_functions.RewardRisingBasisFunction(nside=nside, slope=0.1, penalty_val=0),
         # Reward parts of the sky which are darker --
-        # note that this is only for r band, so relying on skymap in r band
-        # .. if there isn't a strong reason to go with the darkest pointing,
+        # note that this is only for r band, so relying on skymap in r band.
+        # if there isn't a strong reason to go with the darkest pointing,
         # it might be reasonable to just drop this basis function
         basis_functions.M5DiffBasisFunction(filtername="r", nside=nside),
     ]
