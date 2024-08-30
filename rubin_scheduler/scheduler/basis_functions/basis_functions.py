@@ -1430,7 +1430,7 @@ class AggressiveSlewtimeBasisFunction(BaseBasisFunction):
         self.maxtime = max_time
         self.hard_max = hard_max
         self.order = order
-        self.result = np.zeros(hp.nside2npix(nside), dtype=float)
+        self.result = np.zeros(hp.nside2npix(self.nside), dtype=float)
         send_unused_deprecation_warning(self.__class__.__name__)
 
     def _calc_value(self, conditions, indx=None):

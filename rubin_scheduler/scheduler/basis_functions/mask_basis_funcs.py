@@ -1,6 +1,5 @@
 __all__ = (
     "SolarElongMaskBasisFunction",
-    "ZenithMaskBasisFunction",
     "ZenithShadowMaskBasisFunction",
     "HaMaskBasisFunction",
     "MoonAvoidanceBasisFunction",
@@ -133,37 +132,6 @@ class SolarElongationMaskBasisFunction(BaseBasisFunction):
             & (IntRounded(conditions.solar_elongation) <= IntRounded(self.max_elong))
         )[0]
         result[in_range] = 1
-        return result
-
-
-class ZenithMaskBasisFunction(BaseBasisFunction):
-    """Just remove the area near zenith.
-
-    Superceded by the ZenithShadowMask basis function.
-
-    Parameters
-    ----------
-    min_alt : float (20.)
-        The minimum possible altitude (degrees)
-    max_alt : float (82.)
-        The maximum allowed altitude (degrees)
-    """
-
-    def __init__(self, min_alt=20.0, max_alt=82.0, nside=None):
-        super(ZenithMaskBasisFunction, self).__init__(nside=nside)
-        self.update_on_newobs = False
-        self.min_alt = np.radians(min_alt)
-        self.max_alt = np.radians(max_alt)
-        self.result = np.empty(hp.nside2npix(self.nside), dtype=float).fill(self.penalty)
-        send_unused_deprecation_warning()
-
-    def _calc_value(self, conditions, indx=None):
-        result = self.result.copy()
-        alt_limit = np.where(
-            (IntRounded(conditions.alt) > IntRounded(self.min_alt))
-            & (IntRounded(conditions.alt) < IntRounded(self.max_alt))
-        )[0]
-        result[alt_limit] = 1
         return result
 
 
