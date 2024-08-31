@@ -140,8 +140,6 @@ def sim_runner(
             # An observation failed to execute, usually it was outside
             # the altitude limits.
             if observatory.mjd == mjd_last_flush:
-                print(f"failed at {observatory.mjd} on survey {scheduler.survey_index}")
-                return observatory, scheduler, observations, desired_obs
                 raise RuntimeError(
                     "Scheduler has failed to provide a valid observation multiple times "
                     f" at time ({observatory.mjd} from survey {scheduler.survey_index}."

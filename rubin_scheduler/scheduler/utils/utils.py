@@ -626,7 +626,7 @@ def empty_observation(n=1):
         (for scheduler purposes, use `scheduler_note`).
         This maps to observation_reason in the ConsDB, although could
         be overwritten in JSON BLOCK.
-        Most likely this is just "science" when using the FBS.
+        Most likely this is just "science" or "FBS" when using the FBS.
     json_block : `str` (optional)
         The JSON BLOCK id to use to acquire observations.
         This is for use by the SchedulerCSC.

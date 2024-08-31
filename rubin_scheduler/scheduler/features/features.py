@@ -897,14 +897,13 @@ class NoteLastObserved(BaseSurveyFeature):
 
 class NObsNight(BaseSurveyFeature):
     """
-    Track how many times a healpixel has been observed in a night
-    (Note, even if there are two, it might not be a good pair.)
+    Track how many times a healpixel has been observed in a night.
 
     Parameters
     ----------
     filtername : `str` or None
         Filter to track. None tracks observations in any filter.
-    nside : `int` or NOne
+    nside : `int` or None
         Scale of the healpix map. Default of None uses the scheduler
         default nside.
     """
