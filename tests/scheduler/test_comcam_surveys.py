@@ -13,6 +13,7 @@ from rubin_scheduler.scheduler.example import (
     update_model_observatory_sunset,
 )
 from rubin_scheduler.scheduler.schedulers import ComCamFilterSched
+from rubin_scheduler.utils import survey_start_mjd
 
 SAMPLE_BIG_DATA_FILE = os.path.join(get_data_dir(), "scheduler/dust_maps/dust_nside_32.npz")
 
@@ -25,7 +26,9 @@ class TestComCamSurveys(unittest.TestCase):
 
         # Just check that we can acquire a model observatory
         # and it is set up for the date expected.
-        dayobs = "2024-09-09"
+        survey_start = survey_start_mjd()
+        survey_start = np.floor(survey_start) + 0.5
+        dayobs = Time(survey_start, format="mjd", scale="utc").iso[:10]
         survey_start = Time(f"{dayobs}T12:00:00", format="isot", scale="utc").mjd
         observatory = get_model_observatory(dayobs=dayobs, survey_start=survey_start)
         conditions = observatory.return_conditions()
@@ -33,7 +36,8 @@ class TestComCamSurveys(unittest.TestCase):
         # The model observatory automatically advanced to -12 deg sunset
         assert (conditions.mjd - survey_start) < 1
 
-        new_dayobs = "2024-09-12"
+        newday = survey_start + 4
+        new_dayobs = Time(newday, format="mjd", scale="utc").iso[:10]
         newday = Time(f"{new_dayobs}T12:00:00", format="isot", scale="utc").mjd
         observatory = get_model_observatory(dayobs=new_dayobs, survey_start=survey_start)
         conditions = observatory.return_conditions()
@@ -51,7 +55,9 @@ class TestComCamSurveys(unittest.TestCase):
         # This is likely to change as we go into commissioning,
         # so mostly I'm just going to test that the end result is
         # a usable scheduler
-        dayobs = "2024-09-09"
+        survey_start = survey_start_mjd()
+        survey_start = np.floor(survey_start) + 0.5
+        dayobs = Time(survey_start, format="mjd", scale="utc").iso[:10]
         survey_start_mjd = Time(f"{dayobs}T12:00:00", format="isot", scale="utc").mjd
         scheduler, filter_scheduler = get_comcam_sv_schedulers()
         observatory = get_model_observatory(dayobs=dayobs, survey_start=survey_start_mjd)
