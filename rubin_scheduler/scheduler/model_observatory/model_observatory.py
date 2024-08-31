@@ -291,11 +291,12 @@ class ModelObservatory:
             good_mjd, to_set_mjd = self.check_mjd(to_set_mjd)
         self.mjd = to_set_mjd
 
-        sun_moon_info = self.almanac.get_sun_moon_positions(mjd)
         # Create the map of the season offsets - this map is constant
         ra, dec = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(self.nside)))
         ra_deg = np.degrees(ra)
         self.season_map = calc_season(ra_deg, [self.mjd_start], self.mjd_start).flatten()
+        # Set the sun_ra_start information, for the rolling footprints
+        sun_moon_info = self.almanac.get_sun_moon_positions(self.mjd_start)
         self.sun_ra_start = sun_moon_info["sun_RA"] + 0
         # Conditions object to update and return on request
         # (at present, this is not updated -- recreated, below).

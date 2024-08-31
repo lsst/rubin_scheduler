@@ -1,10 +1,8 @@
-import os
 import unittest
 
 import numpy as np
 from astropy.time import Time
 
-from rubin_scheduler.data import get_data_dir
 from rubin_scheduler.scheduler import sim_runner
 from rubin_scheduler.scheduler.example import (
     get_comcam_sv_schedulers,
@@ -15,12 +13,9 @@ from rubin_scheduler.scheduler.example import (
 from rubin_scheduler.scheduler.schedulers import ComCamFilterSched
 from rubin_scheduler.utils import survey_start_mjd
 
-SAMPLE_BIG_DATA_FILE = os.path.join(get_data_dir(), "scheduler/dust_maps/dust_nside_32.npz")
-
 
 class TestComCamSurveys(unittest.TestCase):
 
-    @unittest.skipUnless(os.path.isfile(SAMPLE_BIG_DATA_FILE), "Test data not available.")
     def test_model_observatory_conveniences(self):
         """Test the model observatory convenience functions."""
 
@@ -29,12 +24,13 @@ class TestComCamSurveys(unittest.TestCase):
         survey_start = survey_start_mjd()
         survey_start = np.floor(survey_start) + 0.5
         dayobs = Time(survey_start, format="mjd", scale="utc").iso[:10]
-        survey_start = Time(f"{dayobs}T12:00:00", format="isot", scale="utc").mjd
         observatory = get_model_observatory(dayobs=dayobs, survey_start=survey_start)
         conditions = observatory.return_conditions()
         assert conditions.mjd == observatory.mjd
         # The model observatory automatically advanced to -12 deg sunset
         assert (conditions.mjd - survey_start) < 1
+        sun_ra_start = conditions.sun_ra_start
+        mjd_start = observatory.mjd_start
 
         newday = survey_start + 4
         new_dayobs = Time(newday, format="mjd", scale="utc").iso[:10]
@@ -42,6 +38,10 @@ class TestComCamSurveys(unittest.TestCase):
         observatory = get_model_observatory(dayobs=new_dayobs, survey_start=survey_start)
         conditions = observatory.return_conditions()
         assert (conditions.mjd - newday) < 1
+        # Check that advancing the day did not change the expected location
+        # of the sun at the *start* of the survey
+        assert conditions.mjd_start == mjd_start
+        assert conditions.sun_ra_start == sun_ra_start
 
         # And update observatory to sunset, using a filter scheduler
         # that only has 'g' available
@@ -58,9 +58,8 @@ class TestComCamSurveys(unittest.TestCase):
         survey_start = survey_start_mjd()
         survey_start = np.floor(survey_start) + 0.5
         dayobs = Time(survey_start, format="mjd", scale="utc").iso[:10]
-        survey_start_mjd = Time(f"{dayobs}T12:00:00", format="isot", scale="utc").mjd
         scheduler, filter_scheduler = get_comcam_sv_schedulers()
-        observatory = get_model_observatory(dayobs=dayobs, survey_start=survey_start_mjd)
+        observatory = get_model_observatory(dayobs=dayobs, survey_start=survey_start)
         observatory = update_model_observatory_sunset(observatory, filter_scheduler)
 
         observatory, scheduler, observations = sim_runner(
