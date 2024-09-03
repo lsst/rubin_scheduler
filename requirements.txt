@@ -5,7 +5,7 @@ matplotlib
 healpy
 pandas
 numexpr
-scipy<1.14
+scipy
 astropy
 astroplan
 pytables
