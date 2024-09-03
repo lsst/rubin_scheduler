@@ -414,8 +414,13 @@ def mean_longitude(longitude):
     return mid_longitude
 
 
-def gen_too_surveys(nside=32, detailer_list=None, too_footprint=None, split_long=False):
-
+def gen_too_surveys(
+    nside=32,
+    detailer_list=None,
+    too_footprint=None,
+    split_long=False,
+    n_snaps=2,
+):
     result = []
 
     ############
@@ -447,6 +452,7 @@ def gen_too_surveys(nside=32, detailer_list=None, too_footprint=None, split_long
             survey_name="ToO, GW_case_A",
             split_long=split_long,
             flushtime=48.0,
+            n_snaps=n_snaps,
         )
     )
 
@@ -468,6 +474,7 @@ def gen_too_surveys(nside=32, detailer_list=None, too_footprint=None, split_long
             survey_name="ToO, GW_case_B_C",
             split_long=split_long,
             flushtime=48,
+            n_snaps=n_snaps,
         )
     )
 
@@ -489,6 +496,7 @@ def gen_too_surveys(nside=32, detailer_list=None, too_footprint=None, split_long
             survey_name="ToO, GW_case_D_E",
             split_long=split_long,
             flushtime=48,
+            n_snaps=n_snaps,
         )
     )
 
@@ -517,6 +525,7 @@ def gen_too_surveys(nside=32, detailer_list=None, too_footprint=None, split_long
             survey_name="ToO, BBH",
             split_long=split_long,
             flushtime=48,
+            n_snaps=n_snaps,
         )
     )
 
@@ -543,6 +552,7 @@ def gen_too_surveys(nside=32, detailer_list=None, too_footprint=None, split_long
             survey_name="ToO, LensedBNS_A",
             split_long=split_long,
             flushtime=48.0,
+            n_snaps=n_snaps,
         )
     )
 
@@ -567,6 +577,7 @@ def gen_too_surveys(nside=32, detailer_list=None, too_footprint=None, split_long
             survey_name="ToO, LensedBNS_B",
             split_long=split_long,
             flushtime=48.0,
+            n_snaps=n_snaps,
         )
     )
 
@@ -595,6 +606,7 @@ def gen_too_surveys(nside=32, detailer_list=None, too_footprint=None, split_long
             survey_name="ToO, neutrino",
             split_long=split_long,
             flushtime=8.0,
+            n_snaps=n_snaps,
         )
     )
 
@@ -619,6 +631,7 @@ def gen_too_surveys(nside=32, detailer_list=None, too_footprint=None, split_long
             survey_name="ToO, neutrino_u",
             split_long=split_long,
             flushtime=1440,
+            n_snaps=n_snaps,
         )
     )
 
@@ -648,6 +661,7 @@ def gen_too_surveys(nside=32, detailer_list=None, too_footprint=None, split_long
             survey_name="ToO, SSO_night",
             split_long=split_long,
             flushtime=2.0,
+            n_snaps=n_snaps,
         )
     )
 
@@ -670,6 +684,7 @@ def gen_too_surveys(nside=32, detailer_list=None, too_footprint=None, split_long
             survey_name="ToO, SSO_twi",
             split_long=split_long,
             flushtime=2.0,
+            n_snaps=n_snaps,
         )
     )
 
