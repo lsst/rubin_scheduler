@@ -45,7 +45,7 @@ class TestComCamSurveys(unittest.TestCase):
 
         # And update observatory to sunset, using a filter scheduler
         # that only has 'g' available
-        filter_sched = ComCamFilterSched(illum_bins=np.arange(0, 101, 100), filter_sets=(("g",)))
+        filter_sched = ComCamFilterSched(illum_bins=np.arange(0, 101, 100), loaded_filter_groups=(("g",)))
         observatory = update_model_observatory_sunset(observatory, filter_sched, twilight=-18)
         assert observatory.observatory.current_filter == "g"
         assert observatory.conditions.sun_alt < np.radians(18)

@@ -40,15 +40,36 @@ class ComCamFilterSched(FilterSwapScheduler):
 
     Pretend we will cycle from ugr, gri, riz, izy
     depending on lunar phase.
+
+    Parameters
+    ----------
+    loaded_filter_groups : `tuple` (`tuple`)
+        Groups of 3 filters, to be loaded at the same time.
+        Multiple groups can be specified, to be swapped between at the
+        boundaries of `illum_bins` in lunar phase.
+    illum_bins : `np.ndarray`, (N,)
+        Lunar illumination boundaries to define when to swap between
+        different groups of filters within the `loaded_filter_groups`.
+        Lunar illumination ranges from 0 to 100.
+
+    Notes
+    -----
+    If illum_bins = np.array([0, 50, 100]), then there should be
+    two groups of filters to use -- one for use between 0 and 50 percent
+    illumination, and another for use between 50 and 100 percent illumination.
     """
 
     def __init__(
         self,
+        loaded_filter_groups=(("u", "g", "r"), ("g", "r", "i"), ("r", "i", "z"), ("i", "z", "y")),
         illum_bins=np.arange(0, 100 + 1, 25),
-        filter_sets=(("u", "g", "r"), ("g", "r", "i"), ("r", "i", "z"), ("i", "z", "y")),
     ):
+        self.loaded_filter_groups = loaded_filter_groups
         self.illum_bins = illum_bins
-        self.filter_sets = filter_sets
+        if isinstance(self.illum_bins, list):
+            self.illum_bins = np.array(illum_bins)
+        if len(illum_bins) - 1 > len(loaded_filter_groups):
+            raise ValueError("There are illumination bins with an " "undefined loaded_filter_group")
 
     def __call__(self, conditions):
         moon_at_sunset = conditions.moon_phase_sunset
@@ -59,7 +80,7 @@ class ComCamFilterSched(FilterSwapScheduler):
             pass
         indx = np.searchsorted(self.illum_bins, moon_at_sunset, side="left")
         indx = np.max([0, indx - 1])
-        result = list(self.filter_sets[indx])
+        result = list(self.loaded_filter_groups[indx])
         return result
 
 
