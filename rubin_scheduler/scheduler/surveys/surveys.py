@@ -63,9 +63,6 @@ class GreedySurvey(BaseMarkovSurvey):
     def _generate_survey_name(self):
         self.survey_name = f"Greedy {self.filtername}"
 
-    def _generate_survey_name(self):
-        self.survey_name = f"Greedy {self.filtername}"
-
     def generate_observations_rough(self, conditions):
         """
         Just point at the highest reward healpix
