@@ -1,5 +1,6 @@
 __all__ = ("sim_runner",)
 
+import copy
 import sqlite3
 import sys
 import time
@@ -147,7 +148,7 @@ def sim_runner(
             # if this is a first offence, might just be that targets set.
             # Flush queue and try to get some new targets.
             scheduler.flush_queue()
-            mjd_last_flush = observatory.mjd
+            mjd_last_flush = copy.deepcopy(observatory.mjd)
         if new_night:
             # find out what filters we want mounted
             conditions = observatory.return_conditions()
