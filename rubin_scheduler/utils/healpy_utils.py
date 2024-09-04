@@ -271,7 +271,7 @@ def moc2array(data, uniq, nside=128, reduce_func=np.sum, density=True, fill_val=
     return result
 
 
-def hp_grow_argsort(in_map, ignore_nan=True):
+def hp_grow_argsort(in_map, ignore_nan=True, iterations=1):
     """Find the maximum of a healpix map, then orders healpixels
     by selecting the maximum bordering the selected area.
 
@@ -279,8 +279,11 @@ def hp_grow_argsort(in_map, ignore_nan=True):
     ----------
     in_map : np.array
         A valid HEALpix array
-    ignore_nan : bool (True)
-        If true, ignores values that are NaN
+    ignore_nan : `bool`
+        If true, ignores values that are NaN. Default True.
+    iterations : `int`
+        How many neighbors-of-neighbors to include in possible
+        connection. Default 0 only includes true neighbors.
 
     Returns
     -------
@@ -298,19 +301,39 @@ def hp_grow_argsort(in_map, ignore_nan=True):
     # Check if we have already run with this nside
     if hasattr(hp_grow_argsort, "nside"):
         nside_match = nside == hp_grow_argsort.nside
+        iterations_match = iterations == hp_grow_argsort.iterations
     else:
         nside_match = False
+        iterations_match = False
 
     # If we already have neighbors chached, just use it
-    if nside_match:
+    if nside_match & iterations_match:
         neighbors = hp_grow_argsort.neighbors_cache
     else:
         # Running a new nside, or for the first time, compute
         # neighbors and set attributes Make a `bool` area to keep
         # track of which pixels still need to be sorted
         neighbors = hp.get_all_neighbours(nside, pix_indx).T
+        
+        if iterations > 0:
+            grown_neighbors = []
+            max_row_len = 0
+            for _i in range(iterations):
+                for j, row in enumerate(neighbors):
+                    new_row = np.unique([neighbors[indx] for indx in row])
+                    new_row = new_row[np.where(new_row != j)]
+                    max_row_len = np.max([max_row_len, len(new_row)])
+                    grown_neighbors.append(new_row)
+                new_neighbors = np.zeros([neighbors.shape[0], max_row_len], dtype=int) - 1
+
+                for j, row in enumerate(grown_neighbors):
+                    length = len(row)
+                    new_neighbors[j, 0:length] = row 
+                neighbors = new_neighbors
+
         hp_grow_argsort.neighbors_cache = neighbors
         hp_grow_argsort.nside = nside
+        hp_grow_argsort.iterations = iterations
 
     valid_neighbors_mask = np.ones(neighbors.shape, dtype=bool)
 
