@@ -1,6 +1,7 @@
 __all__ = ("FieldSurvey",)
 
 import copy
+import warnings
 from functools import cached_property
 
 import numpy as np
@@ -63,6 +64,8 @@ class FieldSurvey(BaseSurvey):
     flush_pad : `float`
         How long to hold observations in the queue after they
         were expected to be completed (minutes).
+    reward_value : `float`
+        An unused kwarg, provided for backward compatibility.
     """
 
     def __init__(
@@ -84,10 +87,13 @@ class FieldSurvey(BaseSurvey):
         nside=None,
         flush_pad=30.0,
         detailers=None,
+        reward_value=None,
     ):
         default_nvisits = {"u": 20, "g": 20, "r": 20, "i": 20, "z": 20, "y": 20}
         default_exptimes = {"u": 38, "g": 29.2, "r": 29.2, "i": 29.2, "z": 29.2, "y": 29.2}
         default_nexps = {"u": 1, "g": 2, "r": 2, "i": 2, "z": 2, "y": 2}
+        if reward_value is not None:
+            warnings.warn("reward_value is unused and will be deprecated.")
 
         self.ra = np.radians(RA)
         self.ra_hours = RA / 360.0 * 24.0
