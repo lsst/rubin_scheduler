@@ -341,8 +341,6 @@ class CameraSmallRotPerObservationListDetailer(BaseDetailer):
         rng = np.random.default_rng(mjd_hash * self.seed)
 
         offsets = np.zeros(len(filter_list))
-        # offset = np.asarray(initial_offset).item()
-        # offsets[0] = offset
 
         # Find the locations of the filter changes
         filter_changes = np.where(np.array(filter_list[:-1]) != np.array(filter_list[1:]))[0]
