@@ -96,7 +96,11 @@ class InSeasonBasisFunction(BaseBasisFunction):
 
 
 class AirmassPointRangeBasisFunction(BaseBasisFunction):
-    """set an airmass limit for a single point
+    """Set an airmass limit for a single point
+    Maps the point to the nearest HEALpixel and uses
+    the Conditions airmass map, so precision of the 
+    airmass limit that is applied is limited by the 
+    HEALpix resolution.
 
     Parameters
     ----------
@@ -122,7 +126,7 @@ class AirmassPointRangeBasisFunction(BaseBasisFunction):
 
 
 class MoonDistPointRangeBasisFunction(BaseBasisFunction):
-    """set an airmass limit for a single point
+    """Set a moon distance limit for a single point.
 
     Parameters
     ----------
