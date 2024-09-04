@@ -1215,10 +1215,10 @@ class CurrentAreaMap(EuclidOverlapFootprint):
     def return_maps(
         self,
         magellenic_clouds_ratios={
-            "u": 0.75,
-            "g": 1.0,
+            "u": 0.65,
+            "g": 0.65,
             "r": 1.1,
-            "i": 1.0,
+            "i": 1.1,
             "z": 0.34,
             "y": 0.35,
         },
