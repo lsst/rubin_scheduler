@@ -104,10 +104,26 @@ class FlushByDetailer(BaseDetailer):
 
 
 class RandomFilterDetailer(BaseDetailer):
-    """Pick a random filter for the observations"""
+    """Pick a random filter for the observations
 
-    def __init__(self, filters="riz", nights_to_prep=10000, seed=42):
+    Parameters
+    ----------
+    filters : `str`
+        The filters to randomize. Default 'riz'
+    nights_to_prep : `int`
+        The number of nights to generate random filters for.
+        Default 10000.
+    seed : number
+        Seed for RNG. Defaut 42
+    fallback_order : `str`
+        If the desired filter is not mounted, goes through
+        `fallback_order` and uses the first filter that is
+        available
+    """
+
+    def __init__(self, filters="riz", nights_to_prep=10000, seed=42, fallback_order="rizgyu"):
         self.survey_features = []
+        self.fallback_order = fallback_order
 
         rng = np.random.default_rng(seed)
         self.night2filter_int = rng.integers(low=0, high=len(filters), size=nights_to_prep)
@@ -118,8 +134,15 @@ class RandomFilterDetailer(BaseDetailer):
 
     def __call__(self, observation_list, conditions):
 
+        filter_to_use = self.filter_dict[self.night2filter_int[conditions.night]]
+        # Filter not available
+        if filter_to_use not in conditions.mounted_filters:
+            is_mounted = [filtername in conditions.mounted_filters for filtername in self.fallback_order]
+            indx = np.min(np.where(is_mounted))
+            filter_to_use = self.fallback_order[indx]
+
         for obs in observation_list:
-            obs["filter"] = self.filter_dict[self.night2filter_int[conditions.night]]
+            obs["filter"] = filter_to_use
         return observation_list
 
 

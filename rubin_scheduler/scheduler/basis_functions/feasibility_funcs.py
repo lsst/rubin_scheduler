@@ -98,8 +98,8 @@ class InSeasonBasisFunction(BaseBasisFunction):
 class AirmassPointRangeBasisFunction(BaseBasisFunction):
     """Set an airmass limit for a single point
     Maps the point to the nearest HEALpixel and uses
-    the Conditions airmass map, so precision of the 
-    airmass limit that is applied is limited by the 
+    the Conditions airmass map, so precision of the
+    airmass limit that is applied is limited by the
     HEALpix resolution.
 
     Parameters
