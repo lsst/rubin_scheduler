@@ -6,6 +6,7 @@ __all__ = (
     "SkyAreaGeneratorGalplane",
     "EuclidOverlapFootprint",
     "CurrentAreaMap",
+    "Phase3AreaMap",
 )
 
 import os
@@ -43,7 +44,7 @@ def get_current_footprint(nside):
         HEALPix target survey maps for ugrizy,
         and array of string labels for each healpix to indicate the "region".
     """
-    sky = EuclidOverlapFootprint(nside=nside)
+    sky = CurrentAreaMap(nside=nside)
     footprints, labels = sky.return_maps()
     return footprints, labels
 
@@ -1087,7 +1088,7 @@ class EuclidOverlapFootprint(SkyAreaGeneratorGalplane):
         return self.healmaps, self.pix_labels
 
 
-class CurrentAreaMap(EuclidOverlapFootprint):
+class Phase3AreaMap(EuclidOverlapFootprint):
 
     def __init__(
         self,
@@ -1258,3 +1259,9 @@ class CurrentAreaMap(EuclidOverlapFootprint):
         self.add_scp(scp_ratios)
 
         return self.healmaps, self.pix_labels
+
+
+class CurrentAreaMap(Phase3AreaMap):
+    """Useful pointer so whatever the current standard footprint is.
+    """
+    pass
