@@ -37,6 +37,7 @@ class GreedySurvey(BaseMarkovSurvey):
         fields=None,
     ):
         extra_features = {}
+
         self.filtername = filtername
         self.block_size = block_size
         self.nexp = nexp
@@ -119,14 +120,18 @@ class BlobSurvey(GreedySurvey):
         The approximate slewtime between neerby fields (seconds). Used
         to calculate how many observations can be taken in the
         desired time block.
+    filter_change_approx : `float`
+         The approximate time it takes to change filters (seconds).
+    read_approx : `float`
+        The approximate time required to readout the camera (seconds).
+    exptime : `float`
+        The total on-sky exposure time per visit.
     nexp : `int`
         The number of exposures to take in a visit.
     exp_dict : `dict`
         If set, should have keys of filtername and values of ints that
         are the nuber of exposures to take per visit. For estimating
         block time, nexp is still used.
-    filter_change_approx : `float`
-         The approximate time it takes to change filters (seconds).
     ideal_pair_time : `float`
         The ideal time gap wanted between observations to the same
         pointing (minutes)
@@ -187,13 +192,30 @@ class BlobSurvey(GreedySurvey):
         area_required=None,
         max_radius_peak=40.0,
         fields=None,
-        **kwargs,
+        survey_note=None,
+        search_radius=None,
+        alt_max=-9999,
+        az_range=-9999,
     ):
+        if search_radius is not None:
+            warnings.warn("search_radius unused, remove kwarg", DeprecationWarning, 2)
+        if alt_max != -9999:
+            warnings.warn("alt_max unused, remove kwarg", DeprecationWarning, 2)
+        if az_range != -9999:
+            warnings.warn("az_range unused, remove kwarg", DeprecationWarning, 2)
+
         self.filtername1 = filtername1
         self.filtername2 = filtername2
 
+        self.ideal_pair_time = ideal_pair_time
+
         if survey_name is None:
-            survey_name = self._generate_survey_name()
+            self._generate_survey_name()
+
+        if scheduler_note is None:
+            if survey_note is not None:
+                scheduler_note = survey_note
+                warnings.warn("survey_note is deprecated - use scheduler_note", DeprecationWarning, 2)
 
         super(BlobSurvey, self).__init__(
             basis_functions=basis_functions,
@@ -209,7 +231,7 @@ class BlobSurvey(GreedySurvey):
             camera=camera,
             area_required=area_required,
             fields=fields,
-            survey_name=survey_name,
+            survey_name=self.survey_name,
             scheduler_note=scheduler_note,
         )
         self.flush_time = flush_time / 60.0 / 24.0  # convert to days
@@ -237,10 +259,14 @@ class BlobSurvey(GreedySurvey):
         # then repeat.)
         if filtername2 is not None:
             self.time_needed = (
-                (ideal_pair_time * 60.0 * 2.0 + exptime + read_approx + filter_change_approx) / 24.0 / 3600.0
+                (self.ideal_pair_time * 60.0 * 2.0 + self.exptime + self.read_approx + filter_change_approx)
+                / 24.0
+                / 3600.0
             )  # Days
         else:
-            self.time_needed = (ideal_pair_time * 60.0 + exptime + read_approx) / 24.0 / 3600.0  # Days
+            self.time_needed = (
+                (self.ideal_pair_time * 60.0 + self.exptime + self.read_approx) / 24.0 / 3600.0
+            )  # Days
         self.filter_set = set(filtername1)
         if filtername2 is None:
             self.filter2_set = self.filter_set
@@ -250,7 +276,6 @@ class BlobSurvey(GreedySurvey):
         self.ra, self.dec = _hpid2_ra_dec(self.nside, self.hpids)
 
         self.counter = 1  # start at 1, because 0 is default in empty obs
-        self.ideal_pair_time = ideal_pair_time
 
         self.pixarea = hp.nside2pixarea(self.nside, degrees=True)
 
@@ -259,7 +284,9 @@ class BlobSurvey(GreedySurvey):
             self.filtername = self.filtername1
 
     def _generate_survey_name(self):
-        self.survey_name = f"Blob survey {self.filtername1}"
+        self.survey_name = "Pairs"
+        self.survey_name += f" {self.ideal_pair_time :.1f}"
+        self.survey_name += f" {self.filtername1}"
         if self.filtername2 is None:
             self.survey_name += f"_{self.filtername1}"
         else:

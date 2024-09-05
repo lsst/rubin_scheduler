@@ -94,13 +94,13 @@ class LongGapSurvey(BaseSurvey):
         self.mjd_step = hour_step / 24.0
 
     def _generate_survey_name(self):
-        self.survey_name = (
-            f"Long Gap ({self.blob_survey.survey_name} +" f" {self.scripted_survey.survey_name})"
-        )
+        self.blob_survey.survey_name = f"Long Gap {self.blob_survey.survey_name}"
+        self.scripted_survey.survey_name = "Long Gap Scripted Triplet"
+        self.survey_name = f"Long Gap ({self.blob_survey.survey_name} + Triplet)"
 
     def _schedule_obs(self, observations):
         """Take incoming observations and decide if they should be added
-        to the scripted survey to try and be observered again later
+        to the scripted survey to try and be observed again later
         """
 
         # Only match if we have completed the second of a pair and are
@@ -194,8 +194,10 @@ class LongGapSurvey(BaseSurvey):
             sched_array["target_name"] = ""
             sched_array["observation_reason"] = "FBS"
             sched_array["json_block"] = "Imaging"
-            # See if we need to append things to the scripted survey
-            # object
+            # Don't let the desired rotSkyPos block the observation.
+            sched_array["rotSkyPos_desired"] = sched_array["rotSkyPos"]
+            sched_array["rotSkyPos"] = np.nan
+            # See if we need to append things to the scripted survey object
             if self.scripted_survey.obs_wanted is not None:
                 sched_array = np.concatenate([self.scripted_survey.obs_wanted, sched_array])
 

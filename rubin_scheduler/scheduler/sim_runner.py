@@ -1,5 +1,6 @@
 __all__ = ("sim_runner",)
 
+import copy
 import sqlite3
 import sys
 import time
@@ -86,7 +87,6 @@ def sim_runner(
     step_none = step_none / 60.0 / 24.0  # to days
     mjd_run = end_mjd - mjd_start
     nskip = 0
-    new_night = False
 
     mjd_last_flush = -1
 
@@ -141,11 +141,14 @@ def sim_runner(
             # An observation failed to execute, usually it was outside
             # the altitude limits.
             if observatory.mjd == mjd_last_flush:
-                raise RuntimeError("Scheduler has failed to provide a valid observation multiple times.")
+                raise RuntimeError(
+                    "Scheduler has failed to provide a valid observation multiple times "
+                    f" at time ({observatory.mjd} from survey {scheduler.survey_index}."
+                )
             # if this is a first offence, might just be that targets set.
-            # Flush queue and get some new targets.
+            # Flush queue and try to get some new targets.
             scheduler.flush_queue()
-            mjd_last_flush = observatory.mjd + 0
+            mjd_last_flush = copy.deepcopy(observatory.mjd)
         if new_night:
             # find out what filters we want mounted
             conditions = observatory.return_conditions()
@@ -185,8 +188,8 @@ def sim_runner(
     )
     observations["alt"] = np.radians(alt)
     observations["az"] = np.radians(az)
-    observations["psudo_pa"] = np.radians(pa)
-    observations["rotTelPos"] = rc._rotskypos2rottelpos(observations["rotSkyPos"], observations["psudo_pa"])
+    observations["pseudo_pa"] = np.radians(pa)
+    observations["rotTelPos"] = rc._rotskypos2rottelpos(observations["rotSkyPos"], observations["pseudo_pa"])
 
     # Also include traditional parallactic angle
     pa = _approx_altaz2pa(observations["alt"], observations["az"], lsst.latitude_rad)

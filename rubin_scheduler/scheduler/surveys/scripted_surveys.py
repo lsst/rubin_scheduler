@@ -312,7 +312,7 @@ class ScriptedSurvey(BaseSurvey):
         self.id_start = np.max(self.obs_wanted["scripted_id"]) + 1
 
         self.mjd_start = self.obs_wanted["mjd"] - self.obs_wanted["mjd_tol"]
-        # Here is the atribute that core scheduler checks to
+        # Here is the attribute that core scheduler checks to
         # broadcast scheduled observations in the conditions object.
         self.scheduled_obs = self.obs_wanted["mjd"]
 
@@ -334,7 +334,7 @@ class ScriptedSurvey(BaseSurvey):
         if self.before_twi_check:
             # Note that if detailers are adding lots of exposures, this
             # calculation has the potential to not be right at all.
-            # Also assumes slew time is negligable.
+            # Also assumes slew time is negligible.
             exptime_needed = np.sum(observations["exptime"]) / 3600.0 / 24.0  # to days
             filter_change_needed = n_filter_changes * self.filter_change_time
             tot_time_needed = exptime_needed + filter_change_needed

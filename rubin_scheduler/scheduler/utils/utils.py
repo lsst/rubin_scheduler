@@ -401,7 +401,7 @@ class SchemaConverter:
             "slewTime": "slewtime",
             "slewDistance": "slewdist",
             "paraAngle": "pa",
-            "psudoParaAngle": "psudo_pa",
+            "pseudoParaAngle": "pseudo_pa",
             "rotTelPos": "rotTelPos",
             "rotTelPos_backup": "rotTelPos_backup",
             "rotSkyPos": "rotSkyPos",
@@ -418,6 +418,9 @@ class SchemaConverter:
             "note": "note",
             "scheduler_note": "scheduler_note",
             "target_name": "target_name",
+            "science_program": "science_program",
+            "observation_reason": "observation_reason",
+            "json_block": "json_block",
         }
         # For backwards compatibility
         self.backwards = {"target": "target_name"}
@@ -432,7 +435,7 @@ class SchemaConverter:
             "azimuth",
             "slewDistance",
             "paraAngle",
-            "psudoParaAngle",
+            "pseudoParaAngle",
             "rotTelPos",
             "rotSkyPos",
             "rotSkyPos_desired",
@@ -623,7 +626,7 @@ def empty_observation(n=1):
         (for scheduler purposes, use `scheduler_note`).
         This maps to observation_reason in the ConsDB, although could
         be overwritten in JSON BLOCK.
-        Most likely this is just "science" when using the FBS.
+        Most likely this is just "science" or "FBS" when using the FBS.
     json_block : `str` (optional)
         The JSON BLOCK id to use to acquire observations.
         This is for use by the SchedulerCSC.
@@ -670,7 +673,7 @@ def empty_observation(n=1):
         ("alt", float),
         ("az", float),
         ("pa", float),
-        ("psudo_pa", float),
+        ("pseudo_pa", float),
         ("clouds", float),
         ("moonAlt", float),
         ("sunAlt", float),

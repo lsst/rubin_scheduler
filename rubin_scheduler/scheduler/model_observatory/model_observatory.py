@@ -291,11 +291,12 @@ class ModelObservatory:
             good_mjd, to_set_mjd = self.check_mjd(to_set_mjd)
         self.mjd = to_set_mjd
 
-        sun_moon_info = self.almanac.get_sun_moon_positions(mjd)
         # Create the map of the season offsets - this map is constant
         ra, dec = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(self.nside)))
         ra_deg = np.degrees(ra)
         self.season_map = calc_season(ra_deg, [self.mjd_start], self.mjd_start).flatten()
+        # Set the sun_ra_start information, for the rolling footprints
+        sun_moon_info = self.almanac.get_sun_moon_positions(self.mjd_start)
         self.sun_ra_start = sun_moon_info["sun_RA"] + 0
         # Conditions object to update and return on request
         # (at present, this is not updated -- recreated, below).
@@ -611,15 +612,14 @@ class ModelObservatory:
 
         obs_pa = _approx_altaz2pa(alt, az, self.site.latitude_rad)
 
-        # If the observation has a rotTelPos set, use it to compute
-        # rotSkyPos
+        # If the observation has a rotTelPos set, use it to compute rotSkyPos
         if np.isfinite(observation["rotTelPos"]):
             observation["rotSkyPos"] = self.rc._rottelpos2rotskypos(observation["rotTelPos"], obs_pa)
             observation["rotTelPos"] = np.nan
         else:
-            # Fall back to rotSkyPos_desired
+            # Try to fall back to rotSkyPos_desired
             possible_rot_tel_pos = self.rc._rotskypos2rottelpos(observation["rotSkyPos_desired"], obs_pa)
-
+            # If in range, use rotSkyPos_desired for rotSkyPos
             if (possible_rot_tel_pos > rot_limit[0]) | (possible_rot_tel_pos < rot_limit[1]):
                 observation["rotSkyPos"] = observation["rotSkyPos_desired"]
                 observation["rotTelPos"] = np.nan

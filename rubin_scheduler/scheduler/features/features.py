@@ -121,8 +121,6 @@ class SurveyInNight(BaseSurveyFeature):
     ----------
     survey_str : `str`, optional
         String to search for in observation `scheduler_note`.
-        String does not have to match `scheduler_note` exactly,
-        just be contained in `scheduler_note`.
         Default of "" means any observation will match.
     """
 
@@ -191,8 +189,8 @@ class NObsCount(BaseSurveyFeature):
 
     Parameters
     ----------
-    filtername : `str` (None)
-        The filter to count (if None, all filters counted)
+    filtername : `str` or None
+        The filter to count. Default None, all filters counted.
 
     """
 
@@ -319,15 +317,21 @@ class NObsCountSeason(BaseSurveyFeature):
 class NObsSurvey(BaseSurveyFeature):
     """Count the number of observations, whole sky (not per pixel).
 
+    Because this feature will belong to a survey, it would count all
+    observations that are counted for that survey.
+
     Parameters
     ----------
-    note : `str` (None)
-        Only count observations that contain str in their note field
+    note : `str` or None
+        Count observations that match `str` in their scheduler_note field.
+        Note can be a substring of scheduler_note, and will still match.
     """
 
     def __init__(self, note=None):
         self.feature = 0
         self.note = note
+        if self.note == "":
+            self.note = None
 
     def add_observations_array(self, observations_array, observations_hpid):
         if self.note is None:
@@ -352,29 +356,34 @@ class LastObservation(BaseSurveyFeature):
 
     Parameters
     ----------
-    survey_name : `str` (None)
-        Only records if the survey name matches (or survey_name set to None)
+    scheduler_note : `str` or None, optional
+        Value of the scheduler_note to match, if not None.
+    survey_name : `str` or None, optional
+        Backwards compatible version of scheduler_note. Deprecated.
     """
 
-    def __init__(self, survey_name=None):
-        # Will this work for observations read from a database???
-        # "note" is definitely NOT guaranteed to match the survey_name.
-        self.survey_name = survey_name
+    def __init__(self, scheduler_note=None, survey_name=None):
+        if scheduler_note is None and survey_name is not None:
+            self.scheduler_note = survey_name
+        else:
+            self.scheduler_note = scheduler_note
         # Start out with an empty observation
         self.feature = utils.empty_observation()
 
     def add_observations_array(self, observations_array, observations_hpid):
-        if self.survey_name is not None:
-            good = np.where(observations_array["scheduler_note"] == self.survey_name)[0]
-            if np.size(good) < 0:
-                self.feature = observations_array[good[-1]]
+        if self.scheduler_note is not None:
+            valid_indx = np.ones(observations_array.size, dtype=bool)
+            tmp = [self.scheduler_note in name for name in observations_array["scheduler_note"]]
+            valid_indx = valid_indx * np.array(tmp)
+            if len(tmp) > 0:
+                self.feature = observations_array[valid_indx][-1]
         else:
             if len(observations_array) > 0:
                 self.feature = observations_array[-1]
 
     def add_observation(self, observation, indx=None):
-        if self.survey_name is not None:
-            if self.survey_name in observation["scheduler_note"]:
+        if self.scheduler_note is not None:
+            if self.scheduler_note in observation["scheduler_note"]:
                 self.feature = observation
         else:
             self.feature = observation
@@ -388,6 +397,7 @@ class LastsequenceObservation(BaseSurveyFeature):
         # observations...
         # Start out with an empty observation
         self.feature = utils.empty_observation()
+        send_unused_deprecation_warning(self.__class__.__name__)
 
     def add_observation(self, observation, indx=None):
         if observation["survey_id"] in self.sequence_ids:
@@ -399,6 +409,7 @@ class LastFilterChange(BaseSurveyFeature):
 
     def __init__(self):
         self.feature = {"mjd": 0.0, "previous_filter": None, "current_filter": None}
+        send_unused_deprecation_warning(self.__class__.__name__)
 
     def add_observation(self, observation, indx=None):
         if self.feature["current_filter"] is None:
@@ -417,28 +428,46 @@ class NObservations(BaseSurveyFeature):
 
     Parameters
     ----------
-    filtername : `str` ('r')
+    filtername : `str` or `list` [`str`] or None
         String or list that has all the filters that can count.
-    nside : `int` (32)
-        The nside of the healpixel map to use
-
+        Default None counts all filters.
+    nside : `int`
+        The nside of the healpixel map to use.
+        Default None uses scheduler default.
+    scheduler_note : `str` or None, optional
+        The scheduler_note to match.
+        Scheduler_note values which match this OR which contain this value
+        as a subset of their string will match.
+    survey_name : `str` or None
+        The scheduler_note value to match.
+        Deprecated in favor of scheduler_note, but provided for backward
+        compatibility. Will be removed in the future.
     """
 
-    def __init__(self, filtername=None, nside=None, survey_name=None):
+    def __init__(self, filtername=None, nside=None, scheduler_note=None, survey_name=None):
         if nside is None:
             nside = utils.set_default_nside()
 
         self.feature = np.zeros(hp.nside2npix(nside), dtype=float)
         self.filtername = filtername
-        self.survey_name = survey_name
+        if scheduler_note is None and survey_name is not None:
+            self.scheduler_note = survey_name
+        else:
+            self.scheduler_note = scheduler_note
+        # This feature is not used with "scheduler_note" in the baseline
+        # survey. Should it really match scheduler_notes which contain
+        # self.scheduler_note or should it be vice versa?
+        # (i.e. this works as: self.scheduler_note = "survey" matches only
+        # scheduler_note == "survey", but self.scheduler_note = "survey a"
+        # will match both "survey" and "survey a".
         self.bins = np.arange(hp.nside2npix(nside) + 1) - 0.5
 
     def add_observations_array(self, observations_array, observations_hpid):
         valid_indx = np.ones(observations_hpid.size, dtype=bool)
         if self.filtername is not None:
             valid_indx[np.where(observations_hpid["filter"] != self.filtername)[0]] = False
-        if self.survey_name is not None:
-            tmp = [name in self.survey_name for name in observations_hpid["scheduler_note"]]
+        if self.scheduler_note is not None:
+            tmp = [name in self.scheduler_note for name in observations_hpid["scheduler_note"]]
             valid_indx = valid_indx * np.array(tmp)
         data = observations_hpid[valid_indx]
         if np.size(data) > 0:
@@ -449,7 +478,7 @@ class NObservations(BaseSurveyFeature):
 
     def add_observation(self, observation, indx=None):
         if self.filtername is None or observation["filter"][0] in self.filtername:
-            if self.survey_name is None or observation["scheduler_note"] in self.survey_name:
+            if self.scheduler_note is None or observation["scheduler_note"] in self.scheduler_note:
                 self.feature[indx] += 1
 
 
@@ -879,14 +908,13 @@ class NoteLastObserved(BaseSurveyFeature):
 
 class NObsNight(BaseSurveyFeature):
     """
-    Track how many times a healpixel has been observed in a night
-    (Note, even if there are two, it might not be a good pair.)
+    Track how many times a healpixel has been observed in a night.
 
     Parameters
     ----------
     filtername : `str` or None
         Filter to track. None tracks observations in any filter.
-    nside : `int` or NOne
+    nside : `int` or None
         Scale of the healpix map. Default of None uses the scheduler
         default nside.
     """

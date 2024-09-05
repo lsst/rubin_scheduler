@@ -8,7 +8,7 @@ import numpy as np
 
 from rubin_scheduler.utils import ra_dec2_hpid
 
-from ..features import NObsSurvey
+from ..features import LastObservation, NObsSurvey
 from ..utils import empty_observation
 from . import BaseSurvey
 
@@ -136,6 +136,9 @@ class FieldSurvey(BaseSurvey):
             survey_name=self.survey_name,
         )
         self.accept_obs = accept_obs
+        if isinstance(self.accept_obs, str):
+            self.accept_obs = [self.accept_obs]
+        self.indx = ra_dec2_hpid(self.nside, self.ra_deg, self.dec_deg)
 
         # Set all basis function equal.
         self.basis_weights = np.ones(len(basis_functions)) / len(basis_functions)
@@ -206,8 +209,9 @@ class FieldSurvey(BaseSurvey):
         self.indx = ra_dec2_hpid(self.nside, self.ra_deg, self.dec_deg)
 
         # Tucking this here so we can look at how many observations
-        # recorded for this field
-        self.extra_features["ObsRecord"] = NObsSurvey()
+        # recorded for this field and what was the last one.
+        self.extra_features["ObsRecorded"] = NObsSurvey()
+        self.extra_features["LastObs"] = LastObservation()
 
     def _generate_survey_name(self):
         if self.target_name is not None:
@@ -237,7 +241,7 @@ class FieldSurvey(BaseSurvey):
 
     def add_observation(self, observation, **kwargs):
         """Add observation one at a time."""
-        # Check each posible ignore string
+        # Check each possible ignore string
         checks = [io not in str(observation["scheduler_note"]) for io in self.ignore_obs]
         passed_ignore = all(checks)
         passed_accept = True
@@ -287,12 +291,16 @@ class FieldSurvey(BaseSurvey):
             not_ignore = np.where(np.char.find(observations_hpid["scheduler_note"], ig) == -1)[0]
             observations_hpid = observations_hpid[not_ignore]
 
-        for acc in self.accept_obs:
-            accept = np.where(np.char.find(observations_array["scheduler_note"], acc) == 1)[0]
+        if self.accept_obs is not None:
+            accept_indx = []
+            accept_hp_indx = []
+            for acc in self.accept_obs:
+                accept_indx.append(np.where(observations_array["scheduler_note"] == acc)[0])
+                accept_hp_indx.append(np.where(observations_hpid["scheduler_note"] == acc)[0])
+            accept = np.concatenate(accept_indx)
+            accept_hp = np.concatenate(accept_hp_indx)
             observations_array = observations_array[accept]
-
-            accept = np.where(np.char.find(observations_hpid["scheduler_note"], acc) == 1)[0]
-            observations_hpid = observations_hpid[accept]
+            observations_hpid = observations_hpid[accept_hp]
 
         for feature in self.extra_features:
             self.extra_features[feature].add_observations_array(observations_array, observations_hpid)
@@ -305,6 +313,7 @@ class FieldSurvey(BaseSurvey):
         self.reward_checked = False
 
     def calc_reward_function(self, conditions):
+        # only calculates reward at the index for the RA/Dec of the field
         self.reward_checked = True
         if self._check_feasibility(conditions):
             self.reward = 0

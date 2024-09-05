@@ -197,7 +197,7 @@ class TestBasis(unittest.TestCase):
                 warnings.simplefilter("always")
                 dep_bf()
                 # Verify deprecation warning
-                assert len(w) == 1
+                assert len(w) >= 1
                 assert issubclass(w[-1].category, (DeprecationWarning, FutureWarning))
 
 

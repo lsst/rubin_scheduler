@@ -1,4 +1,15 @@
-__all__ = ("example_scheduler", "sched_argparser", "set_run_info", "run_sched")
+__all__ = (
+    "example_scheduler",
+    "sched_argparser",
+    "set_run_info",
+    "run_sched",
+    "gen_long_gaps_survey",
+    "gen_greedy_surveys",
+    "generate_blobs",
+    "generate_twi_blobs",
+    "generate_twilight_near_sun",
+    "standard_bf",
+)
 
 import argparse
 import os
@@ -33,7 +44,7 @@ from rubin_scheduler.utils import _hpid2_ra_dec, survey_start_mjd
 iers.conf.auto_download = False
 
 
-def example_scheduler(nside=32, mjd_start=survey_start_mjd()):
+def example_scheduler(nside: int = 32, mjd_start: float = survey_start_mjd()) -> CoreScheduler:
     """Provide an example baseline survey-strategy scheduler.
 
     Parameters
@@ -370,7 +381,6 @@ def blob_for_long(
         "slew_approx": 7.5,
         "filter_change_approx": 140.0,
         "read_approx": 2.0,
-        "min_pair_time": 15.0,
         "search_radius": 30.0,
         "alt_max": 85.0,
         "az_range": None,
@@ -751,7 +761,6 @@ def generate_blobs(
         "slew_approx": 7.5,
         "filter_change_approx": 140.0,
         "read_approx": 2.0,
-        "min_pair_time": 15.0,
         "search_radius": 30.0,
         "alt_max": 85.0,
         "az_range": None,
@@ -992,7 +1001,6 @@ def generate_twi_blobs(
         "slew_approx": 7.5,
         "filter_change_approx": 140.0,
         "read_approx": 2.0,
-        "min_pair_time": 10.0,
         "search_radius": 30.0,
         "alt_max": 85.0,
         "az_range": None,

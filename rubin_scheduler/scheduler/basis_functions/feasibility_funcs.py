@@ -32,6 +32,16 @@ from rubin_scheduler.scheduler.basis_functions import BaseBasisFunction
 from rubin_scheduler.scheduler.utils import IntRounded
 
 
+def send_unused_deprecation_warning(name):
+    message = (
+        f"The feasibility basis function {name} is not in use, "
+        "may be broken, and will be deprecated shortly. "
+        "Please contact the rubin_scheduler maintainers if "
+        "this is in use elsewhere."
+    )
+    warnings.warn(message, FutureWarning)
+
+
 class FilterLoadedBasisFunction(BaseBasisFunction):
     """Check that the filter(s) needed are loaded.
 
@@ -164,7 +174,8 @@ class LimitObsPnightBasisFunction(BaseBasisFunction):
     def __init__(self, survey_str="", nlimit=100.0):
         super(LimitObsPnightBasisFunction, self).__init__()
         self.nlimit = nlimit
-        self.survey_features["N_in_night"] = features.Survey_in_night(survey_str=survey_str)
+        self.survey_features["N_in_night"] = features.SurveyInNight(survey_str=survey_str)
+        send_unused_deprecation_warning(self.__class__.__name__)
 
     def check_feasibility(self, conditions):
         if self.survey_features["N_in_night"].feature >= self.nlimit:
@@ -309,19 +320,27 @@ class NotTwilightBasisFunction(BaseBasisFunction):
 
 
 class ForceDelayBasisFunction(BaseBasisFunction):
-    """Keep a survey from executing to rapidly.
+    """Keep a survey from executing too rapidly.
 
     Parameters
     ----------
-    days_delay : float (2)
+    days_delay : `float`, optional
         The number of days to force a gap on.
+    scheduler_note : `str` or None, optional
+        The value of the scheduler_note to count.
+        Default None will not consider scheduler_note.
+    survey_name : `str` or None, optional
+        Backwards compatible version of scheduler_note.
     """
 
-    def __init__(self, days_delay=2.0, survey_name=None):
+    def __init__(self, days_delay=2.0, scheduler_note=None, survey_name=None):
         super(ForceDelayBasisFunction, self).__init__()
         self.days_delay = days_delay
-        self.survey_name = survey_name
-        self.survey_features["last_obs_self"] = features.LastObservation(survey_name=self.survey_name)
+        if scheduler_note is None and survey_name is not None:
+            self.scheduler_note = survey_name
+        else:
+            self.scheduler_note = scheduler_note
+        self.survey_features["last_obs_self"] = features.LastObservation(scheduler_note=self.scheduler_note)
 
     def check_feasibility(self, conditions):
         result = True
@@ -336,23 +355,35 @@ class SoftDelayBasisFunction(BaseBasisFunction):
 
     Parameters
     ----------
-
+    fractions : `list` [`float`]
+    delays : `list` [`float`]
+    scheduler_note : `str` or None, optional
+        The scheduler_note to identify observations from a given survey or
+        survey mode.
+    survey_name : `str` or None, optional
+        Deprecated version of scheduler_note. Overriden by scheduler_note
+        if not None.
     """
 
-    def __init__(self, fractions=[0.000, 0.009, 0.017], delays=[0.0, 0.5, 1.5], survey_name=None):
+    def __init__(
+        self, fractions=[0.000, 0.009, 0.017], delays=[0.0, 0.5, 1.5], scheduler_note=None, survey_name=None
+    ):
         if len(fractions) != len(delays):
             raise ValueError("fractions and delays must be same length")
         super(SoftDelayBasisFunction, self).__init__()
         self.delays = delays
-        self.survey_name = survey_name
-        self.survey_features["last_obs_self"] = features.LastObservation(survey_name=self.survey_name)
+        if scheduler_note is None and survey_name is not None:
+            self.scheduler_note = survey_name
+        else:
+            self.scheduler_note = scheduler_note
+        self.survey_features["last_obs_self"] = features.LastObservation(scheduler_note=self.scheduler_note)
         self.fractions = fractions
-        self.survey_features["Ntot"] = features.NObsSurvey()
-        self.survey_features["N_survey"] = features.NObsSurvey(note=self.survey_name)
+        self.survey_features["N_total"] = features.NObsSurvey(note=None)
+        self.survey_features["N_note"] = features.NObsSurvey(note=self.scheduler_note)
 
     def check_feasibility(self, conditions):
         result = True
-        current_ratio = self.survey_features["N_survey"].feature / self.survey_features["Ntot"].feature
+        current_ratio = self.survey_features["N_note"].feature / self.survey_features["N_total"].feature
         indx = np.searchsorted(self.fractions, current_ratio)
         if indx == len(self.fractions):
             indx -= 1
@@ -402,33 +433,41 @@ class MoonDownBasisFunction(BaseBasisFunction):
 
 
 class FractionOfObsBasisFunction(BaseBasisFunction):
-    """Limit the fraction of all observations that can be labled a certain
-    survey name. Useful for keeping DDFs from exceeding a given fraction
+    """Limit the fraction of all observations that can be labelled a certain
+    scheduler note.
+
+    Useful for keeping DDFs from exceeding a given fraction
     of the total survey.
 
     Parameters
     ----------
-    frac_total : float
+    frac_total : `float`
         The fraction of total observations that can be of this survey
-    survey_name : str
-        The name of the survey
+    scheduler_note : `str` or None, optional
+        The scheduler_note to identify observations from a given survey or
+        survey mode.
+    survey_name : `str` or None, optional
+        Deprecated version of scheduler_note. Overriden by scheduler_note
+        if scheduler_note not None.
     """
 
-    def __init__(self, frac_total, survey_name=""):
+    def __init__(self, frac_total, scheduler_note=None, survey_name=None):
         super(FractionOfObsBasisFunction, self).__init__()
-        self.survey_name = survey_name
+        if scheduler_note is None and survey_name is not None:
+            self.scheduler_note = survey_name
+        else:
+            self.scheduler_note = scheduler_note
         self.frac_total = frac_total
-        self.survey_features["Ntot"] = features.NObsSurvey()
-        self.survey_features["N_survey"] = features.NObsSurvey(note=self.survey_name)
+        self.survey_features["N_total"] = features.NObsSurvey(note=None)
+        self.survey_features["N_note"] = features.NObsSurvey(note=self.scheduler_note)
 
     def check_feasibility(self, conditions):
         # If nothing has been observed, fine to go
         result = True
-        if self.survey_features["Ntot"].feature == 0:
-            return result
-        ratio = self.survey_features["N_survey"].feature / self.survey_features["Ntot"].feature
-        if ratio > self.frac_total:
-            result = False
+        if self.survey_features["N_total"].feature > 0:
+            ratio = self.survey_features["N_note"].feature / self.survey_features["N_total"].feature
+            if ratio > self.frac_total:
+                result = False
         return result
 
 
@@ -451,8 +490,12 @@ class LookAheadDdfBasisFunction(BaseBasisFunction):
     ha_limits : list of lists (None)
         limits for what hour angles are acceptable (hours). e.g.,
         to give 4 hour window around HA=0, ha_limits=[[22,24], [0,2]]
-    survey_name : str ('')
-        The name of the survey
+    scheduler_note : `str` or None, optional
+        The scheduler_note to identify observations from a given survey or
+        survey mode.
+    survey_name : `str` or None, optional
+        Deprecated version of scheduler_note. Overriden by scheduler_note
+        if scheduler_note not None.
     time_jump : float (44.)
         The amount of time to assume will jump ahead if another survey
         executes (minutes)
@@ -467,14 +510,18 @@ class LookAheadDdfBasisFunction(BaseBasisFunction):
         time_needed=30.0,
         RA=0.0,
         ha_limits=None,
-        survey_name="",
+        scheduler_note=None,
+        survey_name=None,
         time_jump=44.0,
         sun_alt_limit=-18.0,
     ):
         super(LookAheadDdfBasisFunction, self).__init__()
         if aggressive_fraction > frac_total:
             raise ValueError("aggressive_fraction should be less than frac_total")
-        self.survey_name = survey_name
+        if scheduler_note is None and survey_name is not None:
+            self.scheduler_note = survey_name
+        else:
+            self.scheduler_note = scheduler_note
         self.frac_total = frac_total
         self.ra_hours = RA / 360.0 * 24.0
         self.ha_limits = np.array(ha_limits)
@@ -482,13 +529,13 @@ class LookAheadDdfBasisFunction(BaseBasisFunction):
         self.time_jump = time_jump / 60.0 / 24.0  # To days
         self.time_needed = time_needed / 60.0 / 24.0  # To days
         self.aggressive_fraction = aggressive_fraction
-        self.survey_features["Ntot"] = features.NObsSurvey()
-        self.survey_features["N_survey"] = features.NObsSurvey(note=self.survey_name)
+        self.survey_features["N_total"] = features.NObsSurvey(note=None)
+        self.survey_features["N_note"] = features.NObsSurvey(note=self.scheduler_note)
 
     def check_feasibility(self, conditions):
         result = True
         target_ha = (conditions.lmst - self.ra_hours) % 24
-        ratio = self.survey_features["N_survey"].feature / self.survey_features["Ntot"].feature
+        ratio = self.survey_features["N_note"].feature / self.survey_features["N_total"].feature
         available_time = getattr(conditions, "sun_" + self.sun_alt_limit + "_rising") - conditions.mjd
         # If it's more that self.time_jump to hour angle zero
         # See if there will be enough time to twilight in the future
