@@ -30,7 +30,7 @@ from rubin_scheduler.scheduler.schedulers import ComCamFilterSched, CoreSchedule
 from rubin_scheduler.scheduler.surveys import BlobSurvey, FieldSurvey, GreedySurvey
 from rubin_scheduler.scheduler.utils import Footprint, get_current_footprint
 from rubin_scheduler.site_models import Almanac, ConstantSeeingData, ConstantWindData
-from rubin_scheduler.utils import survey_start_mjd
+from rubin_scheduler.utils import ddf_locations, survey_start_mjd
 
 
 def get_model_observatory(
@@ -827,6 +827,21 @@ def get_sv_fields() -> dict[str, dict[str, float]]:
     )
 
     fields_dict = dict(zip([f[0] for f in fields], [{"RA": f[1], "Dec": f[2]} for f in fields]))
+
+    # Update ddf_locations to
+    survey_ddfs = ddf_locations()
+    ddf_radec = {}
+    for k in survey_ddfs:
+        kk = k.lower().replace("_", "").replace("-", "")
+        ddf_radec[kk] = survey_ddfs[k]
+    for field in fields_dict:
+        # see if the field names match any ddf field name, allowing for
+        # upper/lower case and -vs_ differences
+        ff = field.lower().replace("_", "").replace("-", "")
+        if ff in ddf_radec:
+            fields_dict[field]["RA"] = ddf_radec[ff][0]
+            fields_dict[field]["Dec"] = ddf_radec[ff][1]
+
     return fields_dict
 
 
