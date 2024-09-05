@@ -8,7 +8,54 @@ import rubin_scheduler.scheduler.basis_functions as basis_functions
 import rubin_scheduler.scheduler.surveys as surveys
 from rubin_scheduler.scheduler.basis_functions import SimpleArrayBasisFunction
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
-from rubin_scheduler.scheduler.utils import empty_observation, set_default_nside
+from rubin_scheduler.scheduler.utils import HpInLsstFov, empty_observation, set_default_nside
+from rubin_scheduler.utils import survey_start_mjd
+
+
+def make_observations_list(nobs=1):
+    observations_list = []
+    for i in range(0, nobs):
+        observation = empty_observation()
+        observation["mjd"] = survey_start_mjd() + i * 30 / 60 / 60 / 24
+        observation["RA"] = np.radians(30)
+        observation["dec"] = np.radians(-20)
+        observation["filter"] = "r"
+        observation["scheduler_note"] = "test"
+        observations_list.append(observation)
+    return observations_list
+
+
+def make_observations_arrays(observations_list, nside=32):
+    # Turn list of observations (that should already have useful info)
+    # into observations_array plus observations_hpids_array.
+    observations_array = np.empty(len(observations_list), dtype=observations_list[0].dtype)
+    for i, obs in enumerate(observations_list):
+        observations_array[i] = obs
+    # Build observations_hpids_array.
+    # Find list of lists of healpixels
+    # (should match [indxs, indxs, indxs2] from above)
+    pointing2indx = HpInLsstFov(nside=nside)
+    list_of_hpids = pointing2indx(observations_array["RA"], observations_array["dec"])
+    # Unravel list-of-lists (list_of_hpids) to match against observations
+    hpids = []
+    big_array_indx = []
+    for i, indxs in enumerate(list_of_hpids):
+        for indx in indxs:
+            hpids.append(indx)
+            big_array_indx.append(i)
+    hpids = np.array(hpids, dtype=[("hpid", int)])
+    # Set up format / dtype for observations_hpids_array
+    names = list(observations_array.dtype.names)
+    types = [observations_array[name].dtype for name in names]
+    names.append(hpids.dtype.names[0])
+    types.append(hpids["hpid"].dtype)
+    ndt = list(zip(names, types))
+    observations_hpids_array = np.empty(hpids.size, dtype=ndt)
+    # Populate observations_hpid_array - big_array_indx points
+    # between index in observations_array and index in hpid
+    observations_hpids_array[list(observations_array.dtype.names)] = observations_array[big_array_indx]
+    observations_hpids_array[hpids.dtype.names[0]] = hpids
+    return observations_array, observations_hpids_array
 
 
 class TestSurveys(unittest.TestCase):
@@ -33,6 +80,64 @@ class TestSurveys(unittest.TestCase):
         reward_df = survey.make_reward_df(conditions)
         self.assertIsInstance(reward_df, pd.DataFrame)
         reward_df = survey.make_reward_df(conditions, accum=False)
+
+    def test_field_survey_add_observations(self):
+        nside = 32
+        # Just need a placeholder for this.
+        bfs = [basis_functions.M5DiffBasisFunction(nside=nside)]
+
+        observations_list = make_observations_list(10)
+        indexes = []
+        pointing2hpindx = HpInLsstFov(nside=nside)
+        for i, obs in enumerate(observations_list):
+            obs["mjd"] = survey_start_mjd() + i
+            obs["rotSkyPos"] = 0
+            if i < 5:
+                obs["filter"] = "r"
+                obs["scheduler_note"] = "r band"
+            else:
+                obs["filter"] = "g"
+                obs["scheduler_note"] = "g band"
+            obs["RA"] = np.radians(90)
+            obs["dec"] = np.radians(-30)
+            indexes.append(pointing2hpindx(obs["RA"], obs["dec"], rotSkyPos=obs["rotSkyPos"]))
+        observations_array, observations_hpid_array = make_observations_arrays(observations_list)
+
+        # Try adding observations to survey one at a time.
+        survey = surveys.FieldSurvey(bfs, RA=90.0, dec=-30.0, accept_obs=None)
+        for obs, indx in zip(observations_list, indexes):
+            survey.add_observation(obs[0], indx=indx)
+        self.assertTrue(survey.extra_features["ObsRecorded"].feature == len(observations_list))
+        self.assertTrue(survey.extra_features["LastObs"].feature["mjd"] == observations_list[-1]["mjd"])
+        # Try adding observations to survey in array
+        survey = surveys.FieldSurvey(bfs, RA=90.0, dec=-30.0, accept_obs=None)
+        survey.add_observations_array(observations_array, observations_hpid_array)
+        self.assertTrue(survey.extra_features["ObsRecorded"].feature == len(observations_list))
+        self.assertTrue(survey.extra_features["LastObs"].feature["mjd"] == observations_list[-1]["mjd"])
+
+        # Now with specific requirements on obs to accept.
+        # Try adding observations to survey one at a time.
+        survey = surveys.FieldSurvey(bfs, RA=90.0, dec=-30.0, accept_obs=["r band"])
+        for obs, indx in zip(observations_list, indexes):
+            survey.add_observation(obs[0], indx=indx)
+        self.assertTrue(survey.extra_features["ObsRecorded"].feature == 5)
+        self.assertTrue(survey.extra_features["LastObs"].feature["mjd"] == observations_list[4]["mjd"])
+        # Try adding observations to survey in array
+        survey = surveys.FieldSurvey(bfs, RA=90.0, dec=-30.0, accept_obs=["r band"])
+        survey.add_observations_array(observations_array, observations_hpid_array)
+        self.assertTrue(survey.extra_features["ObsRecorded"].feature == 5)
+        self.assertTrue(survey.extra_features["LastObs"].feature["mjd"] == observations_list[4]["mjd"])
+        # Try adding observations to survey one at a time.
+        survey = surveys.FieldSurvey(bfs, RA=90.0, dec=-30.0, accept_obs=["r band", "g band"])
+        for obs, indx in zip(observations_list, indexes):
+            survey.add_observation(obs[0], indx=indx)
+        self.assertTrue(survey.extra_features["ObsRecorded"].feature == 10)
+        self.assertTrue(survey.extra_features["LastObs"].feature["mjd"] == observations_list[-1]["mjd"])
+        # Try adding observations to survey in array
+        survey = surveys.FieldSurvey(bfs, RA=90.0, dec=-30.0, accept_obs=["r band", "g band"])
+        survey.add_observations_array(observations_array, observations_hpid_array)
+        self.assertTrue(survey.extra_features["ObsRecorded"].feature == 10)
+        self.assertTrue(survey.extra_features["LastObs"].feature["mjd"] == observations_list[-1]["mjd"])
 
     def test_pointings_survey(self):
         """Test the pointing survey."""
