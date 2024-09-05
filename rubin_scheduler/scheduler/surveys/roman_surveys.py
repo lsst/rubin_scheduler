@@ -54,7 +54,7 @@ def gen_roman_on_season(
     # Force it to delay 30 minutes
     basis_functions.append(bf.ForceDelayBasisFunction(days_delay=30.0 / 24.0, survey_name=survey_name))
     # Force it to be in a given observing season
-    basis_functions.append(bf.InSeasonBasisFunction(seasons=field_info["seasons_on"]))
+    basis_functions.append(bf.InTimeWindowBasisFunction(mjd_windows=field_info["seasons_on"]))
     basis_functions.append(bf.MoonDistPointRangeBasisFunction(RA, dec))
     basis_functions.append(bf.AirmassPointRangeBasisFunction(RA, dec, nside=nside))
 
@@ -104,7 +104,7 @@ def gen_roman_off_season(
     # Force it to not go every day
     basis_functions.append(bf.ForceDelayBasisFunction(days_delay=3.0, survey_name=survey_name))
     # Force it to be in a given observing season
-    basis_functions.append(bf.InSeasonBasisFunction(seasons=field_info["seasons_off"]))
+    basis_functions.append(bf.InTimeWindowBasisFunction(mjd_windows=field_info["seasons_off"]))
     basis_functions.append(bf.MoonDistPointRangeBasisFunction(RA, dec))
     basis_functions.append(bf.AirmassPointRangeBasisFunction(RA, dec, nside=nside))
 

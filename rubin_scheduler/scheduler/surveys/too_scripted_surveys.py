@@ -26,6 +26,9 @@ def rotx(theta, x, y, z):
     return xp, yp, zp
 
 
+DEFAULT_EXP_TIME = 29.2
+
+
 class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
     """If there is a new ToO event, generate a set of scripted
     observations to try and follow it up.
@@ -34,8 +37,16 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
     ----------
     times : list of floats
         The times after the detection that observations
-        should be attempted (hours)
-
+        should be attempted (hours). Default [1, 2, 4, 24, 48]
+    filters_at_times : list of str
+        The filters that should be observed at each time in `times`.
+        Default ["gz", "gz", "gz", "gz", "gz", "gz"]
+    nvis : list of int
+        The number of visits per filter at each time in `times`.
+        Default [1, 1, 1, 1, 6, 6]
+    exptimes : list of floats
+        The exposure times to use for each time in `times`.
+        Default [DEFAULT_EXP_TIME]*5,
     alt_min : float
         Do not attempt observations below this limit (degrees).
         Note the telescope alt limit is 20 degrees, however, slew
@@ -54,7 +65,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         times=[1, 2, 4, 24, 48],
         filters_at_times=["gz", "gz", "gz", "gz", "gz", "gz"],
         nvis=[1, 1, 1, 1, 6, 6],
-        exptimes=[30.0, 30, 30, 30, 30, 30],
+        exptimes=[DEFAULT_EXP_TIME] * 5,
         camera="LSST",
         survey_name="ToO",
         flushtime=2.0,
@@ -75,6 +86,12 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         too_types_to_follow=[""],
         split_long=False,
     ):
+
+        # Make sure lists all match
+        check = np.unique([len(filters_at_times), len(times), len(nvis), len(exptimes)])
+        if np.size(check) > 1:
+            raise ValueError("lengths of times, filters_at_times, nvis, and exptimes must match.")
+
         # Figure out what else I need to super here
 
         if ignore_obs is None:
@@ -509,7 +526,7 @@ def gen_too_surveys(
     times = np.array([0, 2, 7, 9, 39]) * 24
     filters_at_times = ["ugri"] * 5
     nvis = [1] * 5
-    exptimes = [30.0] * 5
+    exptimes = [DEFAULT_EXP_TIME] * 5
 
     result.append(
         ToOScriptedSurvey(
@@ -536,7 +553,7 @@ def gen_too_surveys(
     times = [1.0, 1.0]
     filters_at_times = ["g", "r"]
     nvis = [1, 1]
-    exptimes = [30.0, 90.0]
+    exptimes = [DEFAULT_EXP_TIME, 90.0]
 
     result.append(
         ToOScriptedSurvey(
@@ -589,7 +606,7 @@ def gen_too_surveys(
 
     times = [0, 0, 15 / 60.0, 0.5, 24, 24.5, 144]
     filters_at_times = ["g", "r", "z", "g", "r", "grz"]
-    exptimes = [120, 30.0, 30.0, 120, 30.0, 30]
+    exptimes = [120, DEFAULT_EXP_TIME, DEFAULT_EXP_TIME, 120, DEFAULT_EXP_TIME, DEFAULT_EXP_TIME]
     nvis = [1, 1, 1, 1, 1, 1, 1, 1]
 
     result.append(
@@ -612,7 +629,7 @@ def gen_too_surveys(
 
     times = [0]
     filters_at_times = ["u"]
-    exptimes = [30]
+    exptimes = [DEFAULT_EXP_TIME]
     nvis = [1]
 
     # U-band with very long flush time.
@@ -645,7 +662,7 @@ def gen_too_surveys(
     times = [0, 33 / 60.0, 66 / 60.0]
     filters_at_times = ["r"] * 3
     nvis = [1] * 3
-    exptimes = [30.0] * 3
+    exptimes = [DEFAULT_EXP_TIME] * 3
 
     result.append(
         ToOScriptedSurvey(

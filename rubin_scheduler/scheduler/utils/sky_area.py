@@ -1262,6 +1262,6 @@ class Phase3AreaMap(EuclidOverlapFootprint):
 
 
 class CurrentAreaMap(Phase3AreaMap):
-    """Useful pointer so whatever the current standard footprint is.
-    """
+    """Useful pointer so whatever the current standard footprint is."""
+
     pass

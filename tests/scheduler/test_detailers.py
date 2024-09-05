@@ -1,8 +1,8 @@
 import unittest
 
 import rubin_scheduler.scheduler.detailers as detailers
-from rubin_scheduler.scheduler.utils import empty_observation
 from rubin_scheduler.scheduler.features import Conditions
+from rubin_scheduler.scheduler.utils import empty_observation
 
 
 class TestDetailers(unittest.TestCase):

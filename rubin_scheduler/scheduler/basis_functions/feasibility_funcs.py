@@ -23,7 +23,7 @@ __all__ = (
     "CloseToTwilightBasisFunction",
     "MoonDistPointRangeBasisFunction",
     "AirmassPointRangeBasisFunction",
-    "InSeasonBasisFunction",
+    "InTimeWindowBasisFunction",
 )
 
 import warnings
@@ -71,26 +71,26 @@ class FilterLoadedBasisFunction(BaseBasisFunction):
         return result
 
 
-class InSeasonBasisFunction(BaseBasisFunction):
+class InTimeWindowBasisFunction(BaseBasisFunction):
     """Only let a survey go if it is in a defined season
 
     Parameters
     ----------
-    seasons : `list`
+    mjd_windows : `list`
         List of mjd pairs. feasability will only pass if the
         current MJD falls in a viable range, e.g.
         seaons=[[1,2], [10,13]], means observations can happen
         on mjd=1,2,10,11,12,13.
     """
 
-    def __init__(self, seasons=[]):
+    def __init__(self, mjd_windows=[]):
         super().__init__()
-        self.seasons = seasons
+        self.mjd_windows = mjd_windows
 
     def check_feasibility(self, conditions):
         result = False
-        for season_range in self.seasons:
-            if np.min(season_range) <= conditions.mjd <= np.max(season_range):
+        for mjd_windows in self.mjd_windows:
+            if np.min(mjd_windows) <= conditions.mjd <= np.max(mjd_windows):
                 result = True
         return result
 
