@@ -524,18 +524,18 @@ class KinemModel:
         # in altitude, azimuth, and camera rotator (if applicable).
         # Delta Altitude
         delta_alt = np.abs(alt_rad - starting_alt_rad)
-        # Delta Azimuth - there are two different 'directions'
+        # Delta Azimuth - there are two different directions
         # possible to travel for azimuth. First calculate the shortest.
         delta_az_short = smallest_signed_angle(starting_az_rad, az_rad)
-        # And then calculate the "long way around"
+        # And then calculate the longer
         delta_az_long = np.where(delta_az_short < 0, two_pi + delta_az_short, delta_az_short - two_pi)
         # Slew can go long or short direction, but azimuth range
         # could limit which is possible.
         # e.g. 70 degrees reached by going the long way around from 0 means
         # the cumulative azimuth is 290, but if we went the short way it would
-        # be 70 .. actual 'azimuth' is still 70. It also matters about
-        # which direction previous slews went (imagine a previous slew to 180).
-        # First evaluate if azimuth range is > 360 degrees --
+        # be 70 .. absolute azimuth is still 70. Direction of previous
+        # slews is also important.
+        # First evaluate if available azimuth range is > 360 degrees --
         if np.abs(self.telaz_maxpos_rad - self.telaz_minpos_rad) >= two_pi:
             # Can spin past 360 degrees, track cumulative azimuth
             # Note that minpos will be less than maxpos always in this case.
@@ -573,8 +573,7 @@ class KinemModel:
             delta_aztel[out_of_bounds] = np.inf
             az_flag = "restricted"
 
-        # Calculate how long the telescope will take to slew to this
-        # position.
+        # Calculate time to slew to this position.
         tel_alt_slew_time = jerk_time(
             delta_alt, self.telalt_maxspeed_rad, self.telalt_accel_rad, self.telalt_jerk_rad
         )
@@ -636,9 +635,8 @@ class KinemModel:
             tot_dom_time[same_dome] = 0
 
         else:
-            # the above models a dome slit and dome creep. However, it
-            # appears that SOCS requires the dome to slew exactly to each
-            # field and settle in az
+            # the above models a dome slit and dome creep.
+            # If this option is not available however:
             dom_alt_slew_time = jerk_time(
                 delta_alt, self.domalt_maxspeed_rad, self.domalt_accel_rad, self.domalt_jerk_rad
             )
