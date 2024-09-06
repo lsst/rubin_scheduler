@@ -30,7 +30,7 @@ from rubin_scheduler.scheduler.schedulers import ComCamFilterSched, CoreSchedule
 from rubin_scheduler.scheduler.surveys import BlobSurvey, FieldSurvey, GreedySurvey
 from rubin_scheduler.scheduler.utils import Footprint, get_current_footprint
 from rubin_scheduler.site_models import Almanac, ConstantSeeingData, ConstantWindData
-from rubin_scheduler.utils import ddf_locations, survey_start_mjd
+from rubin_scheduler.utils import survey_start_mjd
 
 
 def get_model_observatory(
@@ -229,8 +229,8 @@ def standard_masks(
             nside=nside,
             min_alt=min_alt,
             max_alt=max_alt,
-            # min_az=min_az,
-            # max_az=max_az,
+            min_az=min_az,
+            max_az=max_az,
             shadow_minutes=shadow_minutes,
         )
     )
@@ -818,29 +818,15 @@ def get_sv_fields() -> dict[str, dict[str, float]]:
         ("Rubin_SV_300_-41", 300.0, -41.0),  # High stellar densty, low extinction
         ("Rubin_SV_280_-48", 280.0, -48.0),  # High stellar densty, low extinction
         ("DEEP_B0", 310, -19),  # DEEP Solar System
-        ("ELAIS_S1", 9.45, -44.0),  # ELAIS-S1 LSST DDF
-        ("XMM_LSS", 35.708333, -4.75),  # LSST DDF
-        ("ECDFS", 53.125, -28.1),  # ECDFS
-        ("COSMOS", 150.1, 2.1819444444444445),  # COSMOS
-        ("EDFS_A", 58.9, -49.315),  # EDFS_a
+        ("ELAIS_S1", 9.45, -44.03),  # ELAIS-S1 LSST DDF
+        ("XMM_LSS", 35.575, -4.82),  # LSST DDF
+        ("ECDFS", 52.98, -28.1),  # ECDFS
+        ("COSMOS", 150.1, 2.23),  # COSMOS
+        ("EDFS_A", 58.9, -49.32),  # EDFS_a
         ("EDFS_B", 63.6, -47.6),  # EDFS_b
     )
 
     fields_dict = dict(zip([f[0] for f in fields], [{"RA": f[1], "Dec": f[2]} for f in fields]))
-
-    # Update ddf_locations to
-    survey_ddfs = ddf_locations()
-    ddf_radec = {}
-    for k in survey_ddfs:
-        kk = k.lower().replace("_", "").replace("-", "")
-        ddf_radec[kk] = survey_ddfs[k]
-    for field in fields_dict:
-        # see if the field names match any ddf field name, allowing for
-        # upper/lower case and -vs_ differences
-        ff = field.lower().replace("_", "").replace("-", "")
-        if ff in ddf_radec:
-            fields_dict[field]["RA"] = ddf_radec[ff][0]
-            fields_dict[field]["Dec"] = ddf_radec[ff][1]
 
     return fields_dict
 
