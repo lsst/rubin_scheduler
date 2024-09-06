@@ -21,6 +21,9 @@ __all__ = (
     "LimitObsPnightBasisFunction",
     "SunHighLimitBasisFunction",
     "CloseToTwilightBasisFunction",
+    "MoonDistPointRangeBasisFunction",
+    "AirmassPointRangeBasisFunction",
+    "InTimeWindowBasisFunction",
 )
 
 import warnings
@@ -30,6 +33,7 @@ import numpy as np
 from rubin_scheduler.scheduler import features
 from rubin_scheduler.scheduler.basis_functions import BaseBasisFunction
 from rubin_scheduler.scheduler.utils import IntRounded
+from rubin_scheduler.utils import _angular_separation, ra_dec2_hpid
 
 
 def send_unused_deprecation_warning(name):
@@ -64,6 +68,88 @@ class FilterLoadedBasisFunction(BaseBasisFunction):
             result = filtername in conditions.mounted_filters
             if result is False:
                 return result
+        return result
+
+
+class InTimeWindowBasisFunction(BaseBasisFunction):
+    """Only let a survey go if it is in a defined season
+
+    Parameters
+    ----------
+    mjd_windows : `list`
+        List of mjd pairs. feasability will only pass if the
+        current MJD falls in a viable range, e.g.
+        seaons=[[1,2], [10,13]], means observations can happen
+        on mjd=1,2,10,11,12,13.
+    """
+
+    def __init__(self, mjd_windows=[]):
+        super().__init__()
+        self.mjd_windows = mjd_windows
+
+    def check_feasibility(self, conditions):
+        result = False
+        for mjd_windows in self.mjd_windows:
+            if np.min(mjd_windows) <= conditions.mjd <= np.max(mjd_windows):
+                result = True
+        return result
+
+
+class AirmassPointRangeBasisFunction(BaseBasisFunction):
+    """Set an airmass limit for a single point
+    Maps the point to the nearest HEALpixel and uses
+    the Conditions airmass map, so precision of the
+    airmass limit that is applied is limited by the
+    HEALpix resolution.
+
+    Parameters
+    ----------
+    ra : `float`
+        The RA of the point (degrees)
+    dec : `float`
+        The Dec of the point (degrees)
+    airmass_range : `list`
+        The valid airmass range, default [1.05, 2.7].
+    """
+
+    def __init__(self, ra, dec, airmass_range=[1.05, 2.7], nside=32):
+        super().__init__()
+        self.hpid = ra_dec2_hpid(nside, ra, dec)
+        self.airmass_range = airmass_range
+
+    def check_feasibility(self, conditions):
+        result = False
+        airmass = conditions.airmass[self.hpid]
+        if (np.min(self.airmass_range) <= airmass) & (airmass <= np.max(self.airmass_range)):
+            result = True
+        return result
+
+
+class MoonDistPointRangeBasisFunction(BaseBasisFunction):
+    """Set a moon distance limit for a single point.
+
+    Parameters
+    ----------
+    ra : `float`
+        The RA of the point (degrees)
+    dec : `float`
+        The Dec of the point (degrees)
+    moon_limit : `float`
+        The angular distance to demand from the moon (degrees).
+        Default 15.
+    """
+
+    def __init__(self, ra, dec, moon_limit=15.0):
+        super().__init__()
+        self.ra = np.radians(ra)
+        self.dec = np.radians(dec)
+        self.moon_limit = np.radians(moon_limit)
+
+    def check_feasibility(self, conditions):
+        result = False
+        moon_dist = _angular_separation(self.ra, self.dec, conditions.moon_ra, conditions.moon_dec)
+        if moon_dist > self.moon_limit:
+            result = True
         return result
 
 

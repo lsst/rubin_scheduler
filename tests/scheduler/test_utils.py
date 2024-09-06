@@ -351,7 +351,7 @@ class TestUtils(unittest.TestCase):
                     wfd_indx=wfd_indx,
                     order_roll=order_roll,
                     n_cycles=None,
-                    n_constant_start=None,
+                    n_constant_start=2,
                     n_constant_end=6,
                     uniform=True,
                 )
@@ -366,7 +366,7 @@ class TestUtils(unittest.TestCase):
                     wfd_indx=wfd_indx,
                     order_roll=order_roll,
                     n_cycles=None,
-                    n_constant_start=None,
+                    n_constant_start=3,
                     n_constant_end=6,
                     uniform=False,
                 )

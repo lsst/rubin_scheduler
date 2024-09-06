@@ -7,6 +7,8 @@ from .generate_ddf_grid import *
 from .long_gap_survey import *
 from .plan_night_survey import *
 from .pointings_survey import *
+from .roman_surveys import *
 from .scripted_surveys import *
 from .surveys import *
+from .too_scripted_surveys import *
 from .too_surveys import *
