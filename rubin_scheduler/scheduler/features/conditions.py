@@ -344,7 +344,7 @@ class Conditions:
         self.tel_alt_limits = None
         self.kinematic_alt_limits = None
         self.kinematic_az_limits = None
-        self.altaz_limit_pad = None
+        self.altaz_limit_pad = np.radians(2)
 
         # Full sky cloud map
         self._cloud_map = None

@@ -209,7 +209,7 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         self,
         nside=None,
         min_alt=20.0,
-        max_alt=82.0,
+        max_alt=86.5,
         min_az=0,
         max_az=360,
         shadow_minutes=40.0,
@@ -242,11 +242,11 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         result[np.where(r_future_alt < self.r_min_alt)] = np.nan
         result[np.where(r_future_alt > self.r_max_alt)] = np.nan
         # Check the conditions objects altitude limits, now and future
-        if conditions.tel_alt_limits is not None:
+        if (conditions.tel_alt_limits is not None) and (len(conditions.tel_alt_limits) > 0):
             combined = np.zeros(hp.nside2npix(self.nside), dtype=float)
             for limits in conditions.tel_alt_limits:
                 # For conditions-based limits, must add pad
-                # And remember that discontiguous areas can be allowed
+                # And remember that discontinuous areas can be allowed
                 in_bounds = np.ones(hp.nside2npix(self.nside), dtype=float)
                 min_alt = IntRounded(limits[0] + conditions.altaz_limit_pad)
                 max_alt = IntRounded(limits[1] - conditions.altaz_limit_pad)
@@ -275,7 +275,7 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
             out_of_bounds = np.where((future_az - self.min_az) % (two_pi) > az_range)[0]
             result[out_of_bounds] = np.nan
         # Check the conditions objects azimuth limits, now and future
-        if conditions.tel_az_limits is not None:
+        if (conditions.tel_az_limits is not None) and (len(conditions.tel_az_limits) > 0):
             combined = np.zeros(hp.nside2npix(self.nside), dtype=float)
             for limits in conditions.tel_az_limits:
                 in_bounds = np.ones(hp.nside2npix(self.nside), dtype=float)

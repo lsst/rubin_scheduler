@@ -302,11 +302,11 @@ class ModelObservatory:
         if tel_alt_limits is not None:
             self.tel_alt_limits = np.radians(tel_alt_limits)
         else:
-            self.tel_alt_limits = []
+            self.tel_alt_limits = None
         if tel_az_limits is not None:
             self.tel_az_limits = np.radians(tel_az_limits)
         else:
-            self.tel_az_limits = []
+            self.tel_az_limits = None
         # Add the observatory alt/az limits to the user-defined limits
         # But we do have to be careful that we're not overriding more
         # restrictive limits that were already set.
