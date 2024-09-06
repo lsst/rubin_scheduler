@@ -344,6 +344,8 @@ class Conditions:
         self.tel_alt_limits = None
         self.kinematic_alt_limits = None
         self.kinematic_az_limits = None
+        # This has a (reasonable) default value, to avoid failure of
+        # AltAzShadowMask in case this isn't set otherwise.
         self.altaz_limit_pad = np.radians(2)
 
         # Full sky cloud map

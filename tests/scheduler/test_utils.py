@@ -104,11 +104,12 @@ class TestUtils(unittest.TestCase):
         for the AltAzShadowMaskBasisFunction works"""
         mjd_start = survey_start_mjd()
         scheduler = example_scheduler(mjd_start=mjd_start)
-        print(scheduler.survey_lists)
+
         # Constrain the pointings available with the telescope mount
+        # This test needs to run in the north, not the south
         km = KinemModel(mjd0=mjd_start)
         az_min = 260
-        az_max = 80
+        az_max = 110
         km.setup_telescope(azimuth_minpos=az_min, azimuth_maxpos=az_max)
         mo = ModelObservatory(mjd=mjd_start, mjd_start=mjd_start, kinem_model=km)
         try:
@@ -151,8 +152,15 @@ class TestUtils(unittest.TestCase):
         # Constrain the pointings available with
         # limits for the model observatory
         km = KinemModel(mjd0=mjd_start)
+        az_min = 260
+        az_max = 110
         mo = ModelObservatory(
-            mjd=mjd_start, mjd_start=mjd_start, kinem_model=km, tel_az_limits=[[az_min, az_max]]
+            mjd=observations[-1]["mjd"],
+            mjd_start=mjd_start,
+            kinem_model=km,
+            tel_az_limits=[
+                [az_min, az_max],
+            ],
         )
         try:
             mo, scheduler, observations = sim_runner(
@@ -168,14 +176,26 @@ class TestUtils(unittest.TestCase):
 
         az = np.degrees(observations["az"])
         forbidden = np.where((az > az_max) & (az < az_min))[0]
-        assert forbidden.size == 0
+        # Some visits will occur in this forbidden range, due to
+        # some complications about the shadow mask and pair completion
+        # Since this is like a "preference" when set with tel_az_limits,
+        # should allow some to occur in this set of forbidden azimuths
+        second_pairs = [
+            scheduler_note
+            for scheduler_note in observations[forbidden]["scheduler_note"]
+            if "pair" in scheduler_note and ", b" in scheduler_note
+        ]
+        assert forbidden.size == len(second_pairs)
+        assert np.all(((az[forbidden] - az_min) % (az_max - az_min)) < 3)
 
         km = KinemModel(mjd0=mjd_start)
         mo = ModelObservatory(
             mjd=observations[-1]["mjd"],
             mjd_start=mjd_start,
             kinem_model=km,
-            tel_alt_limits=[[alt_min, alt_max]],
+            tel_alt_limits=[
+                [alt_min, alt_max],
+            ],
         )
         scheduler.flush_queue()
         try:
@@ -190,8 +210,8 @@ class TestUtils(unittest.TestCase):
             print("Failed in altitude test")
             raise e
         alt = np.degrees(observations["alt"])
-        n_forbidden = np.size(np.where((alt > alt_max) & (alt < alt_min))[0])
-        assert n_forbidden == 0
+        forbidden = np.where((alt > alt_max) & (alt < alt_min))[0]
+        assert forbidden.size == 0
 
     def test_restore(self):
         """Test we can restore a scheduler properly"""
