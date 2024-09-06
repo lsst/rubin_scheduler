@@ -343,7 +343,7 @@ class NObsSurvey(BaseSurveyFeature):
         if self.note is None:
             self.feature += 1
         else:
-            if self.note in observation["scheduler_note"]:
+            if self.note in observation["scheduler_note"][0]:
                 self.feature += 1
 
 
@@ -381,7 +381,7 @@ class LastObservation(BaseSurveyFeature):
 
     def add_observation(self, observation, indx=None):
         if self.scheduler_note is not None:
-            if self.scheduler_note in observation["scheduler_note"]:
+            if self.scheduler_note in observation["scheduler_note"][0]:
                 self.feature = observation
         else:
             self.feature = observation
@@ -476,7 +476,7 @@ class NObservations(BaseSurveyFeature):
 
     def add_observation(self, observation, indx=None):
         if self.filtername is None or observation["filter"][0] in self.filtername:
-            if self.scheduler_note is None or observation["scheduler_note"] in self.scheduler_note:
+            if self.scheduler_note is None or observation["scheduler_note"][0] in self.scheduler_note:
                 self.feature[indx] += 1
 
 
@@ -898,7 +898,7 @@ class NoteLastObserved(BaseSurveyFeature):
         self.feature = None
 
     def add_observation(self, observation, indx=None):
-        if self.note in observation["scheduler_note"] and (
+        if self.note in observation["scheduler_note"][0] and (
             self.filtername is None or self.filtername == observation["filter"][0]
         ):
             self.feature = observation["mjd"]
