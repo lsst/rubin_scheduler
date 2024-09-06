@@ -6,8 +6,6 @@ import numpy as np
 import rubin_scheduler.scheduler.basis_functions as basis_functions
 from rubin_scheduler.scheduler.features import Conditions
 from rubin_scheduler.scheduler.utils import empty_observation
-from rubin_scheduler.scheduler.utils import generate_all_sky
-from rubin_scheduler.utils import _approx_ra_dec2_alt_az
 
 
 class TestBasis(unittest.TestCase):
