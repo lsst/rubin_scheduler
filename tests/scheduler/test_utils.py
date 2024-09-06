@@ -100,10 +100,12 @@ class TestUtils(unittest.TestCase):
         "Test data not available.",
     )
     def test_altaz_limit(self):
-        """Test that setting some azimuth limits via the kinematic
-        model works"""
+        """Test that setting some azimuth limits via different approaches
+        for the AltAzShadowMaskBasisFunction works"""
         mjd_start = survey_start_mjd()
         scheduler = example_scheduler(mjd_start=mjd_start)
+        print(scheduler.survey_lists)
+        # Constrain the pointings available with the telescope mount
         km = KinemModel(mjd0=mjd_start)
         az_min = 260
         az_max = 80
@@ -130,6 +132,51 @@ class TestUtils(unittest.TestCase):
         alt_max = 70
         km.setup_telescope(altitude_minpos=alt_min, altitude_maxpos=alt_max)
         mo = ModelObservatory(mjd=observations[-1]["mjd"], mjd_start=mjd_start, kinem_model=km)
+        scheduler.flush_queue()
+        try:
+            mo, scheduler, observations = sim_runner(
+                mo,
+                scheduler,
+                survey_length=3.0,
+                verbose=False,
+                filename=None,
+            )
+        except RuntimeError as e:
+            print("Failed in altitude test")
+            raise e
+        alt = np.degrees(observations["alt"])
+        n_forbidden = np.size(np.where((alt > alt_max) & (alt < alt_min))[0])
+        assert n_forbidden == 0
+
+        # Constrain the pointings available with
+        # limits for the model observatory
+        km = KinemModel(mjd0=mjd_start)
+        mo = ModelObservatory(
+            mjd=mjd_start, mjd_start=mjd_start, kinem_model=km, tel_az_limits=[[az_min, az_max]]
+        )
+        try:
+            mo, scheduler, observations = sim_runner(
+                mo,
+                scheduler,
+                survey_length=3.0,
+                verbose=False,
+                filename=None,
+            )
+        except RuntimeError as e:
+            print("Failed in az limits test")
+            raise e
+
+        az = np.degrees(observations["az"])
+        forbidden = np.where((az > az_max) & (az < az_min))[0]
+        assert forbidden.size == 0
+
+        km = KinemModel(mjd0=mjd_start)
+        mo = ModelObservatory(
+            mjd=observations[-1]["mjd"],
+            mjd_start=mjd_start,
+            kinem_model=km,
+            tel_alt_limits=[[alt_min, alt_max]],
+        )
         scheduler.flush_queue()
         try:
             mo, scheduler, observations = sim_runner(

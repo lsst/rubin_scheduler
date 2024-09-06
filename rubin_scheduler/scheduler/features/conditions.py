@@ -188,13 +188,15 @@ class Conditions:
         scheduled_observations : `np.ndarray`, (M,)
             A list of MJD times when there are scheduled observations.
             Defaults to empty array.
-        tel_az_min : `float`
-        tel_az_max : `float
-        tel_alt_min : `float`
-        tel_alt_max : `float`
-            Valid altitude and azimuth ranges (radians).
-            Order matters for azimuth - 270 degrees to 90 degrees
-            is different than 90 degrees to 270 degrees.
+        tel_az_limits : `list` [[`float`, `float`]]
+            A list of lists giving valid azimuth ranges. e.g.,
+            [0, 2*np.pi] would mean all azimuth values are valid, while
+            [[0, np.pi/2], [3*np.pi/2, 2*np.pi]] would mean anywhere in
+            the south is invalid.  Radians.
+        tel_alt_limits : `list` [[`float`, `float`]]
+            A list of lists giving valid altitude ranges. Radians.
+        altaz_limit_pad : `float`
+            Pad to surround the tel_az_limits and tel_alt_limits with.
 
         Attributes (calculated on demand and cached)
         ------------------------------------------
@@ -338,10 +340,11 @@ class Conditions:
         self.cumulative_azimuth_rad = None
 
         # Telescope limits
-        self.tel_az_min = None
-        self.tel_az_max = None
-        self.tel_alt_min = None
-        self.tel_alt_max = None
+        self.tel_az_limits = None
+        self.tel_alt_limits = None
+        self.kinematic_alt_limits = None
+        self.kinematic_az_limits = None
+        self.altaz_limit_pad = None
 
         # Full sky cloud map
         self._cloud_map = None
