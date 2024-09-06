@@ -240,7 +240,7 @@ class ScriptedSurvey(BaseSurvey):
             in_range = in_range[good]
         if np.abs(conditions.kinematic_az_limits[1] - conditions.kinematic_az_limits[0]) < (2 * np.pi):
             az_range = (conditions.kinematic_az_limits[1] - conditions.kinematic_az_limits[0]) % (2 * np.pi)
-            ir = np.where((az[in_range] - az_min) % (2 * np.pi) <= az_range)[0]
+            ir = np.where((az[in_range] - conditions.kinematic_az_limits[0]) % (2 * np.pi) <= az_range)[0]
             in_range = in_range[ir]
 
         # Check that filter needed is mounted
