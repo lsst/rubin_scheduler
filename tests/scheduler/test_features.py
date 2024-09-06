@@ -81,6 +81,35 @@ class TestFeatures(unittest.TestCase):
         pin.add_observation(obs, indx=indx)
         self.assertEqual(np.max(pin.feature), 2.0)
 
+    def test_note_in_night(self):
+        obs = empty_observation()
+
+        plain_feature = features.NoteInNight()
+        plain_feature.add_observation(obs)
+
+        assert plain_feature.feature == 1
+
+        note_feature = features.NoteInNight(notes=['asdafas', 'widget'])
+        note_feature.add_observation(obs)
+
+        assert note_feature.feature == 0
+
+        obs['scheduler_note'] = 'asdafas'
+        note_feature.add_observation(obs)
+
+        assert note_feature.feature == 1
+
+        # should only match if exact
+        obs['scheduler_note'] = 'asdafa'
+        note_feature.add_observation(obs)
+
+        assert note_feature.feature == 1
+
+        obs['scheduler_note'] = 'widget'
+        note_feature.add_observation(obs)
+
+        assert note_feature.feature == 2
+
     def test_conditions(self):
         observatory = ModelObservatory(init_load_length=1, mjd_start=survey_start_mjd())
         conditions = observatory.return_conditions()

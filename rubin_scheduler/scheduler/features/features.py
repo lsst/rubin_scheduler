@@ -135,7 +135,7 @@ class SurveyInNight(BaseSurveyFeature):
             self.night = observation["night"]
             self.feature = 0
 
-        if self.survey_str in observation["scheduler_note"]:
+        if self.survey_str in observation["scheduler_note"][0]:
             self.feature += 1
 
 
@@ -153,13 +153,11 @@ class NoteInNight(BaseSurveyFeature):
     notes : `list` [`str`], optional
         List of strings to match against observation `scheduler_note`
         values. The `scheduler_note` must match one of the items
-        in notes exactly. Default of None uses `[]` and will match any note.
+        in notes exactly. Default of [None] will match any note.
     """
 
-    def __init__(self, notes=None):
+    def __init__(self, notes=[None]):
         self.feature = 0
-        if notes is None:
-            notes = []
         self.notes = notes
         self.current_night = -100
 
@@ -172,14 +170,14 @@ class NoteInNight(BaseSurveyFeature):
         indx = np.where(observations_array["night"] == observations_array["night"][-1])[0]
         # Count observations that match notes.
         for ind in indx:
-            if observations_array["scheduler_note"][ind] in self.notes:
+            if (observations_array["scheduler_note"][ind] in self.notes) | (self.notes == [None]):
                 self.feature += 1
 
     def add_observation(self, observation, indx=None):
         if self.current_night != observation["night"]:
             self.current_night = observation["night"].copy()
             self.feature = 0
-        if observation["scheduler_note"] in self.notes:
+        if (observation["scheduler_note"][0] in self.notes) | (self.notes == [None]):
             self.feature += 1
 
 
@@ -797,7 +795,7 @@ class NObservationsCurrentSeason(BaseSurveyFeature):
 
         # Check if observation is in the right filter
         if self.filtername is not None and check:
-            if observation["filter"] != self.filtername:
+            if observation["filter"][0] != self.filtername:
                 check = False
             else:
                 # Check if observation in correct filter and deep enough.
@@ -829,7 +827,7 @@ class CoaddedDepth(BaseSurveyFeature):
         self.feature = np.zeros(hp.nside2npix(nside), dtype=float)
 
     def add_observation(self, observation, indx=None):
-        if observation["filter"] == self.filtername:
+        if observation["filter"][0] == self.filtername:
             if IntRounded(observation["FWHMeff"]) <= self.fwhm_eff_limit:
                 m5 = m5_flat_sed(
                     observation["filter"],
@@ -901,7 +899,7 @@ class NoteLastObserved(BaseSurveyFeature):
 
     def add_observation(self, observation, indx=None):
         if self.note in observation["scheduler_note"] and (
-            self.filtername is None or self.filtername == observation["filter"]
+            self.filtername is None or self.filtername == observation["filter"][0]
         ):
             self.feature = observation["mjd"]
 
