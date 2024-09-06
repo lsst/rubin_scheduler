@@ -8,7 +8,7 @@ import numpy as np
 
 from rubin_scheduler.scheduler.surveys import BaseMarkovSurvey
 from rubin_scheduler.scheduler.utils import empty_observation, int_binned_stat, order_observations
-from rubin_scheduler.utils import _angular_separation, _approx_ra_dec2_alt_az, _hpid2_ra_dec, hp_grow_argsort
+from rubin_scheduler.utils import _angular_separation, _hpid2_ra_dec, hp_grow_argsort
 
 
 class GreedySurvey(BaseMarkovSurvey):
@@ -488,20 +488,9 @@ class BlobSurvey(GreedySurvey):
             # everything was nans, or self.nvisit_block was zero
             return []
 
-        # Let's find the alt, az coords of the points (right now,
-        # hopefully doesn't change much in time block)
-        # Not sure why need to convert to alt,az before running TSP,
-        # but it does seem to be better.
-        pointing_alt, pointing_az = _approx_ra_dec2_alt_az(
-            self.fields["RA"][self.best_fields],
-            self.fields["dec"][self.best_fields],
-            conditions.site.latitude_rad,
-            conditions.site.longitude_rad,
-            conditions.mjd,
-            lmst=conditions.lmst,
+        better_order = order_observations(
+            self.fields["RA"][self.best_fields], self.fields["dec"][self.best_fields]
         )
-
-        better_order = order_observations(pointing_az, pointing_alt)
 
         # XXX-TODO: Could try to roll better_order to start at
         # the nearest/fastest slew from current position.
