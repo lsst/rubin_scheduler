@@ -65,7 +65,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         times=[1, 2, 4, 24, 48],
         filters_at_times=["gz", "gz", "gz", "gz", "gz", "gz"],
         nvis=[1, 1, 1, 1, 6, 6],
-        exptimes=[DEFAULT_EXP_TIME] * 5,
+        exptimes=[DEFAULT_EXP_TIME] * 6,
         camera="LSST",
         survey_name="ToO",
         flushtime=2.0,
@@ -605,9 +605,9 @@ def gen_too_surveys(
     # XXX--need to update footprint to cut out galactic latitude
 
     times = [0, 0, 15 / 60.0, 0.5, 24, 24.5, 144]
-    filters_at_times = ["g", "r", "z", "g", "r", "grz"]
-    exptimes = [120, DEFAULT_EXP_TIME, DEFAULT_EXP_TIME, 120, DEFAULT_EXP_TIME, DEFAULT_EXP_TIME]
-    nvis = [1, 1, 1, 1, 1, 1, 1, 1]
+    filters_at_times = ["g", "r", "z", "g", "r", "z", "grz"]
+    exptimes = [120, DEFAULT_EXP_TIME, DEFAULT_EXP_TIME, 120, DEFAULT_EXP_TIME, DEFAULT_EXP_TIME, DEFAULT_EXP_TIME]
+    nvis = [1, 1, 1, 1, 1, 1, 1]
 
     result.append(
         ToOScriptedSurvey(
