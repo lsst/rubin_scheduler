@@ -36,6 +36,21 @@ class TestBasis(unittest.TestCase):
         conditions.mjd += delta
         self.assertEqual(np.max(bf(conditions)), 0.0)
 
+    def test_force_delay(self):
+        bf = basis_functions.ForceDelayBasisFunction(days_delay=3.0, scheduler_note="survey")
+        obs = empty_observation()
+        obs["scheduler_note"] = "not_match"
+        obs["mjd"] = 10
+        bf.add_observation(obs)
+        conditions = Conditions()
+        conditions.mjd = 11.0
+        assert bf.check_feasibility(conditions)
+        # Now it matches, so should block
+        obs["scheduler_note"] = "survey"
+        bf.add_observation(obs)
+
+        assert ~bf.check_feasibility(conditions)
+
     def test_label(self):
         bf = basis_functions.VisitRepeatBasisFunction()
         self.assertIsInstance(bf.label(), str)

@@ -51,8 +51,8 @@ def gen_roman_on_season(
     # in the night.
     basis_functions.append(bf.HourAngleLimitBasisFunction(RA=RA, ha_limits=[[20, 24], [0, 4]]))
     basis_functions.append(bf.NotTwilightBasisFunction())
-    # Force it to delay 30 minutes
-    basis_functions.append(bf.ForceDelayBasisFunction(days_delay=30.0 / 24.0, survey_name=survey_name))
+    # Force it to delay about a day
+    basis_functions.append(bf.ForceDelayBasisFunction(days_delay=0.8, survey_name=survey_name))
     # Force it to be in a given observing season
     basis_functions.append(bf.InTimeWindowBasisFunction(mjd_windows=field_info["seasons_on"]))
     basis_functions.append(bf.MoonDistPointRangeBasisFunction(RA, dec))

@@ -89,23 +89,23 @@ class TestFeatures(unittest.TestCase):
 
         assert plain_feature.feature == 1
 
-        note_feature = features.NoteInNight(notes=['asdafas', 'widget'])
+        note_feature = features.NoteInNight(notes=["asdafas", "widget"])
         note_feature.add_observation(obs)
 
         assert note_feature.feature == 0
 
-        obs['scheduler_note'] = 'asdafas'
+        obs["scheduler_note"] = "asdafas"
         note_feature.add_observation(obs)
 
         assert note_feature.feature == 1
 
         # should only match if exact
-        obs['scheduler_note'] = 'asdafa'
+        obs["scheduler_note"] = "asdafa"
         note_feature.add_observation(obs)
 
         assert note_feature.feature == 1
 
-        obs['scheduler_note'] = 'widget'
+        obs["scheduler_note"] = "widget"
         note_feature.add_observation(obs)
 
         assert note_feature.feature == 2
