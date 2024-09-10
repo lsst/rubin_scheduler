@@ -1,0 +1,119 @@
+import unittest
+
+import numpy as np
+from astropy.time import Time
+
+from rubin_scheduler.scheduler import sim_runner
+from rubin_scheduler.scheduler.example import (
+    get_ideal_model_observatory,
+    simple_field_survey,
+    simple_greedy_survey,
+    simple_pairs_survey,
+    update_model_observatory_sunset,
+)
+from rubin_scheduler.scheduler.model_observatory import ModelObservatory
+from rubin_scheduler.scheduler.schedulers import ComCamFilterSched, CoreScheduler
+from rubin_scheduler.utils import survey_start_mjd
+
+
+class TestSurveyConveniences(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self.survey_start = np.floor(survey_start_mjd()) + 0.5
+        self.day_obs_start = Time(self.survey_start, format="mjd", scale="utc").iso[:10]
+
+    def test_model_observatory_conveniences(self):
+        """Test the model observatory convenience functions."""
+
+        # Just check that we can acquire a model observatory
+        # and it is set up for the date expected.
+        observatory = get_ideal_model_observatory(dayobs=self.day_obs_start, survey_start=self.survey_start)
+        conditions = observatory.return_conditions()
+        assert conditions.mjd == observatory.mjd
+        # The model observatory automatically advanced to -12 deg sunset
+        assert (conditions.mjd - self.survey_start) < 1
+        sun_ra_start = conditions.sun_ra_start
+        mjd_start = observatory.mjd_start
+
+        newday = self.survey_start + 4
+        new_dayobs = Time(newday, format="mjd", scale="utc").iso[:10]
+        newday = Time(f"{new_dayobs}T12:00:00", format="isot", scale="utc").mjd
+        observatory = get_ideal_model_observatory(dayobs=new_dayobs, survey_start=self.survey_start)
+        conditions = observatory.return_conditions()
+        assert (conditions.mjd - newday) < 1
+        # Check that advancing the day did not change the expected location
+        # of the sun at the *start* of the survey
+        assert conditions.mjd_start == mjd_start
+        assert conditions.sun_ra_start == sun_ra_start
+
+        # And update observatory to sunset, using a filter scheduler
+        # that only has 'g' available
+        filter_sched = ComCamFilterSched(illum_bins=np.arange(0, 101, 100), loaded_filter_groups=(("g",)))
+        observatory = update_model_observatory_sunset(observatory, filter_sched, twilight=-18)
+        assert observatory.observatory.current_filter == "g"
+        assert observatory.conditions.sun_alt < np.radians(18)
+
+    def test_simple_greedy_survey(self):
+        # Just test that it still instantiates and provides observations.
+        observatory = get_ideal_model_observatory(dayobs=self.day_obs_start, survey_start=self.survey_start)
+        greedy = [simple_greedy_survey(filtername="r")]
+        scheduler = CoreScheduler(greedy)
+        scheduler, observatory, observations = sim_runner(
+            observatory, scheduler, filter_scheduler=None, survey_length=0.7
+        )
+        # Current survey_start_mjd should produce ~1000 visits
+        # but changing this to a short night could reduce the total number
+        self.assertTrue(len(observations) > 650)
+        self.assertTrue(observations["mjd"].max() - observations["mjd"].min() > 0.4)
+        self.assertTrue(np.unique(observations["scheduler_note"]).size == 1)
+        self.assertTrue(np.unique(observations["scheduler_note"])[0] == "simple greedy r")
+
+    def test_simple_pairs_survey(self):
+        # Just test that it still instantiates and provides observations.
+        observatory = get_ideal_model_observatory(dayobs=self.day_obs_start, survey_start=self.survey_start)
+        pairs = [simple_pairs_survey(filtername="r", filtername2="i")]
+        scheduler = CoreScheduler(pairs)
+        scheduler, observatory, observations = sim_runner(
+            observatory, scheduler, filter_scheduler=None, survey_length=0.7
+        )
+        # Current survey_start_mjd should produce over ~950 visits
+        # but changing this to a short night could reduce the total number
+        self.assertTrue(len(observations) > 650)
+        self.assertTrue(observations["mjd"].max() - observations["mjd"].min() > 0.4)
+        self.assertTrue(np.unique(observations["scheduler_note"]).size == 2)
+
+    def test_simple_field_survey(self):
+        # Just test that it still instantiates and provides observations.
+        observatory = get_ideal_model_observatory(dayobs=self.day_obs_start, survey_start=self.survey_start)
+        # This field ought to be observable at our current survey_start
+        ra = 150
+        dec = 2.2
+        field_name = "almost_cosmos"
+        field = [
+            simple_field_survey(
+                field_ra_deg=ra, field_dec_deg=dec, field_name=field_name, science_program="BLOCK-TEST"
+            )
+        ]
+        # Add a greedy survey backup because of the visit gap requirement in
+        # the default field survey
+        greedy = [simple_greedy_survey(filtername="r")]
+        scheduler = CoreScheduler([field, greedy])
+        scheduler, observatory, observations = sim_runner(
+            observatory, scheduler, filter_scheduler=None, survey_length=0.7
+        )
+        # Current survey_start_mjd should produce over ~950 visits
+        # but changing this to a short night could reduce the total number
+        self.assertTrue(len(observations) > 650)
+        self.assertTrue(observations["mjd"].max() - observations["mjd"].min() > 0.4)
+        # Check some information about the observation notes and names
+        self.assertTrue(np.unique(observations["scheduler_note"]).size == 2)
+        self.assertTrue("almost_cosmos" in observations["scheduler_note"])
+        self.assertTrue("almost_cosmos" in observations["target_name"])
+        # Check that the field survey got lots of visits
+        field_obs = observations[np.where(observations["target_name"] == "almost_cosmos")]
+        self.assertTrue(field_obs.size > 200)
+        self.assertTrue(np.all(field_obs["science_program"] == "BLOCK-TEST"))
+
+
+if __name__ == "__main__":
+    unittest.main()
