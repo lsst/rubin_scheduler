@@ -211,6 +211,8 @@ class BlobSurvey(GreedySurvey):
 
         if survey_name is None:
             self._generate_survey_name()
+        else:
+            self.survey_name = survey_name
 
         if scheduler_note is None:
             if survey_note is not None:
