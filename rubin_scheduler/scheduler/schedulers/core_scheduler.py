@@ -147,7 +147,9 @@ class CoreScheduler:
         """
 
         # Find the healpixel centers that are included in an observation
-        indx = self.pointing2hpindx(observation["RA"], observation["dec"], rotSkyPos=observation["rotSkyPos"])
+        indx = self.pointing2hpindx(
+            observation["RA"][0], observation["dec"][0], rotSkyPos=observation["rotSkyPos"][0]
+        )
         for surveys in self.survey_lists:
             for survey in surveys:
                 survey.add_observation(observation, indx=indx)
