@@ -1,5 +1,6 @@
 __all__ = ("ModelObservatory",)
 
+import copy
 import warnings
 
 import healpy as hp
@@ -311,11 +312,15 @@ class ModelObservatory:
         # But we do have to be careful that we're not overriding more
         # restrictive limits that were already set.
         # So we'll just keep these separate.
-        self.kinematic_tel_alt_limits = [
-            self.observatory.telalt_minpos_rad,
-            self.observatory.telalt_maxpos_rad,
-        ]
-        self.kinematic_tel_az_limits = [self.observatory.telaz_minpos_rad, self.observatory.telaz_maxpos_rad]
+        self.kinematic_tel_alt_limits = copy.deepcopy(
+            [
+                self.observatory.telalt_minpos_rad,
+                self.observatory.telalt_maxpos_rad,
+            ]
+        )
+        self.kinematic_tel_az_limits = copy.deepcopy(
+            [self.observatory.telaz_minpos_rad, self.observatory.telaz_maxpos_rad]
+        )
         # Each of these limits will be treated as hard limits that we don't
         # want pointings to stray into, so add a pad around the values
         self.altaz_limit_pad = np.radians(2.0)

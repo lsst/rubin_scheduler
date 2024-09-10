@@ -339,11 +339,16 @@ class Conditions:
         self.tel_az = None
         self.cumulative_azimuth_rad = None
 
-        # Telescope limits
+        # Telescope limits - these can be None
+        # These should be in radians.
         self.tel_az_limits = None
         self.tel_alt_limits = None
-        self.kinematic_alt_limits = None
-        self.kinematic_az_limits = None
+        # Kinematic model (real slew) limits - these can't be None
+        # if you are using the AltAzShadowMaskBasisFunction.
+        # These generous limits won't restrict the AltAzShadowMask.
+        # Radians.
+        self.kinematic_alt_limits = [np.radians(-10), np.radians(100)]
+        self.kinematic_az_limits = [np.radians(-250), np.radians(250)]
         # This has a (reasonable) default value, to avoid failure of
         # AltAzShadowMask in case this isn't set otherwise.
         self.altaz_limit_pad = np.radians(2)
