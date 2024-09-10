@@ -7,7 +7,7 @@ import rubin_scheduler.scheduler.basis_functions as basis_functions
 import rubin_scheduler.scheduler.surveys as surveys
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
 from rubin_scheduler.scheduler.schedulers import CoreScheduler
-from rubin_scheduler.scheduler.utils import generate_all_sky
+from rubin_scheduler.scheduler.utils import empty_observation, generate_all_sky
 
 
 class TestCoreSched(unittest.TestCase):
@@ -65,6 +65,35 @@ class TestCoreSched(unittest.TestCase):
         recording_scheduler.update_conditions(observatory.return_conditions())
         obs = recording_scheduler.request_observation()
         self.assertIsInstance(recording_scheduler.queue_reward_df, pd.DataFrame)
+
+    def test_add_obs(self):
+        """Test that add_observation works with slice or array"""
+
+        bfs = [basis_functions.ForceDelayBasisFunction(days_delay=3.0, scheduler_note="survey")]
+        survey = surveys.GreedySurvey(bfs, [0.0])
+        scheduler = CoreScheduler([survey])
+
+        obs = empty_observation()
+        obs["scheduler_note"] = "survey"
+        obs["mjd"] = 100
+
+        scheduler.add_observation(obs)
+
+        recorded = scheduler.survey_lists[0][0].basis_functions[0].survey_features["last_obs_self"].feature
+
+        assert recorded["mjd"] == 100
+        assert recorded["scheduler_note"] == "survey"
+
+        bfs = [basis_functions.ForceDelayBasisFunction(days_delay=3.0, scheduler_note="survey")]
+        survey = surveys.GreedySurvey(bfs, [0.0])
+        scheduler = CoreScheduler([survey])
+
+        # Again, but now add just the row rather than full array
+        scheduler.add_observation(obs[0])
+        recorded = scheduler.survey_lists[0][0].basis_functions[0].survey_features["last_obs_self"].feature
+
+        assert recorded["mjd"] == 100
+        assert recorded["scheduler_note"] == "survey"
 
 
 if __name__ == "__main__":

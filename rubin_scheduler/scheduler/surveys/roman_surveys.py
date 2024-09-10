@@ -1,5 +1,7 @@
 __all__ = ["gen_roman_on_season", "gen_roman_off_season"]
 
+import warnings
+
 import rubin_scheduler.scheduler.basis_functions as bf
 import rubin_scheduler.scheduler.detailers as detailers
 from rubin_scheduler.scheduler.surveys import DeepDrillingSurvey
@@ -35,6 +37,8 @@ def gen_roman_on_season(
 ):
     """Generate a survey object for observing the Roman field(s)
     in an on season"""
+
+    warnings.warn("Generating Roman survey place holder. Should probably not be in production.")
 
     field_info = roman_info()
 
@@ -86,6 +90,8 @@ def gen_roman_off_season(
 ):
     """Generate a ddf-like survey object to observe the roman
     field every ~3 days in the off-season"""
+
+    warnings.warn("Generating Roman survey place holder. Should probably not be in production.")
 
     field_info = roman_info()
     RA = field_info["RA"]
