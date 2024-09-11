@@ -263,7 +263,6 @@ class TestFeatures(unittest.TestCase):
         observatory, scheduler, observations = sim_runner(
             observatory, scheduler, survey_length=survey_length, filename=None
         )
-
         # Make sure some blobs executed
         assert "blob, gg, b" in observations["scheduler_note"]
         assert "blob, gg, a" in observations["scheduler_note"]

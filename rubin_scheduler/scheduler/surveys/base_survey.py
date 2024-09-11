@@ -7,7 +7,7 @@ import healpy as hp
 import numpy as np
 import pandas as pd
 
-from rubin_scheduler.scheduler.detailers import ZeroRotDetailer
+from rubin_scheduler.scheduler.detailers import TrackingInfoDetailer, ZeroRotDetailer
 from rubin_scheduler.scheduler.utils import (
     HpInLsstFov,
     comcam_tessellate,
@@ -43,6 +43,15 @@ class BaseSurvey:
         The detailers to apply to the list of observations.
     scheduled_obs : np.array
         An array of MJD values for when observations should execute.
+    target_name : `str`
+        A target name label. Will be added to a final detailer, so should
+        override any target_name set elsewhere. Default None.
+    science_program : `str`
+        A science program label.  Will be added to a final detailer, so should
+        override any science_program set elsewhere. Default None.
+    observation_reason : `str`
+        An observation reason label.  Will be added to a final detailer, so
+        should  override any observation_reason set elsewhere. Default None.
     """
 
     def __init__(
@@ -56,6 +65,9 @@ class BaseSurvey:
         nside=None,
         detailers=None,
         scheduled_obs=None,
+        target_name=None,
+        science_program=None,
+        observation_reason=None,
     ):
         if nside is None:
             nside = set_default_nside()
@@ -104,11 +116,15 @@ class BaseSurvey:
         # Scheduled observations
         self.scheduled_obs = scheduled_obs
 
-        # Information to override in subclass if desired.
-        self.target_name = ""
-        self.science_program = "FBS"
-        self.observation_reason = "FBS"
-        self.json_block = "Imaging"
+        # Strings to pass onto observations
+        if (target_name is not None) | (science_program is not None) | (observation_reason is not None):
+            self.detailers.append(
+                TrackingInfoDetailer(
+                    target_name=target_name,
+                    science_program=science_program,
+                    observation_reason=observation_reason,
+                )
+            )
 
     @cached_property
     def roi_hpid(self):
@@ -234,10 +250,6 @@ class BaseSurvey:
         if not self.reward_checked:
             self.reward = self.calc_reward_function(conditions)
         obs = empty_observation()
-        obs["target_name"] = self.target_name
-        obs["science_program"] = self.science_program
-        obs["observation_reason"] = self.observation_reason
-        obs["json_block"] = self.json_block
         return [obs]
 
     def generate_observations(self, conditions):
@@ -478,6 +490,9 @@ class BaseMarkovSurvey(BaseSurvey):
         fields=None,
         area_required=None,
         npositions=7305,
+        target_name=None,
+        science_program=None,
+        observation_reason=None,
     ):
         super(BaseMarkovSurvey, self).__init__(
             basis_functions=basis_functions,
@@ -487,6 +502,9 @@ class BaseMarkovSurvey(BaseSurvey):
             scheduler_note=scheduler_note,
             nside=nside,
             detailers=detailers,
+            target_name=target_name,
+            science_program=science_program,
+            observation_reason=observation_reason,
         )
 
         self.basis_weights = basis_weights

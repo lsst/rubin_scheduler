@@ -87,6 +87,8 @@ class FieldSurvey(BaseSurvey):
         accept_obs=None,
         survey_name=None,
         target_name=None,
+        science_program=None,
+        observation_reason=None,
         scheduler_note=None,
         readtime=2.4,
         filter_change_time=120.0,
@@ -118,15 +120,12 @@ class FieldSurvey(BaseSurvey):
         self.dec = np.radians(dec)
         self.ra_deg, self.dec_deg = RA, dec
 
-        # Set up target_name and survey_name before super
-        self.target_name = target_name
         self.survey_name = survey_name
-        self.target_name = target_name
         if self.survey_name is None:
-            self._generate_survey_name()
+            self._generate_survey_name(target_name=target_name)
         # Backfill target name if it wasn't set
-        if self.target_name is None:
-            self.target_name = self.survey_name
+        if target_name is None:
+            target_name = self.survey_name
 
         super().__init__(
             nside=nside,
@@ -134,6 +133,9 @@ class FieldSurvey(BaseSurvey):
             detailers=detailers,
             ignore_obs=ignore_obs,
             survey_name=self.survey_name,
+            target_name=target_name,
+            science_program=science_program,
+            observation_reason=observation_reason,
         )
         self.accept_obs = accept_obs
         if isinstance(self.accept_obs, str):
@@ -180,10 +182,7 @@ class FieldSurvey(BaseSurvey):
                     obs["RA"] = self.ra
                     obs["dec"] = self.dec
                     obs["nexp"] = nexps[filtername]
-                    obs["target_name"] = self.target_name
                     obs["scheduler_note"] = self.scheduler_note
-                    obs["science_program"] = self.science_program
-                    obs["observation_reason"] = self.observation_reason
                     self.observations.append(obs)
         else:
             self.observations = sequence
@@ -213,9 +212,9 @@ class FieldSurvey(BaseSurvey):
         self.extra_features["ObsRecorded"] = NObsSurvey()
         self.extra_features["LastObs"] = LastObservation()
 
-    def _generate_survey_name(self):
-        if self.target_name is not None:
-            self.survey_name = self.target_name
+    def _generate_survey_name(self, target_name=None):
+        if target_name is not None:
+            self.survey_name = target_name
         else:
             self.survey_name = f"Field {self.ra_deg :.2f} {self.dec_deg :.2f}"
 

@@ -35,6 +35,7 @@ class GreedySurvey(BaseMarkovSurvey):
         camera="LSST",
         area_required=None,
         fields=None,
+        **kwargs,
     ):
         extra_features = {}
 
@@ -58,6 +59,7 @@ class GreedySurvey(BaseMarkovSurvey):
             camera=camera,
             area_required=area_required,
             fields=fields,
+            **kwargs,
         )
 
     def _generate_survey_name(self):
@@ -93,11 +95,6 @@ class GreedySurvey(BaseMarkovSurvey):
                 obs["nexp"] = self.nexp
                 obs["exptime"] = self.exptime
                 obs["scheduler_note"] = self.scheduler_note
-                obs["target_name"] = self.target_name
-                obs["science_program"] = self.science_program
-                obs["observation_reason"] = self.observation_reason
-                obs["json_block"] = self.json_block
-
                 observations.append(obs)
                 break
             iter += 1
@@ -196,6 +193,9 @@ class BlobSurvey(GreedySurvey):
         search_radius=None,
         alt_max=-9999,
         az_range=-9999,
+        target_name=None,
+        observation_reason=None,
+        science_program=None,
     ):
         if search_radius is not None:
             warnings.warn("search_radius unused, remove kwarg", DeprecationWarning, 2)
@@ -235,6 +235,9 @@ class BlobSurvey(GreedySurvey):
             fields=fields,
             survey_name=self.survey_name,
             scheduler_note=scheduler_note,
+            target_name=target_name,
+            science_program=science_program,
+            observation_reason=observation_reason,
         )
         self.flush_time = flush_time / 60.0 / 24.0  # convert to days
         self.nexp = nexp
@@ -515,10 +518,6 @@ class BlobSurvey(GreedySurvey):
             obs["scheduler_note"] = self.scheduler_note
             obs["block_id"] = self.counter
             obs["flush_by_mjd"] = flush_time
-            obs["target_name"] = self.target_name
-            obs["science_program"] = self.science_program
-            obs["observation_reason"] = self.observation_reason
-            obs["json_block"] = self.json_block
             observations.append(obs)
             counter2 += 1
 
