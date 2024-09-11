@@ -46,7 +46,6 @@ class TestSimArchive(unittest.TestCase):
 
         # Run the simulation
         sim_runner_kwargs = {
-            "mjd_start": mjd_start,
             "survey_length": survey_length,
             "record_rewards": True,
         }

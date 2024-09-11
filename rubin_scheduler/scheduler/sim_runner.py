@@ -18,7 +18,6 @@ def sim_runner(
     observatory,
     scheduler,
     filter_scheduler=None,
-    mjd_start=None,
     survey_length=3.0,
     filename=None,
     delete_past=True,
@@ -73,19 +72,14 @@ def sim_runner(
     if filter_scheduler is None:
         filter_scheduler = SimpleFilterSched()
 
-    if mjd_start is None:
-        mjd = observatory.mjd + 0
-        mjd_start = mjd + 0
-    else:
-        mjd = mjd_start + 0
-        observatory.mjd = mjd
+    mjd0 = observatory.mjd + 0
+    mjd = observatory.mjd
 
-    end_mjd = mjd + survey_length
+    end_mjd = mjd0 + survey_length
     observations = empty_observation(n=start_result_size)
-    mjd_track = mjd + 0
+    mjd_track = mjd0 + 0
     step = 1.0 / 24.0
     step_none = step_none / 60.0 / 24.0  # to days
-    mjd_run = end_mjd - mjd_start
     nskip = 0
 
     mjd_last_flush = -1
@@ -159,7 +153,7 @@ def sim_runner(
         mjd = observatory.mjd + 0
         if verbose:
             if (mjd - mjd_track) > step:
-                progress = np.max((mjd - mjd_start) / mjd_run * 100)
+                progress = np.max((mjd - mjd0) / survey_length * 100)
                 text = "\rprogress = %.2f%%" % progress
                 sys.stdout.write(text)
                 sys.stdout.flush()
