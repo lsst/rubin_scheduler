@@ -1,5 +1,6 @@
 __all__ = ("ModelObservatory",)
 
+import copy
 import warnings
 
 import healpy as hp
@@ -126,6 +127,18 @@ class ModelObservatory:
         to the next night. Default "sun_n12_rising", e.g., sun at
         -12 degrees and rising. Other options are "sun_n18_rising"
         and "sunrise".
+    tel_az_limits : `list` [[`float`, `float`]]
+        A list of lists giving valid azimuth ranges. e.g.,
+        [0, 180] would mean all azimuth values are valid, while
+        [[0, 90], [270, 360]] or [270, 90] would mean anywhere in
+        the south is invalid.  Degrees.
+    tel_alt_limits : `list` [[`float`, `float`]]
+        A list of lists giving valid altitude ranges. Degrees.
+        For both the alt and az limits, if a particular alt (or az)
+        value is included in any limit, it is valid for all of them.
+        Altitude limits of [[20, 40], [40, 60]] would allow altitudes
+        betwen 20-40 and 40-60, but [[20, 40], [40, 60], [20, 86]]
+        will allow altitudes anywhere between 20-86 degrees.
     telescope : `str`
         Telescope name for rotation computations. Default "rubin".
     """
@@ -152,6 +165,8 @@ class ModelObservatory:
         wind_data=None,
         starting_time_key="sun_n12_setting",
         ending_time_key="sun_n12_rising",
+        tel_alt_limits=None,
+        tel_az_limits=None,
         telescope="rubin",
     ):
         if nside is None:
@@ -284,6 +299,32 @@ class ModelObservatory:
         else:
             self.observatory = kinem_model
 
+        # Pick up tel alt and az limits from kwargs
+        if tel_alt_limits is not None:
+            self.tel_alt_limits = np.radians(tel_alt_limits)
+        else:
+            self.tel_alt_limits = None
+        if tel_az_limits is not None:
+            self.tel_az_limits = np.radians(tel_az_limits)
+        else:
+            self.tel_az_limits = None
+        # Add the observatory alt/az limits to the user-defined limits
+        # But we do have to be careful that we're not overriding more
+        # restrictive limits that were already set.
+        # So we'll just keep these separate.
+        self.kinematic_tel_alt_limits = copy.deepcopy(
+            [
+                self.observatory.telalt_minpos_rad,
+                self.observatory.telalt_maxpos_rad,
+            ]
+        )
+        self.kinematic_tel_az_limits = copy.deepcopy(
+            [self.observatory.telaz_minpos_rad, self.observatory.telaz_maxpos_rad]
+        )
+        # Each of these limits will be treated as hard limits that we don't
+        # want pointings to stray into, so add a pad around the values
+        self.altaz_limit_pad = np.radians(2.0)
+
         # Let's make sure we're at an openable MJD
         good_mjd = False
         to_set_mjd = mjd
@@ -345,7 +386,7 @@ class ModelObservatory:
         # Clouds. XXX--just the raw value
         self.conditions.bulk_cloud = self.cloud_data(current_time)
 
-        # use conditions object itself to get aprox altitude of each
+        # use conditions object itself to get approx altitude of each
         # healpx
         alts = self.conditions.alt
         azs = self.conditions.az
@@ -436,8 +477,11 @@ class ModelObservatory:
         self.conditions.mjd_start = self.mjd_start
 
         # Telescope limits
-        self.conditions.tel_az_limits = self.observatory.az_limits
-        self.conditions.tel_alt_limits = self.observatory.alt_limits
+        self.conditions.tel_az_limits = self.tel_az_limits
+        self.conditions.tel_alt_limits = self.tel_alt_limits
+        self.conditions.kinematic_alt_limits = self.kinematic_tel_alt_limits
+        self.conditions.kinematic_az_limits = self.kinematic_tel_az_limits
+        self.conditions.altaz_limit_pad = self.altaz_limit_pad
 
         # Planet positions from almanac
         self.conditions.planet_positions = self.almanac.get_planet_positions(self.mjd)

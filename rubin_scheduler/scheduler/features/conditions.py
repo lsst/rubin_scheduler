@@ -77,168 +77,167 @@ class Conditions:
         """
         Attributes (Set on init)
         -----------
-        nside : int
+        nside : `int`
             Healpix resolution. All maps are set to this reslution.
         site : rubin_scheduler.Site object ('LSST')
             Contains static site-specific data (lat, lon, altitude, etc).
             Defaults to 'LSST'.
-        ra : np.array
+        ra : `np.ndarray`, (N,)
             A healpix array with the RA of each healpixel center (radians).
             Automatically generated.
-        dec : np.array
+        dec : `np.ndarray`, (N,)
             A healpix array with the Dec of each healpixel center (radians).
             Automatically generated.
 
         Attributes (to be set by user/telemetry stream/scheduler)
         -------------------------------------------
-        mjd : float
+        mjd : `float`
             Modified Julian Date (days).
-        bulk_cloud : float
+        bulk_cloud : `float`
             The fraction of sky covered by clouds. (In the future might
             update to transparency map)
-        cloud_map : np.array
+        cloud_map : `np.ndarray`, (N,)
             XXX--to be done. HEALpix array with cloudy pixels set to NaN.
-        slewtime : np.array
+        slewtime : `np.ndarray`, (N,)
             Healpix showing the slewtime to each healpixel center (seconds)
-        current_filter : str
+        current_filter : `str`
             The name of the current filter. (expect one of u, g, r, i, z, y).
-        mounted_filters : list of str
-            The filters that are currently mounted and thu available
-            (expect 5 of u, g, r, i, z, y)
-        night : int
+        mounted_filters : `list` [`str`]
+            The filters that are currently mounted and thus available
+            (expect 5 of u, g, r, i, z, y for LSSTCam).
+        night : `int`
             The current night number (days). Probably starts at 1.
-        skybrightness : dict of np.array
-            Dictionary keyed by filtername. Values are healpix arrays with
-            the sky brightness at each
+        skybrightness : `dict` {`str: `np.ndarray`, (N,)}
+            Dictionary keyed by filter name.
+            Values are healpix arrays with the sky brightness at each
             healpix center (mag/acsec^2)
-        fwhm_eff : dict of np.array
-            Dictionary keyed by filtername. Values are the effective seeing
-            FWHM at each healpix
+        fwhm_eff : `dict` {`str: `np.ndarray`, (N,)}
+            Dictionary keyed by filtername.
+            Values are the effective seeing FWHM at each healpix
             center (arcseconds)
-        moon_alt : float
+        moon_alt : `float`
             The altitude of the Moon (radians)
-        moon_az : float
+        moon_az : `float`
             The Azimuth of the moon (radians)
-        moon_ra : float
+        moon_ra : `float`
             RA of the moon (radians)
-        moon_dec : float
+        moon_dec : `float`
             Declination of the moon (radians)
-        moon_phase : float
+        moon_phase : `float`
             The Phase of the moon. (percent, 0=new moon, 100=full moon)
-        sun_alt : float
+        sun_alt : `float`
             The altitude of the sun (radians).
-        sun_az : float
+        sun_az : `float`
             The Azimuth of the sun (radians).
-        sun_ra : float
+        sun_ra : `float`
             The RA of the sun (radians).
-        sun_dec : float
+        sun_dec : `float`
             The Dec of the sun (radians).
-        tel_ra : float
+        tel_ra : `float`
             The current telescope RA pointing (radians).
-        tel_dec : float
+        tel_dec : `float`
             The current telescope Declination (radians).
-        tel_alt : float
+        tel_alt : `float`
             The current telescope altitude (radians).
-        tel_az : float
+        tel_az : `float`
             The current telescope azimuth (radians).
-        cumulative_azimuth_rad : float
-            The cummulative telescope azimuth (radians). For tracking
-            cable wrap
-        cloud_map : np.array
-            A healpix map with the cloud coverage. XXX-expand,
-            is this bool map? Transparency map?
-        airmass : np.array
+        cumulative_azimuth_rad : `float`
+            The cumulative telescope azimuth (radians).
+            Used for tracking cable wrap.
+        airmass : `np.ndarray`, (N,)
             A healpix map with the airmass value of each healpixel. (unitless)
-        wind_speed : float
+        wind_speed : `float`
             Wind speed (m/s).
-        wind_direction : float
+        wind_direction : `float`
             Direction from which the wind originates. A direction of
             0.0 degrees means the wind originates from the north and 90.0
             degrees from the east (radians).
-        sunset : float
+        sunset : `float`
             The MJD of sunset that starts the current night. Note MJDs of
             sunset, moonset, twilight times, etc are from interpolations.
             This means the sun may actually be slightly above/below the
             horizon at the given sunset time.
-        sun_n12_setting : float
-            The MJD of when the sun is at -12 degees altitude and
+        sun_n12_setting : `float`
+            The MJD of when the sun is at -12 degrees altitude and
             setting during the current night. From interpolation.
-        sun_n18_setting : float
+        sun_n18_setting : `float`
             The MJD when the sun is at -18 degrees altitude and setting
             during the current night. From interpolation.
-        sun_n18_rising : float
+        sun_n18_rising : `float`
             The MJD when the sun is at -18 degrees altitude and rising
             during the current night. From interpolation.
-        sun_n12_rising : float
+        sun_n12_rising : `float`
             The MJD when the sun is at -12 degrees altitude and rising
             during the current night. From interpolation.
-        sunrise : float
+        sunrise : `float`
             The MJD of sunrise during the current night. From interpolation
-        mjd_start : float
+        mjd_start : `float`
             The starting MJD of the survey.
-        moonrise : float
+        moonrise : `float`
             The MJD of moonrise during the current night. From interpolation.
-        moonset : float
-            The MJD of moonset during the current night. From interpolation.
-        moon_phase_sunset : float
-            The phase of the moon (0-100 illuminater) at sunset.
+        moonset : `float`
+            The MJD of moon set during the current night. From interpolation.
+        moon_phase_sunset : `float`
+            The phase of the moon (0-100 illuminated) at sunset.
             Useful for setting which filters should be loaded.
-        targets_of_opportunity : list of rubin_scheduler.scheduler.targetoO
+        targets_of_opportunity : `list` [`rubin_scheduler.scheduler.targetoO`]
             targetoO objects.
-        planet_positions : dict
+        planet_positions : `dict` {`str`: `float`}
             Dictionary of planet name and coordinate e.g., 'venus_RA',
             'mars_dec'
-        scheduled_observations : np.array
+        scheduled_observations : `np.ndarray`, (M,)
             A list of MJD times when there are scheduled observations.
             Defaults to empty array.
-        tel_az_limits : list of float pairs
+        tel_az_limits : `list` [[`float`, `float`]]
             A list of lists giving valid azimuth ranges. e.g.,
             [0, 2*np.pi] would mean all azimuth values are valid, while
             [[0, np.pi/2], [3*np.pi/2, 2*np.pi]] would mean anywhere in
             the south is invalid.  Radians.
-        tel_alt_limits : list of float pairs
+        tel_alt_limits : `list` [[`float`, `float`]]
             A list of lists giving valid altitude ranges. Radians.
+        altaz_limit_pad : `float`
+            Pad to surround the tel_az_limits and tel_alt_limits with.
 
         Attributes (calculated on demand and cached)
         ------------------------------------------
-        alt : np.array
-            Altitude of each healpixel (radians). Recaclulated if mjd is
+        alt : `np.ndarray`, (N,)
+            Altitude of each healpixel (radians). Recalculated if mjd is
             updated. Uses fast approximate equation for converting
             RA,Dec to alt,az.
-        az : np.array
-            Azimuth of each healpixel (radians). Recaclulated if mjd is
+        az : `np.ndarray`, (N,)
+            Azimuth of each healpixel (radians). Recalculated if mjd is
             updated. Uses fast approximate equation for converting RA,Dec
             to alt,az.
-        pa : np.array
-            The parallactic angle of each healpixel (radians). Recaclulated
+        pa : `np.ndarray`, (N,)
+            The parallactic angle of each healpixel (radians). Recalculated
             if mjd is updated. Based on the fast approximate alt,az values.
         season : `np.array`, (N,)
             The current season value (0-1) at each healpixel.
             Recalculated if mjd is updated. Used by features that would
             otherwise need to calculate `season`.
             Uses `rubin_scheduler.utils.calc_season`.
-        lmst : float
-            The local mean sidearal time (hours). Updates is mjd is changed.
-        m5_depth : dict of np.array
+        lmst : `float`
+            The local mean sidereal time (hours). Updates is mjd is changed.
+        m5_depth : `dict` {`str: `np.ndarray`, (N,)}
             the 5-sigma limiting depth healpix maps, keyed by filtername
             (mags). Will be recalculated if the skybrightness, seeing,
             or airmass are updated.
-        HA : np.array
+        HA : `np.ndarray`, (N,)
             Healpix map of the hour angle of each healpixel (radians).
             Runs from 0 to 2pi.
-        az_to_sun : np.array
+        az_to_sun : `np.ndarray`, (N,)
             Healpix map of the azimuthal distance to the sun for each
             healpixel (radians)
-        az_to_anitsun : np.array
+        az_to_anitsun : `np.ndarray`, (N,)
             Healpix map of the azimuthal distance to the anit-sun for each
             healpixel (radians)
-        solar_elongation : np.array
+        solar_elongation : `np.ndarray`, (N,)
             Healpix map of the solar elongation (angular distance to the sun)
             for each healpixel (radians)
 
         Attributes (set by the scheduler)
         -------------------------------
-        queue : list of observation objects
+        queue : `list` [`observation` objects]
             The current queue of observations core_scheduler is waiting to
             execute.
 
@@ -340,9 +339,19 @@ class Conditions:
         self.tel_az = None
         self.cumulative_azimuth_rad = None
 
-        # Telescope limits
+        # Telescope limits - these can be None
+        # These should be in radians.
         self.tel_az_limits = None
         self.tel_alt_limits = None
+        # Kinematic model (real slew) limits - these can't be None
+        # if you are using the AltAzShadowMaskBasisFunction.
+        # These generous limits won't restrict the AltAzShadowMask.
+        # Radians.
+        self.kinematic_alt_limits = [np.radians(-10), np.radians(100)]
+        self.kinematic_az_limits = [np.radians(-250), np.radians(250)]
+        # This has a (reasonable) default value, to avoid failure of
+        # AltAzShadowMask in case this isn't set otherwise.
+        self.altaz_limit_pad = np.radians(2)
 
         # Full sky cloud map
         self._cloud_map = None

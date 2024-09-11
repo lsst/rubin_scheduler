@@ -184,6 +184,150 @@ class TestBasis(unittest.TestCase):
         conditions.sun_alt = -20
         assert ~bf.check_feasibility(conditions)
 
+    def test_AltAzShadowMask(self):
+        nside = 32
+        conditions = Conditions(nside=nside)
+        conditions.mjd = 59000.0
+        conditions.altaz_limit_pad = np.radians(2.0)
+        conditions.kinematic_az_limits = [np.radians(-250), np.radians(250)]
+        conditions.kinematic_alt_limits = [np.radians(-100), np.radians(100)]
+        # With no (real) limits, including no limits in conditions
+        bf = basis_functions.AltAzShadowMaskBasisFunction(
+            nside=nside, min_alt=0, max_alt=90, min_az=0, max_az=360, shadow_minutes=0
+        )
+        result = bf(conditions)
+        self.assertTrue(np.all(np.isnan(result[np.where(conditions.alt < 0)])))
+        self.assertTrue(np.all(result[np.where(conditions.alt >= 0)] == 0))
+        # Set altitude limits
+        bf = basis_functions.AltAzShadowMaskBasisFunction(
+            nside=nside, min_alt=40, max_alt=60, min_az=0, max_az=360, shadow_minutes=0
+        )
+        result = bf(conditions)
+        good = np.where((conditions.alt > np.radians(40)) & (conditions.alt < np.radians(60)), True, False)
+        self.assertTrue(np.all(np.isnan(result[~good])))
+        self.assertTrue(np.all(result[good] == 0))
+        # And set azimuth limits
+        bf = basis_functions.AltAzShadowMaskBasisFunction(
+            nside=nside, min_alt=-90, max_alt=90, min_az=90, max_az=180, shadow_minutes=0
+        )
+        result = bf(conditions)
+        good = np.where((conditions.az > np.radians(90)) & (conditions.az < np.radians(180)), True, False)
+        self.assertTrue(np.all(np.isnan(result[~good])))
+        self.assertTrue(np.all(result[good] == 0))
+        # And set azimuth limits - order sensitive
+        bf = basis_functions.AltAzShadowMaskBasisFunction(
+            nside=nside, min_alt=-90, max_alt=90, min_az=180, max_az=90, shadow_minutes=0
+        )
+        result = bf(conditions)
+        good = np.where((conditions.az > np.radians(180)) | (conditions.az < np.radians(90)), True, False)
+        self.assertTrue(np.all(np.isnan(result[~good])))
+        self.assertTrue(np.all(result[good] == 0))
+        # And set altitude limits from the conditions
+        conditions.tel_alt_limits = [[np.radians(40), np.radians(60)]]
+        bf = basis_functions.AltAzShadowMaskBasisFunction(
+            nside=nside, min_alt=0, max_alt=90, min_az=0, max_az=360, shadow_minutes=0
+        )
+        result = bf(conditions)
+        good = np.where((conditions.alt > np.radians(42)) & (conditions.alt < np.radians(58)), True, False)
+        self.assertTrue(np.all(np.isnan(result[~good])))
+        self.assertTrue(np.all(result[good] == 0))
+        # Set multiple altitude limits from the conditions
+        conditions.tel_alt_limits = [[np.radians(40), np.radians(60)], [np.radians(80), np.radians(90)]]
+        bf = basis_functions.AltAzShadowMaskBasisFunction(
+            nside=nside, min_alt=-90, max_alt=90, min_az=0, max_az=360, shadow_minutes=0
+        )
+        result = bf(conditions)
+        # Conditions value get padded
+        good = np.where(
+            ((conditions.alt > np.radians(42)) & (conditions.alt < np.radians(58)))
+            | ((conditions.alt > np.radians(82)) & (conditions.alt < np.radians(88))),
+            True,
+            False,
+        )
+        self.assertTrue(np.all(np.isnan(result[~good])))
+        self.assertTrue(np.all(result[good] == 0))
+        # Set azimuth limits
+        conditions.tel_alt_limits = None
+        conditions.tel_az_limits = [[np.radians(270), np.radians(90)]]
+        bf = basis_functions.AltAzShadowMaskBasisFunction(
+            nside=nside, min_alt=-90, max_alt=90, min_az=0, max_az=360, shadow_minutes=0
+        )
+        result = bf(conditions)
+        # Conditions value get padded, but we should be able to mask this area
+        # at a minimum
+        good = np.where(
+            (conditions.az > np.radians(270)) | (conditions.az < np.radians(90)),
+            True,
+            False,
+        )
+        self.assertTrue(np.all(np.isnan(result[~good])))
+        # Set azimuth limits, direction sensitive
+        conditions.tel_alt_limits = None
+        conditions.tel_az_limits = [[np.radians(90), np.radians(270)]]
+        bf = basis_functions.AltAzShadowMaskBasisFunction(
+            nside=nside, min_alt=-90, max_alt=90, min_az=0, max_az=360, shadow_minutes=0
+        )
+        result = bf(conditions)
+        good = np.where(
+            (conditions.az < np.radians(268)) & (conditions.az > np.radians(92)),
+            True,
+            False,
+        )
+        # Check this area is masked
+        self.assertTrue(np.all(np.isnan(result[~good])))
+        self.assertTrue(np.all(result[good] == 0))
+        # Set altitude limits from kinematic model
+        conditions.tel_alt_limits = None
+        conditions.kinematic_alt_limits = [np.radians(20), np.radians(86.5)]
+        conditions.tel_az_limits = None
+        bf = basis_functions.AltAzShadowMaskBasisFunction(
+            nside=nside, min_alt=-90, max_alt=90, min_az=0, max_az=360, shadow_minutes=0
+        )
+        result = bf(conditions)
+        good = np.where(
+            (conditions.alt > np.radians(22)) & (conditions.alt < np.radians(84.5)),
+            True,
+            False,
+        )
+        # Check this area is masked
+        self.assertTrue(np.all(np.isnan(result[~good])))
+        self.assertTrue(np.all(result[good] == 0))
+        # Set azimuth limits from kinematic model
+        conditions.tel_alt_limits = None
+        conditions.tel_az_limits = None
+        conditions.kinematic_az_limits = [np.radians(90), np.radians(270)]
+        conditions.kinematic_alt_limits = [np.radians(-100), np.radians(100)]
+        bf = basis_functions.AltAzShadowMaskBasisFunction(
+            nside=nside, min_alt=-90, max_alt=90, min_az=0, max_az=360, shadow_minutes=0
+        )
+        result = bf(conditions)
+        good = np.where(
+            (conditions.az < np.radians(268)) & (conditions.az > np.radians(92)),
+            True,
+            False,
+        )
+        # Check this area is masked
+        self.assertTrue(np.all(np.isnan(result[~good])))
+        self.assertTrue(np.all(result[good] == 0))
+        # Check very simple shadow minutes
+        # Set azimuth limits from kinematic model
+        conditions.tel_alt_limits = None
+        conditions.tel_az_limits = None
+        conditions.kinematic_az_limits = [np.radians(-250), np.radians(250)]
+        conditions.kinematic_alt_limits = [np.radians(-100), np.radians(100)]
+        bf = basis_functions.AltAzShadowMaskBasisFunction(
+            nside=nside, min_alt=20, max_alt=85, min_az=0, max_az=360, shadow_minutes=0
+        )
+        result = bf(conditions)
+        bf = basis_functions.AltAzShadowMaskBasisFunction(
+            nside=nside, min_alt=20, max_alt=85, min_az=0, max_az=360, shadow_minutes=30
+        )
+        result_shadow = bf(conditions)
+        overlap = np.where(np.isnan(result) & ~np.isnan(result_shadow))
+        self.assertTrue(len(overlap[0]) == 0)
+        overlap = np.where(np.isnan(result_shadow) & ~np.isnan(result))
+        self.assertTrue(len(overlap[0]) > 0)
+
     def test_deprecated(self):
         deprecated_basis_functions = [
             basis_functions.NearSunTwilightBasisFunction,
@@ -191,8 +335,11 @@ class TestBasis(unittest.TestCase):
             basis_functions.AvoidLongGapsBasisFunction,
             basis_functions.FootprintNvisBasisFunction,
             basis_functions.GoalStrictFilterBasisFunction,
+            basis_functions.ZenithShadowMaskBasisFunction,
+            basis_functions.MaskAzimuthBasisFunction,
         ]
         for dep_bf in deprecated_basis_functions:
+            print(dep_bf)
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
                 dep_bf()

@@ -45,6 +45,7 @@ __all__ = (
     "RewardNObsSequence",
     "FilterDistBasisFunction",
     "RewardRisingBasisFunction",
+    "send_unused_deprecation_warning",
 )
 
 import warnings
@@ -1393,8 +1394,13 @@ class SlewtimeBasisFunction(BaseBasisFunction):
     def _calc_value(self, conditions, indx=None):
         # If we are in a different filter, the
         # FilterChangeBasisFunction will take it
+        # But we can still use the MASK returned by
+        # the slewtime map to remove inaccessible parts of the sky
         if conditions.current_filter != self.filtername:
-            result = 0
+            if np.size(conditions.slewtime) > 1:
+                result = np.where(np.isfinite(conditions.slewtime), 0, np.nan)
+            else:
+                result = 0
         else:
             # Need to make sure smaller slewtime is larger reward.
             if np.size(conditions.slewtime) > 1:
@@ -1424,7 +1430,7 @@ class AggressiveSlewtimeBasisFunction(BaseBasisFunction):
         self.maxtime = max_time
         self.hard_max = hard_max
         self.order = order
-        self.result = np.zeros(hp.nside2npix(nside), dtype=float)
+        self.result = np.zeros(hp.nside2npix(self.nside), dtype=float)
         send_unused_deprecation_warning(self.__class__.__name__)
 
     def _calc_value(self, conditions, indx=None):
