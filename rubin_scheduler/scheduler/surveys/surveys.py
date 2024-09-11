@@ -178,7 +178,6 @@ class BlobSurvey(GreedySurvey):
         seed=42,
         ignore_obs=None,
         survey_name=None,
-        scheduler_note=None,
         detailers=None,
         camera="LSST",
         twilight_scale=True,
@@ -189,7 +188,6 @@ class BlobSurvey(GreedySurvey):
         area_required=None,
         max_radius_peak=40.0,
         fields=None,
-        survey_note=None,
         search_radius=None,
         alt_max=-9999,
         az_range=-9999,
@@ -214,11 +212,6 @@ class BlobSurvey(GreedySurvey):
         else:
             self.survey_name = survey_name
 
-        if scheduler_note is None:
-            if survey_note is not None:
-                scheduler_note = survey_note
-                warnings.warn("survey_note is deprecated - use scheduler_note", DeprecationWarning, 2)
-
         super(BlobSurvey, self).__init__(
             basis_functions=basis_functions,
             basis_weights=basis_weights,
@@ -234,7 +227,6 @@ class BlobSurvey(GreedySurvey):
             area_required=area_required,
             fields=fields,
             survey_name=self.survey_name,
-            scheduler_note=scheduler_note,
             target_name=target_name,
             science_program=science_program,
             observation_reason=observation_reason,

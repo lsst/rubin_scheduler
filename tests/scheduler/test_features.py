@@ -81,6 +81,35 @@ class TestFeatures(unittest.TestCase):
         pin.add_observation(obs, indx=indx)
         self.assertEqual(np.max(pin.feature), 2.0)
 
+    def test_note_in_night(self):
+        obs = empty_observation()
+
+        plain_feature = features.NoteInNight()
+        plain_feature.add_observation(obs)
+
+        assert plain_feature.feature == 1
+
+        note_feature = features.NoteInNight(notes=["asdafas", "widget"])
+        note_feature.add_observation(obs)
+
+        assert note_feature.feature == 0
+
+        obs["scheduler_note"] = "asdafas"
+        note_feature.add_observation(obs)
+
+        assert note_feature.feature == 1
+
+        # should only match if exact
+        obs["scheduler_note"] = "asdafa"
+        note_feature.add_observation(obs)
+
+        assert note_feature.feature == 1
+
+        obs["scheduler_note"] = "widget"
+        note_feature.add_observation(obs)
+
+        assert note_feature.feature == 2
+
     def test_conditions(self):
         observatory = ModelObservatory(init_load_length=1, mjd_start=survey_start_mjd())
         conditions = observatory.return_conditions()
@@ -339,7 +368,7 @@ class TestFeatures(unittest.TestCase):
         count_feature = features.NObsSurvey(note=None)
         # ... it matters significantly that we pass obs[0] and not obs.
         for obs in observations_list:
-            count_feature.add_observation(obs[0])
+            count_feature.add_observation(obs)
         self.assertTrue(count_feature.feature == 2)
         # and count again using add_observations_array
         count_feature = features.NObsSurvey(note=None)
@@ -349,7 +378,7 @@ class TestFeatures(unittest.TestCase):
         # Count the observations matching specific note
         count_feature = features.NObsSurvey(note="survey a")
         for obs in observations_list:
-            count_feature.add_observation(obs[0])
+            count_feature.add_observation(obs)
         self.assertTrue(count_feature.feature == 1)
         # and count again using add_observations_array
         count_feature = features.NObsSurvey(note="survey a")
@@ -358,7 +387,7 @@ class TestFeatures(unittest.TestCase):
         # Count the observations matching subset of note
         count_feature = features.NObsSurvey(note="survey")
         for obs in observations_list:
-            count_feature.add_observation(obs[0])
+            count_feature.add_observation(obs)
         self.assertTrue(count_feature.feature == 2)
         # and count again using add_observations_array
         count_feature = features.NObsSurvey(note="survey")
@@ -380,7 +409,7 @@ class TestFeatures(unittest.TestCase):
         # Observations matching any note
         count_feature = features.LastObservation(scheduler_note=None)
         for obs in observations_list:
-            count_feature.add_observation(obs[0])
+            count_feature.add_observation(obs)
         self.assertTrue(count_feature.feature["mjd"] == observations_list[-1]["mjd"])
         # and count again using add_observations_array
         count_feature = features.LastObservation(scheduler_note=None)
@@ -389,7 +418,7 @@ class TestFeatures(unittest.TestCase):
         # Observations matching a specific note.
         count_feature = features.LastObservation(scheduler_note="survey a")
         for obs in observations_list:
-            count_feature.add_observation(obs[0])
+            count_feature.add_observation(obs)
         self.assertTrue(count_feature.feature["mjd"] == observations_list[-2]["mjd"])
         # and count again using add_observations_array
         count_feature = features.LastObservation(scheduler_note="survey a")
@@ -398,7 +427,7 @@ class TestFeatures(unittest.TestCase):
         # Observations matching a subset of note.
         count_feature = features.LastObservation(scheduler_note="survey")
         for obs in observations_list:
-            count_feature.add_observation(obs[0])
+            count_feature.add_observation(obs)
         self.assertTrue(count_feature.feature["mjd"] == observations_list[-1]["mjd"])
         # and count again using add_observations_array
         count_feature = features.LastObservation(scheduler_note="survey")
@@ -433,7 +462,7 @@ class TestFeatures(unittest.TestCase):
         # Observations matching any note or filter
         count_feature = features.NObservations(filtername=None, scheduler_note=None)
         for obs, indx in zip(observations_list, indexes):
-            count_feature.add_observation(obs[0], indx)
+            count_feature.add_observation(obs, indx)
         self.assertTrue(count_feature.feature.max() == 6)
         # and count again using add_observations_array
         count_feature = features.NObservations(filtername=None, scheduler_note=None)
@@ -442,7 +471,7 @@ class TestFeatures(unittest.TestCase):
         # Observations matching a specific note - or are partial matches.
         count_feature = features.NObservations(scheduler_note="survey a")
         for obs, indx in zip(observations_list, indexes):
-            count_feature.add_observation(obs[0], indx)
+            count_feature.add_observation(obs, indx)
         self.assertTrue(count_feature.feature.max() == 4)
         # and count again using add_observations_array
         # Observations matching a specific note.
@@ -454,7 +483,7 @@ class TestFeatures(unittest.TestCase):
         # used with "note" in the example /baseline scheduler.
         count_feature = features.NObservations(scheduler_note="survey")
         for obs, indx in zip(observations_list, indexes):
-            count_feature.add_observation(obs[0], indx)
+            count_feature.add_observation(obs, indx)
         self.assertTrue(count_feature.feature.max() == 2)
         # and count again using add_observations_array
         count_feature = features.NObservations(scheduler_note="survey")
@@ -463,7 +492,7 @@ class TestFeatures(unittest.TestCase):
         # Observations matching any note but specified filter.
         count_feature = features.NObservations(filtername="r", scheduler_note=None)
         for obs, indx in zip(observations_list, indexes):
-            count_feature.add_observation(obs[0], indx)
+            count_feature.add_observation(obs, indx)
         self.assertTrue(count_feature.feature.max() == 3)
         # and count again using add_observations_array
         count_feature = features.NObservations(filtername="r", scheduler_note=None)
@@ -472,7 +501,7 @@ class TestFeatures(unittest.TestCase):
         # Observations matching specific note and  specified filter.
         count_feature = features.NObservations(filtername="r", scheduler_note="survey")
         for obs, indx in zip(observations_list, indexes):
-            count_feature.add_observation(obs[0], indx)
+            count_feature.add_observation(obs, indx)
         self.assertTrue(count_feature.feature.max() == 1)
         # and count again using add_observations_array
         count_feature = features.NObservations(filtername="r", scheduler_note="survey")

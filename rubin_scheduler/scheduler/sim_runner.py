@@ -127,9 +127,9 @@ def sim_runner(
                     anomalous_overhead_func(completed_obs["visittime"], completed_obs["slewtime"]) / 86400
                 )
 
-            scheduler.add_observation(completed_obs[0])
+            scheduler.add_observation(completed_obs)
             observations[counter] = completed_obs[0]
-            filter_scheduler.add_observation(completed_obs[0])
+            filter_scheduler.add_observation(completed_obs)
             counter += 1
             if counter == observations.size:
                 add_observations = empty_observation(n=append_result_size)

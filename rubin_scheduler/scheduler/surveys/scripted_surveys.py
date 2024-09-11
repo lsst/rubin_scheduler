@@ -19,9 +19,11 @@ class ScriptedSurvey(BaseSurvey):
     Parameters
     ----------
     basis_functions : list of rubin_scheduler.scheduler.BasisFunction
-        Basis functions to use. These are only used for masking regions
-        of the sky and computing survey feasibility. They do not
-        contribute to the logic of how observations are selected.
+        Basis functions to use. These are only used for computing
+        survey feasibility. They do not contribute to the logic of
+        how observations are selected. Basis functions that return
+        HEALpix maps are ignored. Spatial masking is instead done
+        with the `_check_alts_ha` method.
     id_start : `int` (1)
         The integer to start the "scripted id" field with. Bad things
         could happen if you have multiple scripted survey objects with
@@ -83,6 +85,10 @@ class ScriptedSurvey(BaseSurvey):
             survey_name=survey_name,
         )
         self.clear_script()
+
+        # Just to be clear that the script should
+        # be setting scheduler_note, not the survey.
+        self.scheduler_note = None
 
     def add_observations_array(self, observations_array_in, observations_hpid_in):
         if self.obs_wanted is not None:

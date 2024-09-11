@@ -163,9 +163,9 @@ def gen_blob_surveys(nside):
             # Need to scale weights up so filter balancing works properly.
             weights = np.array([6.0, 0.6, 3.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         if filtername2 is None:
-            scheduler_note = "blob, %s" % filtername
+            survey_name = "blob, %s" % filtername
         else:
-            scheduler_note = "blob, %s%s" % (filtername, filtername2)
+            survey_name = "blob, %s%s" % (filtername, filtername2)
         if filtername2 is not None:
             detailer_list.append(detailers.TakeAsPairsDetailer(filtername=filtername2))
 
@@ -176,7 +176,7 @@ def gen_blob_surveys(nside):
                 weights,
                 filtername1=filtername,
                 filtername2=filtername2,
-                scheduler_note=scheduler_note,
+                survey_name=survey_name,
                 ignore_obs="DD",
                 detailers=detailer_list,
                 nside=nside,
