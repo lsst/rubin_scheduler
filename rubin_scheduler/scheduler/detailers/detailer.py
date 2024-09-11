@@ -12,6 +12,7 @@ __all__ = (
     "ParallacticRotationDetailer",
     "FlushByDetailer",
     "RandomFilterDetailer",
+    "TrackingInfoDetailer",
 )
 
 import copy
@@ -78,6 +79,27 @@ class BaseDetailer:
         -------
         List of observations.
         """
+
+        return observation_list
+
+
+class TrackingInfoDetailer(BaseDetailer):
+    """Fill in lots of the different tracking strings for an observation."""
+
+    def __init__(self, target_name=None, science_program=None, observation_reason=None):
+        self.survey_features = {}
+        self.target_name = target_name
+        self.science_program = science_program
+        self.observation_reason = observation_reason
+
+    def __call__(self, observation_list, conditions):
+        for obs in observation_list:
+            if self.science_program is not None:
+                obs["science_program"] = self.science_program
+            if self.target_name is not None:
+                obs["target_name"] = self.target_name
+            if self.observation_reason is not None:
+                obs["observation_reason"] = self.observation_reason
 
         return observation_list
 
