@@ -13,6 +13,7 @@ __all__ = (
 import numpy as np
 from astropy.time import Time
 
+import rubin_scheduler.scheduler.features as features
 import rubin_scheduler.scheduler.basis_functions as basis_functions
 import rubin_scheduler.scheduler.detailers as detailers
 from rubin_scheduler.scheduler.model_observatory import (
@@ -521,6 +522,11 @@ def simple_pairs_survey(
         **BlobSurvey_params,
     )
 
+    # Tucking this here so we can look at how many observations
+    # recorded for this survey and what was the last one.
+    pair_survey.extra_features["ObsRecorded"] = features.NObsSurvey()
+    pair_survey.extra_features["LastObs"] = features.LastObservation()
+
     return pair_survey
 
 
@@ -663,6 +669,11 @@ def simple_greedy_survey(
         science_program=science_program,
         **GreedySurvey_params,
     )
+
+    # Tucking this here so we can look at how many observations
+    # recorded for this survey and what was the last one.
+    greedy_survey.extra_features["ObsRecorded"] = features.NObsSurvey()
+    greedy_survey.extra_features["LastObs"] = features.LastObservation()
 
     return greedy_survey
 

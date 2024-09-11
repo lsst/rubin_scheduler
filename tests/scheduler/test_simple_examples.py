@@ -11,7 +11,6 @@ from rubin_scheduler.scheduler.example import (
     simple_pairs_survey,
     update_model_observatory_sunset,
 )
-from rubin_scheduler.scheduler.model_observatory import ModelObservatory
 from rubin_scheduler.scheduler.schedulers import ComCamFilterSched, CoreScheduler
 from rubin_scheduler.utils import survey_start_mjd
 
@@ -58,7 +57,7 @@ class TestSurveyConveniences(unittest.TestCase):
         observatory = get_ideal_model_observatory(dayobs=self.day_obs_start, survey_start=self.survey_start)
         greedy = [simple_greedy_survey(filtername="r")]
         scheduler = CoreScheduler(greedy)
-        scheduler, observatory, observations = sim_runner(
+        observatory, scheduler, observations = sim_runner(
             observatory, scheduler, filter_scheduler=None, survey_length=0.7
         )
         # Current survey_start_mjd should produce ~1000 visits
@@ -67,13 +66,24 @@ class TestSurveyConveniences(unittest.TestCase):
         self.assertTrue(observations["mjd"].max() - observations["mjd"].min() > 0.4)
         self.assertTrue(np.unique(observations["scheduler_note"]).size == 1)
         self.assertTrue(np.unique(observations["scheduler_note"])[0] == "simple greedy r")
+        # Check that we tracked things appropriately
+        self.assertTrue(
+            len(observations) == scheduler.survey_lists[0][0].extra_features["ObsRecorded"].feature
+        )
+        self.assertTrue(
+            np.abs(
+                observations[-1]["mjd"]
+                - scheduler.survey_lists[0][0].extra_features["LastObs"].feature["mjd"]
+            )
+            < 15 / 60 / 60 / 24
+        )
 
     def test_simple_pairs_survey(self):
         # Just test that it still instantiates and provides observations.
         observatory = get_ideal_model_observatory(dayobs=self.day_obs_start, survey_start=self.survey_start)
         pairs = [simple_pairs_survey(filtername="r", filtername2="i")]
         scheduler = CoreScheduler(pairs)
-        scheduler, observatory, observations = sim_runner(
+        observatory, scheduler, observations = sim_runner(
             observatory, scheduler, filter_scheduler=None, survey_length=0.7
         )
         # Current survey_start_mjd should produce over ~950 visits
@@ -81,6 +91,17 @@ class TestSurveyConveniences(unittest.TestCase):
         self.assertTrue(len(observations) > 650)
         self.assertTrue(observations["mjd"].max() - observations["mjd"].min() > 0.4)
         self.assertTrue(np.unique(observations["scheduler_note"]).size == 2)
+        # Check that we tracked things appropriately
+        self.assertTrue(
+            len(observations) == scheduler.survey_lists[0][0].extra_features["ObsRecorded"].feature
+        )
+        self.assertTrue(
+            np.abs(
+                observations[-1]["mjd"]
+                - scheduler.survey_lists[0][0].extra_features["LastObs"].feature["mjd"]
+            )
+            < 15 / 60 / 60 / 24
+        )
 
     def test_simple_field_survey(self):
         # Just test that it still instantiates and provides observations.
@@ -98,7 +119,7 @@ class TestSurveyConveniences(unittest.TestCase):
         # the default field survey
         greedy = [simple_greedy_survey(filtername="r")]
         scheduler = CoreScheduler([field, greedy])
-        scheduler, observatory, observations = sim_runner(
+        observatory, scheduler, observations = sim_runner(
             observatory, scheduler, filter_scheduler=None, survey_length=0.7
         )
         # Current survey_start_mjd should produce over ~950 visits
@@ -113,6 +134,13 @@ class TestSurveyConveniences(unittest.TestCase):
         field_obs = observations[np.where(observations["target_name"] == "almost_cosmos")]
         self.assertTrue(field_obs.size > 200)
         self.assertTrue(np.all(field_obs["science_program"] == "BLOCK-TEST"))
+        self.assertTrue(field[0].extra_features["ObsRecorded"].feature == field_obs.size)
+        self.assertTrue(
+            np.abs(
+                field_obs[-1]["mjd"] - field[0].extra_features["LastObs"].feature["mjd"]
+            )
+            < 15 / 60 / 60 / 24
+        )
 
 
 if __name__ == "__main__":
