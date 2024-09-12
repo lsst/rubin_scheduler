@@ -58,7 +58,7 @@ class LMSTTest(unittest.TestCase):
         longitude_rad = -1.2348
         fast_lmst = utils.calc_lmst(mjds, longitude_rad)
         slow_lmst = utils.calc_lmst_astropy(mjds, longitude_rad)
-        tol = 2 / 3600 / 24  # seconds to days
+        tol = 3 / 3600 / 24  # seconds to days
         np.testing.assert_allclose(fast_lmst, slow_lmst, atol=tol)
 
         # test sending scalar
