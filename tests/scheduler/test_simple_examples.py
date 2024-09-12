@@ -31,8 +31,6 @@ class TestSurveyConveniences(unittest.TestCase):
         assert conditions.mjd == observatory.mjd
         # The model observatory automatically advanced to -12 deg sunset
         assert (conditions.mjd - self.survey_start) < 1
-        sun_ra_start = conditions.sun_ra_start
-        mjd_start = observatory.mjd_start
 
         newday = self.survey_start + 4
         new_dayobs = Time(newday, format="mjd", scale="utc").iso[:10]
@@ -40,10 +38,6 @@ class TestSurveyConveniences(unittest.TestCase):
         observatory = get_ideal_model_observatory(dayobs=new_dayobs, survey_start=self.survey_start)
         conditions = observatory.return_conditions()
         assert (conditions.mjd - newday) < 1
-        # Check that advancing the day did not change the expected location
-        # of the sun at the *start* of the survey
-        assert conditions.mjd_start == mjd_start
-        assert conditions.sun_ra_start == sun_ra_start
 
         # And update observatory to sunset, using a filter scheduler
         # that only has 'g' available

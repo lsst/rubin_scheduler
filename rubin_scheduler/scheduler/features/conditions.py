@@ -16,9 +16,7 @@ from rubin_scheduler.utils import (
     _approx_ra_dec2_alt_az,
     _hpid2_ra_dec,
     calc_lmst,
-    calc_season,
     m5_flat_sed,
-    survey_start_mjd,
 )
 
 
@@ -47,14 +45,6 @@ class Conditions:
         by basis functions, but are not used to calculate expected
         observation m5 values (such as when exposure time varies).
         Default 30 seconds.
-    mjd_start : `float`, optional
-        The starting MJD of the survey. Default uses
-        `rubin_scheduler.utils.survey_start_date()`.
-    season_map : `np.array`, (N,), optional
-        A HEALpix array that specifies the day offset when computing
-        the season for each HEALpix. Equivalent to season at mjd_start.
-    sun_ra_start : `float`, optional
-        The RA of the sun at the start of the survey (radians)
     mjd : `float`, optional
         The current MJD.
         Default of None is fine on init - will be updated by telemetry
@@ -69,9 +59,6 @@ class Conditions:
         nside=None,
         site="LSST",
         exptime=30.0,
-        mjd_start=survey_start_mjd(),
-        season_map=None,
-        sun_ra_start=None,
         mjd=None,
     ):
         """
@@ -211,11 +198,6 @@ class Conditions:
         pa : `np.ndarray`, (N,)
             The parallactic angle of each healpixel (radians). Recalculated
             if mjd is updated. Based on the fast approximate alt,az values.
-        season : `np.array`, (N,)
-            The current season value (0-1) at each healpixel.
-            Recalculated if mjd is updated. Used by features that would
-            otherwise need to calculate `season`.
-            Uses `rubin_scheduler.utils.calc_season`.
         lmst : `float`
             The local mean sidereal time (hours). Updates is mjd is changed.
         m5_depth : `dict` {`str: `np.ndarray`, (N,)}
@@ -252,18 +234,6 @@ class Conditions:
 
         self.site = Site(site)
         self.exptime = exptime
-
-        self.mjd_start = mjd_start
-
-        # Keep these named in both ways, for backwards compatibility for now
-        if season_map is None:
-            season_map = calc_season(np.degrees(self.ra), [self.mjd_start], self.mjd_start).flatten()
-        # season_offset in units of days -useful for season_calc calculations
-        self.season_offset = season_map * 365.25
-        # Season_map is useful for utils.calc_season calculations
-        self.season_map = season_map
-
-        self.sun_ra_start = sun_ra_start
 
         # Generate an empty map so we can copy when we need a new map
         self.zeros_map = np.zeros(hp.nside2npix(self.nside), dtype=float)
@@ -364,12 +334,6 @@ class Conditions:
 
         self.targets_of_opportunity = None
 
-        # self._season tracks the actual current
-        # observing season at each pixel
-        self._season = None
-        # int_season = np.floor(season)
-        self._int_season = None
-
         # Potential attributes that get computed
         self._solar_elongation = None
         self._az_to_sun = None
@@ -455,22 +419,6 @@ class Conditions:
             self.site.longitude_rad,
             self._mjd,
         )
-
-    @property
-    def season(self):
-        if self._season is None:
-            self.update_season()
-        return self._season
-
-    @property
-    def int_season(self):
-        if self._int_season is None:
-            self.update_season()
-        return self._int_season
-
-    def update_season(self):
-        self._season = self.season_map + (self.mjd - self.mjd_start) / 365.25
-        self._int_season = np.floor(self._season)
 
     @functools.lru_cache(maxsize=10)
     def future_alt_az(self, mjd):
@@ -572,7 +520,7 @@ class Conditions:
         return self._az_to_antisun
 
     def __repr__(self):
-        return f"<{self.__class__.__name__} mjd_start='{self.mjd_start}' at {hex(id(self))}>"
+        return f"<{self.__class__.__name__} mjd='{self.mjd}' at {hex(id(self))}>"
 
     def __str__(self):
         # If dependencies of to_markdown are not installed, fall back on repr
@@ -593,8 +541,6 @@ class Conditions:
         print("site: ", self.site.name, "  ", file=output)
         print("exptime: ", self.exptime, "  ", file=output)
         print("lmst: ", self.lmst, "  ", file=output)
-        print("season_offset: ", self.season_offset, "  ", file=output)
-        print("sun_RA_start: ", self.sun_ra_start, "  ", file=output)
         print("clouds: ", self.clouds, "  ", file=output)
         print("current_filter: ", self.current_filter, "  ", file=output)
         print("mounted_filters: ", self.mounted_filters, "  ", file=output)

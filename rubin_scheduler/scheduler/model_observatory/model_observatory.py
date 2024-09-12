@@ -343,9 +343,6 @@ class ModelObservatory:
         # (at present, this is not updated -- recreated, below).
         self.conditions = Conditions(
             nside=self.nside,
-            mjd_start=self.mjd_start,
-            season_map=self.season_map,
-            sun_ra_start=self.sun_ra_start,
         )
 
         self.obs_id_counter = 0
@@ -373,9 +370,6 @@ class ModelObservatory:
         """
         self.conditions = Conditions(
             nside=self.nside,
-            mjd_start=self.mjd_start,
-            season_map=self.season_map,
-            sun_ra_start=self.sun_ra_start,
             mjd=self.mjd,
         )
 
