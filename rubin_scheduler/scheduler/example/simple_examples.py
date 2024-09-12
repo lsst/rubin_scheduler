@@ -13,9 +13,9 @@ __all__ = (
 import numpy as np
 from astropy.time import Time
 
-import rubin_scheduler.scheduler.features as features
 import rubin_scheduler.scheduler.basis_functions as basis_functions
 import rubin_scheduler.scheduler.detailers as detailers
+import rubin_scheduler.scheduler.features as features
 from rubin_scheduler.scheduler.model_observatory import (
     KinemModel,
     ModelObservatory,

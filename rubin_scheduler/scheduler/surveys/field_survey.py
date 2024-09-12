@@ -246,7 +246,7 @@ class FieldSurvey(BaseSurvey):
         passed_accept = True
         if passed_ignore and self.accept_obs is not None:
             # Check if this observation matches any accept string.
-            checks = [io == str(observation["scheduler_note"]) for io in self.accept_obs]
+            checks = [io == str(observation["scheduler_note"][0]) for io in self.accept_obs]
             passed_accept = any(checks)
         # I think here I have to assume observation is an
         # array and not a dict.

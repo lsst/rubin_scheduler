@@ -136,9 +136,7 @@ class TestSurveyConveniences(unittest.TestCase):
         self.assertTrue(np.all(field_obs["science_program"] == "BLOCK-TEST"))
         self.assertTrue(field[0].extra_features["ObsRecorded"].feature == field_obs.size)
         self.assertTrue(
-            np.abs(
-                field_obs[-1]["mjd"] - field[0].extra_features["LastObs"].feature["mjd"]
-            )
+            np.abs(field_obs[-1]["mjd"] - field[0].extra_features["LastObs"].feature["mjd"])
             < 15 / 60 / 60 / 24
         )
 
