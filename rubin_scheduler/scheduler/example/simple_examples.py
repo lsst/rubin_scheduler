@@ -1,44 +1,40 @@
 __all__ = (
-    "get_model_observatory",
+    "get_ideal_model_observatory",
     "update_model_observatory_sunset",
     "standard_masks",
     "simple_rewards",
     "simple_pairs_survey",
     "simple_greedy_survey",
-    "get_basis_functions_field_survey",
-    "get_field_survey",
-    "get_sv_fields",
-    "prioritize_fields",
-    "get_comcam_sv_schedulers",
+    "simple_rewards_field_survey",
+    "simple_field_survey",
 )
 
-import copy
 
 import numpy as np
 from astropy.time import Time
 
 import rubin_scheduler.scheduler.basis_functions as basis_functions
 import rubin_scheduler.scheduler.detailers as detailers
-from rubin_scheduler.scheduler.detailers import CameraSmallRotPerObservationListDetailer
+import rubin_scheduler.scheduler.features as features
 from rubin_scheduler.scheduler.model_observatory import (
     KinemModel,
     ModelObservatory,
     rotator_movement,
     tma_movement,
 )
-from rubin_scheduler.scheduler.schedulers import ComCamFilterSched, CoreScheduler, FilterSwapScheduler
+from rubin_scheduler.scheduler.schedulers import FilterSwapScheduler
 from rubin_scheduler.scheduler.surveys import BlobSurvey, FieldSurvey, GreedySurvey
 from rubin_scheduler.scheduler.utils import Footprint, get_current_footprint
 from rubin_scheduler.site_models import Almanac, ConstantSeeingData, ConstantWindData
 from rubin_scheduler.utils import survey_start_mjd
 
 
-def get_model_observatory(
+def get_ideal_model_observatory(
     dayobs: str = "2024-09-09",
-    fwhm_500: float = 2.0,
+    fwhm_500: float = 1.6,
     wind_speed: float = 5.0,
     wind_direction: float = 340,
-    tma_percent: float = 10,
+    tma_percent: float = 70,
     rotator_percent: float = 100,
     survey_start: Time = Time("2024-09-09T12:00:00", format="isot", scale="utc").mjd,
 ) -> ModelObservatory:
@@ -58,7 +54,7 @@ def get_model_observatory(
     fwhm_500 : `float`, optional
         The value to set for atmospheric component of seeing,
          constant seeing throughout the night (arcseconds).
-        Ad-hoc default for start of comcam on-sky operations about 2.0".
+        Ad-hoc value for start of comcam on-sky operations about 2.0".
     wind_speed : `float`, optional
         Set a (constant) wind speed for the night, (m/s).
         Default of 5.0 is minimal but noticeable.
@@ -68,7 +64,7 @@ def get_model_observatory(
         the site (see SITCOMTN-126).
     tma_percent : `float`, optional
         Set a percent of full-performance for the telescope TMA (0-100).
-        Default of 10(%) is likely for start of comcam on-sky SV surveys.
+        Value of 10(%) is likely for start of comcam on-sky SV surveys.
     rotator_percent : `float`, optional
         Set a percent of full-performance for the rotator.
         Default of 100% is likely for the start of comcam on-sky SV surveys.
@@ -123,8 +119,7 @@ def get_model_observatory(
 def update_model_observatory_sunset(
     observatory: ModelObservatory, filter_scheduler: FilterSwapScheduler, twilight: int | float = -12
 ) -> ModelObservatory:
-    """Move model observatory to twilight and ensure correct filters are in
-    place according to the filter_scheduler.
+    """Ensure correct filters are in place according to the filter_scheduler.
 
     Parameters
     ----------
@@ -346,6 +341,7 @@ def simple_pairs_survey(
     pair_time: float = 30.0,
     exptime: float = 30.0,
     nexp: int = 1,
+    science_program: str | None = None,
 ) -> BlobSurvey:
     """Set up a simple blob survey to acquire pairs of visits.
 
@@ -386,6 +382,9 @@ def simple_pairs_survey(
         The on-sky exposure time per visit.
     nexp : `int`
         The number of exposures per visit (exptime * nexp = total on-sky time).
+    science_program : `str` | None
+        The science_program key for the FieldSurvey.
+        This maps to the BLOCK and `science_program` in the consDB.
 
     Returns
     -------
@@ -473,9 +472,9 @@ def simple_pairs_survey(
 
     # Set up blob surveys.
     if filtername2 is None:
-        scheduler_note = "pair_%i, %s" % (pair_time, filtername)
+        survey_name = "simple pair %i, %s" % (pair_time, filtername)
     else:
-        scheduler_note = "pair_%i, %s%s" % (pair_time, filtername, filtername2)
+        survey_name = "simple pair %i, %s%s" % (pair_time, filtername, filtername2)
 
     # Set up detailers for each requested observation.
     detailer_list = []
@@ -500,7 +499,6 @@ def simple_pairs_survey(
         "slew_approx": 7.5,
         "filter_change_approx": 140.0,
         "read_approx": 2.4,
-        "search_radius": 30.0,
         "flush_time": pair_time * 3,
         "smoothing_kernel": None,
         "nside": nside,
@@ -516,12 +514,18 @@ def simple_pairs_survey(
         filtername2=filtername2,
         exptime=exptime,
         ideal_pair_time=pair_time,
-        scheduler_note=scheduler_note,
+        survey_name=survey_name,
         ignore_obs=ignore_obs,
         nexp=nexp,
         detailers=detailer_list,
+        science_program=science_program,
         **BlobSurvey_params,
     )
+
+    # Tucking this here so we can look at how many observations
+    # recorded for this survey and what was the last one.
+    pair_survey.extra_features["ObsRecorded"] = features.NObsSurvey()
+    pair_survey.extra_features["LastObs"] = features.LastObservation()
 
     return pair_survey
 
@@ -537,6 +541,7 @@ def simple_greedy_survey(
     camera_rot_limits: list[float] = [-80.0, 80.0],
     exptime: float = 30.0,
     nexp: int = 1,
+    science_program: str | None = None,
 ) -> GreedySurvey:
     """Set up a simple greedy survey to just observe single visits.
 
@@ -572,6 +577,9 @@ def simple_greedy_survey(
         The on-sky exposure time per visit.
     nexp : `int`
         The number of exposures per visit (exptime * nexp = total on-sky time).
+    science_program : `str` | None
+        The science_program key for the FieldSurvey.
+        This maps to the BLOCK and `science_program` in the consDB.
 
     Returns
     -------
@@ -624,8 +632,8 @@ def simple_greedy_survey(
         reward_basis_functions_weights = [val[1] for val in reward_functions]
         reward_basis_functions = [val[0] for val in reward_functions]
 
-    # Set up scheduler note.
-    scheduler_note = f"greedy {filtername}"
+    # Set up survey name, use also for scheduler note.
+    survey_name = f"simple greedy {filtername}"
 
     # Set up detailers for each requested observation.
     detailer_list = []
@@ -654,71 +662,40 @@ def simple_greedy_survey(
         reward_basis_functions_weights + mask_basis_functions_weights,
         filtername=filtername,
         exptime=exptime,
-        scheduler_note=scheduler_note,
+        survey_name=survey_name,
         ignore_obs=ignore_obs,
         nexp=nexp,
         detailers=detailer_list,
+        science_program=science_program,
         **GreedySurvey_params,
     )
+
+    # Tucking this here so we can look at how many observations
+    # recorded for this survey and what was the last one.
+    greedy_survey.extra_features["ObsRecorded"] = features.NObsSurvey()
+    greedy_survey.extra_features["LastObs"] = features.LastObservation()
 
     return greedy_survey
 
 
-def get_basis_functions_field_survey(
-    nside: int = 32,
-    wind_speed_maximum: float = 10,
-    moon_distance: float = 30,
-    min_alt: float = 20,
-    max_alt: float = 86,
-    min_az: float = 0,
-    max_az: float = 360,
-    shadow_minutes: float = 60,
+def simple_rewards_field_survey(
+    nside: int = 32, sun_alt_limit: float = -12.0
 ) -> list[basis_functions.BaseBasisFunction]:
-    """Get the basis functions for a comcam SV field survey.
+    """Get some simple rewards to observe a field survey for a long period.
 
     Parameters
     ----------
     nside : `int`
         The nside value for the healpix grid.
-    wind_speed_maximum : `float`
-        Maximum wind speed tolerated for the observations of the survey,
-        in m/s.
-    moon_distance : `float`, optional
-        Moon avoidance distance, in degrees.
-    min_alt : `float`, optional
-        Minimum altitude (in degrees) to observe.
-    max_alt : `float`, optional
-        Maximum altitude (in degrees) to observe.
-    min_az : `float`, optional
-        Minimum azimuth angle (in degrees) to observe.
-    max_az : `float`, optional
-        Maximum azimuth angle (in degrees) to observe.
-    shadow_minutes : `float`, optional
-        Avoid inaccessible alt/az regions, as well as parts of the sky
-        which will move into those regions within `shadow_minutes` (minutes).
-        For the FieldSurvey, this should probably be the length of time
-        required by the sequence in the FieldSurvey, to avoid tracking into
-        inaccessible areas of sky.
+    sun_alt_limit : `float`, optional
+        Value for the sun's altitude at which to allow observations to start
+        (or finish).
 
     Returns
     -------
     bfs : `list` of `~.scheduler.basis_functions.BaseBasisFunction`
     """
-    sun_alt_limit = -12.0
-    moon_distance = 30
-
-    bfs = standard_masks(
-        nside=nside,
-        moon_distance=moon_distance,
-        wind_speed_maximum=wind_speed_maximum,
-        min_alt=min_alt,
-        max_alt=max_alt,
-        min_az=min_az,
-        max_az=max_az,
-        shadow_minutes=shadow_minutes,
-    )
-
-    bfs += [
+    bfs = [
         basis_functions.NotTwilightBasisFunction(sun_alt_limit=sun_alt_limit),
         # Avoid revisits within 30 minutes
         basis_functions.AvoidFastRevisitsBasisFunction(nside=nside, filtername=None, gap_min=30.0),
@@ -733,15 +710,21 @@ def get_basis_functions_field_survey(
     return bfs
 
 
-def get_field_survey(
+def simple_field_survey(
     field_ra_deg: float,
     field_dec_deg: float,
     field_name: str,
-    basis_functions: list[basis_functions.BaseBasisFunction],
-    detailers: list[detailers.BaseDetailer],
+    mask_basis_functions: list[basis_functions.BaseBasisFunction] | None = None,
+    reward_basis_functions: list[basis_functions.BaseBasisFunction] | None = None,
+    detailers: list[detailers.BaseDetailer] | None = None,
+    sequence: str | list[str] = "ugrizy",
+    nvisits: dict | None = None,
+    exptimes: dict | None = None,
+    nexps: dict | None = None,
     nside: int = 32,
+    science_program: str | None = None,
 ) -> FieldSurvey:
-    """Set up a comcam SV field survey.
+    """Set up a simple field survey.
 
     Parameters
     ----------
@@ -754,15 +737,36 @@ def get_field_survey(
         transferred to the 'target' information in the output observation.
         Also used in 'scheduler_note', which is important for the FieldSurvey
         to know whether to count particular observations for the Survey.
-    basis_functions : `list` of [`~.scheduler.basis_function` objects]
-        Basis functions for the field survey.
-        A default set can be obtained from `get_basis_functions_field_survey`.
+    mask_basis_functions : `list` [`BaseBasisFunction`] or None
+        List of basis functions to use as masks (with implied weight 0).
+        If None, `standard_masks` is used with default parameters.
+    reward_basis_functions : `list` [`BaseBasisFunction`] or None
+        List of basis functions to use as rewards.
+        If None, a basic set of basis functions useful for long observations
+        of a field within a night will be used (`get
     detailers : `list` of [`~.scheduler.detailer` objects]
         Detailers for the survey.
         Detailers can add information to output observations, including
         specifying rotator or dither positions.
+    sequence : `str` or `list` [`str`]
+        The filters (in order?) for the sequence of observations.
+    nvisits : `dict` {`str`:`int`} | None
+        Number of visits per filter to program in the sequence.
+        Default of None uses
+        nvisits = {"u": 20, "g": 20, "r": 20, "i": 20, "z": 20, "y": 20}
+    exptimes : `dict` {`str`: `float`} | None
+        Exposure times per filter to program in the sequence.
+        Default of None uses
+        exptimes = {"u": 38, "g": 30, "r": 30, "i": 30, "z": 30, "y": 30}
+    nexps : `dict` {`str`: `int`} | None
+        Number of exposures per filter to program in the sequence.
+        Default of None uses
+        nexps = {"u": 1, "g": 2, "r": 2, "i": 2, "z": 2, "y": 2}
     nside : `int`, optional
         Nside for the survey. Default 32.
+    science_program : `str` | None
+        The science_program key for the FieldSurvey.
+        This maps to the BLOCK and `science_program` in the consDB.
 
     Returns
     -------
@@ -778,159 +782,37 @@ def get_field_survey(
     field_survey.extra_features['ObsRecord'] tracks how many observations
     have been accepted by the Survey (and can be useful for diagnostics).
     """
+    if mask_basis_functions is None:
+        mask_basis_functions = standard_masks(nside=nside)
+    if reward_basis_functions is None:
+        reward_basis_functions = simple_rewards_field_survey(nside=nside)
+    basis_functions = mask_basis_functions + reward_basis_functions
+
+    if nvisits is None:
+        nvisits = {"u": 20, "g": 20, "r": 20, "i": 20, "z": 20, "y": 20}
+    if exptimes is None:
+        exptimes = {"u": 38, "g": 30, "r": 30, "i": 30, "z": 30, "y": 30}
+    if nexps is None:
+        nexps = {"u": 1, "g": 2, "r": 2, "i": 2, "z": 2, "y": 2}
+
     field_survey = FieldSurvey(
         basis_functions,
         field_ra_deg,
         field_dec_deg,
-        sequence="ugrizy",
-        nvisits={"u": 20, "g": 20, "r": 20, "i": 20, "z": 20, "y": 20},
-        exptimes={"u": 38, "g": 30, "r": 30, "i": 30, "z": 30, "y": 30},
-        nexps={"u": 1, "g": 2, "r": 2, "i": 2, "z": 2, "y": 2},
+        sequence=sequence,
+        nvisits=nvisits,
+        exptimes=exptimes,
+        nexps=nexps,
         ignore_obs=None,
         accept_obs=[field_name],
         survey_name=field_name,
-        scheduler_note=None,
+        scheduler_note=field_name,
+        target_name=field_name,
         readtime=2.4,
         filter_change_time=120.0,
         nside=nside,
         flush_pad=30.0,
         detailers=detailers,
+        science_program=science_program,
     )
     return field_survey
-
-
-def get_sv_fields() -> dict[str, dict[str, float]]:
-    """Default potential fields for the SV surveys.
-
-    Returns
-    -------
-    fields_dict : `dict`  {`str` : {'RA' : `float`, 'Dec' : `float`}}
-        A dictionary keyed by field_name, containing RA and Dec (in degrees)
-        for each field.
-    """
-    fields = (
-        ("Rubin_SV_095_-25", 95.0, -25.0),  # High stellar densty, low extinction
-        ("Rubin_SV_125_-15", 125.0, -15.0),  # High stellar densty, low extinction
-        ("DESI_SV3_R1", 179.60, 0.000),  # DESI, GAMA, HSC DR2, KiDS-N
-        ("Rubin_SV_225_-40", 225.0, -40.0),  # 225 High stellar densty, low extinction
-        ("DEEP_A0", 216, -12.5),  # DEEP Solar Systen
-        ("Rubin_SV_250_2", 250.0, 2.0),  # 250 High stellar densty, low extinction
-        ("Rubin_SV_300_-41", 300.0, -41.0),  # High stellar densty, low extinction
-        ("Rubin_SV_280_-48", 280.0, -48.0),  # High stellar densty, low extinction
-        ("DEEP_B0", 310, -19),  # DEEP Solar System
-        ("ELAIS_S1", 9.45, -44.03),  # ELAIS-S1 LSST DDF
-        ("XMM_LSS", 35.575, -4.82),  # LSST DDF
-        ("ECDFS", 52.98, -28.1),  # ECDFS
-        ("COSMOS", 150.1, 2.23),  # COSMOS
-        ("EDFS_A", 58.9, -49.32),  # EDFS_a
-        ("EDFS_B", 63.6, -47.6),  # EDFS_b
-    )
-
-    fields_dict = dict(zip([f[0] for f in fields], [{"RA": f[1], "Dec": f[2]} for f in fields]))
-
-    return fields_dict
-
-
-def prioritize_fields(
-    priority_fields: list[str] | None = None, field_dict: dict[str, dict[str, float]] | None = None
-) -> list[list[FieldSurvey]]:
-    """Add the remaining field names in field_dict into the last
-    tier of 'priority_fields' field names, creating a complete
-    survey tier list of lists.
-
-    Parameters
-    ----------
-    priority_fields : `list` [`list`]
-        A list of lists, where each final list corresponds to a 'tier'
-        of FieldSurveys, and contains those field survey names.
-        These names must be present in field_dict.
-    field_dict :  `dict`  {`str` : {'RA' : `float`, 'Dec' : `float`}} or None
-        Dictionary containing field information for the FieldSurveys.
-        Default None will fetch the SV fields from 'get_sv_fields'.
-
-    Returns
-    -------
-    tiers : `list` [`list`]
-        The tiers to pass to the core scheduler, after including the
-        non-prioritized fields from field_dict.
-    """
-    if field_dict is None:
-        field_dict = get_sv_fields()
-    else:
-        field_dict = copy.deepcopy(field_dict)
-    tiers = []
-    if priority_fields is not None:
-        for tier in priority_fields:
-            tiers.append(tier)
-            for field in tier:
-                del field_dict[field]
-    remaining_fields = list(field_dict.keys())
-    tiers.append(remaining_fields)
-    return tiers
-
-
-def get_comcam_sv_schedulers(
-    starting_tier: int = 0,
-    tiers: list[list[str]] | None = None,
-    field_dict: dict[str, dict[str, float]] | None = None,
-    nside: int = 32,
-) -> (CoreScheduler, ComCamFilterSched):
-    """Set up a CoreScheduler and FilterScheduler generally
-    appropriate for ComCam SV observing.
-
-    Parameters
-    ----------
-    starting_tier : `int`, optional
-        Starting to tier to place the surveys coming from the 'tiers'
-        specified here.
-        Default 0, to start at first tier. If an additional
-        survey will be added at highest tier after (such as cwfs), then
-        set starting tier to 1+ and add these surveys as a list to
-        scheduler.survey_lists[tier] etc.
-    tiers : `list` [`str`] or None
-        Field names for each of the field surveys in tiers.
-        Should be a list of lists - [tier][surveys_in_tier]
-        [[field1, field2],[field3, field4, field5].
-        Fields should be present in the 'field_dict'.
-        Default None will use all fields in field_dict.
-    field_dict :  `dict`  {`str` : {'RA' : `float`, 'Dec' : `float`}} or None
-        Dictionary containing field information for the FieldSurveys.
-        Default None will fetch the SV fields from 'get_sv_fields'.
-    nside : `int`
-        Nside for the scheduler. Default 32.
-        Generally, don't change without serious consideration.
-
-    Returns
-    -------
-    scheduler, filter_scheduler : `~.scheduler.schedulers.CoreScheduler`,
-                                  `~.scheduler.schedulers.ComCamFilterSched`
-          A CoreScheduler and FilterScheduler that are generally
-          appropriate for ComCam.
-    """
-    if field_dict is None:
-        field_dict = get_sv_fields()
-
-    if tiers is None:
-        tiers = [list(field_dict.keys())]
-
-    surveys = []
-
-    i = 0
-    for t in tiers:
-        if len(t) == 0:
-            continue
-        j = i + starting_tier
-        i += 1
-        surveys.append([])
-        for kk, fieldname in enumerate(t):
-            bfs = get_basis_functions_field_survey()
-            detailer = CameraSmallRotPerObservationListDetailer(per_visit_rot=0.5)
-            surveys[j].append(
-                get_field_survey(
-                    field_dict[fieldname]["RA"], field_dict[fieldname]["Dec"], fieldname, bfs, [detailer]
-                )
-            )
-
-    scheduler = CoreScheduler(surveys, nside=nside)
-    filter_scheduler = ComCamFilterSched()
-    return scheduler, filter_scheduler

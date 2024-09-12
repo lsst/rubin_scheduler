@@ -156,6 +156,14 @@ class BlobSurvey(GreedySurvey):
         the reward function. (degrees) Note that traveling salesman
         solver can have rare failures if this is set too large (probably
         issue with projection effects or something).
+
+    Notes
+    -----
+    The `scheduler_note` for the BlobSurvey will be set from the
+    `survey_name`. A typical Detailer for the blob survey
+    then adds onto this note to identify the first vs. second visit of
+    the pair. Because the `scheduler_note` is modified, users do not set
+    `scheduler_note` directly.
     """
 
     def __init__(

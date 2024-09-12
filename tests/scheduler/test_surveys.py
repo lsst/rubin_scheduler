@@ -106,7 +106,7 @@ class TestSurveys(unittest.TestCase):
         # Try adding observations to survey one at a time.
         survey = surveys.FieldSurvey(bfs, RA=90.0, dec=-30.0, accept_obs=None)
         for obs, indx in zip(observations_list, indexes):
-            survey.add_observation(obs[0], indx=indx)
+            survey.add_observation(obs, indx=indx)
         self.assertTrue(survey.extra_features["ObsRecorded"].feature == len(observations_list))
         self.assertTrue(survey.extra_features["LastObs"].feature["mjd"] == observations_list[-1]["mjd"])
         # Try adding observations to survey in array
@@ -119,7 +119,7 @@ class TestSurveys(unittest.TestCase):
         # Try adding observations to survey one at a time.
         survey = surveys.FieldSurvey(bfs, RA=90.0, dec=-30.0, accept_obs=["r band"])
         for obs, indx in zip(observations_list, indexes):
-            survey.add_observation(obs[0], indx=indx)
+            survey.add_observation(obs, indx=indx)
         self.assertTrue(survey.extra_features["ObsRecorded"].feature == 5)
         self.assertTrue(survey.extra_features["LastObs"].feature["mjd"] == observations_list[4]["mjd"])
         # Try adding observations to survey in array
@@ -130,7 +130,7 @@ class TestSurveys(unittest.TestCase):
         # Try adding observations to survey one at a time.
         survey = surveys.FieldSurvey(bfs, RA=90.0, dec=-30.0, accept_obs=["r band", "g band"])
         for obs, indx in zip(observations_list, indexes):
-            survey.add_observation(obs[0], indx=indx)
+            survey.add_observation(obs, indx=indx)
         self.assertTrue(survey.extra_features["ObsRecorded"].feature == 10)
         self.assertTrue(survey.extra_features["LastObs"].feature["mjd"] == observations_list[-1]["mjd"])
         # Try adding observations to survey in array
