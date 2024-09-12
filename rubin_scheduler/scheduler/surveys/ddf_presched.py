@@ -482,7 +482,6 @@ def generate_ddf_scheduled_obs(
                     obs["target_name"] = "DD:%s" % ddf_name.replace("_a", "_b")
                     obs["science_program"] = "DD"
                     obs["observation_reason"] = "FBS"
-                    obs["json_block"] = "Imaging"
 
                     obs["mjd_tol"] = mjd_tol
                     obs["dist_tol"] = dist_tol
@@ -508,7 +507,6 @@ def generate_ddf_scheduled_obs(
                     obs["target_name"] = "DD:%s" % ddf_name
                     obs["science_program"] = "DD"
                     obs["observation_reason"] = "FBS"
-                    obs["json_block"] = "Imaging"
 
                     obs["mjd_tol"] = mjd_tol
                     obs["dist_tol"] = dist_tol

@@ -193,7 +193,6 @@ class LongGapSurvey(BaseSurvey):
             sched_array["scheduler_note"] = self.long_name
             sched_array["target_name"] = ""
             sched_array["observation_reason"] = "FBS"
-            sched_array["json_block"] = "Imaging"
             # Don't let the desired rotSkyPos block the observation.
             sched_array["rotSkyPos_desired"] = sched_array["rotSkyPos"]
             sched_array["rotSkyPos"] = np.nan

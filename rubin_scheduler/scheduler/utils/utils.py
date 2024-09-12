@@ -12,6 +12,8 @@ __all__ = (
     "set_default_nside",
     "restore_scheduler",
     "warm_start",
+    "ObservationArray",
+    "ScheduledObservationArray",
     "empty_observation",
     "scheduled_observation",
     "gnomonic_project_toxy",
@@ -558,21 +560,15 @@ class SchemaConverter:
         return self.opsimdf2obs(df)
 
 
-def empty_observation(n=1):
-    """Return a numpy array that could be a handy observation record
+class ObservationArray(np.ndarray):
+    """Class to work as an array of observations
 
     Parameters
     ----------
     n : `int`
         Size of array to return. Default 1.
 
-    Returns
-    -------
-    empty_observation : `np.array`
-
-    The numpy fields have the following labels. These fields are
-    required to be set to be a valid observation the model observatory
-    can execute.
+    The numpy fields have the following labels.
 
     RA : `float`
        The Right Acension of the observation (center of the field)
@@ -627,9 +623,6 @@ def empty_observation(n=1):
         This maps to observation_reason in the ConsDB, although could
         be overwritten in JSON BLOCK.
         Most likely this is just "science" or "FBS" when using the FBS.
-    json_block : `str` (optional)
-        The JSON BLOCK id to use to acquire observations.
-        This is for use by the SchedulerCSC.
 
     Notes
     -----
@@ -649,68 +642,77 @@ def empty_observation(n=1):
 
     """
 
-    dtypes = [
-        ("ID", int),
-        ("RA", float),
-        ("dec", float),
-        ("mjd", float),
-        ("flush_by_mjd", float),
-        ("exptime", float),
-        ("filter", "U40"),
-        ("rotSkyPos", float),
-        ("rotSkyPos_desired", float),
-        ("nexp", int),
-        ("airmass", float),
-        ("FWHM_500", float),
-        ("FWHMeff", float),
-        ("FWHM_geometric", float),
-        ("skybrightness", float),
-        ("night", int),
-        ("slewtime", float),
-        ("visittime", float),
-        ("slewdist", float),
-        ("fivesigmadepth", float),
-        ("alt", float),
-        ("az", float),
-        ("pa", float),
-        ("pseudo_pa", float),
-        ("clouds", float),
-        ("moonAlt", float),
-        ("sunAlt", float),
-        ("note", "U40"),
-        ("scheduler_note", "U40"),
-        ("target_name", "U40"),
-        ("block_id", int),
-        ("lmst", float),
-        ("rotTelPos", float),
-        ("rotTelPos_backup", float),
-        ("moonAz", float),
-        ("sunAz", float),
-        ("sunRA", float),
-        ("sunDec", float),
-        ("moonRA", float),
-        ("moonDec", float),
-        ("moonDist", float),
-        ("solarElong", float),
-        ("moonPhase", float),
-        ("cummTelAz", float),
-        ("scripted_id", int),
-        ("observation_reason", "U40"),
-        ("science_program", "U40"),
-        ("json_block", "U40"),
-    ]
+    def __new__(cls, n=1):
+        dtypes = [
+            ("ID", int),
+            ("RA", float),
+            ("dec", float),
+            ("mjd", float),
+            ("flush_by_mjd", float),
+            ("exptime", float),
+            ("filter", "U40"),
+            ("rotSkyPos", float),
+            ("rotSkyPos_desired", float),
+            ("nexp", int),
+            ("airmass", float),
+            ("FWHM_500", float),
+            ("FWHMeff", float),
+            ("FWHM_geometric", float),
+            ("skybrightness", float),
+            ("night", int),
+            ("slewtime", float),
+            ("visittime", float),
+            ("slewdist", float),
+            ("fivesigmadepth", float),
+            ("alt", float),
+            ("az", float),
+            ("pa", float),
+            ("pseudo_pa", float),
+            ("clouds", float),
+            ("moonAlt", float),
+            ("sunAlt", float),
+            ("note", "U40"),
+            ("scheduler_note", "U40"),
+            ("target_name", "U40"),
+            ("block_id", int),
+            ("lmst", float),
+            ("rotTelPos", float),
+            ("rotTelPos_backup", float),
+            ("moonAz", float),
+            ("sunAz", float),
+            ("sunRA", float),
+            ("sunDec", float),
+            ("moonRA", float),
+            ("moonDec", float),
+            ("moonDist", float),
+            ("solarElong", float),
+            ("moonPhase", float),
+            ("cummTelAz", float),
+            ("scripted_id", int),
+            ("observation_reason", "U40"),
+            ("science_program", "U40"),
+        ]
+        obj = np.zeros(n, dtype=dtypes).view(cls)
+        return obj
 
-    result = np.zeros(n, dtype=dtypes)
+
+def empty_observation(n=1):
+    """For backwards compatibility"""
+    warnings.warn("Function empty_observation is deprecated, use ObservationArray", FutureWarning)
+    result = ObservationArray(n=n)
     return result
 
 
 def scheduled_observation(n=1):
+    warnings.warn(
+        "Function scheduled_observation is deprecated, use ScheduledObservationArray", FutureWarning
+    )
+    result = ScheduledObservationArray(n=n)
+    return result
+
+
+class ScheduledObservationArray(np.ndarray):
     """Make an array to hold pre-scheduling observations
-
-    Returns
-    -------
-    result : np.array
-
 
     Note
     ----
@@ -748,60 +750,43 @@ def scheduled_observation(n=1):
 
     """
 
-    # Standard things from the usual observations
-    names = [
-        "ID",
-        "RA",
-        "dec",
-        "mjd",
-        "flush_by_mjd",
-        "exptime",
-        "filter",
-        "rotSkyPos",
-        "rotTelPos",
-        "rotTelPos_backup",
-        "rotSkyPos_desired",
-        "nexp",
-        "scheduler_note",
-        "target_name",
-        "science_program",
-        "observation_reason",
-        "json_block",
-    ]
-    types = [
-        int,
-        float,
-        float,
-        float,
-        float,
-        float,
-        "U1",
-        float,
-        float,
-        float,
-        float,
-        int,
-        "U40",
-        "U40",
-        "U40",
-        "U40",
-        "U40",
-    ]
-    names += [
-        "mjd_tol",
-        "dist_tol",
-        "alt_min",
-        "alt_max",
-        "HA_max",
-        "HA_min",
-        "sun_alt_max",
-        "moon_min_distance",
-        "observed",
-        "scripted_id",
-    ]
-    types += [float, float, float, float, float, float, float, float, bool, int]
-    result = np.zeros(n, dtype=list(zip(names, types)))
-    return result
+    def __new__(cls, n=1):
+        # Standard things from the usual observations
+        dtypes1 = [
+            ("ID", int),
+            ("RA", float),
+            ("dec", float),
+            ("mjd", float),
+            ("flush_by_mjd", float),
+            ("exptime", float),
+            ("filter", "U1"),
+            ("rotSkyPos", float),
+            ("rotTelPos", float),
+            ("rotTelPos_backup", float),
+            ("rotSkyPos_desired", float),
+            ("nexp", int),
+            ("scheduler_note", "U40"),
+            ("target_name", "U40"),
+            ("science_program", "U40"),
+            ("observation_reason", "U40"),
+        ]
+
+        # New things not in standard ObservationArray
+        dtype2 = [
+            ("mjd_tol", float),
+            ("dist_tol", float),
+            ("alt_min", float),
+            ("alt_max", float),
+            ("HA_max", float),
+            ("HA_min", float),
+            ("sun_alt_max", float),
+            ("moon_min_distance", float),
+            ("observed", bool),
+            ("scripted_id", int),
+        ]
+
+        obj = np.zeros(n, dtype=dtypes1 + dtype2).view(cls)
+        return obj
 
 
 def hp_kd_tree(nside=None, leafsize=100, scale=1e5):
