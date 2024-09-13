@@ -30,7 +30,7 @@ class TestComCam(unittest.TestCase):
         simple_fp["r"][indx] = 1
         simple_fp["g"][indx] = 1
 
-        fp = Footprint(conditions.mjd_start, conditions.sun_ra_start, nside=nside)
+        fp = Footprint(mo.mjd_start, mo.sun_ra_start, nside=nside)
         for filtername in simple_fp:
             fp.set_footprint(filtername, simple_fp[filtername])
 

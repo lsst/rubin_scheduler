@@ -14,7 +14,7 @@ class TestFilterSchedulers(unittest.TestCase):
         filter_groups = (("g", "r", "i"), ("i", "z", "y"))
         filtersched = ComCamFilterSched(illum_bins=illum_bins, loaded_filter_groups=filter_groups)
         mjd = survey_start_mjd()
-        conditions = Conditions(nside=8, mjd_start=mjd, mjd=mjd)
+        conditions = Conditions(nside=8, mjd=mjd)
         conditions.moon_phase_sunset = 0
         load_filters = filtersched(conditions)
         self.assertTrue(load_filters == ["g", "r", "i"])
@@ -39,7 +39,7 @@ class TestFilterSchedulers(unittest.TestCase):
         brightmoon_result = ["g", "r", "i", "z", "y"]
         newmoon_result = ["u", "g", "r", "i", "z"]
         mjd = survey_start_mjd()
-        conditions = Conditions(nside=8, mjd_start=mjd, mjd=mjd)
+        conditions = Conditions(nside=8, mjd=mjd)
         conditions.moon_phase_sunset = 0
         load_filters = filtersched(conditions)
         self.assertTrue(load_filters == newmoon_result)
