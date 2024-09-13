@@ -194,7 +194,7 @@ def restore_scheduler(observation_id, scheduler, observatory, in_obs, filter_sch
         The observaotry object
     in_obs : np.array or str
         Array of observations (formated like
-        rubin_scheduler.scheduler.empty_observation). If a string,
+        rubin_scheduler.scheduler.ObservationArray). If a string,
         assumed to be a file and SchemaConverter is used to load it.
     filter_sched : rubin_scheduler.scheduler.scheduler object
         The filter scheduler. Note that we don't look up the official
@@ -213,10 +213,6 @@ def restore_scheduler(observation_id, scheduler, observatory, in_obs, filter_sch
         observations = in_obs
     good_obs = np.where(observations["ID"] <= observation_id)[0]
     observations = observations[good_obs]
-
-    # replay the observations back into the scheduler
-    # In the future, may be able to replace this with a
-    # faster .add_observations_array method.
 
     if fast:
         scheduler.add_observations_array(observations)
@@ -422,7 +418,6 @@ class SchemaConverter:
             "target_name": "target_name",
             "science_program": "science_program",
             "observation_reason": "observation_reason",
-            "json_block": "json_block",
         }
         # For backwards compatibility
         self.backwards = {"target": "target_name"}
@@ -535,7 +530,7 @@ class SchemaConverter:
 
         df = df.rename(index=str, columns=self.convert_dict)
 
-        blank = empty_observation()
+        blank = ObservationArray()
         final_result = np.empty(df.shape[0], dtype=blank.dtype)
         # XXX-ugh, there has to be a better way.
         for key in final_result.dtype.names:

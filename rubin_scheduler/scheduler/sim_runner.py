@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from rubin_scheduler.scheduler.schedulers import SimpleFilterSched
-from rubin_scheduler.scheduler.utils import SchemaConverter, empty_observation, run_info_table
+from rubin_scheduler.scheduler.utils import ObservationArray, SchemaConverter, run_info_table
 from rubin_scheduler.utils import Site, _approx_altaz2pa, pseudo_parallactic_angle, rotation_converter
 
 
@@ -81,7 +81,7 @@ def sim_runner(
         observatory.mjd = mjd
 
     end_mjd = mjd + survey_length
-    observations = empty_observation(n=start_result_size)
+    observations = ObservationArray(n=start_result_size)
     mjd_track = mjd + 0
     step = 1.0 / 24.0
     step_none = step_none / 60.0 / 24.0  # to days
@@ -132,7 +132,7 @@ def sim_runner(
             filter_scheduler.add_observation(completed_obs)
             counter += 1
             if counter == observations.size:
-                add_observations = empty_observation(n=append_result_size)
+                add_observations = ObservationArray(n=append_result_size)
                 observations = np.concatenate([observations, add_observations])
 
             if record_rewards:

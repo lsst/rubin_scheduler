@@ -10,7 +10,7 @@ import numpy as np
 import rubin_scheduler.scheduler.basis_functions as basis_functions
 from rubin_scheduler.scheduler import features
 from rubin_scheduler.scheduler.surveys import BaseSurvey
-from rubin_scheduler.scheduler.utils import empty_observation
+from rubin_scheduler.scheduler.utils import ObservationArray
 from rubin_scheduler.utils import ddf_locations, ra_dec2_hpid
 
 log = logging.getLogger(__name__)
@@ -84,7 +84,7 @@ class DeepDrillingSurvey(BaseSurvey):
             self.observations = []
             for num, filtername in zip(nvis, sequence):
                 for j in range(num):
-                    obs = empty_observation()
+                    obs = ObservationArray()
                     obs["filter"] = filtername
                     if filtername == "u":
                         obs["exptime"] = u_exptime
@@ -401,7 +401,7 @@ def generate_dd_surveys(
     for filtername, nvis in zip(filters, nviss):
         for ra, dec, suffix in zip(r_as, decs, suffixes):
             for num in range(nvis):
-                obs = empty_observation()
+                obs = ObservationArray()
                 obs["filter"] = filtername
                 if filtername == "u":
                     obs["exptime"] = u_exptime

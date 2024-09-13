@@ -5,7 +5,7 @@ import numpy as np
 
 import rubin_scheduler.scheduler.features as features
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
-from rubin_scheduler.scheduler.utils import HpInLsstFov, empty_observation
+from rubin_scheduler.scheduler.utils import HpInLsstFov, ObservationArray
 from rubin_scheduler.skybrightness_pre import dark_sky
 from rubin_scheduler.utils import survey_start_mjd
 
@@ -13,7 +13,7 @@ from rubin_scheduler.utils import survey_start_mjd
 def make_observations_list(nobs=1):
     observations_list = []
     for i in range(0, nobs):
-        observation = empty_observation()
+        observation = ObservationArray()
         observation["mjd"] = survey_start_mjd() + i * 30 / 60 / 60 / 24
         observation["RA"] = np.radians(30)
         observation["dec"] = np.radians(-20)
@@ -66,7 +66,7 @@ class TestFeatures(unittest.TestCase):
         delta = 30.0 / 60.0 / 24.0
 
         # Add 1st observation, feature should still be zero
-        obs = empty_observation()
+        obs = ObservationArray()
         obs["filter"] = "r"
         obs["mjd"] = 59000.0
         pin.add_observation(obs, indx=indx)
@@ -82,7 +82,7 @@ class TestFeatures(unittest.TestCase):
         self.assertEqual(np.max(pin.feature), 2.0)
 
     def test_note_in_night(self):
-        obs = empty_observation()
+        obs = ObservationArray()
 
         plain_feature = features.NoteInNight()
         plain_feature.add_observation(obs)
@@ -135,7 +135,7 @@ class TestFeatures(unittest.TestCase):
     def test_note_last_observed(self):
         note_last_observed = features.NoteLastObserved(note="test")
 
-        observation = empty_observation()
+        observation = ObservationArray()
         observation["mjd"] = 59000.0
 
         note_last_observed.add_observation(observation=observation)
@@ -158,7 +158,7 @@ class TestFeatures(unittest.TestCase):
             filtername="r",
         )
 
-        observation = empty_observation()
+        observation = ObservationArray()
         observation["mjd"] = 59000.0
 
         note_last_observed.add_observation(observation=observation)
@@ -209,7 +209,7 @@ class TestFeatures(unittest.TestCase):
         self.assertTrue(np.all(season_feature.season == season))
         # And do the same for observations - check update_seasons works
         # Make some observations
-        observations = [empty_observation(), empty_observation()]
+        observations = [ObservationArray(), ObservationArray()]
         observations[0]["mjd"] = mjd_start
         observations[0]["ID"] = 0
         observations[1]["mjd"] = mjd_start + 100
@@ -252,7 +252,7 @@ class TestFeatures(unittest.TestCase):
         self.assertTrue(np.all(np.delete(season_feature.feature, indxs) == 0))
         # Add an observation at a different point on the sky, but where
         # season should not turn oer for ra above yet.
-        observations.append(empty_observation())
+        observations.append(ObservationArray())
         observations[-1]["mjd"] = mjd_start + 10
         observations[-1]["RA"] = np.radians(50)
         observations[-1]["dec"] = np.radians(-20)
@@ -315,7 +315,7 @@ class TestFeatures(unittest.TestCase):
         season_feature = features.NObservationsCurrentSeason(
             nside=nside, mjd_start=mjd_start, seeing_fwhm_max=1.0
         )
-        observation = empty_observation()
+        observation = ObservationArray()
         observation["mjd"] = mjd_start
         observation["RA"] = np.radians(30)
         observation["dec"] = np.radians(-20)

@@ -9,7 +9,7 @@ import numpy as np
 from rubin_scheduler.utils import ra_dec2_hpid
 
 from ..features import LastObservation, NObsSurvey
-from ..utils import empty_observation
+from ..utils import ObservationArray
 from . import BaseSurvey
 
 
@@ -176,7 +176,7 @@ class FieldSurvey(BaseSurvey):
             self.observations = []
             for filtername in sequence:
                 for j in range(nvisits[filtername]):
-                    obs = empty_observation()
+                    obs = ObservationArray()
                     obs["filter"] = filtername
                     obs["exptime"] = exptimes[filtername]
                     obs["RA"] = self.ra
@@ -266,10 +266,9 @@ class FieldSurvey(BaseSurvey):
 
         Parameters
         ----------
-        observations_array_in : np.array
-            An array of completed observations
-            (with columns like
-            rubin_scheduler.scheduler.utils.empty_observation).
+        observations_array_in : ObservationArray
+            An array of completed observations,
+            rubin_scheduler.scheduler.utils.ObservationArray
         observations_hpid_in : np.array
             Same as observations_array_in, but larger and with an
             additional column for HEALpix id. Each observation is

@@ -6,7 +6,7 @@ import warnings
 import numpy as np
 
 from rubin_scheduler.data import get_data_dir
-from rubin_scheduler.scheduler.utils import scheduled_observation
+from rubin_scheduler.scheduler.utils import ScheduledObservationArray
 from rubin_scheduler.site_models import Almanac
 from rubin_scheduler.utils import calc_season, ddf_locations, survey_start_mjd
 
@@ -449,7 +449,7 @@ def generate_ddf_scheduled_obs(
         for mjd in mjds:
             for filtername, nvis, nexp in zip(filters, nvis_master, nsnaps):
                 if "EDFS" in ddf_name:
-                    obs = scheduled_observation(n=int(nvis / 2))
+                    obs = ScheduledObservationArray(n=int(nvis / 2))
                     obs["RA"] = np.radians(ddfs[ddf_name][0])
                     obs["dec"] = np.radians(ddfs[ddf_name][1])
                     obs["mjd"] = mjd
@@ -470,7 +470,7 @@ def generate_ddf_scheduled_obs(
                     obs["sun_alt_max"] = sun_alt_max
                     all_scheduled_obs.append(obs)
 
-                    obs = scheduled_observation(n=int(nvis / 2))
+                    obs = ScheduledObservationArray(n=int(nvis / 2))
                     obs["RA"] = np.radians(ddfs[ddf_name.replace("_a", "_b")][0])
                     obs["dec"] = np.radians(ddfs[ddf_name.replace("_a", "_b")][1])
                     obs["mjd"] = mjd
@@ -495,7 +495,7 @@ def generate_ddf_scheduled_obs(
                     all_scheduled_obs.append(obs)
 
                 else:
-                    obs = scheduled_observation(n=nvis)
+                    obs = ScheduledObservationArray(n=nvis)
                     obs["RA"] = np.radians(ddfs[ddf_name][0])
                     obs["dec"] = np.radians(ddfs[ddf_name][1])
                     obs["mjd"] = mjd

@@ -5,7 +5,7 @@ import numpy as np
 
 import rubin_scheduler.scheduler.basis_functions as basis_functions
 from rubin_scheduler.scheduler.features import Conditions
-from rubin_scheduler.scheduler.utils import empty_observation
+from rubin_scheduler.scheduler.utils import ObservationArray
 
 
 class TestBasis(unittest.TestCase):
@@ -18,7 +18,7 @@ class TestBasis(unittest.TestCase):
         delta = 30.0 / 60.0 / 24.0
 
         # Add 1st observation, should still be zero
-        obs = empty_observation()
+        obs = ObservationArray()
         obs["filter"] = "r"
         obs["mjd"] = 59000.0
         conditions = Conditions()
@@ -38,7 +38,7 @@ class TestBasis(unittest.TestCase):
 
     def test_force_delay(self):
         bf = basis_functions.ForceDelayBasisFunction(days_delay=3.0, scheduler_note="survey")
-        obs = empty_observation()
+        obs = ObservationArray()
         obs["scheduler_note"] = "not_match"
         obs["mjd"] = 10
         bf.add_observation(obs)
@@ -67,7 +67,7 @@ class TestBasis(unittest.TestCase):
         # default is feasible
         assert visit_gap.check_feasibility(conditions=conditions)
 
-        observation = empty_observation()
+        observation = ObservationArray()
         observation["filter"] = "r"
         observation["scheduler_note"] = "foo"
         observation["mjd"] = 59000.0
@@ -97,7 +97,7 @@ class TestBasis(unittest.TestCase):
         # default is feasible
         assert visit_gap.check_feasibility(conditions=conditions)
 
-        observation = empty_observation()
+        observation = ObservationArray()
         observation["filter"] = "r"
         observation["scheduler_note"] = "foo"
         observation["mjd"] = 59000.0
@@ -133,7 +133,7 @@ class TestBasis(unittest.TestCase):
         # default is feasible
         assert visit_gap.check_feasibility(conditions=conditions)
 
-        observation = empty_observation()
+        observation = ObservationArray()
         observation["filter"] = "r"
         observation["scheduler_note"] = "foo"
         observation["mjd"] = 59000.0

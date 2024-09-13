@@ -1184,7 +1184,6 @@ def generate_twilight_near_sun(
     shadow_minutes=60.0,
     max_alt=76.0,
     max_elong=60.0,
-    az_range=180.0,
     ignore_obs=["DD", "pair", "long", "blob", "greedy"],
     filter_dist_weight=0.3,
     time_to_12deg=25.0,
@@ -1323,7 +1322,6 @@ def generate_twilight_near_sun(
                 dither=True,
                 nexp=nexp,
                 detailers=detailer_list,
-                az_range=az_range,
                 twilight_scale=False,
                 area_required=area_required,
             )

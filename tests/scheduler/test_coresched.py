@@ -7,7 +7,7 @@ import rubin_scheduler.scheduler.basis_functions as basis_functions
 import rubin_scheduler.scheduler.surveys as surveys
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
 from rubin_scheduler.scheduler.schedulers import CoreScheduler
-from rubin_scheduler.scheduler.utils import empty_observation, generate_all_sky
+from rubin_scheduler.scheduler.utils import ObservationArray, generate_all_sky
 
 
 class TestCoreSched(unittest.TestCase):
@@ -73,7 +73,7 @@ class TestCoreSched(unittest.TestCase):
         survey = surveys.GreedySurvey(bfs, [0.0])
         scheduler = CoreScheduler([survey])
 
-        obs = empty_observation()
+        obs = ObservationArray()
         obs["scheduler_note"] = "survey"
         obs["mjd"] = 100
 

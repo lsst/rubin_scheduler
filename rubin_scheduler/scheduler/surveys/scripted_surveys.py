@@ -6,7 +6,7 @@ import healpy as hp
 import numpy as np
 
 from rubin_scheduler.scheduler.surveys import BaseSurvey
-from rubin_scheduler.scheduler.utils import empty_observation, set_default_nside
+from rubin_scheduler.scheduler.utils import ObservationArray, set_default_nside
 from rubin_scheduler.utils import _angular_separation, _approx_ra_dec2_alt_az
 
 log = logging.getLogger(__name__)
@@ -164,7 +164,7 @@ class ScriptedSurvey(BaseSurvey):
 
     def _slice2obs(self, obs_row):
         """take a slice and return a full observation object"""
-        observation = empty_observation()
+        observation = ObservationArray()
         for key in [
             "RA",
             "dec",

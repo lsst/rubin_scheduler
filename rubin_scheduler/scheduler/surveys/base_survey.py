@@ -10,8 +10,8 @@ import pandas as pd
 from rubin_scheduler.scheduler.detailers import TrackingInfoDetailer, ZeroRotDetailer
 from rubin_scheduler.scheduler.utils import (
     HpInLsstFov,
+    ObservationArray,
     comcam_tessellate,
-    empty_observation,
     set_default_nside,
     thetaphi2xyz,
     xyz2thetaphi,
@@ -151,10 +151,9 @@ class BaseSurvey:
 
         Parameters
         ----------
-        observations_array_in : np.array
-            An array of completed observations
-            (with columns like
-            rubin_scheduler.scheduler.utils.empty_observation).
+        observations_array_in : ObservationArray
+            An array of completed observations,
+            rubin_scheduler.scheduler.utils.ObservationArray
         observations_hpid_in : np.array
             Same as observations_array_in, but larger and with an
             additional column for HEALpix id. Each observation is
@@ -249,7 +248,7 @@ class BaseSurvey:
         # latest info, calculate it
         if not self.reward_checked:
             self.reward = self.calc_reward_function(conditions)
-        obs = empty_observation()
+        obs = ObservationArray()
         return [obs]
 
     def generate_observations(self, conditions):

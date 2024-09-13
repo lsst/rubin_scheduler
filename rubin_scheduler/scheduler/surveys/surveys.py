@@ -7,7 +7,7 @@ import healpy as hp
 import numpy as np
 
 from rubin_scheduler.scheduler.surveys import BaseMarkovSurvey
-from rubin_scheduler.scheduler.utils import empty_observation, int_binned_stat, order_observations
+from rubin_scheduler.scheduler.utils import ObservationArray, int_binned_stat, order_observations
 from rubin_scheduler.utils import _angular_separation, _hpid2_ra_dec, hp_grow_argsort
 
 
@@ -87,7 +87,7 @@ class GreedySurvey(BaseMarkovSurvey):
             best_fields = np.unique(self.hp2fields[best_hp])
             observations = []
             for field in best_fields:
-                obs = empty_observation()
+                obs = ObservationArray()
                 obs["RA"] = self.fields["RA"][field]
                 obs["dec"] = self.fields["dec"][field]
                 obs["rotSkyPos"] = 0.0
@@ -505,7 +505,7 @@ class BlobSurvey(GreedySurvey):
 
         for i, indx in enumerate(better_order):
             field = self.best_fields[indx]
-            obs = empty_observation()
+            obs = ObservationArray()
             obs["RA"] = self.fields["RA"][field]
             obs["dec"] = self.fields["dec"][field]
             obs["rotSkyPos"] = 0.0

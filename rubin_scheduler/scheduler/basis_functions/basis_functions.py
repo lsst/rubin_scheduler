@@ -110,7 +110,7 @@ class BaseBasisFunction:
         ----------
         observations_array_in : `np.array`
             An array of completed observations (with columns like
-            rubin_scheduler.scheduler.utils.empty_observation).
+            rubin_scheduler.scheduler.utils.ObservationArray).
             Should be sorted by MJD.
         observations_hpid_in : `np.array`
             Same as observations_array_in, but larger and with an
