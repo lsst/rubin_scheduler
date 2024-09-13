@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from rubin_scheduler.scheduler.surveys import BaseSurvey
-from rubin_scheduler.scheduler.utils import scheduled_observation
+from rubin_scheduler.scheduler.utils import ScheduledObservationArray
 from rubin_scheduler.utils import Site, _approx_ra_dec2_alt_az
 
 log = logging.getLogger(__name__)
@@ -125,7 +125,7 @@ class LongGapSurvey(BaseSurvey):
         # If the incoming observation needs to have something
         # scheduled later
         if np.size(need_to_observe) > 0:
-            sched_array = scheduled_observation(n=need_to_observe.size)
+            sched_array = ScheduledObservationArray(n=need_to_observe.size)
             for dt in np.intersect1d(observations.dtype.names, sched_array.dtype.names):
                 if np.size(observations) == 1:
                     sched_array[dt] = observations[dt]
@@ -193,7 +193,6 @@ class LongGapSurvey(BaseSurvey):
             sched_array["scheduler_note"] = self.long_name
             sched_array["target_name"] = ""
             sched_array["observation_reason"] = "FBS"
-            sched_array["json_block"] = "Imaging"
             # Don't let the desired rotSkyPos block the observation.
             sched_array["rotSkyPos_desired"] = sched_array["rotSkyPos"]
             sched_array["rotSkyPos"] = np.nan

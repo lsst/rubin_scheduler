@@ -6,9 +6,9 @@ import numpy as np
 
 from rubin_scheduler.scheduler.surveys import BaseMarkovSurvey, ScriptedSurvey
 from rubin_scheduler.scheduler.utils import (
+    ScheduledObservationArray,
     comcam_tessellate,
     order_observations,
-    scheduled_observation,
     thetaphi2xyz,
     xyz2thetaphi,
 )
@@ -169,10 +169,8 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         """
         Parameters
         ----------
-        obs_wanted : np.array
-            The observations that should be executed. Needs to have
-            columns with dtype names:
-            Should be from lsst.sim.scheduler.utils.scheduled_observation
+        obs_wanted : rubin_scheduler.scheduler.utils.ScheduledObservationArray
+            The observations that should be executed.
         append : bool
             Should the obs_wanted be appended to any script already set?
         """
@@ -363,7 +361,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
                                 if exptime > 119:
                                     nexp = int(np.round(exptime / 30.0))
 
-                            obs = scheduled_observation(ras.size)
+                            obs = ScheduledObservationArray(ras.size)
                             obs["RA"] = ras
                             obs["dec"] = decs
                             obs["mjd"] = mjd0 + time

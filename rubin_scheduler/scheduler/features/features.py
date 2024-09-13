@@ -103,7 +103,7 @@ class BaseSurveyFeature(BaseFeature):
         observation : `np.array`, (1,N)
             Array of observation information, containing
             `mjd` for the time. See
-            `rubin_scheduler.scheduler.utils.empty_observation`.
+            `rubin_scheduler.scheduler.utils.ObservationArray`.
         indx : `list`-like of [`int`]
             The healpixel indices that the observation overlaps.
             See `rubin_scheduler.utils.HpInLsstFov`.
@@ -366,7 +366,7 @@ class LastObservation(BaseSurveyFeature):
         else:
             self.scheduler_note = scheduler_note
         # Start out with an empty observation
-        self.feature = utils.empty_observation()
+        self.feature = utils.ObservationArray()
 
     def add_observations_array(self, observations_array, observations_hpid):
         if self.scheduler_note is not None:
@@ -394,7 +394,7 @@ class LastsequenceObservation(BaseSurveyFeature):
         self.sequence_ids = sequence_ids  # The ids of all sequence
         # observations...
         # Start out with an empty observation
-        self.feature = utils.empty_observation()
+        self.feature = utils.ObservationArray()
         send_unused_deprecation_warning(self.__class__.__name__)
 
     def add_observation(self, observation, indx=None):
@@ -672,7 +672,7 @@ class NObservationsCurrentSeason(BaseSurveyFeature):
         observation : `np.array`, (1,N)
             Array of observation information, containing
             `mjd` for the time. See
-            `rubin_scheduler.scheduler.utils.empty_observation`.
+            `rubin_scheduler.scheduler.utils.ObservationArray`.
         conditions : `rubin_scheduler.scheduler.Conditions`, optional
             A conditions object, containing `mjd`.
 

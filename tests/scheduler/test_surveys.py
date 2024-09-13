@@ -8,14 +8,14 @@ import rubin_scheduler.scheduler.basis_functions as basis_functions
 import rubin_scheduler.scheduler.surveys as surveys
 from rubin_scheduler.scheduler.basis_functions import SimpleArrayBasisFunction
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
-from rubin_scheduler.scheduler.utils import HpInLsstFov, empty_observation, set_default_nside
+from rubin_scheduler.scheduler.utils import HpInLsstFov, ObservationArray, set_default_nside
 from rubin_scheduler.utils import survey_start_mjd
 
 
 def make_observations_list(nobs=1):
     observations_list = []
     for i in range(0, nobs):
-        observation = empty_observation()
+        observation = ObservationArray()
         observation["mjd"] = survey_start_mjd() + i * 30 / 60 / 60 / 24
         observation["RA"] = np.radians(30)
         observation["dec"] = np.radians(-20)
@@ -146,7 +146,7 @@ class TestSurveys(unittest.TestCase):
 
         # Make a ring of points near the equator so
         # some should always be visible
-        fields = empty_observation(n=10)
+        fields = ObservationArray(n=10)
         fields["RA"] = np.arange(0, fields.size) / fields.size * 2.0 * np.pi
         fields["dec"] = -0.01
         fields["scheduler_note"] = ["test%i" % ind for ind in range(fields.size)]

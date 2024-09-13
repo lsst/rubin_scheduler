@@ -4,7 +4,7 @@ import numpy as np
 
 import rubin_scheduler.scheduler.basis_functions as basis_functions
 from rubin_scheduler.scheduler.surveys import BaseSurvey
-from rubin_scheduler.scheduler.utils import empty_observation
+from rubin_scheduler.scheduler.utils import ObservationArray
 
 
 class DescDdf(BaseSurvey):
@@ -42,7 +42,7 @@ class DescDdf(BaseSurvey):
         self.reward_value = reward_value
         self.flush_pad = flush_pad / 60.0 / 24.0  # To days
 
-        self.simple_obs = empty_observation()
+        self.simple_obs = ObservationArray()
         self.simple_obs["RA"] = np.radians(RA)
         self.simple_obs["dec"] = np.radians(dec)
         self.simple_obs["exptime"] = exptime

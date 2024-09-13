@@ -15,7 +15,7 @@ from rubin_scheduler.scheduler.utils import (
     HpInComcamFov,
     HpInLsstFov,
     IntRounded,
-    empty_observation,
+    ObservationArray,
     set_default_nside,
 )
 from rubin_scheduler.utils import _approx_altaz2pa, _approx_ra_dec2_alt_az, _hpid2_ra_dec, rotation_converter
@@ -155,7 +155,7 @@ class CoreScheduler:
         # Catch if someone passed in a slice of an observation
         # rather than a full observation array
         if len(observation.shape) == 0:
-            full_obs = empty_observation()
+            full_obs = ObservationArray()
             full_obs[0] = observation
             observation = full_obs
 

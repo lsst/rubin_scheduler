@@ -232,7 +232,7 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         # so the results are cached and can be used by other surveys is
         # needed. Technically this could fail if the masked region is
         # very narrow or shadow time is very large.
-        future_alt, future_az = conditions.future_alt_az(np.max(conditions.mjd + self.shadow_time))
+        future_alt, future_az = conditions.future_alt_az(float(np.max(conditions.mjd)) + self.shadow_time)
         r_future_alt = IntRounded(future_alt)
         r_current_alt = IntRounded(conditions.alt)
 

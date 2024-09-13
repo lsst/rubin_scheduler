@@ -2,13 +2,13 @@ import unittest
 
 import rubin_scheduler.scheduler.detailers as detailers
 from rubin_scheduler.scheduler.features import Conditions
-from rubin_scheduler.scheduler.utils import empty_observation
+from rubin_scheduler.scheduler.utils import ObservationArray
 
 
 class TestDetailers(unittest.TestCase):
 
     def test_random_filter(self):
-        obs = empty_observation(1)
+        obs = ObservationArray(1)
         obs["filter"] = "r"
 
         det = detailers.RandomFilterDetailer(filters="iz")
