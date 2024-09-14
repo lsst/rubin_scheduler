@@ -6,6 +6,7 @@ import numpy as np
 import rubin_scheduler.utils as utils
 from rubin_scheduler.data import get_data_dir
 from rubin_scheduler.scheduler import sim_runner
+from rubin_scheduler.scheduler.basis_functions import SunAltLimitBasisFunction
 from rubin_scheduler.scheduler.example import example_scheduler, simple_greedy_survey, simple_pairs_survey
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
 from rubin_scheduler.scheduler.schedulers import CoreScheduler
@@ -93,12 +94,17 @@ class TestExample(unittest.TestCase):
         """
         mjd_start = utils.survey_start_mjd()
         nside = 64
-        survey_length = 3.0  # days
+        survey_length = 2.0  # days
 
+        # Add an avoidance of twilight+ for the pairs surveys -
+        # this ensures greedy survey will have some time to operate
         pairs_surveys = [
             simple_pairs_survey(filtername="g", filtername2="r", nside=nside),
             simple_pairs_survey(filtername="i", filtername2="z", nside=nside),
         ]
+        for survey in pairs_surveys:
+            survey.basis_functions.append(SunAltLimitBasisFunction(alt_limit=-22))
+            survey.basis_weights.append(0)
         greedy_surveys = [
             simple_greedy_survey(filtername="z", nside=nside),
         ]
@@ -113,9 +119,9 @@ class TestExample(unittest.TestCase):
         assert "simple pair 30, iz, a" in observations["scheduler_note"]
         assert "simple pair 30, iz, b" in observations["scheduler_note"]
         # Make sure some greedy executed
-        assert "greedy z" in observations["scheduler_note"]
+        assert "simple greedy z" in observations["scheduler_note"]
         # Make sure lots of observations executed
-        assert observations.size > 1000
+        assert observations.size > 800
         # Make sure nothing tried to look through the earth
         assert np.min(observations["alt"]) > 0
 

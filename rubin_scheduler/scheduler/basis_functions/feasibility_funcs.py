@@ -681,6 +681,6 @@ class SunAltLimitBasisFunction(BaseBasisFunction):
 
     def check_feasibility(self, conditions):
         result = True
-        if conditions.sunAlt > self.alt_limit:
+        if conditions.sun_alt > self.alt_limit:
             result = False
         return result
