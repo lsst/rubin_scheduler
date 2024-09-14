@@ -1,26 +1,20 @@
 __all__ = (
     "SolarElongMaskBasisFunction",
-    "ZenithShadowMaskBasisFunction",
     "HaMaskBasisFunction",
     "MoonAvoidanceBasisFunction",
     "MapCloudBasisFunction",
     "PlanetMaskBasisFunction",
-    "MaskAzimuthBasisFunction",
     "SolarElongationMaskBasisFunction",
     "AreaCheckMaskBasisFunction",
     "AltAzShadowMaskBasisFunction",
 )
-
-import warnings
 
 import healpy as hp
 import numpy as np
 
 from rubin_scheduler.scheduler.basis_functions import BaseBasisFunction
 from rubin_scheduler.scheduler.utils import HpInLsstFov, IntRounded
-from rubin_scheduler.utils import Site, _angular_separation, _hpid2_ra_dec
-
-from .basis_functions import send_unused_deprecation_warning
+from rubin_scheduler.utils import _angular_separation
 
 
 class SolarElongMaskBasisFunction(BaseBasisFunction):
@@ -312,76 +306,6 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         return result
 
 
-class ZenithShadowMaskBasisFunction(BaseBasisFunction):
-    """Mask the zenith, and things that will soon pass near zenith.
-    Useful for making sure observations will not be too close to zenith
-    when they need to be observed again (e.g. for a pair).
-
-    Parameters
-    ----------
-    min_alt : float (20.)
-        The minimum alititude to alow. Everything lower is masked. (degrees)
-    max_alt : float (82.)
-        The maximum altitude to alow. Everything higher is masked. (degrees)
-    shadow_minutes : float (40.)
-        Mask anything that will pass through the max alt in the next
-        shadow_minutes time. (minutes)
-    """
-
-    def __init__(
-        self,
-        nside=None,
-        min_alt=20.0,
-        max_alt=82.0,
-        shadow_minutes=40.0,
-        penalty=np.nan,
-        site="LSST",
-    ):
-        warnings.warn(
-            "Deprecating ZenithShadowMaskBasisFunction in favor of AltAzShadowMaskBasisFunction.",
-            DeprecationWarning,
-        )
-
-        super(ZenithShadowMaskBasisFunction, self).__init__(nside=nside)
-        self.update_on_newobs = False
-
-        self.penalty = penalty
-
-        self.min_alt = np.radians(min_alt)
-        self.max_alt = np.radians(max_alt)
-        self.ra, self.dec = _hpid2_ra_dec(self.nside, np.arange(hp.nside2npix(self.nside)))
-        self.shadow_minutes = np.radians(shadow_minutes / 60.0 * 360.0 / 24.0)
-        # Compute the declination band where things could drift into zenith
-        self.decband = np.zeros(self.dec.size, dtype=float)
-        self.zenith_radius = np.radians(90.0 - max_alt) / 2.0
-        site = Site(name=site)
-        self.lat_rad = site.latitude_rad
-        self.lon_rad = site.longitude_rad
-        self.decband[
-            np.where(
-                (IntRounded(self.dec) < IntRounded(self.lat_rad + self.zenith_radius))
-                & (IntRounded(self.dec) > IntRounded(self.lat_rad - self.zenith_radius))
-            )
-        ] = 1
-
-        self.result = np.empty(hp.nside2npix(self.nside), dtype=float)
-        self.result.fill(self.penalty)
-
-    def _calc_value(self, conditions, indx=None):
-        result = self.result.copy()
-        alt_limit = np.where(
-            (IntRounded(conditions.alt) > IntRounded(self.min_alt))
-            & (IntRounded(conditions.alt) < IntRounded(self.max_alt))
-        )[0]
-        result[alt_limit] = 1
-        to_mask = np.where(
-            (IntRounded(conditions.HA) > IntRounded(2.0 * np.pi - self.shadow_minutes - self.zenith_radius))
-            & (self.decband == 1)
-        )
-        result[to_mask] = np.nan
-        return result
-
-
 class MoonAvoidanceBasisFunction(BaseBasisFunction):
     """Avoid observing within `moon_distance` of the moon.
 
@@ -513,29 +437,5 @@ class MapCloudBasisFunction(BaseBasisFunction):
 
         clouded = np.where(self.max_cloud_map <= conditions.bulk_cloud)
         result[clouded] = self.out_of_bounds_val
-
-        return result
-
-
-class MaskAzimuthBasisFunction(BaseBasisFunction):
-    """Mask pixels based on azimuth.
-
-    Superseded by AltAzShadowMaskBasisFunction.
-    """
-
-    def __init__(self, nside=None, out_of_bounds_val=np.nan, az_min=0.0, az_max=180.0):
-        super(MaskAzimuthBasisFunction, self).__init__(nside=nside)
-        self.az_min = IntRounded(np.radians(az_min))
-        self.az_max = IntRounded(np.radians(az_max))
-        self.out_of_bounds_val = out_of_bounds_val
-        self.result = np.ones(hp.nside2npix(self.nside))
-        send_unused_deprecation_warning(self.__class__.__name__)
-
-    def _calc_value(self, conditions, indx=None):
-        to_mask = np.where(
-            (IntRounded(conditions.az) > self.az_min) & (IntRounded(conditions.az) < self.az_max)
-        )[0]
-        result = self.result.copy()
-        result[to_mask] = self.out_of_bounds_val
 
         return result

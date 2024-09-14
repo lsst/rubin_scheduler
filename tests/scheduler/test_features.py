@@ -358,41 +358,65 @@ class TestFeatures(unittest.TestCase):
         # in these cases with added requirements .. but will leave it
         # to the "restore" test in test_utils.py.
 
-    def test_NObsSurvey(self):
+    def test_NObsCount(self):
         # Make some observations to count
-        observations_list = make_observations_list(2)
-        observations_list[0]["scheduler_note"] = "survey a"
-        observations_list[1]["scheduler_note"] = "survey b"
+        observations_list = make_observations_list(5)
+        for i in [0, 2]:
+            observations_list[i]["scheduler_note"] = "survey a"
+        for i in [1, 3]:
+            observations_list[i]["scheduler_note"] = "survey b"
+        observations_list[4]["scheduler_note"] = "survey"
+        for i in [0, 1]:
+            observations_list[i]["filter"] = "r"
+        for i in [2, 3, 4]:
+            observations_list[i]["filter"] = "g"
         observations_array, observations_hpid_array = make_observations_arrays(observations_list)
         # Count the observations matching any note
-        count_feature = features.NObsSurvey(note=None)
-        # ... it matters significantly that we pass obs[0] and not obs.
+        count_feature = features.NObsCount(note=None, filtername=None)
         for obs in observations_list:
             count_feature.add_observation(obs)
-        self.assertTrue(count_feature.feature == 2)
+        self.assertTrue(count_feature.feature == 5)
         # and count again using add_observations_array
-        count_feature = features.NObsSurvey(note=None)
+        count_feature = features.NObsCount(note=None)
         count_feature.add_observations_array(observations_array, observations_hpid=observations_hpid_array)
-        self.assertTrue(count_feature.feature == 2)
+        self.assertTrue(count_feature.feature == 5)
         # Count using a note to match
         # Count the observations matching specific note
-        count_feature = features.NObsSurvey(note="survey a")
+        count_feature = features.NObsCount(note="survey a")
         for obs in observations_list:
             count_feature.add_observation(obs)
-        self.assertTrue(count_feature.feature == 1)
+        self.assertTrue(count_feature.feature == 2)
         # and count again using add_observations_array
-        count_feature = features.NObsSurvey(note="survey a")
+        count_feature = features.NObsCount(note="survey a")
         count_feature.add_observations_array(observations_array, observations_hpid=observations_hpid_array)
-        self.assertTrue(count_feature.feature == 1)
+        self.assertTrue(count_feature.feature == 2)
         # Count the observations matching subset of note
-        count_feature = features.NObsSurvey(note="survey")
+        count_feature = features.NObsCount(note="survey")
+        for obs in observations_list:
+            count_feature.add_observation(obs)
+        self.assertTrue(count_feature.feature == 5)
+        # and count again using add_observations_array
+        count_feature = features.NObsCount(note="survey")
+        count_feature.add_observations_array(observations_array, observations_hpid=observations_hpid_array)
+        self.assertTrue(count_feature.feature == 5)
+        # Count the observations matching filter
+        count_feature = features.NObsCount(note=None, filtername="r")
         for obs in observations_list:
             count_feature.add_observation(obs)
         self.assertTrue(count_feature.feature == 2)
         # and count again using add_observations_array
-        count_feature = features.NObsSurvey(note="survey")
+        count_feature = features.NObsCount(note=None, filtername="r")
         count_feature.add_observations_array(observations_array, observations_hpid=observations_hpid_array)
         self.assertTrue(count_feature.feature == 2)
+        # Count the observations matching filter and surveyname
+        count_feature = features.NObsCount(note="survey b", filtername="r")
+        for obs in observations_list:
+            count_feature.add_observation(obs)
+        self.assertTrue(count_feature.feature == 1)
+        # and count again using add_observations_array
+        count_feature = features.NObsCount(note="survey b", filtername="r")
+        count_feature.add_observations_array(observations_array, observations_hpid=observations_hpid_array)
+        self.assertTrue(count_feature.feature == 1)
 
     def test_LastObservation(self):
         # Make some observations to count

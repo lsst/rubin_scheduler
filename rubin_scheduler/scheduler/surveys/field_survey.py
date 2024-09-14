@@ -8,7 +8,7 @@ import numpy as np
 
 from rubin_scheduler.utils import ra_dec2_hpid
 
-from ..features import LastObservation, NObsSurvey
+from ..features import LastObservation, NObsCount
 from ..utils import ObservationArray
 from . import BaseSurvey
 
@@ -209,7 +209,7 @@ class FieldSurvey(BaseSurvey):
 
         # Tucking this here so we can look at how many observations
         # recorded for this field and what was the last one.
-        self.extra_features["ObsRecorded"] = NObsSurvey()
+        self.extra_features["ObsRecorded"] = NObsCount()
         self.extra_features["LastObs"] = LastObservation()
 
     def _generate_survey_name(self, target_name=None):

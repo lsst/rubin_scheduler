@@ -2,21 +2,14 @@ __all__ = (
     "BaseFeature",
     "BaseSurveyFeature",
     "NObsCount",
-    "NObsSurvey",
     "LastObservation",
-    "LastsequenceObservation",
-    "LastFilterChange",
     "NObservations",
-    "CoaddedDepth",
     "LastObserved",
     "NObsNight",
     "PairInNight",
     "RotatorAngle",
-    "NObservationsSeason",
-    "NObsCountSeason",
     "NObservationsCurrentSeason",
     "LastNObsTimes",
-    "SurveyInNight",
     "NoteInNight",
     "NoteLastObserved",
 )
@@ -30,7 +23,7 @@ from scipy.stats import binned_statistic
 from rubin_scheduler.scheduler import utils
 from rubin_scheduler.scheduler.utils import IntRounded
 from rubin_scheduler.skybrightness_pre import dark_sky
-from rubin_scheduler.utils import _hpid2_ra_dec, calc_season, m5_flat_sed, survey_start_mjd
+from rubin_scheduler.utils import _hpid2_ra_dec, calc_season, survey_start_mjd
 
 
 def send_unused_deprecation_warning(name):
@@ -111,34 +104,6 @@ class BaseSurveyFeature(BaseFeature):
         raise NotImplementedError
 
 
-class SurveyInNight(BaseSurveyFeature):
-    """Count appearances of `survey_str` within observation `note` in
-    the current night; `survey_str` must be contained in `note`.
-
-    Useful to keep track of how many times a survey has executed in a night.
-
-    Parameters
-    ----------
-    survey_str : `str`, optional
-        String to search for in observation `scheduler_note`.
-        Default of "" means any observation will match.
-    """
-
-    def __init__(self, survey_str=""):
-        self.feature = 0
-        self.survey_str = survey_str
-        self.night = -100
-        send_unused_deprecation_warning(self.__class__.__name__)
-
-    def add_observation(self, observation, indx=None):
-        if observation["night"] != self.night:
-            self.night = observation["night"]
-            self.feature = 0
-
-        if self.survey_str in observation["scheduler_note"][0]:
-            self.feature += 1
-
-
 class NoteInNight(BaseSurveyFeature):
     """Count appearances of any of `scheduler_notes` in
     observation `scheduler_note` in the
@@ -182,137 +147,6 @@ class NoteInNight(BaseSurveyFeature):
 
 
 class NObsCount(BaseSurveyFeature):
-    """Count the number of observations.
-    Total number, not tracked over sky
-
-    Parameters
-    ----------
-    filtername : `str` or None
-        The filter to count. Default None, all filters counted.
-
-    """
-
-    def __init__(self, filtername=None, tag=None):
-        self.feature = 0
-        self.filtername = filtername
-        # 'tag' is used in GoalStrictFilterBasisFunction
-        self.tag = tag
-        if self.tag is not None:
-            warnings.warn(
-                "Tag is not a supported element"
-                "of the `observation` and this aspect of "
-                "the feature will be "
-                "deprecated in 2 minor releases.",
-                DeprecationWarning,
-                stack_level=2,
-            )
-
-    def add_observations_array(self, observations_array, observations_hpid):
-        if self.filtername is None:
-            self.feature += np.size(observations_array)
-        else:
-            in_filt = np.where(observations_array["filter"] == self.filtername)[0]
-            self.feature += np.size(in_filt)
-
-    def add_observation(self, observation, indx=None):
-        if (self.filtername is None) and (self.tag is None):
-            # Track all observations
-            self.feature += 1
-        elif (
-            (self.filtername is not None)
-            and (self.tag is None)
-            and (observation["filter"][0] in self.filtername)
-        ):
-            # Track all observations on a specified filter
-            self.feature += 1
-        elif (self.filtername is None) and (self.tag is not None) and (observation["tag"][0] in self.tag):
-            # Track all observations on a specified tag
-            self.feature += 1
-        elif (
-            (self.filtername is None)
-            and (self.tag is not None)
-            and
-            # Track all observations on a specified filter on a specified tag
-            (observation["filter"][0] in self.filtername)
-            and (observation["tag"][0] in self.tag)
-        ):
-            self.feature += 1
-
-
-class NObsCountSeason(BaseSurveyFeature):
-    """Count the number of observations in a season.
-
-    Parameters
-    ----------
-    filtername : `str` (None)
-        The filter to count (if None, all filters counted)
-
-    Notes
-    -----
-    Uses `season_calc` to calculate season value.
-
-    Seems unused - added deprecation warning.
-    """
-
-    def __init__(
-        self,
-        season,
-        nside=None,
-        filtername=None,
-        tag=None,
-        season_modulo=2,
-        offset=None,
-        max_season=None,
-        season_length=365.25,
-    ):
-        self.feature = 0
-        self.filtername = filtername
-        self.tag = tag
-        self.season = season
-        self.season_modulo = season_modulo
-        if offset is None:
-            self.offset = np.zeros(hp.nside2npix(nside), dtype=int)
-        else:
-            self.offset = offset
-        self.max_season = max_season
-        self.season_length = season_length
-        send_unused_deprecation_warning(self.__class__.__name__)
-
-    def add_observation(self, observation, indx=None):
-        season = utils.season_calc(
-            observation["night"],
-            modulo=self.season_modulo,
-            offset=self.offset[indx],
-            max_season=self.max_season,
-            season_length=self.season_length,
-        )
-        if self.season in season:
-            if (self.filtername is None) and (self.tag is None):
-                # Track all observations
-                self.feature += 1
-            elif (
-                (self.filtername is not None)
-                and (self.tag is None)
-                and (observation["filter"][0] in self.filtername)
-            ):
-                # Track all observations on a specified filter
-                self.feature += 1
-            elif (self.filtername is None) and (self.tag is not None) and (observation["tag"][0] in self.tag):
-                # Track all observations on a specified tag
-                self.feature += 1
-            elif (
-                (self.filtername is None)
-                and (self.tag is not None)
-                and
-                # Track all observations on a specified filter on a
-                # specified tag
-                (observation["filter"][0] in self.filtername)
-                and (observation["tag"][0] in self.tag)
-            ):
-                self.feature += 1
-
-
-class NObsSurvey(BaseSurveyFeature):
     """Count the number of observations, whole sky (not per pixel).
 
     Because this feature will belong to a survey, it would count all
@@ -323,27 +157,46 @@ class NObsSurvey(BaseSurveyFeature):
     note : `str` or None
         Count observations that match `str` in their scheduler_note field.
         Note can be a substring of scheduler_note, and will still match.
+    filtername : `str` or None
+        Optionally also (or independently) specify a filter to match.
     """
 
-    def __init__(self, note=None):
+    def __init__(self, note=None, filtername=None):
         self.feature = 0
         self.note = note
         if self.note == "":
             self.note = None
+        self.filtername = filtername
 
     def add_observations_array(self, observations_array, observations_hpid):
-        if self.note is None:
+        if self.note is None and self.filtername is None:
             self.feature += observations_array.size
-        else:
+        elif self.note is None and self.filtername is not None:
+            in_filt = np.where(observations_array["filter"] == self.filtername)
+            self.feature += np.size(in_filt)
+        elif self.note is not None and self.filtername is None:
             count = [self.note in note for note in observations_array["scheduler_note"]]
+            self.feature += np.sum(count)
+        else:
+            # note and filtername are defined
+            in_filt = np.where(observations_array["filter"] == self.filtername)
+            count = [self.note in note for note in observations_array["scheduler_note"][in_filt]]
             self.feature += np.sum(count)
 
     def add_observation(self, observation, indx=None):
         # Track all observations
-        if self.note is None:
+        if self.note is None and self.filtername is None:
             self.feature += 1
-        else:
+        elif self.note is None and self.filtername is not None:
+            if observation["filter"][0] in self.filtername:
+                self.feature += 1
+        elif self.note is not None and self.filtername is None:
             if self.note in observation["scheduler_note"][0]:
+                self.feature += 1
+        else:
+            if (observation["filter"][0] in self.filtername) and self.note in observation["scheduler_note"][
+                0
+            ]:
                 self.feature += 1
 
 
@@ -385,39 +238,6 @@ class LastObservation(BaseSurveyFeature):
                 self.feature = observation
         else:
             self.feature = observation
-
-
-class LastsequenceObservation(BaseSurveyFeature):
-    """When was the last observation"""
-
-    def __init__(self, sequence_ids=""):
-        self.sequence_ids = sequence_ids  # The ids of all sequence
-        # observations...
-        # Start out with an empty observation
-        self.feature = utils.ObservationArray()
-        send_unused_deprecation_warning(self.__class__.__name__)
-
-    def add_observation(self, observation, indx=None):
-        if observation["survey_id"] in self.sequence_ids:
-            self.feature = observation
-
-
-class LastFilterChange(BaseSurveyFeature):
-    """Record when the filter last changed."""
-
-    def __init__(self):
-        self.feature = {"mjd": 0.0, "previous_filter": None, "current_filter": None}
-        send_unused_deprecation_warning(self.__class__.__name__)
-
-    def add_observation(self, observation, indx=None):
-        if self.feature["current_filter"] is None:
-            self.feature["mjd"] = observation["mjd"][0]
-            self.feature["previous_filter"] = None
-            self.feature["current_filter"] = observation["filter"][0]
-        elif observation["filter"][0] != self.feature["current_filter"]:
-            self.feature["mjd"] = observation["mjd"][0]
-            self.feature["previous_filter"] = self.feature["current_filter"]
-            self.feature["current_filter"] = observation["filter"][0]
 
 
 class NObservations(BaseSurveyFeature):
@@ -480,70 +300,10 @@ class NObservations(BaseSurveyFeature):
                 self.feature[indx] += 1
 
 
-class NObservationsSeason(BaseSurveyFeature):
-    """
-    Track the number of observations that have been made across sky
-
-    Parameters
-    ----------
-    season : `int`
-        Only count observations in this season (year).
-    filtername : `str` ('r')
-        String or list that has all the filters that can count.
-    nside : `int` (32)
-        The nside of the healpixel map to use
-    offset : `int` (0)
-        The offset to use when computing the season (days)
-    modulo : `int` (None)
-        How to mod the years when computing season
-
-    Notes
-    -----
-    Uses `season_calc` to calculate season value.
-    """
-
-    def __init__(
-        self,
-        season,
-        filtername=None,
-        nside=None,
-        offset=0,
-        modulo=None,
-        max_season=None,
-        season_length=365.25,
-    ):
-        if offset is None:
-            offset = np.zeros(hp.nside2npix(nside), dtype=int)
-        if nside is None:
-            nside = utils.set_default_nside()
-
-        self.feature = np.zeros(hp.nside2npix(nside), dtype=float)
-        self.filtername = filtername
-        ## How does this work if the default is 0 -- in add_observation
-        # an index is referenced for offset, so the default should fail
-        self.offset = offset
-        self.modulo = modulo
-        self.season = season
-        self.max_season = max_season
-        self.season_length = season_length
-        send_unused_deprecation_warning(self.__class__.__name__)
-
-    def add_observation(self, observation, indx=None):
-        # How does this work if indx is None -- self.offset[indx] should fail
-        observation_season = utils.season_calc(
-            observation["night"],
-            offset=self.offset[indx],
-            modulo=self.modulo,
-            max_season=self.max_season,
-            season_length=self.season_length,
-        )
-        if self.season in observation_season:
-            if self.filtername is None or observation["filter"][0] in self.filtername:
-                self.feature[indx] += 1
-
-
 class LargestN:
     def __init__(self, n):
+        # This is used within other features or basis functions,
+        # but is not a feature itself
         self.n = n
 
     def __call__(self, in_arr):
@@ -805,39 +565,6 @@ class NObservationsCurrentSeason(BaseSurveyFeature):
 
         if check:
             self.feature[this_season_indx] += 1
-
-
-class CoaddedDepth(BaseSurveyFeature):
-    """Track the co-added depth that has been reached across the sky
-
-    Parameters
-    ----------
-    fwh_meff_limit : `float` (100)
-        The effective FWHM of the seeing (arcsecond).
-        Images will only be added to the coadded depth if the observation
-        FWHM is less than or equal to the limit.  Default 100.
-    """
-
-    def __init__(self, filtername="r", nside=None, fwhm_eff_limit=100.0):
-        if nside is None:
-            nside = utils.set_default_nside()
-        self.filtername = filtername
-        self.fwhm_eff_limit = IntRounded(fwhm_eff_limit)
-        # Starting at limiting mag of zero should be fine.
-        self.feature = np.zeros(hp.nside2npix(nside), dtype=float)
-
-    def add_observation(self, observation, indx=None):
-        if observation["filter"][0] == self.filtername:
-            if IntRounded(observation["FWHMeff"]) <= self.fwhm_eff_limit:
-                m5 = m5_flat_sed(
-                    observation["filter"],
-                    observation["skybrightness"],
-                    observation["FWHMeff"],
-                    observation["exptime"],
-                    observation["airmass"],
-                )
-
-                self.feature[indx] = 1.25 * np.log10(10.0 ** (0.8 * self.feature[indx]) + 10.0 ** (0.8 * m5))
 
 
 class LastObserved(BaseSurveyFeature):

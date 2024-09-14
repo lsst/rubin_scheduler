@@ -18,8 +18,6 @@ __all__ = (
     "NightModuloBasisFunction",
     "EndOfEveningBasisFunction",
     "TimeToScheduledBasisFunction",
-    "LimitObsPnightBasisFunction",
-    "SunHighLimitBasisFunction",
     "CloseToTwilightBasisFunction",
     "MoonDistPointRangeBasisFunction",
     "AirmassPointRangeBasisFunction",
@@ -203,17 +201,6 @@ class CloseToTwilightBasisFunction(BaseBasisFunction):
         return result
 
 
-class SunHighLimitBasisFunction(CloseToTwilightBasisFunction):
-
-    def __init__(self, sun_alt_limit=-14.8, time_to_12deg=21.0, time_remaining=15.0):
-        super().__init__(
-            max_sun_alt_limit=sun_alt_limit,
-            min_time_remaining=time_remaining,
-            max_time_to_12deg=time_to_12deg,
-        )
-        warnings.warn("Class has been renamed CloseToTwilightBasisFunction", DeprecationWarning, 2)
-
-
 class OnceInNightBasisFunction(BaseBasisFunction):
     """Stop observing if something has been executed already in the night
 
@@ -252,22 +239,6 @@ class SunAltHighLimitBasisFunction(BaseBasisFunction):
         if conditions.sun_alt < self.alt_limit:
             result = False
         return result
-
-
-class LimitObsPnightBasisFunction(BaseBasisFunction):
-    """"""
-
-    def __init__(self, survey_str="", nlimit=100.0):
-        super(LimitObsPnightBasisFunction, self).__init__()
-        self.nlimit = nlimit
-        self.survey_features["N_in_night"] = features.SurveyInNight(survey_str=survey_str)
-        send_unused_deprecation_warning(self.__class__.__name__)
-
-    def check_feasibility(self, conditions):
-        if self.survey_features["N_in_night"].feature >= self.nlimit:
-            return False
-        else:
-            return True
 
 
 class NightModuloBasisFunction(BaseBasisFunction):
@@ -464,8 +435,8 @@ class SoftDelayBasisFunction(BaseBasisFunction):
             self.scheduler_note = scheduler_note
         self.survey_features["last_obs_self"] = features.LastObservation(scheduler_note=self.scheduler_note)
         self.fractions = fractions
-        self.survey_features["N_total"] = features.NObsSurvey(note=None)
-        self.survey_features["N_note"] = features.NObsSurvey(note=self.scheduler_note)
+        self.survey_features["N_total"] = features.NObsCount(note=None)
+        self.survey_features["N_note"] = features.NObsCount(note=self.scheduler_note)
 
     def check_feasibility(self, conditions):
         result = True
@@ -544,8 +515,8 @@ class FractionOfObsBasisFunction(BaseBasisFunction):
         else:
             self.scheduler_note = scheduler_note
         self.frac_total = frac_total
-        self.survey_features["N_total"] = features.NObsSurvey(note=None)
-        self.survey_features["N_note"] = features.NObsSurvey(note=self.scheduler_note)
+        self.survey_features["N_total"] = features.NObsCount(note=None)
+        self.survey_features["N_note"] = features.NObsCount(note=self.scheduler_note)
 
     def check_feasibility(self, conditions):
         # If nothing has been observed, fine to go
@@ -615,8 +586,8 @@ class LookAheadDdfBasisFunction(BaseBasisFunction):
         self.time_jump = time_jump / 60.0 / 24.0  # To days
         self.time_needed = time_needed / 60.0 / 24.0  # To days
         self.aggressive_fraction = aggressive_fraction
-        self.survey_features["N_total"] = features.NObsSurvey(note=None)
-        self.survey_features["N_note"] = features.NObsSurvey(note=self.scheduler_note)
+        self.survey_features["N_total"] = features.NObsCount(note=None)
+        self.survey_features["N_note"] = features.NObsCount(note=self.scheduler_note)
 
     def check_feasibility(self, conditions):
         result = True
