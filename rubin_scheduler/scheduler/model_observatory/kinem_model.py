@@ -752,7 +752,8 @@ class KinemModel:
         If slew is not allowed, returns np.nan and does not update state.
         """
         if (observation["nexp"] >= 2) & (
-            observation["exptime"] / observation["nexp"] < self.shutter_2motion_min_time
+            (observation["exptime"] / observation["nexp"] + self.readtime * (observation["nexp"] - 1))
+            < self.shutter_2motion_min_time
         ):
             msg = "%i exposures in %i seconds is violating number of shutter motion limit" % (
                 observation["nexp"],
