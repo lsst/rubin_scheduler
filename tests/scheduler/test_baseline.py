@@ -195,7 +195,7 @@ class TestExample(unittest.TestCase):
         scheduler = example_scheduler(nside=nside, mjd_start=mjd_start)
         observatory = ModelObservatory(nside=nside, mjd_start=mjd_start)
         observatory, scheduler, observations = sim_runner(
-            observatory, scheduler, survey_length=survey_length, filename=None
+            observatory, scheduler, sim_duration=survey_length, filename=None
         )
         # Check that greedy observed some
         assert "greedy" in observations["scheduler_note"]
@@ -231,7 +231,7 @@ class TestFeatures(unittest.TestCase):
         scheduler = CoreScheduler(surveys, nside=nside)
         observatory = ModelObservatory(nside=nside, mjd_start=mjd_start)
         observatory, scheduler, observations = sim_runner(
-            observatory, scheduler, survey_length=survey_length, filename=None
+            observatory, scheduler, sim_duration=survey_length, filename=None
         )
 
         # Check that greedy observed some
@@ -261,7 +261,7 @@ class TestFeatures(unittest.TestCase):
         scheduler = CoreScheduler(surveys, nside=nside)
         observatory = ModelObservatory(nside=nside, mjd_start=mjd_start)
         observatory, scheduler, observations = sim_runner(
-            observatory, scheduler, survey_length=survey_length, filename=None
+            observatory, scheduler, sim_duration=survey_length, filename=None
         )
         # Make sure some blobs executed
         assert "blob, gg, b" in observations["scheduler_note"]
@@ -294,7 +294,7 @@ class TestFeatures(unittest.TestCase):
         scheduler = CoreScheduler(surveys, nside=nside)
         observatory = ModelObservatoryWindy(nside=nside, mjd_start=mjd_start)
         observatory, scheduler, observations = sim_runner(
-            observatory, scheduler, survey_length=survey_length, filename=None
+            observatory, scheduler, sim_duration=survey_length, filename=None
         )
 
         # Make sure some blobs executed
@@ -331,7 +331,7 @@ class TestFeatures(unittest.TestCase):
         scheduler = CoreScheduler(surveys, nside=nside)
         observatory = ModelObservatory(nside=nside, mjd_start=mjd_start)
         observatory, scheduler, observations = sim_runner(
-            observatory, scheduler, survey_length=survey_length, filename=None
+            observatory, scheduler, sim_duration=survey_length, filename=None
         )
 
         # Make sure some blobs executed

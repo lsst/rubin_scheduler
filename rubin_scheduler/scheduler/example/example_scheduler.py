@@ -1375,7 +1375,7 @@ def run_sched(
     observatory, scheduler, observations = sim_runner(
         observatory,
         scheduler,
-        survey_length=survey_length,
+        sim_duration=survey_length,
         filename=filename,
         delete_past=True,
         n_visit_limit=n_visit_limit,

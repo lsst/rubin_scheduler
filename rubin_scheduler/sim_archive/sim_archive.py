@@ -188,12 +188,12 @@ def make_sim_archive_dir(
     opsim_metadata["username"] = os.environ["USER"]
 
     simulation_dates = {}
-    if "mjd_start" in sim_runner_kwargs:
-        simulation_dates["first"] = convert_mjd_to_dayobs(sim_runner_kwargs["mjd_start"])
+    if "sim_start_mjd" in sim_runner_kwargs:
+        simulation_dates["first"] = convert_mjd_to_dayobs(sim_runner_kwargs["sim_start_mjd"])
 
-        if "survey_length" in sim_runner_kwargs:
+        if "sim_duration" in sim_runner_kwargs:
             simulation_dates["last"] = convert_mjd_to_dayobs(
-                sim_runner_kwargs["mjd_start"] + sim_runner_kwargs["survey_length"] - 1
+                sim_runner_kwargs["sim_start_mjd"] + sim_runner_kwargs["sim_duration"] - 1
             )
     else:
         simulation_dates["first"] = convert_mjd_to_dayobs(observations["mjd"].min())
@@ -374,7 +374,7 @@ def read_archived_sim_metadata(base_uri, latest=None, num_nights=5):
         A dictionary of metadata for simulations in the date range.
     """
     latest_mjd = int(Time.now().mjd if latest is None else Time(latest).mjd)
-    earliest_mjd = int(latest_mjd - num_nights)
+    earliest_mjd = int(latest_mjd - (num_nights - 1))
 
     all_metadata = {}
     for mjd in range(earliest_mjd, latest_mjd + 1):

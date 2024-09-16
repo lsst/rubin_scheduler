@@ -52,7 +52,7 @@ class TestSurveyConveniences(unittest.TestCase):
         greedy = [simple_greedy_survey(filtername="r")]
         scheduler = CoreScheduler(greedy)
         observatory, scheduler, observations = sim_runner(
-            observatory, scheduler, filter_scheduler=None, survey_length=0.7
+            observatory, scheduler, filter_scheduler=None, sim_duration=0.7
         )
         # Current survey_start_mjd should produce ~1000 visits
         # but changing this to a short night could reduce the total number
@@ -78,7 +78,7 @@ class TestSurveyConveniences(unittest.TestCase):
         pairs = [simple_pairs_survey(filtername="r", filtername2="i")]
         scheduler = CoreScheduler(pairs)
         observatory, scheduler, observations = sim_runner(
-            observatory, scheduler, filter_scheduler=None, survey_length=0.7
+            observatory, scheduler, filter_scheduler=None, sim_duration=0.7
         )
         # Current survey_start_mjd should produce over ~950 visits
         # but changing this to a short night could reduce the total number
@@ -114,7 +114,7 @@ class TestSurveyConveniences(unittest.TestCase):
         greedy = [simple_greedy_survey(filtername="r")]
         scheduler = CoreScheduler([field, greedy])
         observatory, scheduler, observations = sim_runner(
-            observatory, scheduler, filter_scheduler=None, survey_length=0.7
+            observatory, scheduler, filter_scheduler=None, sim_duration=0.7
         )
         # Current survey_start_mjd should produce over ~950 visits
         # but changing this to a short night could reduce the total number
