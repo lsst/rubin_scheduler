@@ -44,12 +44,12 @@ DEFAULT_ARCHIVE_URI = "s3://rubin-scheduler-prenight/opsim/"
 
 
 def _run_sim(
-    mjd_start: float,
+    sim_start_mjd: float,
     archive_uri: str,
     scheduler_io: io.BufferedRandom,
     label: str,
     tags: Sequence[str] = tuple(),
-    sim_length: float = 2,
+    sim_duration: float = 2,
     anomalous_overhead_func: Optional[Callable] = None,
     opsim_metadata: dict | None = None,
 ) -> None:
@@ -72,8 +72,8 @@ def _run_sim(
         label=label,
         tags=tags,
         script=__file__,
-        mjd_start=mjd_start,
-        survey_length=sim_length,
+        sim_start_mjd=sim_start_mjd,
+        sim_duration=sim_duration,
         record_rewards=True,
         anomalous_overhead_func=anomalous_overhead_func,
         opsim_metadata=opsim_metadata,
@@ -256,20 +256,20 @@ def run_prenights(
     before_first_day_obs: npt.NDArray[np.bool_] = all_sun_n12_setting < day_obs_mjd + 0.5
     after_first_day_obs: npt.NDArray[np.bool_] = all_sun_n12_setting > day_obs_mjd + 1.5
     on_first_day_obs: npt.NDArray[np.bool_] = ~(before_first_day_obs | after_first_day_obs)
-    mjd_start: float = all_sun_n12_setting[on_first_day_obs].item()
+    sim_start_mjd: float = all_sun_n12_setting[on_first_day_obs].item()
 
     all_sun_n12_rising: npt.NDArray[np.float_] = Almanac().sunsets["sun_n12_rising"]
     before_last_day_obs: npt.NDArray[np.bool_] = all_sun_n12_setting < day_obs_mjd + sim_nights + 0.5
     after_last_day_obs: npt.NDArray[np.bool_] = all_sun_n12_setting > day_obs_mjd + sim_nights + 1.5
     on_last_day_obs: npt.NDArray[np.bool_] = ~(before_last_day_obs | after_last_day_obs)
-    mjd_end: float = all_sun_n12_rising[on_last_day_obs].item()
-    sim_length: float = mjd_end - mjd_start
+    sim_end_mjd: float = all_sun_n12_rising[on_last_day_obs].item()
+    sim_duration: float = sim_end_mjd - sim_start_mjd
 
     # Begin with an ideal pure model sim.
     completed_run_without_delay: bool = False
     if len(minutes_delays) == 0 or (np.array(minutes_delays) == 0).any():
         run_sim(
-            mjd_start,
+            sim_start_mjd,
             label=f"Nominal start and overhead, ideal conditions, run at {exec_time}",
             tags=["ideal", "nominal"],
         )
@@ -281,15 +281,15 @@ def run_prenights(
             # Did this already.
             continue
 
-        delayed_mjd_start = mjd_start + minutes_delay / (24.0 * 60)
-        sim_length = mjd_end - delayed_mjd_start
+        delayed_sim_start_mjd = sim_start_mjd + minutes_delay / (24.0 * 60)
+        sim_duration = sim_end_mjd - delayed_sim_start_mjd
 
         run_sim(
-            delayed_mjd_start,
+            delayed_sim_start_mjd,
             label=f"Start time delayed by {minutes_delay} minutes,"
             + f" Nominal slew and visit overhead, ideal conditions, run at {exec_time}",
             tags=["ideal", f"delay_{minutes_delay}"],
-            sim_length=sim_length,
+            sim_duration=sim_duration,
         )
 
     # Run a few different scatters of visit time
@@ -297,12 +297,12 @@ def run_prenights(
     for anomalous_overhead_seed in anomalous_overhead_seeds:
         anomalous_overhead_func = AnomalousOverheadFunc(anomalous_overhead_seed, anomalous_overhead_scale)
         run_sim(
-            mjd_start,
+            sim_start_mjd,
             label=f"Anomalous overhead {anomalous_overhead_seed, anomalous_overhead_scale},"
             + f" Nominal start, ideal conditions, run at {exec_time}",
             tags=["ideal", "anomalous_overhead"],
             anomalous_overhead_func=anomalous_overhead_func,
-            sim_length=sim_length,
+            sim_duration=sim_duration,
         )
 
 

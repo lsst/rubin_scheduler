@@ -28,11 +28,11 @@ class TestSimArchive(unittest.TestCase):
     @unittest.skipIf(not HAVE_LSST_RESOURCES, "No lsst.resources")
     def test_sim_archive(self):
         # Begin by running a short simulation
-        mjd_start = survey_start_mjd()
-        survey_length = 1  # days
-        scheduler = example_scheduler(mjd_start=mjd_start)
+        sim_start_mjd = survey_start_mjd()
+        sim_duration = 1  # days
+        scheduler = example_scheduler(mjd_start=sim_start_mjd)
         scheduler.keep_rewards = True
-        observatory = ModelObservatory(mjd_start=mjd_start)
+        observatory = ModelObservatory(mjd_start=sim_start_mjd)
 
         # Record the state of the scheduler at the start of the sim.
         data_dir = TemporaryDirectory()
@@ -46,8 +46,8 @@ class TestSimArchive(unittest.TestCase):
 
         # Run the simulation
         sim_runner_kwargs = {
-            "mjd_start": mjd_start,
-            "survey_length": survey_length,
+            "sim_start_mjd": sim_start_mjd,
+            "sim_duration": sim_duration,
             "record_rewards": True,
         }
 

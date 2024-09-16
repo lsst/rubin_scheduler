@@ -66,7 +66,7 @@ class TestUtils(unittest.TestCase):
             mo, scheduler, observations = sim_runner(
                 mo,
                 scheduler,
-                survey_length=3.0,
+                sim_duration=3.0,
                 verbose=False,
                 filename=None,
             )
@@ -88,7 +88,7 @@ class TestUtils(unittest.TestCase):
             mo, scheduler, observations = sim_runner(
                 mo,
                 scheduler,
-                survey_length=3.0,
+                sim_duration=3.0,
                 verbose=False,
                 filename=None,
             )
@@ -116,7 +116,7 @@ class TestUtils(unittest.TestCase):
             mo, scheduler, observations = sim_runner(
                 mo,
                 scheduler,
-                survey_length=3.0,
+                sim_duration=3.0,
                 verbose=False,
                 filename=None,
             )
@@ -152,7 +152,7 @@ class TestUtils(unittest.TestCase):
             mo, scheduler, observations = sim_runner(
                 mo,
                 scheduler,
-                survey_length=3.0,
+                sim_duration=3.0,
                 verbose=False,
                 filename=None,
             )
@@ -177,7 +177,7 @@ class TestUtils(unittest.TestCase):
         mo, scheduler, observations = sim_runner(
             mo,
             scheduler,
-            survey_length=30.0,
+            sim_duration=30.0,
             verbose=False,
             filename=None,
             n_visit_limit=n_visit_limit,
@@ -208,7 +208,7 @@ class TestUtils(unittest.TestCase):
         new_mo, new_sched, new_obs = sim_runner(
             new_mo,
             new_sched,
-            survey_length=20.0,
+            sim_duration=20.0,
             verbose=False,
             filename=None,
             n_visit_limit=new_n_limit,
@@ -241,7 +241,7 @@ class TestUtils(unittest.TestCase):
         new_mo, new_sched, new_obs_fast = sim_runner(
             new_mo,
             new_sched,
-            survey_length=20.0,
+            sim_duration=20.0,
             verbose=False,
             filename=None,
             n_visit_limit=new_n_limit,
