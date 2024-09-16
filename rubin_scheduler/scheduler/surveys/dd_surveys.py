@@ -114,8 +114,8 @@ class DeepDrillingSurvey(BaseSurvey):
         )  # to days
 
         if self.reward_value is None:
-            self.extra_features["Ntot"] = features.NObsSurvey()
-            self.extra_features["N_survey"] = features.NObsSurvey(note=self.survey_name)
+            self.extra_features["Ntot"] = features.NObsCount()
+            self.extra_features["N_survey"] = features.NObsCount(note=self.survey_name)
 
     @cached_property
     def roi_hpid(self):

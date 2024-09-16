@@ -344,15 +344,8 @@ class TestBasis(unittest.TestCase):
         self.assertTrue(len(overlap[0]) > 0)
 
     def test_deprecated(self):
-        deprecated_basis_functions = [
-            basis_functions.NearSunTwilightBasisFunction,
-            basis_functions.AvoidFastRevisits,
-            basis_functions.AvoidLongGapsBasisFunction,
-            basis_functions.FootprintNvisBasisFunction,
-            basis_functions.GoalStrictFilterBasisFunction,
-            basis_functions.ZenithShadowMaskBasisFunction,
-            basis_functions.MaskAzimuthBasisFunction,
-        ]
+        # Add to-be-deprecated functions here as they appear
+        deprecated_basis_functions = []
         for dep_bf in deprecated_basis_functions:
             print(dep_bf)
             with warnings.catch_warnings(record=True) as w:

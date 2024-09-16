@@ -524,7 +524,7 @@ def simple_pairs_survey(
 
     # Tucking this here so we can look at how many observations
     # recorded for this survey and what was the last one.
-    pair_survey.extra_features["ObsRecorded"] = features.NObsSurvey()
+    pair_survey.extra_features["ObsRecorded"] = features.NObsCount()
     pair_survey.extra_features["LastObs"] = features.LastObservation()
 
     return pair_survey
@@ -672,7 +672,7 @@ def simple_greedy_survey(
 
     # Tucking this here so we can look at how many observations
     # recorded for this survey and what was the last one.
-    greedy_survey.extra_features["ObsRecorded"] = features.NObsSurvey()
+    greedy_survey.extra_features["ObsRecorded"] = features.NObsCount()
     greedy_survey.extra_features["LastObs"] = features.LastObservation()
 
     return greedy_survey
