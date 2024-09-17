@@ -593,11 +593,11 @@ class Conditions:
         positions.append(
             {
                 "name": "telescope",
-                "alt": self.tel_alt,
-                "az": self.tel_az,
-                "RA": self.tel_ra,
-                "decl": self.tel_dec,
-                "rot": self.rot_tel_pos,
+                "alt": np.max(self.tel_alt),
+                "az": np.max(self.tel_az),
+                "RA": np.max(self.tel_ra),
+                "decl": np.max(self.tel_dec),
+                "rot": np.max(self.rot_tel_pos),
             }
         )
         positions = pd.DataFrame(positions).set_index("name")
