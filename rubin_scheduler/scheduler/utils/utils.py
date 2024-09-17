@@ -1,4 +1,5 @@
 __all__ = (
+    "ra_dec_hp_map",
     "IntRounded",
     "int_binned_stat",
     "smallest_signed_angle",
@@ -41,6 +42,16 @@ import pandas as pd
 
 import rubin_scheduler.version as rsVersion
 from rubin_scheduler.utils import _build_tree, _hpid2_ra_dec, _xyz_from_ra_dec, xyz_angular_radius
+
+
+def ra_dec_hp_map(nside=None):
+    """
+    Return all the RA,dec points for the centers of a healpix map, in radians.
+    """
+    if nside is None:
+        nside = set_default_nside()
+    ra, dec = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(nside)))
+    return ra, dec
 
 
 def smallest_signed_angle(a1, a2):

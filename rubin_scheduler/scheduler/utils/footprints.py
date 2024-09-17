@@ -4,7 +4,6 @@ appropriately for a given time.
 """
 
 __all__ = (
-    "ra_dec_hp_map",
     "calc_norm_factor",
     "calc_norm_factor_array",
     "StepLine",
@@ -26,7 +25,8 @@ from astropy.coordinates import SkyCoord
 
 from rubin_scheduler.utils import _hpid2_ra_dec
 
-from .utils import set_default_nside
+from .sky_area import CurrentAreaMap
+from .utils import ra_dec_hp_map
 
 
 def make_rolling_footprints(
@@ -50,7 +50,9 @@ def make_rolling_footprints(
     Parameters
     ----------
     fp_hp : dict-like
-        A dict with filtername keys and HEALpix map values
+        A dict with filtername keys and HEALpix map values.
+        Default None will load CurrentAreaMap. Assumes
+        WFD is where r-filter is 1.
     mjd_start : `float`
         The starting date of the survey.
     sun_ra_start : `float`
@@ -78,6 +80,13 @@ def make_rolling_footprints(
     -------
     Footprints object
     """
+
+    if fp_hp is None:
+        sky = CurrentAreaMap(nside=nside)
+        footprints, labels = sky.return_maps()
+        fp_hp = {}
+        for key in footprints.dtype.names:
+            fp_hp[key] = footprints[key]
 
     nc_default = {2: 3, 3: 2, 4: 2, 6: 1}
     if n_cycles is None:
@@ -282,16 +291,6 @@ def slice_wfd_area_quad(target_map, nslice=2, wfd_indx=None):
     return split_wfd_indices
 
 
-def ra_dec_hp_map(nside=None):
-    """
-    Return all the RA,dec points for the centers of a healpix map, in radians.
-    """
-    if nside is None:
-        nside = set_default_nside()
-    ra, dec = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(nside)))
-    return ra, dec
-
-
 def slice_wfd_indx(target_map, nslice=2, wfd_indx=None):
     """
     simple map split
@@ -307,15 +306,6 @@ def slice_wfd_indx(target_map, nslice=2, wfd_indx=None):
     split_wfd_indices = [0] + split_wfd_indices
 
     return split_wfd_indices
-
-
-def _is_in_ra_range(ra, low, high):
-    _low = low % (2.0 * np.pi)
-    _high = high % (2.0 * np.pi)
-    if _low <= _high:
-        return (ra >= _low) & (ra <= _high)
-    else:
-        return (ra >= _low) | (ra <= _high)
 
 
 class BasePixelEvolution:

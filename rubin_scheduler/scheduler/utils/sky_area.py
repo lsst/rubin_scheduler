@@ -23,8 +23,7 @@ from shapely.geometry.polygon import Polygon
 from rubin_scheduler import data as rs_data
 from rubin_scheduler.utils import Site, _angular_separation, angular_separation
 
-from .footprints import ra_dec_hp_map
-from .utils import IntRounded, set_default_nside
+from .utils import IntRounded, ra_dec_hp_map, set_default_nside
 
 
 def get_current_footprint(nside):
