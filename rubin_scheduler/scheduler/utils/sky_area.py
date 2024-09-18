@@ -21,9 +21,8 @@ from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
 
 from rubin_scheduler import data as rs_data
-from rubin_scheduler.utils import Site, _angular_separation, angular_separation
+from rubin_scheduler.utils import Site, _angular_separation, _hpid2_ra_dec, angular_separation
 
-from .footprints import ra_dec_hp_map
 from .utils import IntRounded, set_default_nside
 
 
@@ -84,7 +83,7 @@ def generate_all_sky(nside=None, elevation_limit=20, mask=hp.UNSEEN):
 
     # Calculate coordinates of everything.
     skymap = np.zeros(hp.nside2npix(nside), float)
-    ra, dec = ra_dec_hp_map(nside=nside)
+    ra, dec = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(nside)))(nside=nside)
     coord = SkyCoord(ra=ra * u.rad, dec=dec * u.rad, frame="icrs")
     eclip_lat = coord.barycentrictrueecliptic.lat.deg
     eclip_lon = coord.barycentrictrueecliptic.lon.deg
