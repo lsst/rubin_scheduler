@@ -6,7 +6,7 @@
 Example Scheduler
 ^^^^^^^^^^^^^^^^^
 
-.. automodule:: rubin_scheduler.scheduler.example.example_scheduler
+.. automodule:: rubin_scheduler.scheduler.example
     :imported-members:
     :members:
     :show-inheritance:
