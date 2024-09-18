@@ -38,7 +38,7 @@ class TestExample(unittest.TestCase):
     @unittest.skipUnless(os.path.isfile(SAMPLE_BIG_DATA_FILE), "Test data not available.")
     def test_example(self):
         """Try out the example scheduler."""
-        mjd_start = utils.survey_start_mjd()
+        mjd_start = utils.SURVEY_START_MJD
         nside = 32
         survey_length = 4.0  # days
         scheduler = example_scheduler(nside=nside, mjd_start=mjd_start)
@@ -63,7 +63,7 @@ class TestExample(unittest.TestCase):
         Test that a wind mask prevent things from being executed in
         the wrong spot
         """
-        mjd_start = utils.survey_start_mjd()
+        mjd_start = utils.SURVEY_START_MJD
         nside = 32
         survey_length = 2.0  # days
 
@@ -92,7 +92,7 @@ class TestExample(unittest.TestCase):
         """
         test running at higher nside
         """
-        mjd_start = utils.survey_start_mjd()
+        mjd_start = utils.SURVEY_START_MJD
         nside = 64
         survey_length = 2.0  # days
 

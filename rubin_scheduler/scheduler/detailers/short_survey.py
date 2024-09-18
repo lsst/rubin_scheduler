@@ -5,7 +5,7 @@ import numpy as np
 import rubin_scheduler.scheduler.features as features
 from rubin_scheduler.scheduler.detailers import BaseDetailer
 from rubin_scheduler.scheduler.utils import HpInLsstFov
-from rubin_scheduler.utils import survey_start_mjd
+from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD
 
 
 class ShortExptDetailer(BaseDetailer):
@@ -33,10 +33,10 @@ class ShortExptDetailer(BaseDetailer):
         self,
         exp_time=1.0,
         filtername="r",
-        nside=32,
+        nside=DEFAULT_NSIDE,
         footprint=None,
         nobs=2,
-        mjd0=None,
+        mjd0=SURVEY_START_MJD,
         survey_name="short",
         read_approx=2.0,
         night_max=None,
@@ -50,7 +50,7 @@ class ShortExptDetailer(BaseDetailer):
         self.footprint = footprint
         self.nobs = nobs
         self.survey_name = survey_name
-        self.mjd0 = survey_start_mjd() if mjd0 is None else mjd0
+        self.mjd0 = mjd0
         self.night_max = night_max
         self.n_repeat = n_repeat
         self.time_scale = time_scale

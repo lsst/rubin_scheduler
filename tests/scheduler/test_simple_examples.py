@@ -12,13 +12,13 @@ from rubin_scheduler.scheduler.example import (
     update_model_observatory_sunset,
 )
 from rubin_scheduler.scheduler.schedulers import ComCamFilterSched, CoreScheduler
-from rubin_scheduler.utils import survey_start_mjd
+from rubin_scheduler.utils import SURVEY_START_MJD
 
 
 class TestSurveyConveniences(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.survey_start = np.floor(survey_start_mjd()) + 0.5
+        self.survey_start = np.floor(SURVEY_START_MJD) + 0.5
         self.day_obs_start = Time(self.survey_start, format="mjd", scale="utc").iso[:10]
 
     def test_model_observatory_conveniences(self):

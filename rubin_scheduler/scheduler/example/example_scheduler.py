@@ -39,12 +39,12 @@ from rubin_scheduler.scheduler.surveys import (
 )
 from rubin_scheduler.scheduler.utils import ConstantFootprint, EuclidOverlapFootprint, make_rolling_footprints
 from rubin_scheduler.site_models import Almanac
-from rubin_scheduler.utils import _hpid2_ra_dec, survey_start_mjd
+from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD, _hpid2_ra_dec
 
 iers.conf.auto_download = False
 
 
-def example_scheduler(nside: int = 32, mjd_start: float = survey_start_mjd()) -> CoreScheduler:
+def example_scheduler(nside: int = DEFAULT_NSIDE, mjd_start: float = SURVEY_START_MJD) -> CoreScheduler:
     """Provide an example baseline survey-strategy scheduler.
 
     Parameters
@@ -95,7 +95,7 @@ def standard_bf(
 
     Parameters
     ----------
-    nside : int (32)
+    nside : int (DEFAULT_NSIDE)
         The HEALpix nside to use
     nexp : int (1)
         The number of exposures to use in a visit.
@@ -321,7 +321,7 @@ def blob_for_long(
 
     Parameters
     ----------
-    nside : int (32)
+    nside : int (DEFAULT_NSIDE)
         The HEALpix nside to use
     nexp : int (1)
         The number of exposures to use in a visit.
@@ -480,7 +480,7 @@ def blob_for_long(
 
 def gen_long_gaps_survey(
     footprints,
-    nside=32,
+    nside=SURVEY_START_MJD,
     night_pattern=[True, True],
     gap_range=[2, 7],
     HA_min=12,
@@ -530,7 +530,7 @@ def gen_long_gaps_survey(
 
 
 def gen_greedy_surveys(
-    nside=32,
+    nside=SURVEY_START_MJD,
     nexp=2,
     exptime=30.0,
     filters=["r", "i", "z", "y"],
@@ -557,7 +557,7 @@ def gen_greedy_surveys(
 
     Parameters
     ----------
-    nside : int (32)
+    nside : int (DEFAULT_NSIDE)
         The HEALpix nside to use
     nexp : int (1)
         The number of exposures to use in a visit.
@@ -694,7 +694,7 @@ def generate_blobs(
 
     Parameters
     ----------
-    nside : int (32)
+    nside : int (DEFAULT_NSIDE)
         The HEALpix nside to use
     nexp : int (1)
         The number of exposures to use in a visit.
@@ -937,7 +937,7 @@ def generate_twi_blobs(
 
     Parameters
     ----------
-    nside : int (32)
+    nside : int (DEFAULT_NSIDE)
         The HEALpix nside to use
     nexp : int (1)
         The number of exposures to use in a visit.
@@ -1133,12 +1133,12 @@ def ddf_surveys(detailers=None, season_unobs_frac=0.2, euclid_detailers=None, ns
     return [survey1, survey2]
 
 
-def ecliptic_target(nside=32, dist_to_eclip=40.0, dec_max=30.0, mask=None):
+def ecliptic_target(nside=SURVEY_START_MJD, dist_to_eclip=40.0, dec_max=30.0, mask=None):
     """Generate a target_map for the area around the ecliptic
 
     Parameters
     ----------
-    nside : int (32)
+    nside : int (DEFAULT_NSIDE)
         The HEALpix nside to use
     dist_to_eclip : float (40)
         The distance to the ecliptic to constrain to (degrees).
@@ -1361,12 +1361,12 @@ def set_run_info(dbroot=None, file_end="v3.4_", out_dir="."):
 def run_sched(
     scheduler,
     survey_length=365.25,
-    nside=32,
+    nside=DEFAULT_NSIDE,
     filename=None,
     verbose=False,
     extra_info=None,
     illum_limit=40.0,
-    mjd_start=60796.0,
+    mjd_start=SURVEY_START_MJD,
 ):
     """Run survey"""
     n_visit_limit = None
@@ -1585,7 +1585,10 @@ def sched_argparser():
         help="Only construct scheduler, do not simulate",
     )
     parser.add_argument(
-        "--nside", type=int, default=32, help="Nside should be set to default (32) except for tests."
+        "--nside",
+        type=int,
+        default=DEFAULT_NSIDE,
+        help="Nside should be set to default (32) except for tests.",
     )
 
     return parser

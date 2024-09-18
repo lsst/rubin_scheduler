@@ -8,8 +8,9 @@ import healpy as hp
 import numpy as np
 import pandas as pd
 
-from rubin_scheduler.scheduler.utils import match_hp_resolution, set_default_nside, smallest_signed_angle
+from rubin_scheduler.scheduler.utils import match_hp_resolution, smallest_signed_angle
 from rubin_scheduler.utils import (
+    DEFAULT_NSIDE,
     Site,
     _angular_separation,
     _approx_altaz2pa,
@@ -56,7 +57,7 @@ class Conditions:
 
     def __init__(
         self,
-        nside=None,
+        nside=DEFAULT_NSIDE,
         site="LSST",
         exptime=30.0,
         mjd=None,
@@ -224,8 +225,6 @@ class Conditions:
             execute.
 
         """
-        if nside is None:
-            nside = set_default_nside()
         self.nside = nside
 
         # The RA, Dec grid we are using

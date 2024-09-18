@@ -21,6 +21,7 @@ import numpy as np
 
 from rubin_scheduler.scheduler.utils import IntRounded
 from rubin_scheduler.utils import (
+    DEFAULT_NSIDE,
     _angular_separation,
     _approx_altaz2pa,
     _approx_ra_dec2_alt_az,
@@ -41,7 +42,7 @@ class BaseDetailer:
     RA,Dec positions.
     """
 
-    def __init__(self, nside=32):
+    def __init__(self, nside=DEFAULT_NSIDE):
         """"""
         # Dict to hold all the features we want to track
         self.survey_features = {}
@@ -114,7 +115,7 @@ class FlushByDetailer(BaseDetailer):
         The time to flush after the current MJD. Default 60 minutes
     """
 
-    def __init__(self, flush_time=60, nside=32):
+    def __init__(self, flush_time=60, nside=DEFAULT_NSIDE):
         self.survey_features = {}
         self.nside = nside
         self.flush_time = flush_time / 60 / 24.0
@@ -249,7 +250,7 @@ class ZeroRotDetailer(BaseDetailer):
         between rotTelPos and rotSkyPos. Default "rubin".
     """
 
-    def __init__(self, telescope="rubin", nside=32):
+    def __init__(self, telescope="rubin", nside=DEFAULT_NSIDE):
         self.rc = rotation_converter(telescope=telescope)
         self.survey_features = {}
 
@@ -276,7 +277,7 @@ class Comcam90rotDetailer(BaseDetailer):
     270 degrees. Whatever is closest to rotTelPos of zero.
     """
 
-    def __init__(self, telescope="rubin", nside=32):
+    def __init__(self, telescope="rubin", nside=DEFAULT_NSIDE):
         self.rc = rotation_converter(telescope=telescope)
         self.survey_features = {}
 
@@ -316,7 +317,7 @@ class FixedSkyAngleDetailer(BaseDetailer):
         Desired sky angle (default = 0, in degrees).
     """
 
-    def __init__(self, sky_angle=0.0, nside=32):
+    def __init__(self, sky_angle=0.0, nside=DEFAULT_NSIDE):
         super().__init__(nside=nside)
 
         self.sky_angle = np.radians(sky_angle)

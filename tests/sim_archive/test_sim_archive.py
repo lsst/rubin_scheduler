@@ -9,7 +9,7 @@ from tempfile import TemporaryDirectory
 from rubin_scheduler.scheduler import sim_runner
 from rubin_scheduler.scheduler.example import example_scheduler
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
-from rubin_scheduler.utils import survey_start_mjd
+from rubin_scheduler.utils import SURVEY_START_MJD
 
 HAVE_LSST_RESOURCES = importlib.util.find_spec("lsst") and importlib.util.find_spec("lsst.resources")
 if HAVE_LSST_RESOURCES:
@@ -28,7 +28,7 @@ class TestSimArchive(unittest.TestCase):
     @unittest.skipIf(not HAVE_LSST_RESOURCES, "No lsst.resources")
     def test_sim_archive(self):
         # Begin by running a short simulation
-        sim_start_mjd = survey_start_mjd()
+        sim_start_mjd = SURVEY_START_MJD
         sim_duration = 1  # days
         scheduler = example_scheduler(mjd_start=sim_start_mjd)
         scheduler.keep_rewards = True

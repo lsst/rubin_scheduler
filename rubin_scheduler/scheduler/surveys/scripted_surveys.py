@@ -6,8 +6,8 @@ import healpy as hp
 import numpy as np
 
 from rubin_scheduler.scheduler.surveys import BaseSurvey
-from rubin_scheduler.scheduler.utils import ObservationArray, set_default_nside
-from rubin_scheduler.utils import _angular_separation, _approx_ra_dec2_alt_az
+from rubin_scheduler.scheduler.utils import ObservationArray
+from rubin_scheduler.utils import DEFAULT_NSIDE, _angular_separation, _approx_ra_dec2_alt_az
 
 log = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class ScriptedSurvey(BaseSurvey):
         basis_weights=None,
         reward=1e6,
         ignore_obs=None,
-        nside=None,
+        nside=DEFAULT_NSIDE,
         detailers=None,
         id_start=1,
         return_n_limit=10,
@@ -54,9 +54,6 @@ class ScriptedSurvey(BaseSurvey):
         filter_change_time=120,
     ):
         """"""
-        if nside is None:
-            nside = set_default_nside()
-
         self.extra_features = {}
         self.nside = nside
         self.reward_val = reward

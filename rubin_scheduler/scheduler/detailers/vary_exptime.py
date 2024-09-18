@@ -6,7 +6,7 @@ from scipy.stats import binned_statistic
 
 from rubin_scheduler.scheduler.detailers import BaseDetailer
 from rubin_scheduler.skybrightness_pre import dark_sky
-from rubin_scheduler.utils import Site, hpid2_ra_dec, m5_flat_sed, ra_dec2_hpid
+from rubin_scheduler.utils import DEFAULT_NSIDE, Site, hpid2_ra_dec, m5_flat_sed, ra_dec2_hpid
 
 
 def calc_target_m5s(alt=65.0, fiducial_seeing=0.9, exptime=20.0):
@@ -27,7 +27,7 @@ def calc_target_m5s(alt=65.0, fiducial_seeing=0.9, exptime=20.0):
         dictionary of expected m5 values keyed by filtername
     """
 
-    nside = 32
+    nside = DEFAULT_NSIDE
     dark = dark_sky(nside=nside)
     hpid = np.arange(dark.size, dtype=int)
     ra, dec = hpid2_ra_dec(nside, hpid)
@@ -71,7 +71,7 @@ class VaryExptDetailer(BaseDetailer):
 
     """
 
-    def __init__(self, nside=32, min_expt=20.0, max_expt=100.0, target_m5=None):
+    def __init__(self, nside=DEFAULT_NSIDE, min_expt=20.0, max_expt=100.0, target_m5=None):
         """"""
         # Dict to hold all the features we want to track
         self.survey_features = {}

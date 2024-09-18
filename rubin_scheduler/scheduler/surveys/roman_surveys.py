@@ -5,6 +5,7 @@ import warnings
 import rubin_scheduler.scheduler.basis_functions as bf
 import rubin_scheduler.scheduler.detailers as detailers
 from rubin_scheduler.scheduler.surveys import DeepDrillingSurvey
+from rubin_scheduler.utils import DEFAULT_NSIDE
 
 
 def roman_info():
@@ -30,7 +31,7 @@ def roman_info():
 
 
 def gen_roman_on_season(
-    nside=32,
+    nside=DEFAULT_NSIDE,
     camera_ddf_rot_limit=75.0,
     exptime=30.0,
     nexp=2,
@@ -83,7 +84,7 @@ def gen_roman_on_season(
 
 
 def gen_roman_off_season(
-    nside=32,
+    nside=DEFAULT_NSIDE,
     camera_ddf_rot_limit=75.0,
     exptime=30.0,
     nexp=2,

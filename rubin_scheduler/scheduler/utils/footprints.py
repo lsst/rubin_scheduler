@@ -23,7 +23,7 @@ import numpy as np
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 
-from rubin_scheduler.utils import _hpid2_ra_dec
+from rubin_scheduler.utils import DEFAULT_NSIDE, _hpid2_ra_dec
 
 from .sky_area import CurrentAreaMap
 
@@ -34,7 +34,7 @@ def make_rolling_footprints(
     sun_ra_start=3.27717639,
     nslice=2,
     scale=0.8,
-    nside=32,
+    nside=DEFAULT_NSIDE,
     wfd_indx=None,
     order_roll=0,
     n_cycles=None,
@@ -368,7 +368,7 @@ class Footprint:
         self,
         mjd_start,
         sun_ra_start=0,
-        nside=32,
+        nside=DEFAULT_NSIDE,
         filters=None,
         period=365.25,
         step_func=None,
@@ -458,7 +458,7 @@ class Footprint:
 
 
 class ConstantFootprint(Footprint):
-    def __init__(self, nside=32, filters=None):
+    def __init__(self, nside=DEFAULT_NSIDE, filters=None):
         if filters is None:
             filters = {"u": 0, "g": 1, "r": 2, "i": 3, "z": 4, "y": 5}
         self.nside = nside

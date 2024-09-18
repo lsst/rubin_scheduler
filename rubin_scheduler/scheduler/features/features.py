@@ -23,7 +23,7 @@ from scipy.stats import binned_statistic
 from rubin_scheduler.scheduler import utils
 from rubin_scheduler.scheduler.utils import IntRounded
 from rubin_scheduler.skybrightness_pre import dark_sky
-from rubin_scheduler.utils import _hpid2_ra_dec, calc_season, survey_start_mjd
+from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD, _hpid2_ra_dec, calc_season
 
 
 def send_unused_deprecation_warning(name):
@@ -262,10 +262,7 @@ class NObservations(BaseSurveyFeature):
         compatibility. Will be removed in the future.
     """
 
-    def __init__(self, filtername=None, nside=None, scheduler_note=None, survey_name=None):
-        if nside is None:
-            nside = utils.set_default_nside()
-
+    def __init__(self, filtername=None, nside=DEFAULT_NSIDE, scheduler_note=None, survey_name=None):
         self.feature = np.zeros(hp.nside2npix(nside), dtype=float)
         self.filtername = filtername
         if scheduler_note is None and survey_name is not None:
@@ -316,11 +313,9 @@ class LargestN:
 class LastNObsTimes(BaseSurveyFeature):
     """Record the last three observations for each healpixel"""
 
-    def __init__(self, filtername=None, n_obs=3, nside=None):
+    def __init__(self, filtername=None, n_obs=3, nside=DEFAULT_NSIDE):
         self.filtername = filtername
         self.n_obs = n_obs
-        if nside is None:
-            nside = utils.set_default_nside()
         self.feature = np.zeros((n_obs, hp.nside2npix(nside)), dtype=float)
         self.bins = np.arange(hp.nside2npix(nside) + 1) - 0.5
 
@@ -377,13 +372,11 @@ class NObservationsCurrentSeason(BaseSurveyFeature):
     def __init__(
         self,
         filtername=None,
-        nside=None,
+        nside=DEFAULT_NSIDE,
         seeing_fwhm_max=None,
         m5_penalty_max=None,
-        mjd_start=None,
+        mjd_start=SURVEY_START_MJD,
     ):
-        if nside is None:
-            nside = utils.set_default_nside()
         self.nside = nside
         self.seeing_fwhm_max = seeing_fwhm_max
         self.filtername = filtername
@@ -397,9 +390,6 @@ class NObservationsCurrentSeason(BaseSurveyFeature):
         if self.filtername is not None:
             self.dark_map = dark_sky(nside)[filtername]
         self.ones = np.ones(hp.nside2npix(self.nside))
-
-        if mjd_start is None:
-            mjd_start = survey_start_mjd()
         self.mjd_start = mjd_start
 
         # Set up feature values - this includes the count in a given season
@@ -582,10 +572,7 @@ class LastObserved(BaseSurveyFeature):
         Fill value to use where no observations have been found.
     """
 
-    def __init__(self, filtername="r", nside=None, fill=np.nan):
-        if nside is None:
-            nside = utils.set_default_nside()
-
+    def __init__(self, filtername="r", nside=DEFAULT_NSIDE, fill=np.nan):
         self.filtername = filtername
         self.feature = np.zeros(hp.nside2npix(nside), dtype=float) + fill
         self.bins = np.arange(hp.nside2npix(nside) + 1) - 0.5
@@ -644,10 +631,7 @@ class NObsNight(BaseSurveyFeature):
         default nside.
     """
 
-    def __init__(self, filtername="r", nside=None):
-        if nside is None:
-            nside = utils.set_default_nside()
-
+    def __init__(self, filtername="r", nside=DEFAULT_NSIDE):
         self.filtername = filtername
         self.feature = np.zeros(hp.nside2npix(nside), dtype=int)
         self.night = None
@@ -674,10 +658,7 @@ class PairInNight(BaseSurveyFeature):
         The maximum time gap to consider a successful pair (minutes)
     """
 
-    def __init__(self, filtername="r", nside=None, gap_min=25.0, gap_max=45.0):
-        if nside is None:
-            nside = utils.set_default_nside()
-
+    def __init__(self, filtername="r", nside=DEFAULT_NSIDE, gap_min=25.0, gap_max=45.0):
         self.filtername = filtername
         self.feature = np.zeros(hp.nside2npix(nside), dtype=float)
         self.indx = np.arange(self.feature.size)
@@ -742,11 +723,7 @@ class RotatorAngle(BaseSurveyFeature):
     XXX-under construction
     """
 
-    def __init__(self, filtername="r", binsize=10.0, nside=None):
-        """"""
-        if nside is None:
-            nside = utils.set_default_nside()
-
+    def __init__(self, filtername="r", binsize=10.0, nside=DEFAULT_NSIDE):
         self.filtername = filtername
         # Actually keep a histogram at each healpixel
         self.feature = np.zeros((hp.nside2npix(nside), 360.0 / binsize), dtype=float)

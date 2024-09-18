@@ -6,7 +6,7 @@ from functools import cached_property
 
 import numpy as np
 
-from rubin_scheduler.utils import ra_dec2_hpid
+from rubin_scheduler.utils import DEFAULT_NSIDE, ra_dec2_hpid
 
 from ..features import LastObservation, NObsCount
 from ..utils import ObservationArray
@@ -92,7 +92,7 @@ class FieldSurvey(BaseSurvey):
         scheduler_note=None,
         readtime=2.4,
         filter_change_time=120.0,
-        nside=None,
+        nside=DEFAULT_NSIDE,
         flush_pad=30.0,
         detailers=None,
         reward_value=None,

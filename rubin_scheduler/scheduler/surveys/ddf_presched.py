@@ -8,7 +8,7 @@ import numpy as np
 from rubin_scheduler.data import get_data_dir
 from rubin_scheduler.scheduler.utils import ScheduledObservationArray
 from rubin_scheduler.site_models import Almanac
-from rubin_scheduler.utils import calc_season, ddf_locations, survey_start_mjd
+from rubin_scheduler.utils import SURVEY_START_MJD, calc_season, ddf_locations
 
 
 def ddf_slopes(ddf_name, raw_obs, night_season, season_seq=30, min_season_length=0 / 365.25):
@@ -172,7 +172,7 @@ def optimize_ddf_times(
     season_unobs_frac=0.2,
     low_season_frac=0,
     low_season_rate=0.3,
-    mjd_start=None,
+    mjd_start=SURVEY_START_MJD,
 ):
     """
 
@@ -229,7 +229,7 @@ def optimize_ddf_times(
     mjd_start : `float`, optional
         The MJD of the start of the survey. Used to identify the
         starting point when counting seasons.
-        Default None uses `survey_start_mjd()`.
+        Default SURVEY_START_MJD.
     """
     # Convert sun_limit and sequence_time to values expected internally.
     sun_limit = np.radians(sun_limit)
@@ -277,8 +277,6 @@ def optimize_ddf_times(
     night_mjd = ddf_grid["mjd"][indx]
 
     # Calculate season values for each night.
-    if mjd_start is None:
-        mjd_start = survey_start_mjd()
     night_season = calc_season(ddf_RA, night_mjd, mjd_start)
     # Mod by 1 to turn the season value in each night a simple 0-1 value
     season_mod = night_season % 1
@@ -337,7 +335,7 @@ def generate_ddf_scheduled_obs(
     nvis_master=[8, 10, 20, 20, 24, 18],
     filters="ugrizy",
     nsnaps=[1, 2, 2, 2, 2, 2],
-    mjd_start=None,
+    mjd_start=SURVEY_START_MJD,
     survey_length=10.0,
     sequence_time=60.0,
     season_unobs_frac=0.2,
@@ -377,7 +375,7 @@ def generate_ddf_scheduled_obs(
         The number of snaps to use per filter
     mjd_start : `float`
         Starting MJD of the survey. Default None, which calls
-        rubin_sim.utils.survey_start_mjd
+        rubin_sim.utils.SURVEY_START_MJD
     survey_length : `float`
         Length of survey (years). Default 10.
     sequence_time : `float`, optional
@@ -406,9 +404,6 @@ def generate_ddf_scheduled_obs(
     """
     if data_file is None:
         data_file = os.path.join(get_data_dir(), "scheduler", "ddf_grid.npz")
-
-    if mjd_start is None:
-        mjd_start = survey_start_mjd()
 
     flush_length = flush_length  # days
     mjd_tol = mjd_tol / 60 / 24.0  # minutes to days

@@ -31,7 +31,7 @@ import numpy as np
 from rubin_scheduler.scheduler import features
 from rubin_scheduler.scheduler.basis_functions import BaseBasisFunction
 from rubin_scheduler.scheduler.utils import IntRounded
-from rubin_scheduler.utils import _angular_separation, ra_dec2_hpid
+from rubin_scheduler.utils import DEFAULT_NSIDE, _angular_separation, ra_dec2_hpid
 
 
 def send_unused_deprecation_warning(name):
@@ -110,7 +110,7 @@ class AirmassPointRangeBasisFunction(BaseBasisFunction):
         The valid airmass range, default [1.05, 2.7].
     """
 
-    def __init__(self, ra, dec, airmass_range=[1.05, 2.7], nside=32):
+    def __init__(self, ra, dec, airmass_range=[1.05, 2.7], nside=DEFAULT_NSIDE):
         super().__init__()
         self.hpid = ra_dec2_hpid(nside, ra, dec)
         self.airmass_range = airmass_range

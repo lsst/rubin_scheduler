@@ -4,7 +4,7 @@ import numpy as np
 
 from rubin_scheduler.scheduler.features import Conditions
 from rubin_scheduler.scheduler.schedulers import ComCamFilterSched, SimpleFilterSched
-from rubin_scheduler.utils import survey_start_mjd
+from rubin_scheduler.utils import SURVEY_START_MJD
 
 
 class TestFilterSchedulers(unittest.TestCase):
@@ -13,7 +13,7 @@ class TestFilterSchedulers(unittest.TestCase):
         illum_bins = np.arange(0, 100 + 1, 50)
         filter_groups = (("g", "r", "i"), ("i", "z", "y"))
         filtersched = ComCamFilterSched(illum_bins=illum_bins, loaded_filter_groups=filter_groups)
-        mjd = survey_start_mjd()
+        mjd = SURVEY_START_MJD
         conditions = Conditions(nside=8, mjd=mjd)
         conditions.moon_phase_sunset = 0
         load_filters = filtersched(conditions)
@@ -38,7 +38,7 @@ class TestFilterSchedulers(unittest.TestCase):
         filtersched = SimpleFilterSched(illum_limit=40)
         brightmoon_result = ["g", "r", "i", "z", "y"]
         newmoon_result = ["u", "g", "r", "i", "z"]
-        mjd = survey_start_mjd()
+        mjd = SURVEY_START_MJD
         conditions = Conditions(nside=8, mjd=mjd)
         conditions.moon_phase_sunset = 0
         load_filters = filtersched(conditions)

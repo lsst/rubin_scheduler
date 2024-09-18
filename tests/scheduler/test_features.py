@@ -7,14 +7,14 @@ import rubin_scheduler.scheduler.features as features
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
 from rubin_scheduler.scheduler.utils import HpInLsstFov, ObservationArray
 from rubin_scheduler.skybrightness_pre import dark_sky
-from rubin_scheduler.utils import survey_start_mjd
+from rubin_scheduler.utils import SURVEY_START_MJD
 
 
 def make_observations_list(nobs=1):
     observations_list = []
     for i in range(0, nobs):
         observation = ObservationArray()
-        observation["mjd"] = survey_start_mjd() + i * 30 / 60 / 60 / 24
+        observation["mjd"] = SURVEY_START_MJD + i * 30 / 60 / 60 / 24
         observation["RA"] = np.radians(30)
         observation["dec"] = np.radians(-20)
         observation["filter"] = "r"
@@ -111,7 +111,7 @@ class TestFeatures(unittest.TestCase):
         assert note_feature.feature == 2
 
     def test_conditions(self):
-        observatory = ModelObservatory(init_load_length=1, mjd_start=survey_start_mjd())
+        observatory = ModelObservatory(init_load_length=1, mjd_start=SURVEY_START_MJD)
         conditions = observatory.return_conditions()
         self.assertIsInstance(repr(conditions), str)
         self.assertIsInstance(str(conditions), str)
@@ -184,7 +184,7 @@ class TestFeatures(unittest.TestCase):
 
     def test_NObservationsCurrentSeason(self):
         # Start with basic NObservationsCurrentSeason - no restrictions
-        mjd_start = survey_start_mjd()
+        mjd_start = SURVEY_START_MJD
         nside = 64
         season_feature = features.NObservationsCurrentSeason(nside=nside, mjd_start=mjd_start)
         # Check that season map changes as expected with updates in Conditions
@@ -421,10 +421,10 @@ class TestFeatures(unittest.TestCase):
     def test_LastObservation(self):
         # Make some observations to count
         observations_list = make_observations_list(4)
-        observations_list[0]["mjd"] = survey_start_mjd()
-        observations_list[1]["mjd"] = survey_start_mjd() + 10
-        observations_list[2]["mjd"] = survey_start_mjd() + 20
-        observations_list[3]["mjd"] = survey_start_mjd() + 30
+        observations_list[0]["mjd"] = SURVEY_START_MJD
+        observations_list[1]["mjd"] = SURVEY_START_MJD + 10
+        observations_list[2]["mjd"] = SURVEY_START_MJD + 20
+        observations_list[3]["mjd"] = SURVEY_START_MJD + 30
         observations_list[0]["scheduler_note"] = "survey a"
         observations_list[1]["scheduler_note"] = "survey"
         observations_list[2]["scheduler_note"] = "survey a"
@@ -465,7 +465,7 @@ class TestFeatures(unittest.TestCase):
         nside = 32
         pointing2hpindx = HpInLsstFov(nside=nside)
         for i, obs in enumerate(observations_list):
-            obs["mjd"] = survey_start_mjd() + i
+            obs["mjd"] = SURVEY_START_MJD + i
             obs["rotSkyPos"] = 0
             if i < 6:
                 obs["filter"] = "r"
