@@ -17,7 +17,7 @@ from astropy.time import Time
 
 import rubin_scheduler.data.rs_download_sky
 from rubin_scheduler.data import get_data_dir
-from rubin_scheduler.utils import Site, _angular_separation, _hpid2_ra_dec, survey_start_mjd
+from rubin_scheduler.utils import SURVEY_START_MJD, Site, _angular_separation, _hpid2_ra_dec
 
 try:
     from lsst.resources import ResourcePath
@@ -177,7 +177,7 @@ class SkyModelPreBase(abc.ABC):
         self.timestep_max = -1
 
         if mjd0 is None:
-            mjd0 = survey_start_mjd()
+            mjd0 = SURVEY_START_MJD
 
         # Do a quick initial load if set
         if init_load_length is not None:

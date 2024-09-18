@@ -18,13 +18,13 @@ from astropy.time import Time
 from rubin_scheduler.scheduler.utils import SchemaConverter
 from rubin_scheduler.site_models import Almanac, SeeingModel
 from rubin_scheduler.utils import (
+    SURVEY_START_MJD,
     Site,
     SysEngVals,
     _angular_separation,
     _approx_altaz2pa,
     pseudo_parallactic_angle,
     rotation_converter,
-    survey_start_mjd,
 )
 
 GAUSSIAN_FWHM_OVER_SIGMA: float = 2.0 * sqrt(2.0 * log(2.0))
@@ -615,7 +615,7 @@ class ConsDBVisits(ABC):
         night : `int`
             The night of the survey.
         """
-        night: int = 1 + self.day_obs_mjd - int(np.floor(survey_start_mjd()))
+        night: int = 1 + self.day_obs_mjd - int(np.floor(SURVEY_START_MJD))
         return night
 
     @cached_property

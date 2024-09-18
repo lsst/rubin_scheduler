@@ -44,7 +44,7 @@ from astropy.coordinates import SkyCoord
 from rubin_scheduler.scheduler import features, utils
 from rubin_scheduler.scheduler.utils import IntRounded, get_current_footprint
 from rubin_scheduler.skybrightness_pre import dark_m5
-from rubin_scheduler.utils import _hpid2_ra_dec, survey_start_mjd
+from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD, _hpid2_ra_dec
 
 
 def send_unused_deprecation_warning(name):
@@ -61,7 +61,7 @@ class BaseBasisFunction:
     """Class that takes features and computes a reward function when
     called."""
 
-    def __init__(self, nside=None, filtername=None, **kwargs):
+    def __init__(self, nside=DEFAULT_NSIDE, filtername=None, **kwargs):
         # Set if basis function needs to be recalculated if there is a new
         # observation
         self.update_on_newobs = True
@@ -318,7 +318,7 @@ class NObsPerYearBasisFunction(BaseBasisFunction):
     def __init__(
         self,
         filtername="r",
-        nside=None,
+        nside=DEFAULT_NSIDE,
         footprint=None,
         n_obs=3,
         season=300,
@@ -391,7 +391,7 @@ class NGoodSeeingBasisFunction(BaseBasisFunction):
         Default 3.
     mjd_start : `float`
         The starting MJD of the survey.
-        Default None uses `rubin_scheduler.utils.survey_start_mjd()`.
+        Default None uses `rubin_scheduler.utils.SURVEY_START_MJD`.
     footprint : `np.array`, (N,)
         Only use area where footprint > 0. Should be a HEALpix map.
         Default None calls `get_current_footprint()`.
@@ -400,7 +400,7 @@ class NGoodSeeingBasisFunction(BaseBasisFunction):
     def __init__(
         self,
         filtername="r",
-        nside=None,
+        nside=DEFAULT_NSIDE,
         seeing_fwhm_max=0.8,
         m5_penalty_max=0.5,
         n_obs_desired=3,
@@ -412,7 +412,7 @@ class NGoodSeeingBasisFunction(BaseBasisFunction):
         self.m5_penalty_max = m5_penalty_max
         self.n_obs_desired = n_obs_desired
         if mjd_start is None:
-            mjd_start = survey_start_mjd()
+            mjd_start = SURVEY_START_MJD
         self.mjd_start = mjd_start
         self.survey_features["N_good_seeing"] = features.NObservationsCurrentSeason(
             filtername=self.filtername,
@@ -469,7 +469,7 @@ class NObsHighAmBasisFunction(BaseBasisFunction):
 
     def __init__(
         self,
-        nside=None,
+        nside=DEFAULT_NSIDE,
         filtername="r",
         footprint=None,
         n_obs=3,
@@ -535,7 +535,7 @@ class NObsHighAmBasisFunction(BaseBasisFunction):
 class EclipticBasisFunction(BaseBasisFunction):
     """Mark the area around the ecliptic"""
 
-    def __init__(self, nside=None, distance_to_eclip=25.0):
+    def __init__(self, nside=DEFAULT_NSIDE, distance_to_eclip=25.0):
         super(EclipticBasisFunction, self).__init__(nside=nside)
         self.distance_to_eclip = np.radians(distance_to_eclip)
         ra, dec = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(self.nside)))
@@ -564,7 +564,7 @@ class CadenceInSeasonBasisFunction(BaseBasisFunction):
         How long to wait before activating the basis function (days).
     """
 
-    def __init__(self, drive_map, filtername="griz", season_span=2.5, cadence=2.5, nside=None):
+    def __init__(self, drive_map, filtername="griz", season_span=2.5, cadence=2.5, nside=DEFAULT_NSIDE):
         super(CadenceInSeasonBasisFunction, self).__init__(nside=nside, filtername=filtername)
         self.drive_map = drive_map
         self.season_span = season_span / 12.0 * np.pi  # To radians
@@ -610,7 +610,7 @@ class SeasonCoverageBasisFunction(BaseBasisFunction):
         Default of 3 is suitable for first year template building.
     mjd_start : `float`, optional
         The mjd of the start of the survey (days).
-        Default None uses `rubin_scheduler.utils.survey_start_mjd()`.
+        Default None uses `rubin_scheduler.utils.SURVEY_START_MJD`.
     season_frac_start : `float`
         Only start trying to gather observations after a season
         is fractionally this far along.
@@ -623,7 +623,7 @@ class SeasonCoverageBasisFunction(BaseBasisFunction):
     def __init__(
         self,
         filtername="r",
-        nside=None,
+        nside=DEFAULT_NSIDE,
         footprint=None,
         n_per_season=3,
         mjd_start=None,
@@ -641,7 +641,7 @@ class SeasonCoverageBasisFunction(BaseBasisFunction):
 
         self.n_per_season = n_per_season
         if mjd_start is None:
-            mjd_start = survey_start_mjd()
+            mjd_start = SURVEY_START_MJD
         self.mjd_start = mjd_start
         self.season_frac_start = season_frac_start
         # Track how many observations have been taken at each RA/Dec
@@ -690,7 +690,7 @@ class AvoidFastRevisitsBasisFunction(BaseBasisFunction):
         Will be masked if set to np.nan (default).
     """
 
-    def __init__(self, filtername="r", nside=None, gap_min=25.0, penalty_val=np.nan):
+    def __init__(self, filtername="r", nside=DEFAULT_NSIDE, gap_min=25.0, penalty_val=np.nan):
         super().__init__(nside=nside, filtername=filtername)
 
         self.filtername = filtername
@@ -729,7 +729,7 @@ class NearSunHighAirmassBasisFunction(BaseBasisFunction):
         limit and more than 90 degrees azimuth toward the sun.
     """
 
-    def __init__(self, nside=None, max_airmass=2.5, penalty=np.nan):
+    def __init__(self, nside=DEFAULT_NSIDE, max_airmass=2.5, penalty=np.nan):
         super().__init__(nside=nside)
         self.max_airmass = IntRounded(max_airmass)
         self.result = np.empty(hp.nside2npix(self.nside))
@@ -766,7 +766,7 @@ class VisitRepeatBasisFunction(BaseBasisFunction):
         The number of pairs of observations to attempt to gather
     """
 
-    def __init__(self, gap_min=25.0, gap_max=45.0, filtername="r", nside=None, npairs=1):
+    def __init__(self, gap_min=25.0, gap_max=45.0, filtername="r", nside=DEFAULT_NSIDE, npairs=1):
         super(VisitRepeatBasisFunction, self).__init__(nside=nside, filtername=filtername)
 
         self.gap_min = IntRounded(gap_min / 60.0 / 24.0)
@@ -823,7 +823,7 @@ class M5DiffBasisFunction(BaseBasisFunction):
         Default None uses `set_default_nside()`.
     """
 
-    def __init__(self, filtername="r", fiducial_FWHMEff=0.7, nside=None):
+    def __init__(self, filtername="r", fiducial_FWHMEff=0.7, nside=DEFAULT_NSIDE):
         super().__init__(nside=nside, filtername=filtername)
         # The dark sky surface brightness values
         self.dark_map = None
@@ -940,7 +940,7 @@ class SlewtimeBasisFunction(BaseBasisFunction):
         Default None will use `set_default_nside()`.
     """
 
-    def __init__(self, max_time=135.0, filtername="r", nside=None):
+    def __init__(self, max_time=135.0, filtername="r", nside=DEFAULT_NSIDE):
         super(SlewtimeBasisFunction, self).__init__(nside=nside, filtername=filtername)
 
         self.maxtime = max_time
@@ -996,7 +996,7 @@ class CadenceEnhanceBasisFunction(BaseBasisFunction):
     def __init__(
         self,
         filtername="gri",
-        nside=None,
+        nside=DEFAULT_NSIDE,
         supress_window=[0, 1.8],
         supress_val=-0.5,
         enhance_window=[2.1, 3.2],
@@ -1084,7 +1084,7 @@ class CadenceEnhanceTrapezoidBasisFunction(BaseBasisFunction):
     def __init__(
         self,
         filtername="gri",
-        nside=None,
+        nside=DEFAULT_NSIDE,
         delay_width=2,
         delay_slope=2.0,
         delay_peak=0,
@@ -1167,7 +1167,7 @@ class AzimuthBasisFunction(BaseBasisFunction):
     large area of sky.
     """
 
-    def __init__(self, nside=None):
+    def __init__(self, nside=DEFAULT_NSIDE):
         super(AzimuthBasisFunction, self).__init__(nside=nside)
 
     def _calc_value(self, conditions, indx=None):
@@ -1190,7 +1190,7 @@ class AzModuloBasisFunction(BaseBasisFunction):
         The azimuth limits (degrees) to use.
     """
 
-    def __init__(self, nside=None, az_limits=None, out_of_bounds_val=-1.0):
+    def __init__(self, nside=DEFAULT_NSIDE, az_limits=None, out_of_bounds_val=-1.0):
         super(AzModuloBasisFunction, self).__init__(nside=nside)
         self.result = np.ones(hp.nside2npix(self.nside))
         if az_limits is None:
@@ -1234,7 +1234,7 @@ class DecModuloBasisFunction(BaseBasisFunction):
         The azimuth limits (degrees) to use.
     """
 
-    def __init__(self, nside=None, dec_limits=None, out_of_bounds_val=-1.0):
+    def __init__(self, nside=DEFAULT_NSIDE, dec_limits=None, out_of_bounds_val=-1.0):
         super(DecModuloBasisFunction, self).__init__(nside=nside)
 
         npix = hp.nside2npix(nside)
@@ -1288,7 +1288,7 @@ class GoodSeeingBasisFunction(BaseBasisFunction):
 
     def __init__(
         self,
-        nside=None,
+        nside=DEFAULT_NSIDE,
         filtername="r",
         footprint=None,
         fwhm_eff_limit=0.8,
@@ -1401,7 +1401,7 @@ class AvoidDirectWind(BaseBasisFunction):
         `set_default_nside()`.
     """
 
-    def __init__(self, wind_speed_maximum=20.0, nside=None):
+    def __init__(self, wind_speed_maximum=20.0, nside=DEFAULT_NSIDE):
         super().__init__(nside=nside)
 
         self.wind_speed_maximum = wind_speed_maximum
@@ -1451,7 +1451,7 @@ class BalanceVisits(BaseBasisFunction):
     to gain a reward boost in relative to it.
     """
 
-    def __init__(self, nobs_reference, note_survey, note_interest, nside=None):
+    def __init__(self, nobs_reference, note_survey, note_interest, nside=DEFAULT_NSIDE):
         super().__init__(nside=nside)
 
         self.nobs_reference = nobs_reference
@@ -1487,7 +1487,7 @@ class RewardNObsSequence(BaseBasisFunction):
     they are all taken together.
     """
 
-    def __init__(self, n_obs_survey, note_survey, nside=None):
+    def __init__(self, n_obs_survey, note_survey, nside=DEFAULT_NSIDE):
         super().__init__(nside=nside)
 
         self.n_obs_survey = n_obs_survey
@@ -1523,7 +1523,7 @@ class RewardRisingBasisFunction(BaseBasisFunction):
         Nside for the healpix map, default of None uses scheduler default.
     """
 
-    def __init__(self, slope=0.1, penalty_val=0, nside=None):
+    def __init__(self, slope=0.1, penalty_val=0, nside=DEFAULT_NSIDE):
         super().__init__(nside=nside)
         self.slope = slope
         self.penalty_val = penalty_val

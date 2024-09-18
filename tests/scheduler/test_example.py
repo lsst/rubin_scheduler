@@ -5,7 +5,7 @@ import numpy as np
 
 from rubin_scheduler.data import get_data_dir
 from rubin_scheduler.scheduler.example import example_scheduler, run_sched
-from rubin_scheduler.utils import survey_start_mjd
+from rubin_scheduler.utils import SURVEY_START_MJD
 
 
 class TestExample(unittest.TestCase):
@@ -16,7 +16,7 @@ class TestExample(unittest.TestCase):
     )
     def test_example(self):
         """Test the example scheduler executes all the expected surveys"""
-        mjd_start = survey_start_mjd()
+        mjd_start = SURVEY_START_MJD
         scheduler = example_scheduler(mjd_start=mjd_start)
         observatory, scheduler, observations = run_sched(scheduler, mjd_start=mjd_start, survey_length=7)
         u_notes = np.unique(observations["scheduler_note"])

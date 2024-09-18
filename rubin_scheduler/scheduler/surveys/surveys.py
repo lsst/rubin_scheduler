@@ -8,7 +8,7 @@ import numpy as np
 
 from rubin_scheduler.scheduler.surveys import BaseMarkovSurvey
 from rubin_scheduler.scheduler.utils import ObservationArray, int_binned_stat, order_observations
-from rubin_scheduler.utils import _angular_separation, _hpid2_ra_dec, hp_grow_argsort
+from rubin_scheduler.utils import DEFAULT_NSIDE, _angular_separation, _hpid2_ra_dec, hp_grow_argsort
 
 
 class GreedySurvey(BaseMarkovSurvey):
@@ -23,7 +23,7 @@ class GreedySurvey(BaseMarkovSurvey):
         filtername="r",
         block_size=1,
         smoothing_kernel=None,
-        nside=None,
+        nside=DEFAULT_NSIDE,
         dither=True,
         seed=42,
         ignore_obs=None,
@@ -181,7 +181,7 @@ class BlobSurvey(GreedySurvey):
         ideal_pair_time=22.0,
         flush_time=30.0,
         smoothing_kernel=None,
-        nside=None,
+        nside=DEFAULT_NSIDE,
         dither=True,
         seed=42,
         ignore_obs=None,

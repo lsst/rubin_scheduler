@@ -14,7 +14,7 @@ import numpy as np
 
 from rubin_scheduler.scheduler.basis_functions import BaseBasisFunction
 from rubin_scheduler.scheduler.utils import HpInLsstFov, IntRounded
-from rubin_scheduler.utils import _angular_separation
+from rubin_scheduler.utils import DEFAULT_NSIDE, _angular_separation
 
 
 class SolarElongMaskBasisFunction(BaseBasisFunction):
@@ -26,7 +26,7 @@ class SolarElongMaskBasisFunction(BaseBasisFunction):
         The limit beyond which to mask (degrees)
     """
 
-    def __init__(self, elong_limit=45.0, nside=32):
+    def __init__(self, elong_limit=45.0, nside=DEFAULT_NSIDE):
         super(SolarElongMaskBasisFunction, self).__init__(nside=nside)
         self.elong_limit = IntRounded(np.radians(elong_limit))
         self.result = np.zeros(hp.nside2npix(self.nside), dtype=float)
@@ -49,7 +49,7 @@ class HaMaskBasisFunction(BaseBasisFunction):
         The maximum hour angle to accept (hours)
     """
 
-    def __init__(self, ha_min=None, ha_max=None, nside=32):
+    def __init__(self, ha_min=None, ha_max=None, nside=DEFAULT_NSIDE):
         super(HaMaskBasisFunction, self).__init__(nside=nside)
         self.ha_max = ha_max
         self.ha_min = ha_min
@@ -72,7 +72,7 @@ class AreaCheckMaskBasisFunction(BaseBasisFunction):
     """Take a list of other mask basis functions, and do an additional
     check for area available"""
 
-    def __init__(self, bf_list, nside=32, min_area=1000.0):
+    def __init__(self, bf_list, nside=DEFAULT_NSIDE, min_area=1000.0):
         super(AreaCheckMaskBasisFunction, self).__init__(nside=nside)
         self.bf_list = bf_list
         self.result = np.zeros(hp.nside2npix(self.nside), dtype=float)
@@ -111,7 +111,7 @@ class SolarElongationMaskBasisFunction(BaseBasisFunction):
         The maximum solar elongation to consider (degrees).
     """
 
-    def __init__(self, min_elong=0.0, max_elong=60.0, nside=None, penalty=np.nan):
+    def __init__(self, min_elong=0.0, max_elong=60.0, nside=DEFAULT_NSIDE, penalty=np.nan):
         super(SolarElongationMaskBasisFunction, self).__init__(nside=nside)
         self.min_elong = np.radians(min_elong)
         self.max_elong = np.radians(max_elong)
@@ -143,7 +143,7 @@ class PlanetMaskBasisFunction(BaseBasisFunction):
 
     """
 
-    def __init__(self, mask_radius=3.5, planets=None, nside=None, scale=1e5):
+    def __init__(self, mask_radius=3.5, planets=None, nside=DEFAULT_NSIDE, scale=1e5):
         super(PlanetMaskBasisFunction, self).__init__(nside=nside)
         if planets is None:
             planets = ["venus", "mars", "jupiter"]
@@ -201,7 +201,7 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
 
     def __init__(
         self,
-        nside=None,
+        nside=DEFAULT_NSIDE,
         min_alt=20.0,
         max_alt=86.5,
         min_az=0,
@@ -325,7 +325,7 @@ class MoonAvoidanceBasisFunction(BaseBasisFunction):
     or below the horizon.
     """
 
-    def __init__(self, nside=None, moon_distance=30.0):
+    def __init__(self, nside=DEFAULT_NSIDE, moon_distance=30.0):
         super(MoonAvoidanceBasisFunction, self).__init__(nside=nside)
         self.update_on_newobs = False
 
@@ -360,7 +360,7 @@ class BulkCloudBasisFunction(BaseBasisFunction):
         requested
     """
 
-    def __init__(self, nside=None, max_cloud_map=None, max_val=0.7, out_of_bounds_val=np.nan):
+    def __init__(self, nside=DEFAULT_NSIDE, max_cloud_map=None, max_val=0.7, out_of_bounds_val=np.nan):
         super(BulkCloudBasisFunction, self).__init__(nside=nside)
         self.update_on_newobs = False
 
@@ -409,7 +409,7 @@ class MapCloudBasisFunction(BaseBasisFunction):
         requested
     """
 
-    def __init__(self, nside=None, max_cloud_map=None, max_val=0.7, out_of_bounds_val=np.nan):
+    def __init__(self, nside=DEFAULT_NSIDE, max_cloud_map=None, max_val=0.7, out_of_bounds_val=np.nan):
         super(BulkCloudBasisFunction, self).__init__(nside=nside)
         self.update_on_newobs = False
 

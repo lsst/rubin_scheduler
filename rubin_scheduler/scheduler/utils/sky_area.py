@@ -21,9 +21,9 @@ from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
 
 from rubin_scheduler import data as rs_data
-from rubin_scheduler.utils import Site, _angular_separation, _hpid2_ra_dec, angular_separation
+from rubin_scheduler.utils import DEFAULT_NSIDE, Site, _angular_separation, _hpid2_ra_dec, angular_separation
 
-from .utils import IntRounded, set_default_nside
+from .utils import IntRounded
 
 
 def get_current_footprint(nside):
@@ -48,7 +48,7 @@ def get_current_footprint(nside):
     return footprints, labels
 
 
-def generate_all_sky(nside=None, elevation_limit=20, mask=hp.UNSEEN):
+def generate_all_sky(nside=DEFAULT_NSIDE, elevation_limit=20, mask=hp.UNSEEN):
     """Set up a healpix map over the entire sky.
     Calculate RA & Dec, Galactic l & b, Ecliptic l & b, for all healpixels.
     Calculate max altitude, to define areas which LSST cannot reach.
@@ -78,8 +78,6 @@ def generate_all_sky(nside=None, elevation_limit=20, mask=hp.UNSEEN):
         `ra`, `dec`, eclip_lat`, `eclip_lon`, `gal_lat`, `gal_lon` values.
         All coordinates are in radians.
     """
-    if nside is None:
-        nside = set_default_nside()
 
     # Calculate coordinates of everything.
     skymap = np.zeros(hp.nside2npix(nside), float)
@@ -185,7 +183,7 @@ class SkyAreaGenerator:
 
     def __init__(
         self,
-        nside=32,
+        nside=DEFAULT_NSIDE,
         dust_limit=0.199,
         smoothing_cutoff=0.45,
         smoothing_beam=10,
@@ -1091,7 +1089,7 @@ class Phase3AreaMap(EuclidOverlapFootprint):
 
     def __init__(
         self,
-        nside=32,
+        nside=DEFAULT_NSIDE,
         dust_limit=0.199,
         smoothing_cutoff=0.45,
         smoothing_beam=10,

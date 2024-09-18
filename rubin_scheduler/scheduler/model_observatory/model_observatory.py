@@ -12,7 +12,6 @@ import rubin_scheduler.skybrightness_pre as sb
 from rubin_scheduler.data import data_versions
 from rubin_scheduler.scheduler.features import Conditions
 from rubin_scheduler.scheduler.model_observatory import KinemModel
-from rubin_scheduler.scheduler.utils import set_default_nside
 
 # For backwards compatibility
 from rubin_scheduler.site_models import (
@@ -26,6 +25,8 @@ from rubin_scheduler.site_models import (
     UnscheduledDowntimeMoreY1Data,
 )
 from rubin_scheduler.utils import (
+    DEFAULT_NSIDE,
+    SURVEY_START_MJD,
     Site,
     _angular_separation,
     _approx_altaz2pa,
@@ -36,7 +37,6 @@ from rubin_scheduler.utils import (
     calc_season,
     m5_flat_sed,
     rotation_converter,
-    survey_start_mjd,
 )
 
 
@@ -145,9 +145,9 @@ class ModelObservatory:
 
     def __init__(
         self,
-        nside=None,
+        nside=DEFAULT_NSIDE,
         mjd=None,
-        mjd_start=None,
+        mjd_start=SURVEY_START_MJD,
         alt_min=5.0,
         lax_dome=True,
         cloud_limit=0.3,
@@ -169,14 +169,10 @@ class ModelObservatory:
         tel_az_limits=None,
         telescope="rubin",
     ):
-        if nside is None:
-            nside = set_default_nside()
         self.nside = nside
 
         # Set the time now - mjd
         # and the time of the survey start
-        if mjd_start is None:
-            mjd_start = survey_start_mjd()
         self.mjd_start = mjd_start
 
         if mjd is None:

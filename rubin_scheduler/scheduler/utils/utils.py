@@ -9,7 +9,6 @@ __all__ = (
     "match_hp_resolution",
     "TargetoO",
     "SimTargetooServer",
-    "set_default_nside",
     "restore_scheduler",
     "warm_start",
     "ObservationArray",
@@ -40,7 +39,13 @@ import numpy as np
 import pandas as pd
 
 import rubin_scheduler.version as rsVersion
-from rubin_scheduler.utils import _build_tree, _hpid2_ra_dec, _xyz_from_ra_dec, xyz_angular_radius
+from rubin_scheduler.utils import (
+    DEFAULT_NSIDE,
+    _build_tree,
+    _hpid2_ra_dec,
+    _xyz_from_ra_dec,
+    xyz_angular_radius,
+)
 
 
 def smallest_signed_angle(a1, a2):
@@ -158,26 +163,6 @@ class IntRounded:
         out_scale = np.min([self.scale, other.scale])
         result = IntRounded(self.initial / other.initial, scale=out_scale)
         return result
-
-
-def set_default_nside(nside=None):
-    """
-    Utility function to set a default nside value across the scheduler.
-
-    XXX-there might be a better way to do this.
-
-    Parameters
-    ----------
-    nside : int (None)
-        A valid healpixel nside.
-    """
-    if not hasattr(set_default_nside, "nside"):
-        if nside is None:
-            nside = 32
-        set_default_nside.nside = nside
-    if nside is not None:
-        set_default_nside.nside = nside
-    return set_default_nside.nside
 
 
 def restore_scheduler(observation_id, scheduler, observatory, in_obs, filter_sched=None, fast=True):
@@ -784,7 +769,7 @@ class ScheduledObservationArray(np.ndarray):
         return obj
 
 
-def hp_kd_tree(nside=None, leafsize=100, scale=1e5):
+def hp_kd_tree(nside=DEFAULT_NSIDE, leafsize=100, scale=1e5):
     """
     Generate a KD-tree of healpixel locations
 
@@ -799,8 +784,6 @@ def hp_kd_tree(nside=None, leafsize=100, scale=1e5):
     -------
     tree : scipy kdtree
     """
-    if nside is None:
-        nside = set_default_nside()
 
     hpid = np.arange(hp.nside2npix(nside))
     ra, dec = _hpid2_ra_dec(nside, hpid)
@@ -843,10 +826,7 @@ class HpInLsstFov:
 
     """
 
-    def __init__(self, nside=None, fov_radius=1.75, scale=1e5):
-        if nside is None:
-            nside = set_default_nside()
-
+    def __init__(self, nside=DEFAULT_NSIDE, fov_radius=1.75, scale=1e5):
         self.tree = hp_kd_tree(nside=nside, scale=scale)
         self.radius = np.round(xyz_angular_radius(fov_radius) * scale).astype(int)
         self.scale = scale
@@ -883,15 +863,13 @@ class HpInComcamFov:
     with no chip gaps.
     """
 
-    def __init__(self, nside=None, side_length=0.7, scale=1e5):
+    def __init__(self, nside=DEFAULT_NSIDE, side_length=0.7, scale=1e5):
         """
         Parameters
         ----------
         side_length : float (0.7)
             The length of one side of the square field of view (degrees).
         """
-        if nside is None:
-            nside = set_default_nside()
         self.nside = nside
         self.scale = scale
         self.tree = hp_kd_tree(nside=nside, scale=scale)

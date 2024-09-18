@@ -8,15 +8,15 @@ import rubin_scheduler.scheduler.basis_functions as basis_functions
 import rubin_scheduler.scheduler.surveys as surveys
 from rubin_scheduler.scheduler.basis_functions import SimpleArrayBasisFunction
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
-from rubin_scheduler.scheduler.utils import HpInLsstFov, ObservationArray, set_default_nside
-from rubin_scheduler.utils import survey_start_mjd
+from rubin_scheduler.scheduler.utils import HpInLsstFov, ObservationArray
+from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD
 
 
 def make_observations_list(nobs=1):
     observations_list = []
     for i in range(0, nobs):
         observation = ObservationArray()
-        observation["mjd"] = survey_start_mjd() + i * 30 / 60 / 60 / 24
+        observation["mjd"] = SURVEY_START_MJD + i * 30 / 60 / 60 / 24
         observation["RA"] = np.radians(30)
         observation["dec"] = np.radians(-20)
         observation["filter"] = "r"
@@ -90,7 +90,7 @@ class TestSurveys(unittest.TestCase):
         indexes = []
         pointing2hpindx = HpInLsstFov(nside=nside)
         for i, obs in enumerate(observations_list):
-            obs["mjd"] = survey_start_mjd() + i
+            obs["mjd"] = SURVEY_START_MJD + i
             obs["rotSkyPos"] = 0
             if i < 5:
                 obs["filter"] = "r"
@@ -179,7 +179,7 @@ class TestSurveys(unittest.TestCase):
     def test_roi(self):
         random_seed = 6563
         infeasible_hpix = 123
-        nside = set_default_nside()
+        nside = DEFAULT_NSIDE
         npix = hp.nside2npix(nside)
         rng = np.random.default_rng(seed=random_seed)
         num_bfs = 3

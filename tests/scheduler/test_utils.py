@@ -16,7 +16,7 @@ from rubin_scheduler.scheduler.utils import (
     run_info_table,
     season_calc,
 )
-from rubin_scheduler.utils import survey_start_mjd
+from rubin_scheduler.utils import SURVEY_START_MJD
 
 
 class TestUtils(unittest.TestCase):
@@ -29,7 +29,7 @@ class TestUtils(unittest.TestCase):
     )
     def test_nside(self):
         """Test the example scheduler can be set to different nsides."""
-        mjd_start = survey_start_mjd()
+        mjd_start = SURVEY_START_MJD
         _ = example_scheduler(mjd_start=mjd_start, nside=64)
         _ = example_scheduler(mjd_start=mjd_start, nside=8)
 
@@ -39,7 +39,7 @@ class TestUtils(unittest.TestCase):
     )
     def test_start_of_night_example(self):
         """Test the example scheduler starting at the beginnig of a night."""
-        mjd_start = survey_start_mjd()
+        mjd_start = SURVEY_START_MJD
         scheduler = example_scheduler(mjd_start=mjd_start)
         observatory, scheduler, observations = run_sched(
             scheduler, mjd_start=mjd_start - 0.5, survey_length=5
@@ -52,7 +52,7 @@ class TestUtils(unittest.TestCase):
     def test_altaz_limit(self):
         """Test that setting some azimuth limits via different approaches
         for the AltAzShadowMaskBasisFunction works"""
-        mjd_start = survey_start_mjd()
+        mjd_start = SURVEY_START_MJD
         scheduler = example_scheduler(mjd_start=mjd_start)
 
         # Constrain the pointings available with the telescope mount
@@ -166,7 +166,7 @@ class TestUtils(unittest.TestCase):
     def test_restore(self):
         """Test we can restore a scheduler properly"""
         # MJD set so it's in test data range
-        mjd_start = survey_start_mjd()
+        mjd_start = SURVEY_START_MJD
         n_visit_limit = 3000
 
         scheduler = example_scheduler(mjd_start=mjd_start)
@@ -311,7 +311,7 @@ class TestUtils(unittest.TestCase):
 
     def test_run_info_table(self):
         """Test run_info_table gets information"""
-        observatory = ModelObservatory(nside=8, mjd_start=survey_start_mjd())
+        observatory = ModelObservatory(nside=8, mjd_start=SURVEY_START_MJD)
         version_info = run_info_table(observatory)
         # Make a minimal set of keys that ought to be in the info table
         # Update these if the value they're stored as changes
@@ -355,7 +355,7 @@ class TestUtils(unittest.TestCase):
         # now test uniformity of uniform rolling and baseline at a range
         # of survey start times
         for mjd_offset in [0, 12, 60, 90, 180, 195, 240, 267, 270, 319]:
-            mjd_start = survey_start_mjd() + mjd_offset
+            mjd_start = SURVEY_START_MJD + mjd_offset
             sun_ra_start = _get_sun_ra_at_mjd(mjd_start)
             fp_hp = {
                 "g": base_footprint.copy(),

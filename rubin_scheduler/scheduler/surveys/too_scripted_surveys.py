@@ -13,7 +13,7 @@ from rubin_scheduler.scheduler.utils import (
     xyz2thetaphi,
 )
 from rubin_scheduler.site_models import _read_fields
-from rubin_scheduler.utils import _approx_ra_dec2_alt_az, _ra_dec2_hpid
+from rubin_scheduler.utils import DEFAULT_NSIDE, _approx_ra_dec2_alt_az, _ra_dec2_hpid
 
 
 def rotx(theta, x, y, z):
@@ -60,7 +60,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         self,
         basis_functions,
         followup_footprint=None,
-        nside=32,
+        nside=DEFAULT_NSIDE,
         reward_val=1e6,
         times=[1, 2, 4, 24, 48],
         filters_at_times=["gz", "gz", "gz", "gz", "gz", "gz"],
@@ -430,7 +430,7 @@ def mean_longitude(longitude):
 
 
 def gen_too_surveys(
-    nside=32,
+    nside=DEFAULT_NSIDE,
     detailer_list=None,
     too_footprint=None,
     split_long=False,

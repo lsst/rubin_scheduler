@@ -4,11 +4,11 @@ import numpy as np
 
 from rubin_scheduler.scheduler.utils import smallest_signed_angle
 from rubin_scheduler.utils import (
+    SURVEY_START_MJD,
     Site,
     _approx_ra_dec2_alt_az,
     pseudo_parallactic_angle,
     rotation_converter,
-    survey_start_mjd,
 )
 
 
@@ -68,7 +68,7 @@ class TestRotSkyConvert(unittest.TestCase):
         n = 100
         ra = rng.uniform(low=0, high=360, size=n)
         dec = rng.uniform(low=-90, high=90, size=n)
-        mjd = np.arange(n) + survey_start_mjd()
+        mjd = np.arange(n) + SURVEY_START_MJD
 
         psudo_pa, salt, saz = pseudo_parallactic_angle(ra, dec, mjd, lon=lsst.longitude, height=lsst.height)
 

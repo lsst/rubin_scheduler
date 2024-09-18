@@ -5,11 +5,9 @@ import numpy as np
 from scipy.optimize import minimize
 
 from rubin_scheduler.site_models import _read_fields
-from rubin_scheduler.utils import _hpid2_ra_dec, _xyz_angular_radius, _xyz_from_ra_dec
+from rubin_scheduler.utils import DEFAULT_NSIDE, _hpid2_ra_dec, _xyz_angular_radius, _xyz_from_ra_dec
 
-from .utils import hp_kd_tree, set_default_nside
-
-default_nside = set_default_nside()
+from .utils import hp_kd_tree
 
 
 def wrap_ra_dec(ra, dec):
@@ -147,7 +145,7 @@ class HpmapCross:
     """
 
     # XXX--just a very random radius search
-    def __init__(self, nside=default_nside, radius=1.75, radius_search=1.75):
+    def __init__(self, nside=DEFAULT_NSIDE, radius=1.75, radius_search=1.75):
         """"""
         self.nside = nside
         # XXX -- should I shrink the radius slightly to get rid

@@ -12,12 +12,11 @@ from rubin_scheduler.scheduler.utils import (
     HpInLsstFov,
     ObservationArray,
     comcam_tessellate,
-    set_default_nside,
     thetaphi2xyz,
     xyz2thetaphi,
 )
 from rubin_scheduler.site_models import _read_fields
-from rubin_scheduler.utils import _build_tree, _hpid2_ra_dec, _xyz_from_ra_dec
+from rubin_scheduler.utils import DEFAULT_NSIDE, _build_tree, _hpid2_ra_dec, _xyz_from_ra_dec
 
 
 class BaseSurvey:
@@ -62,15 +61,13 @@ class BaseSurvey:
         ignore_obs=None,
         survey_name=None,
         scheduler_note=None,
-        nside=None,
+        nside=DEFAULT_NSIDE,
         detailers=None,
         scheduled_obs=None,
         target_name=None,
         science_program=None,
         observation_reason=None,
     ):
-        if nside is None:
-            nside = set_default_nside()
         if ignore_obs is None:
             ignore_obs = []
 
@@ -481,7 +478,7 @@ class BaseMarkovSurvey(BaseSurvey):
         ignore_obs=None,
         survey_name=None,
         scheduler_note=None,
-        nside=None,
+        nside=DEFAULT_NSIDE,
         seed=42,
         dither=True,
         detailers=None,

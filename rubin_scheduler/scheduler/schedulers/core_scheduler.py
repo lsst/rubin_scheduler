@@ -11,14 +11,14 @@ import numpy as np
 import pandas as pd
 from astropy.time import Time
 
-from rubin_scheduler.scheduler.utils import (
-    HpInComcamFov,
-    HpInLsstFov,
-    IntRounded,
-    ObservationArray,
-    set_default_nside,
+from rubin_scheduler.scheduler.utils import HpInComcamFov, HpInLsstFov, IntRounded, ObservationArray
+from rubin_scheduler.utils import (
+    DEFAULT_NSIDE,
+    _approx_altaz2pa,
+    _approx_ra_dec2_alt_az,
+    _hpid2_ra_dec,
+    rotation_converter,
 )
-from rubin_scheduler.utils import _approx_altaz2pa, _approx_ra_dec2_alt_az, _hpid2_ra_dec, rotation_converter
 
 
 class CoreScheduler:
@@ -54,7 +54,7 @@ class CoreScheduler:
     def __init__(
         self,
         surveys,
-        nside=None,
+        nside=DEFAULT_NSIDE,
         camera="LSST",
         rotator_limits=[85.0, 275.0],
         log=None,
@@ -64,9 +64,6 @@ class CoreScheduler:
         self.keep_rewards = keep_rewards
         # Use integer ns just to be sure there are no rounding issues.
         self.mjd_perf_counter_offset = np.int64(Time.now().mjd * 86400000000000) - time.perf_counter_ns()
-
-        if nside is None:
-            nside = set_default_nside()
 
         if log is None:
             self.log = logging.getLogger(type(self).__name__)

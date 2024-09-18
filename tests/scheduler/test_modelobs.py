@@ -24,7 +24,7 @@ class ArbSeeing:
 class TestModelObservatory(unittest.TestCase):
     def test_ideal(self):
         """test that we can set ideal conditions"""
-        mjd_start = utils.survey_start_mjd()
+        mjd_start = utils.SURVEY_START_MJD
         mo_default = ModelObservatory(mjd_start=mjd_start)
 
         mo_ideal = ModelObservatory(
@@ -49,7 +49,7 @@ class TestModelObservatory(unittest.TestCase):
     def test_replace(self):
         """test that we can replace default downtimes, seeing, and clouds"""
 
-        mjd_start = utils.survey_start_mjd()
+        mjd_start = utils.SURVEY_START_MJD
         mo_default = ModelObservatory(mjd_start=mjd_start)
         # Never load too many nights of sky
         mo_default.sky_model.load_length = 10.0

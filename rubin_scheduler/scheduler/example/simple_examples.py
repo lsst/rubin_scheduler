@@ -26,7 +26,7 @@ from rubin_scheduler.scheduler.schedulers import FilterSwapScheduler
 from rubin_scheduler.scheduler.surveys import BlobSurvey, FieldSurvey, GreedySurvey
 from rubin_scheduler.scheduler.utils import Footprint, get_current_footprint
 from rubin_scheduler.site_models import Almanac, ConstantSeeingData, ConstantWindData
-from rubin_scheduler.utils import survey_start_mjd
+from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD
 
 
 def get_ideal_model_observatory(
@@ -235,7 +235,7 @@ def standard_masks(
 def simple_rewards(
     footprints: Footprint,
     filtername: str,
-    nside: int = 32,
+    nside: int = DEFAULT_NSIDE,
     m5_weight: float = 6.0,
     footprint_weight: float = 1.5,
     slewtime_weight: float = 3.0,
@@ -329,13 +329,13 @@ def simple_rewards(
 
 
 def simple_pairs_survey(
-    nside: int = 32,
+    nside: int = DEFAULT_NSIDE,
     filtername: str = "g",
     filtername2: str | None = None,
     mask_basis_functions: list[basis_functions.BaseBasisFunction] | None = None,
     reward_basis_functions: list[basis_functions.BaseBasisFunction] | None = None,
     reward_basis_functions_weights: list[float] | None = None,
-    survey_start: float | None = None,
+    survey_start: float = SURVEY_START_MJD,
     footprints_hp: np.ndarray | None = None,
     camera_rot_limits: list[float] = [-80.0, 80.0],
     pair_time: float = 30.0,
@@ -392,11 +392,6 @@ def simple_pairs_survey(
         A blob survey configured to take pairs at spacing of pair_time,
         in filtername + filtername2.
     """
-
-    # Note that survey_start should be the start of the FIRST night of survey.
-    # Not the current night.
-    if survey_start is None:
-        survey_start = survey_start_mjd()
 
     # Use the Almanac to find the position of the sun at the start of survey.
     almanac = Almanac(mjd_start=survey_start)
@@ -531,12 +526,12 @@ def simple_pairs_survey(
 
 
 def simple_greedy_survey(
-    nside: int = 32,
+    nside: int = DEFAULT_NSIDE,
     filtername: str = "r",
     mask_basis_functions: list[basis_functions.BaseBasisFunction] | None = None,
     reward_basis_functions: list[basis_functions.BaseBasisFunction] | None = None,
     reward_basis_functions_weights: list[float] | None = None,
-    survey_start: float | None = None,
+    survey_start: float = SURVEY_START_MJD,
     footprints_hp: np.ndarray | None = None,
     camera_rot_limits: list[float] = [-80.0, 80.0],
     exptime: float = 30.0,
@@ -587,11 +582,6 @@ def simple_greedy_survey(
         A greedy survey configured to take the next best (single) visit
         in filtername.
     """
-
-    # Note that survey_start should be the start of the FIRST night of survey.
-    # Not the current night.
-    if survey_start is None:
-        survey_start = survey_start_mjd()
 
     # Use the Almanac to find the position of the sun at the start of survey.
     almanac = Almanac(mjd_start=survey_start)
@@ -679,7 +669,7 @@ def simple_greedy_survey(
 
 
 def simple_rewards_field_survey(
-    nside: int = 32, sun_alt_limit: float = -12.0
+    nside: int = DEFAULT_NSIDE, sun_alt_limit: float = -12.0
 ) -> list[basis_functions.BaseBasisFunction]:
     """Get some simple rewards to observe a field survey for a long period.
 
@@ -721,7 +711,7 @@ def simple_field_survey(
     nvisits: dict | None = None,
     exptimes: dict | None = None,
     nexps: dict | None = None,
-    nside: int = 32,
+    nside: int = DEFAULT_NSIDE,
     science_program: str | None = None,
 ) -> FieldSurvey:
     """Set up a simple field survey.
@@ -763,7 +753,7 @@ def simple_field_survey(
         Default of None uses
         nexps = {"u": 1, "g": 2, "r": 2, "i": 2, "z": 2, "y": 2}
     nside : `int`, optional
-        Nside for the survey. Default 32.
+        Nside for the survey. Default DEFAULT_NSIDE.
     science_program : `str` | None
         The science_program key for the FieldSurvey.
         This maps to the BLOCK and `science_program` in the consDB.

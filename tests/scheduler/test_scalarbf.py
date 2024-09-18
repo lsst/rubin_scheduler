@@ -8,7 +8,7 @@ from rubin_scheduler.scheduler.basis_functions import (
     SimpleArrayBasisFunction,
 )
 from rubin_scheduler.scheduler.features import Conditions
-from rubin_scheduler.scheduler.utils import set_default_nside
+from rubin_scheduler.utils import DEFAULT_NSIDE
 
 
 class SimpleArrayAtHpixBasisFunction(HealpixLimitedBasisFunctionMixin, SimpleArrayBasisFunction):
@@ -19,7 +19,7 @@ class TestHealpixLimitedBasisFunctionMixin(unittest.TestCase):
     def setUp(self):
         self.hpid = 2111
         random_seed = 6563
-        self.nside = set_default_nside()
+        self.nside = DEFAULT_NSIDE
         self.npix = hp.nside2npix(self.nside)
         self.rng = np.random.default_rng(seed=random_seed)
         self.all_values = self.rng.random(self.npix)

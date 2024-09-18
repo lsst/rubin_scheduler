@@ -4,7 +4,7 @@ import numpy as np
 from astropy.coordinates import EarthLocation, get_sun
 from astropy.time import Time
 
-from .mjd_zero import survey_start_mjd
+from .constants import SURVEY_START_MJD
 
 
 def calc_season(ra, mjd, mjd_start=None, calc_diagonal=False):
@@ -67,7 +67,7 @@ def calc_season(ra, mjd, mjd_start=None, calc_diagonal=False):
         single_ra = True
 
     if mjd_start is None:
-        mjd_start = survey_start_mjd()
+        mjd_start = SURVEY_START_MJD
 
     # A reference time and sun RA location to anchor the location of the Sun
     # This time was chosen as it is close to the expected start of the survey.

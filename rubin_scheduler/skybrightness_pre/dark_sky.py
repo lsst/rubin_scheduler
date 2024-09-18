@@ -7,17 +7,17 @@ import numpy as np
 
 from rubin_scheduler.data import get_data_dir
 from rubin_scheduler.site_models import SeeingModel
-from rubin_scheduler.utils import m5_flat_sed
+from rubin_scheduler.utils import DEFAULT_NSIDE, m5_flat_sed
 
 
-def dark_sky(nside=32):
+def dark_sky(nside=DEFAULT_NSIDE):
     """Load an array of HEALpix maps that have the darkest expected sky
     backgrounds per filter.
 
     Parameters
     ----------
-    nside : `int` (32)
-        Desired nside resolution (default=32).
+    nside : `int`
+        Desired nside resolution (default=DEFAULT_NSIDE).
 
     Returns
     -------
