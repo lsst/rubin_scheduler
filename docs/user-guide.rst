@@ -14,5 +14,6 @@ User Guide
     Site Models <site-models>
     Utils <utils>
     FBS Scheduler <fbs>
+    Archive <archive>
 
  

@@ -1,3 +1,7 @@
+.. py:currentmodule:: rubin_scheduler.scheduler
+
+.. _archive:
+
 ========================================================
 The Prototype OpSim Archive for ``schedview`` Dashboards
 ========================================================
