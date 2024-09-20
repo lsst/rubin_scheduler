@@ -152,23 +152,20 @@ def make_rolling_footprints(
     wfd[wfd_indx] = 1
     non_wfd_indx = np.where(wfd == 0)[0]
 
-    if uniform:
-        split_wfd_indices = slice_quad_galactic_cut(
-            hp_footprints,
-            nslice=nslice,
-            wfd_indx=wfd_indx,
-            ra_range=(sun_ra_start + 1.5 * np.pi, sun_ra_start + np.pi / 2),
-        )
+    split_wfd_indices = slice_quad_galactic_cut(
+        hp_footprints,
+        nslice=nslice,
+        wfd_indx=wfd_indx,
+        ra_range=(sun_ra_start + 1.5 * np.pi, sun_ra_start + np.pi / 2),
+    )
 
-        split_wfd_indices_delayed = slice_quad_galactic_cut(
-            hp_footprints,
-            nslice=nslice,
-            wfd_indx=wfd_indx,
-            ra_range=(sun_ra_start + np.pi / 2, sun_ra_start + 1.5 * np.pi),
-        )
-    else:
-        split_wfd_indices = slice_quad_galactic_cut(hp_footprints, nslice=nslice, wfd_indx=wfd_indx)
-
+    split_wfd_indices_delayed = slice_quad_galactic_cut(
+        hp_footprints,
+        nslice=nslice,
+        wfd_indx=wfd_indx,
+        ra_range=(sun_ra_start + np.pi / 2, sun_ra_start + 1.5 * np.pi),
+    )
+   
     for key in hp_footprints:
         temp = hp_footprints[key] + 0
         temp[wfd_indx] = 0
@@ -186,19 +183,19 @@ def make_rolling_footprints(
             ze[indx] = 1
             temp = temp * ze
             rolling_footprints[i].set_footprint(key, temp)
-        if uniform:
-            for _i in range(nslice, nslice * 2):
-                # make a copy of the current filter
-                temp = hp_footprints[key] + 0
-                # Set the non-rolling area to zero
-                temp[non_wfd_indx] = 0
+        
+        for _i in range(nslice, nslice * 2):
+            # make a copy of the current filter
+            temp = hp_footprints[key] + 0
+            # Set the non-rolling area to zero
+            temp[non_wfd_indx] = 0
 
-                indx = split_wfd_indices_delayed[_i - nslice]
-                # invert the indices
-                ze = temp * 0
-                ze[indx] = 1
-                temp = temp * ze
-                rolling_footprints[_i].set_footprint(key, temp)
+            indx = split_wfd_indices_delayed[_i - nslice]
+            # invert the indices
+            ze = temp * 0
+            ze[indx] = 1
+            temp = temp * ze
+            rolling_footprints[_i].set_footprint(key, temp)
 
     result = Footprints([fp_non_wfd] + rolling_footprints)
     return result
