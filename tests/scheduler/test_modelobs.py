@@ -43,8 +43,8 @@ class TestModelObservatory(unittest.TestCase):
 
         mjd_down = mo_default.downtimes["start"][0] + 0.01
 
-        assert ~mo_default.check_up(mjd_down)
-        assert mo_ideal.check_up(mjd_down)
+        assert ~mo_default.check_up(mjd_down)[0]
+        assert mo_ideal.check_up(mjd_down)[0]
 
     def test_replace(self):
         """test that we can replace default downtimes, seeing, and clouds"""

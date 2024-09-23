@@ -568,15 +568,18 @@ class ModelObservatory:
     def check_up(self, mjd):
         """See if we are in downtime
 
-        True if telescope is up
-        False if in downtime
+        Returns
+        --------
+        is_up, mjd : `bool`, `float`
+            Returns (True, current_mjd) if telescope is up
+            and (False, downtime_ends_mjd) if in downtime
         """
 
-        result = True
+        result = True, mjd
         indx = np.searchsorted(self.downtimes["start"], mjd, side="right") - 1
         if indx >= 0:
             if mjd < self.downtimes["end"][indx]:
-                result = False
+                result = False, self.downtimes["end"][indx]
         return result
 
     def check_mjd(self, mjd, cloud_skip=20.0):
@@ -615,10 +618,10 @@ class ModelObservatory:
         if mjd < self.almanac.sunsets[self.starting_time_key][alm_indx]:
             passed = False
             new_mjd = self.almanac.sunsets[self.starting_time_key][alm_indx + 1]
-        # We're in a down night, advance to next night
-        if not self.check_up(mjd):
+        # We're in a down time, if down, advance to the end of the downtime
+        if not self.check_up(mjd)[0]:
             passed = False
-            new_mjd = self.almanac.sunsets[self.starting_time_key][alm_indx + 1]
+            new_mjd = self.check_up(mjd)[1]
         # recursive call to make sure we skip far enough ahead
         if not passed:
             while not passed:
