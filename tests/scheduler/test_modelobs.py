@@ -46,6 +46,50 @@ class TestModelObservatory(unittest.TestCase):
         assert ~mo_default.check_up(mjd_down)[0]
         assert mo_ideal.check_up(mjd_down)[0]
 
+    def test_time_jumps(self):
+        """test that we jump forward properly with downtime
+        and daytime.
+        """
+        mjd_start = utils.SURVEY_START_MJD
+        mo = ModelObservatory(mjd_start=mjd_start, cloud_data="ideal", seeing_data="ideal", downtimes="ideal")
+        conditions = mo.return_conditions()
+
+        # Set the time to right after sunset
+        mo.mjd = conditions.sun_n18_setting
+
+        # Set a short downtime of 20 minutes
+        length = 20.0 / 60 / 24
+        down_starts = [mo.mjd + length / 1000]
+        down_ends = [mo.mjd + length]
+        mo.downtimes = np.array(
+            list(zip(down_starts, down_ends)),
+            dtype=list(zip(["start", "end"], [float, float])),
+        )
+
+        in_up_time, new_time = mo.check_up(mo.mjd + length / 2)
+        assert ~in_up_time
+        assert new_time == down_ends[0]
+
+        # Check that check_mjd advances the mjd to the correct time
+        in_valid_time, new_time = mo.check_mjd(mo.mjd + length / 2)
+
+        assert ~in_valid_time
+        assert new_time == down_ends[0]
+
+        # Check that we advance properly if in daytime.
+        # 2 hours before sunset
+        mo.mjd = conditions.sun_n12_setting - 2.0 / 24.0
+        in_valid_time, new_time = mo.check_mjd(mo.mjd)
+        assert ~in_valid_time
+        assert new_time == conditions.sun_n12_setting
+
+        # Check no time jump if in valid time
+        good_time = down_ends[0] + 2.0 / 24.0
+        mo.mjd = good_time
+        in_valid_time, new_time = mo.check_mjd(mo.mjd)
+        assert in_valid_time
+        assert new_time == good_time
+
     def test_replace(self):
         """test that we can replace default downtimes, seeing, and clouds"""
 
