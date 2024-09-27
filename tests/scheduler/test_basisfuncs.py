@@ -203,9 +203,8 @@ class TestBasis(unittest.TestCase):
         nside = 32
         conditions = Conditions(nside=nside)
         conditions.mjd = 59000.0
-        conditions.altaz_limit_pad = np.radians(2.0)
-        conditions.kinematic_az_limits = [np.radians(-250), np.radians(250)]
-        conditions.kinematic_alt_limits = [np.radians(-100), np.radians(100)]
+        conditions.tel_az_limits = [np.radians(-250), np.radians(250)]
+        conditions.tel_alt_limits = [np.radians(-100), np.radians(100)]
         # With no (real) limits, including no limits in conditions
         bf = basis_functions.AltAzShadowMaskBasisFunction(
             nside=nside, min_alt=0, max_alt=90, min_az=0, max_az=360, shadow_minutes=0
@@ -238,7 +237,7 @@ class TestBasis(unittest.TestCase):
         self.assertTrue(np.all(np.isnan(result[~good])))
         self.assertTrue(np.all(result[good] == 0))
         # And set altitude limits from the conditions
-        conditions.tel_alt_limits = [[np.radians(40), np.radians(60)]]
+        conditions.sky_alt_limits = [[np.radians(40), np.radians(60)]]
         bf = basis_functions.AltAzShadowMaskBasisFunction(
             nside=nside, min_alt=0, max_alt=90, min_az=0, max_az=360, shadow_minutes=0
         )
@@ -247,7 +246,7 @@ class TestBasis(unittest.TestCase):
         self.assertTrue(np.all(np.isnan(result[~good])))
         self.assertTrue(np.all(result[good] == 0))
         # Set multiple altitude limits from the conditions
-        conditions.tel_alt_limits = [[np.radians(40), np.radians(60)], [np.radians(80), np.radians(90)]]
+        conditions.sky_alt_limits = [[np.radians(40), np.radians(60)], [np.radians(80), np.radians(90)]]
         bf = basis_functions.AltAzShadowMaskBasisFunction(
             nside=nside, min_alt=-90, max_alt=90, min_az=0, max_az=360, shadow_minutes=0
         )
@@ -262,8 +261,8 @@ class TestBasis(unittest.TestCase):
         self.assertTrue(np.all(np.isnan(result[~good])))
         self.assertTrue(np.all(result[good] == 0))
         # Set azimuth limits
-        conditions.tel_alt_limits = None
-        conditions.tel_az_limits = [[np.radians(270), np.radians(90)]]
+        conditions.sky_alt_limits = None
+        conditions.sky_az_limits = [[np.radians(270), np.radians(90)]]
         bf = basis_functions.AltAzShadowMaskBasisFunction(
             nside=nside, min_alt=-90, max_alt=90, min_az=0, max_az=360, shadow_minutes=0
         )
@@ -277,8 +276,8 @@ class TestBasis(unittest.TestCase):
         )
         self.assertTrue(np.all(np.isnan(result[~good])))
         # Set azimuth limits, direction sensitive
-        conditions.tel_alt_limits = None
-        conditions.tel_az_limits = [[np.radians(90), np.radians(270)]]
+        conditions.sky_alt_limits = None
+        conditions.sky_az_limits = [[np.radians(90), np.radians(270)]]
         bf = basis_functions.AltAzShadowMaskBasisFunction(
             nside=nside, min_alt=-90, max_alt=90, min_az=0, max_az=360, shadow_minutes=0
         )
@@ -292,9 +291,9 @@ class TestBasis(unittest.TestCase):
         self.assertTrue(np.all(np.isnan(result[~good])))
         self.assertTrue(np.all(result[good] == 0))
         # Set altitude limits from kinematic model
-        conditions.tel_alt_limits = None
-        conditions.kinematic_alt_limits = [np.radians(20), np.radians(86.5)]
-        conditions.tel_az_limits = None
+        conditions.sky_alt_limits = None
+        conditions.tel_alt_limits = [np.radians(20), np.radians(86.5)]
+        conditions.sky_az_limits = None
         bf = basis_functions.AltAzShadowMaskBasisFunction(
             nside=nside, min_alt=-90, max_alt=90, min_az=0, max_az=360, shadow_minutes=0
         )
@@ -308,10 +307,10 @@ class TestBasis(unittest.TestCase):
         self.assertTrue(np.all(np.isnan(result[~good])))
         self.assertTrue(np.all(result[good] == 0))
         # Set azimuth limits from kinematic model
-        conditions.tel_alt_limits = None
-        conditions.tel_az_limits = None
-        conditions.kinematic_az_limits = [np.radians(90), np.radians(270)]
-        conditions.kinematic_alt_limits = [np.radians(-100), np.radians(100)]
+        conditions.sky_alt_limits = None
+        conditions.sky_az_limits = None
+        conditions.tel_az_limits = [np.radians(90), np.radians(270)]
+        conditions.tel_alt_limits = [np.radians(-100), np.radians(100)]
         bf = basis_functions.AltAzShadowMaskBasisFunction(
             nside=nside, min_alt=-90, max_alt=90, min_az=0, max_az=360, shadow_minutes=0
         )
@@ -326,10 +325,10 @@ class TestBasis(unittest.TestCase):
         self.assertTrue(np.all(result[good] == 0))
         # Check very simple shadow minutes
         # Set azimuth limits from kinematic model
-        conditions.tel_alt_limits = None
-        conditions.tel_az_limits = None
-        conditions.kinematic_az_limits = [np.radians(-250), np.radians(250)]
-        conditions.kinematic_alt_limits = [np.radians(-100), np.radians(100)]
+        conditions.sky_alt_limits = None
+        conditions.sky_az_limits = None
+        conditions.tel_az_limits = [np.radians(-250), np.radians(250)]
+        conditions.tel_alt_limits = [np.radians(-100), np.radians(100)]
         bf = basis_functions.AltAzShadowMaskBasisFunction(
             nside=nside, min_alt=20, max_alt=85, min_az=0, max_az=360, shadow_minutes=0
         )
