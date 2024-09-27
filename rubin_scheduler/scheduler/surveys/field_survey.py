@@ -1,7 +1,6 @@
 __all__ = ("FieldSurvey",)
 
 import copy
-import warnings
 from functools import cached_property
 
 import numpy as np
@@ -32,11 +31,11 @@ class FieldSurvey(BaseSurvey):
         Dictionary of the number of visits in each filter.
         Default of None will use a backup sequence of 20 visits per filter.
         Must contain all filters in sequence.
-    exptime : `dict` {`str`: `float`}
+    exptimes : `dict` {`str`: `float`}
         Dictionary of the exposure time for visits in each filter.
         Default of None will use a backup sequence of 38s in u, and
         29.2s in all other bands. Must contain all filters in sequence.
-    nexp : dict` {`str`: `int`}
+    nexps : dict` {`str`: `int`}
         Dictionary of the number of exposures per visit in each filter.
         Default of None will use a backup sequence of 1 exposure per visit
         in u band, 2 in all other bands. Must contain all filters in sequence.
@@ -70,8 +69,6 @@ class FieldSurvey(BaseSurvey):
     flush_pad : `float`
         How long to hold observations in the queue after they
         were expected to be completed (minutes).
-    reward_value : `float`
-        An unused kwarg, provided for backward compatibility.
     """
 
     def __init__(
@@ -95,25 +92,10 @@ class FieldSurvey(BaseSurvey):
         nside=DEFAULT_NSIDE,
         flush_pad=30.0,
         detailers=None,
-        reward_value=None,
-        nexp=None,
     ):
         default_nvisits = {"u": 20, "g": 20, "r": 20, "i": 20, "z": 20, "y": 20}
         default_exptimes = {"u": 38, "g": 29.2, "r": 29.2, "i": 29.2, "z": 29.2, "y": 29.2}
         default_nexps = {"u": 1, "g": 2, "r": 2, "i": 2, "z": 2, "y": 2}
-
-        # Deprecated kwarg messages
-        if reward_value is not None:
-            warnings.warn("reward_value has been unused and will be deprecated.")
-        if nexp is not None:
-            if nexps is not None:
-                warnings.warn(
-                    "Use one of `nexp` or `nexps`: `nexps` will be "
-                    "supported going forward and will override."
-                )
-            if nexps is None:
-                warnings.warn("Please use `nexps` in the future. " "Will adapt from `nexp` presently.")
-                nexps = nexp
 
         self.ra = np.radians(RA)
         self.ra_hours = RA / 360.0 * 24.0
