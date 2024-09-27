@@ -13,8 +13,6 @@ __all__ = (
     "warm_start",
     "ObservationArray",
     "ScheduledObservationArray",
-    "empty_observation",
-    "scheduled_observation",
     "gnomonic_project_toxy",
     "gnomonic_project_tosky",
     "raster_sort",
@@ -674,21 +672,6 @@ class ObservationArray(np.ndarray):
         ]
         obj = np.zeros(n, dtype=dtypes).view(cls)
         return obj
-
-
-def empty_observation(n=1):
-    """For backwards compatibility"""
-    warnings.warn("Function empty_observation is deprecated, use ObservationArray", FutureWarning)
-    result = ObservationArray(n=n)
-    return result
-
-
-def scheduled_observation(n=1):
-    warnings.warn(
-        "Function scheduled_observation is deprecated, use ScheduledObservationArray", FutureWarning
-    )
-    result = ScheduledObservationArray(n=n)
-    return result
 
 
 class ScheduledObservationArray(np.ndarray):
