@@ -11,7 +11,7 @@ __all__ = (
     "NObservationsCurrentSeason",
     "LastNObsTimes",
     "NoteInNight",
-    "NoteLastObserved",
+    "LastObservationMjd",
 )
 
 import warnings
@@ -598,26 +598,47 @@ class LastObserved(BaseSurveyFeature):
             self.feature[indx] = observation["mjd"]
 
 
-class NoteLastObserved(BaseSurveyFeature):
-    """Track the last time an observation with a particular `note` field was
-    made.
+class LastObservationMjd(BaseSurveyFeature):
+    """Track the MJD of the last observation.
+
+    All visits, no healpix dependency.
 
     Parameters
     ----------
-    note : `str`
-        Substring to match an observation note field to keep track of.
+    scheduler_note : `str` or None, optional
+        The scheduler_note to match.
+        Scheduler_note values which match this OR which contain this value
+        as a subset of their string will match.
+    filtername : `str` or None, optional
+        The required filter to match.
+
+    Notes
+    -----
+    Very similar to LastObservation, but only tracks the MJD of the
+    last matching visit.
     """
 
-    def __init__(self, note, filtername=None):
-        self.note = note
+    def __init__(self, scheduler_note=None, filtername=None, note=None):
+        self.scheduler_note = scheduler_note
+        if self.scheduler_note is None and note is not None:
+            self.scheduler_note = note
         self.filtername = filtername
         self.feature = None
 
+    def add_observations_array(self, observations_array, observations_hpid):
+        valid_indx = np.ones(observations_array.size, dtype=bool)
+        if self.filtername is not None:
+            valid_indx[np.where(observations_array["filter"] != self.filtername)[0]] = False
+        if self.scheduler_note is not None:
+            tmp = [self.scheduler_note in name for name in observations_array["scheduler_note"]]
+            valid_indx = valid_indx * np.array(tmp)
+        if valid_indx.sum() > 0:
+            self.feature = observations_array[valid_indx][-1]["mjd"]
+
     def add_observation(self, observation, indx=None):
-        if self.note in observation["scheduler_note"][0] and (
-            self.filtername is None or self.filtername == observation["filter"][0]
-        ):
-            self.feature = observation["mjd"]
+        if (self.scheduler_note is None) or (self.scheduler_note in observation["scheduler_note"][0]):
+            if (self.filtername is None) or (self.filtername == observation["filter"][0]):
+                self.feature = observation["mjd"]
 
 
 class NObsNight(BaseSurveyFeature):

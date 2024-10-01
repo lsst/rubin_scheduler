@@ -141,6 +141,7 @@ class TestFeatures(unittest.TestCase):
         note_last_observed.add_observation(observation=observation)
 
         assert note_last_observed.feature is None
+        note_last_observed.add_observations_array(observations_array, observations_hpid)
 
         observation["scheduler_note"] = "foo"
 
