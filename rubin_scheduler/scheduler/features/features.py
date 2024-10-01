@@ -7,7 +7,6 @@ __all__ = (
     "LastObserved",
     "NObsNight",
     "PairInNight",
-    "RotatorAngle",
     "NObservationsCurrentSeason",
     "LastNObsTimes",
     "NoteInNight",
@@ -599,9 +598,8 @@ class LastObserved(BaseSurveyFeature):
         data = observations_hpid[valid_indx]
 
         if np.size(data) > 0:
-            result, _be, _bn = binned_statistic(data["hpid"], data["mjd"], statistic=np.max, bins=self.bins)
-            good = np.where(result > 0)
-            self.feature[good] = result[good]
+            result, _be, _bn = binned_statistic(data["hpid"], data["mjd"], statistic=np.size, bins=self.bins)
+            self.feature += result
 
     def add_observation(self, observation, indx=None):
         if self.filtername is None:
@@ -670,6 +668,18 @@ class NObsNight(BaseSurveyFeature):
         self.filtername = filtername
         self.feature = np.zeros(hp.nside2npix(nside), dtype=int)
         self.night = None
+
+    def add_observations_array(self, observations_array, observations_hpid):
+        latest_night = observations_array["night"].max()
+        if latest_night != self.night:
+            self.feature *= 0
+            self.night = latest_night
+        valid_indx = np.ones(observations_hpid.size, dtype=bool)
+        if self.filtername is not None:
+            valid_indx[np.where(observations_hpid["filter"] != self.filtername)[0]] = False
+        if self.night is not None:
+            valid_indx[np.where(observations_hpid["night"] != self.night)] = False
+        self.feature += observations_hpid[valid_indx].size
 
     def add_observation(self, observation, indx=None):
         if observation["night"] != self.night:
@@ -750,21 +760,3 @@ class PairInNight(BaseSurveyFeature):
             # record the mjds and healpixels that were observed
             self.mjd_log.extend([np.max(observation["mjd"])] * np.size(indx))
             self.hpid_log.extend(list(indx))
-
-
-class RotatorAngle(BaseSurveyFeature):
-    """
-    Track what rotation angles things are observed with.
-    XXX-under construction
-    """
-
-    def __init__(self, filtername="r", binsize=10.0, nside=DEFAULT_NSIDE):
-        self.filtername = filtername
-        # Actually keep a histogram at each healpixel
-        self.feature = np.zeros((hp.nside2npix(nside), 360.0 / binsize), dtype=float)
-        self.bins = np.arange(0, 360 + binsize, binsize)
-
-    def add_observation(self, observation, indx=None):
-        if observation["filter"][0] == self.filtername:
-            # I think this is how to broadcast things properly.
-            self.feature[indx, :] += np.histogram(observation.rotSkyPos, bins=self.bins)[0]
