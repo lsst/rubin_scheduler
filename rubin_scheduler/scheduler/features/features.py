@@ -277,12 +277,6 @@ class NObservations(BaseSurveyFeature):
             self.scheduler_note = survey_name
         else:
             self.scheduler_note = scheduler_note
-        # This feature is not used with "scheduler_note" in the baseline
-        # survey. Should it really match scheduler_notes which contain
-        # self.scheduler_note or should it be vice versa?
-        # (i.e. this works as: self.scheduler_note = "survey" matches only
-        # scheduler_note == "survey", but self.scheduler_note = "survey a"
-        # will match both "survey" and "survey a".
         self.bins = np.arange(hp.nside2npix(nside) + 1) - 0.5
 
     def add_observations_array(self, observations_array, observations_hpid):
