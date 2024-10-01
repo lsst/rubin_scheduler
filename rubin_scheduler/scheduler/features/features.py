@@ -214,9 +214,11 @@ class LastObservation(BaseSurveyFeature):
     Parameters
     ----------
     scheduler_note : `str` or None, optional
-        Value of the scheduler_note to match, if not None.
+        The scheduler_note to match.
+        Scheduler_note values which match this OR which contain this value
+        as a subset of their string will match.
     survey_name : `str` or None, optional
-        Backwards compatible version of scheduler_note. Deprecated.
+        Backwards compatible shim for scheduler_note. Deprecated.
     """
 
     def __init__(self, scheduler_note=None, survey_name=None):
@@ -232,7 +234,7 @@ class LastObservation(BaseSurveyFeature):
             valid_indx = np.ones(observations_array.size, dtype=bool)
             tmp = [self.scheduler_note in name for name in observations_array["scheduler_note"]]
             valid_indx = valid_indx * np.array(tmp)
-            if len(tmp) > 0:
+            if valid_indx.sum() > 0:
                 self.feature = observations_array[valid_indx][-1]
         else:
             if len(observations_array) > 0:
