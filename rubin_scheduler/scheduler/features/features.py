@@ -154,49 +154,55 @@ class NObsCount(BaseSurveyFeature):
 
     Parameters
     ----------
-    note : `str` or None
+    scheduler_note : `str` or None
         Count observations that match `str` in their scheduler_note field.
         Note can be a substring of scheduler_note, and will still match.
     filtername : `str` or None
         Optionally also (or independently) specify a filter to match.
+    note : `str` or None
+        Backwards compatible shim for scheduler_note.
     """
 
-    def __init__(self, note=None, filtername=None):
+    def __init__(self, scheduler_note=None, filtername=None, note=None):
         self.feature = 0
-        self.note = note
-        if self.note == "":
-            self.note = None
+        if scheduler_note is None:
+            self.scheduler_note = note
+        else:
+            self.scheduler_note = scheduler_note
+        # In case scheduler_note got set with empty string, replace with None
+        if self.scheduler_note == "":
+            self.scheduler_note = None
         self.filtername = filtername
 
     def add_observations_array(self, observations_array, observations_hpid):
-        if self.note is None and self.filtername is None:
+        if self.scheduler_note is None and self.filtername is None:
             self.feature += observations_array.size
-        elif self.note is None and self.filtername is not None:
+        elif self.scheduler_note is None and self.filtername is not None:
             in_filt = np.where(observations_array["filter"] == self.filtername)
             self.feature += np.size(in_filt)
-        elif self.note is not None and self.filtername is None:
-            count = [self.note in note for note in observations_array["scheduler_note"]]
+        elif self.scheduler_note is not None and self.filtername is None:
+            count = [self.scheduler_note in note for note in observations_array["scheduler_note"]]
             self.feature += np.sum(count)
         else:
             # note and filtername are defined
             in_filt = np.where(observations_array["filter"] == self.filtername)
-            count = [self.note in note for note in observations_array["scheduler_note"][in_filt]]
+            count = [self.scheduler_note in note for note in observations_array["scheduler_note"][in_filt]]
             self.feature += np.sum(count)
 
     def add_observation(self, observation, indx=None):
         # Track all observations
-        if self.note is None and self.filtername is None:
+        if self.scheduler_note is None and self.filtername is None:
             self.feature += 1
-        elif self.note is None and self.filtername is not None:
+        elif self.scheduler_note is None and self.filtername is not None:
             if observation["filter"][0] in self.filtername:
                 self.feature += 1
-        elif self.note is not None and self.filtername is None:
-            if self.note in observation["scheduler_note"][0]:
+        elif self.scheduler_note is not None and self.filtername is None:
+            if self.scheduler_note in observation["scheduler_note"][0]:
                 self.feature += 1
         else:
-            if (observation["filter"][0] in self.filtername) and self.note in observation["scheduler_note"][
-                0
-            ]:
+            if (observation["filter"][0] in self.filtername) and self.scheduler_note in observation[
+                "scheduler_note"
+            ][0]:
                 self.feature += 1
 
 
