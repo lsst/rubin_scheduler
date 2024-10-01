@@ -372,48 +372,53 @@ class TestFeatures(unittest.TestCase):
             observations_list[i]["filter"] = "g"
         observations_array, observations_hpid_array = make_observations_arrays(observations_list)
         # Count the observations matching any note
-        count_feature = features.NObsCount(note=None, filtername=None)
+        count_feature = features.NObsCount(scheduler_note=None, filtername=None)
         for obs in observations_list:
             count_feature.add_observation(obs)
         self.assertTrue(count_feature.feature == 5)
         # and count again using add_observations_array
-        count_feature = features.NObsCount(note=None)
+        count_feature = features.NObsCount(scheduler_note=None)
         count_feature.add_observations_array(observations_array, observations_hpid=observations_hpid_array)
         self.assertTrue(count_feature.feature == 5)
         # Count using a note to match
         # Count the observations matching specific note
-        count_feature = features.NObsCount(note="survey a")
+        count_feature = features.NObsCount(scheduler_note="survey a")
         for obs in observations_list:
             count_feature.add_observation(obs)
         self.assertTrue(count_feature.feature == 2)
         # and count again using add_observations_array
-        count_feature = features.NObsCount(note="survey a")
+        count_feature = features.NObsCount(scheduler_note="survey a")
         count_feature.add_observations_array(observations_array, observations_hpid=observations_hpid_array)
         self.assertTrue(count_feature.feature == 2)
         # Count the observations matching subset of note
-        count_feature = features.NObsCount(note="survey")
+        count_feature = features.NObsCount(scheduler_note="survey")
         for obs in observations_list:
             count_feature.add_observation(obs)
         self.assertTrue(count_feature.feature == 5)
         # and count again using add_observations_array
-        count_feature = features.NObsCount(note="survey")
+        count_feature = features.NObsCount(scheduler_note="survey")
         count_feature.add_observations_array(observations_array, observations_hpid=observations_hpid_array)
         self.assertTrue(count_feature.feature == 5)
         # Count the observations matching filter
-        count_feature = features.NObsCount(note=None, filtername="r")
+        count_feature = features.NObsCount(scheduler_note=None, filtername="r")
         for obs in observations_list:
             count_feature.add_observation(obs)
         self.assertTrue(count_feature.feature == 2)
         # and count again using add_observations_array
-        count_feature = features.NObsCount(note=None, filtername="r")
+        count_feature = features.NObsCount(scheduler_note=None, filtername="r")
         count_feature.add_observations_array(observations_array, observations_hpid=observations_hpid_array)
         self.assertTrue(count_feature.feature == 2)
         # Count the observations matching filter and surveyname
-        count_feature = features.NObsCount(note="survey b", filtername="r")
+        count_feature = features.NObsCount(scheduler_note="survey b", filtername="r")
         for obs in observations_list:
             count_feature.add_observation(obs)
         self.assertTrue(count_feature.feature == 1)
         # and count again using add_observations_array
+        count_feature = features.NObsCount(scheduler_note="survey b", filtername="r")
+        count_feature.add_observations_array(observations_array, observations_hpid=observations_hpid_array)
+        self.assertTrue(count_feature.feature == 1)
+
+        # Test backward compatibilty shim
         count_feature = features.NObsCount(note="survey b", filtername="r")
         count_feature.add_observations_array(observations_array, observations_hpid=observations_hpid_array)
         self.assertTrue(count_feature.feature == 1)
@@ -440,10 +445,10 @@ class TestFeatures(unittest.TestCase):
         count_feature.add_observations_array(observations_array, observations_hpid=observations_hpid_array)
         self.assertTrue(count_feature.feature["mjd"] == observations_list[-1]["mjd"])
         # Observations matching a specific note.
-        count_feature = features.LastObservation(scheduler_note="survey a")
+        count_feature = features.LastObservation(scheduler_note="survey b")
         for obs in observations_list:
             count_feature.add_observation(obs)
-        self.assertTrue(count_feature.feature["mjd"] == observations_list[-2]["mjd"])
+        self.assertTrue(count_feature.feature["mjd"] == observations_list[-1]["mjd"])
         # and count again using add_observations_array
         count_feature = features.LastObservation(scheduler_note="survey a")
         count_feature.add_observations_array(observations_array, observations_hpid=observations_hpid_array)
