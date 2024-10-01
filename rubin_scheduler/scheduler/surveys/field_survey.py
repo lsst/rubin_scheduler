@@ -43,11 +43,6 @@ class FieldSurvey(BaseSurvey):
         Ignore observations with this string in the `scheduler_note`.
         Will ignore observations which match subsets of the string, as well as
         the entire string. Ignoring 'mysurvey23' will also ignore 'mysurvey2'.
-    accept_obs : `list` [`str`] or None
-        If match_obs is set, then ONLY observations which match these
-        strings in the `scheduler_note` will be counted for the survey.
-        A complete match must occur; substrings will not match.
-        (for obs_array too??)
     survey_name : `str` or None.
         The name to give this survey, for debugging and visualization purposes.
         Also propagated to the 'target_name' in the observation.
@@ -81,7 +76,6 @@ class FieldSurvey(BaseSurvey):
         exptimes=None,
         nexps=None,
         ignore_obs=None,
-        accept_obs=None,
         survey_name=None,
         target_name=None,
         science_program=None,
@@ -119,9 +113,6 @@ class FieldSurvey(BaseSurvey):
             science_program=science_program,
             observation_reason=observation_reason,
         )
-        self.accept_obs = accept_obs
-        if isinstance(self.accept_obs, str):
-            self.accept_obs = [self.accept_obs]
         self.indx = ra_dec2_hpid(self.nside, self.ra_deg, self.dec_deg)
 
         # Set all basis function equal.
@@ -190,9 +181,11 @@ class FieldSurvey(BaseSurvey):
         self.indx = ra_dec2_hpid(self.nside, self.ra_deg, self.dec_deg)
 
         # Tucking this here so we can look at how many observations
-        # recorded for this field and what was the last one.
-        self.extra_features["ObsRecorded"] = NObsCount()
-        self.extra_features["LastObs"] = LastObservation()
+        # recorded - both for any note and for this note.
+        self.extra_features["ObsRecorded"] = NObsCount(scheduler_note=None)
+        self.extra_features["LastObs"] = LastObservation(scheduler_note=None)
+        self.extra_features["ObsRecorded_match"] = NObsCount(scheduler_note=self.scheduler_note)
+        self.extra_features["LastObs_match"] = LastObservation(scheduler_note=self.scheduler_note)
 
     def _generate_survey_name(self, target_name=None):
         if target_name is not None:
@@ -219,78 +212,6 @@ class FieldSurvey(BaseSurvey):
         (note that this may depend a lot on how the SchedulerCSC works)
         """
         return True
-
-    def add_observation(self, observation, **kwargs):
-        """Add observation one at a time."""
-        # Check each possible ignore string
-        checks = [io not in str(observation["scheduler_note"]) for io in self.ignore_obs]
-        passed_ignore = all(checks)
-        passed_accept = True
-        if passed_ignore and self.accept_obs is not None:
-            # Check if this observation matches any accept string.
-            checks = [io == str(observation["scheduler_note"][0]) for io in self.accept_obs]
-            passed_accept = any(checks)
-        # I think here I have to assume observation is an
-        # array and not a dict.
-        if passed_ignore and passed_accept:
-            for feature in self.extra_features:
-                self.extra_features[feature].add_observation(observation, **kwargs)
-            for bf in self.extra_basis_functions:
-                self.extra_basis_functions[bf].add_observation(observation, **kwargs)
-            for bf in self.basis_functions:
-                bf.add_observation(observation, **kwargs)
-            for detailer in self.detailers:
-                detailer.add_observation(observation, **kwargs)
-            self.reward_checked = False
-
-    def add_observations_array(self, observations_array_in, observations_hpid_in):
-        """Add an array of observations rather than one at a time
-
-        Parameters
-        ----------
-        observations_array_in : ObservationArray
-            An array of completed observations,
-            rubin_scheduler.scheduler.utils.ObservationArray
-        observations_hpid_in : np.array
-            Same as observations_array_in, but larger and with an
-            additional column for HEALpix id. Each observation is
-            listed mulitple times, once for every HEALpix it overlaps.
-        """
-        # Just to be sure things are sorted
-        observations_array_in.sort(order="mjd")
-        observations_hpid_in.sort(order="mjd")
-
-        # Copy so we don't prune things for other survey objects
-        observations_array = observations_array_in.copy()
-        observations_hpid = observations_hpid_in.copy()
-
-        for ig in self.ignore_obs:
-            not_ignore = np.where(np.char.find(observations_array["scheduler_note"], ig) == -1)[0]
-            observations_array = observations_array[not_ignore]
-
-            not_ignore = np.where(np.char.find(observations_hpid["scheduler_note"], ig) == -1)[0]
-            observations_hpid = observations_hpid[not_ignore]
-
-        if self.accept_obs is not None:
-            accept_indx = []
-            accept_hp_indx = []
-            for acc in self.accept_obs:
-                accept_indx.append(np.where(observations_array["scheduler_note"] == acc)[0])
-                accept_hp_indx.append(np.where(observations_hpid["scheduler_note"] == acc)[0])
-            accept = np.concatenate(accept_indx)
-            accept_hp = np.concatenate(accept_hp_indx)
-            observations_array = observations_array[accept]
-            observations_hpid = observations_hpid[accept_hp]
-
-        for feature in self.extra_features:
-            self.extra_features[feature].add_observations_array(observations_array, observations_hpid)
-        for bf in self.extra_basis_functions:
-            self.extra_basis_functions[bf].add_observations_array(observations_array, observations_hpid)
-        for bf in self.basis_functions:
-            bf.add_observations_array(observations_array, observations_hpid)
-        for detailer in self.detailers:
-            detailer.add_observations_array(observations_array, observations_hpid)
-        self.reward_checked = False
 
     def calc_reward_function(self, conditions):
         # only calculates reward at the index for the RA/Dec of the field
