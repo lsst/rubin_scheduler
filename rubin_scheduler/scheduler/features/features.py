@@ -14,6 +14,7 @@ __all__ = (
 )
 
 import warnings
+from abc import ABC, abstractmethod
 
 import healpy as hp
 import numpy as np
@@ -35,7 +36,7 @@ def send_unused_deprecation_warning(name):
     warnings.warn(message, FutureWarning)
 
 
-class BaseFeature:
+class BaseFeature(ABC):
     """The base class for features.
     This defines the standard API: a Feature should include
     a `self.feature` attribute, which could be a float, bool,
@@ -63,6 +64,7 @@ class BaseSurveyFeature(BaseFeature):
     `add_observation_array`.
     """
 
+    @abstractmethod
     def add_observations_array(self, observations_array, observations_hpid):
         """Update self.feature based on information in `observations_array`
         and `observations_hpid`.
@@ -86,6 +88,7 @@ class BaseSurveyFeature(BaseFeature):
         print(self)
         raise NotImplementedError
 
+    @abstractmethod
     def add_observation(self, observation, indx=None, **kwargs):
         """Update self.feature based on information in `observation`.
         Observations should be ordered in monotonically increasing time.
