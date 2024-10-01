@@ -121,15 +121,15 @@ class TestSurveys(unittest.TestCase):
             survey.add_observation(obs, indx=indx)
         self.assertTrue(survey.extra_features["ObsRecorded"].feature == len(observations_list))
         self.assertTrue(survey.extra_features["LastObs"].feature["mjd"] == observations_list[-1]["mjd"])
-        self.assertTrue(survey.extra_features["ObsRecorded_match"].feature == 5)
-        self.assertTrue(survey.extra_features["LastObs_match"].feature["mjd"] == observations_list[4]["mjd"])
+        self.assertTrue(survey.extra_features["ObsRecorded_note"].feature == 5)
+        self.assertTrue(survey.extra_features["LastObs_note"].feature["mjd"] == observations_list[4]["mjd"])
         # Try adding observations to survey in array
         survey = surveys.FieldSurvey(bfs, RA=90.0, dec=-30.0, scheduler_note="r band")
         survey.add_observations_array(observations_array, observations_hpid_array)
         self.assertTrue(survey.extra_features["ObsRecorded"].feature == len(observations_list))
         self.assertTrue(survey.extra_features["LastObs"].feature["mjd"] == observations_list[-1]["mjd"])
-        self.assertTrue(survey.extra_features["ObsRecorded_match"].feature == 5)
-        self.assertTrue(survey.extra_features["LastObs_match"].feature["mjd"] == observations_list[4]["mjd"])
+        self.assertTrue(survey.extra_features["ObsRecorded_note"].feature == 5)
+        self.assertTrue(survey.extra_features["LastObs_note"].feature["mjd"] == observations_list[4]["mjd"])
 
     def test_pointings_survey(self):
         """Test the pointing survey."""

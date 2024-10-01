@@ -313,7 +313,17 @@ class LargestN:
 
 
 class LastNObsTimes(BaseSurveyFeature):
-    """Record the last three observations for each healpixel"""
+    """Record the last three observations for each healpixel.
+
+    Parameters
+    ----------
+    filtername : `str` or None
+        Match visits in this filtername.
+    n_obs : `int`
+        The number of prior observations to track.
+    nside : `int`
+        The nside of the healpix map.
+    """
 
     def __init__(self, filtername=None, n_obs=3, nside=DEFAULT_NSIDE):
         self.filtername = filtername
@@ -563,6 +573,8 @@ class LastObserved(BaseSurveyFeature):
     """
     Track the MJD when a pixel was last observed.
     Assumes observations are added in chronological order.
+
+    Calculated per healpix.
 
     Parameters
     ----------

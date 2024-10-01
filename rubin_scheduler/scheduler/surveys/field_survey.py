@@ -184,8 +184,8 @@ class FieldSurvey(BaseSurvey):
         # recorded - both for any note and for this note.
         self.extra_features["ObsRecorded"] = NObsCount(scheduler_note=None)
         self.extra_features["LastObs"] = LastObservation(scheduler_note=None)
-        self.extra_features["ObsRecorded_match"] = NObsCount(scheduler_note=self.scheduler_note)
-        self.extra_features["LastObs_match"] = LastObservation(scheduler_note=self.scheduler_note)
+        self.extra_features["ObsRecorded_note"] = NObsCount(scheduler_note=self.scheduler_note)
+        self.extra_features["LastObs_note"] = LastObservation(scheduler_note=self.scheduler_note)
 
     def _generate_survey_name(self, target_name=None):
         if target_name is not None:
