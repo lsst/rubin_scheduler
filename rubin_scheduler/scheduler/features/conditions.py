@@ -2,6 +2,7 @@ __all__ = ("Conditions",)
 
 import functools
 import warnings
+from inspect import signature
 from io import StringIO
 
 import healpy as hp
@@ -527,38 +528,44 @@ class Conditions:
     def set_auxtel_info(
         self,
         mjd,
+        slewtime,
+        sun_n18_setting,
+        sun_n18_rising,
+        moon_alt,
+        moon_az,
+        tel_alt_limits,
+        tel_az_limits,
+        sky_alt_limits,
+        sky_az_limits,
+        wind_speed,
+        wind_direction,
+        **kwargs,
     ):
         """Method to set all the information we expect will be required by
-        a standard auxtel scheduler.
-
-        Parameters
-        ----------
-
+        a standard auxtel scheduler. Extra attributes can be set via **kwargs.
         """
         self._init_attributes()
-        self.mjd = mjd
+        auxtel_args = signature(self.set_auxtel_info)
+        loc = locals()
+        for key in auxtel_args.parameters.keys():
+            setattr(self, key, loc[key])
 
-    def set_maintel_info(
-        self,
-        mjd,
-        night,
-        slewtimes,
-        seeing_fwhm_eff,
-        skybrightness,
-    ):
+        for key in kwargs:
+            setattr(self, key, kwargs[key])
+
+    def set_maintel_info(self, mjd, **kwargs):
         """Method to set all the information we expect will be required by
-        a standard maintel scheduler.
-
-        Parameters
-        ----------
-
+        a standard maintel scheduler. Extra attributes can be set via **kwargs.
         """
         self._init_attributes()
-        self.mjd = mjd
-        self.night = night
-        self.slewtimes = slewtimes
-        self.fwhm_eff = seeing_fwhm_eff
-        self.skybrightness = skybrightness
+
+        maintel_args = signature(self.set_auxtel_info)
+        loc = locals()
+        for key in maintel_args.parameters.keys():
+            setattr(self, key, loc[key])
+
+        for key in kwargs:
+            setattr(self, key, kwargs[key])
 
     def __repr__(self):
         return f"<{self.__class__.__name__} mjd='{self.mjd}' at {hex(id(self))}>"
