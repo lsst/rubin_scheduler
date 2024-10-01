@@ -678,7 +678,7 @@ class AvoidFastRevisitsBasisFunction(BaseBasisFunction):
 
     Parameters
     ----------
-    filtername: `str` or None
+    filtername : `str` or None
         The name of the filter for this target map.
         Using None will match visits in any filter.
     gap_min : `float`
@@ -984,7 +984,7 @@ class CadenceEnhanceBasisFunction(BaseBasisFunction):
         (days)
     apply_area : healpix map
         The area over which to try and drive the cadence.
-        Good values as 1, no candece drive 0.
+        Good values as 1, no cadence drive 0.
         Probably works as a bool array too.
     """
 
