@@ -132,8 +132,6 @@ class Conditions:
         cumulative_azimuth_rad : `float`
             The cumulative telescope azimuth (radians).
             Used for tracking cable wrap.
-        airmass : `np.ndarray`, (N,)
-            A healpix map with the airmass value of each healpixel. (unitless)
         wind_speed : `float`
             Wind speed (m/s).
         wind_direction : `float`
@@ -200,6 +198,8 @@ class Conditions:
             Azimuth of each healpixel (radians). Recalculated if mjd is
             updated. Uses fast approximate equation for converting RA,Dec
             to alt,az.
+        airmass : `np.ndarray`, (N,)
+            A healpix map with the airmass value of each healpixel. (unitless)
         pa : `np.ndarray`, (N,)
             The parallactic angle of each healpixel (radians). Recalculated
             if mjd is updated. Based on the fast approximate alt,az values.
@@ -380,12 +380,20 @@ class Conditions:
 
     @property
     def airmass(self):
+        if self._airmass is None:
+            self.calc_airmass()
         return self._airmass
 
-    @airmass.setter
-    def airmass(self, value):
-        self._airmass = match_hp_resolution(value, nside_out=self.nside)
-        self._m5_depth = None
+    def calc_airmass(self):
+        self._airmass = np.zeros(self._alt.size, dtype=float)
+        self._airmass.fill(np.nan)
+        alt_limit = self.tel_alt_limits
+        if alt_limit is None:
+            alt_limit = 0
+        else:
+            alt_limit = np.min(alt_limit)
+        good = np.where(self._alt > alt_limit)
+        self._airmass[good] = 1.0 / np.cos(np.pi / 2.0 - self._alt[good])
 
     @property
     def pa(self):
@@ -515,6 +523,42 @@ class Conditions:
         if self._az_to_antisun is None:
             self.calc_az_to_antisun()
         return self._az_to_antisun
+
+    def set_auxtel_info(
+        self,
+        mjd,
+    ):
+        """Method to set all the information we expect will be required by
+        a standard auxtel scheduler.
+
+        Parameters
+        ----------
+
+        """
+        self._init_attributes()
+        self.mjd = mjd
+
+    def set_maintel_info(
+        self,
+        mjd,
+        night,
+        slewtimes,
+        seeing_fwhm_eff,
+        skybrightness,
+    ):
+        """Method to set all the information we expect will be required by
+        a standard maintel scheduler.
+
+        Parameters
+        ----------
+
+        """
+        self._init_attributes()
+        self.mjd = mjd
+        self.night = night
+        self.slewtimes = slewtimes
+        self.fwhm_eff = seeing_fwhm_eff
+        self.skybrightness = skybrightness
 
     def __repr__(self):
         return f"<{self.__class__.__name__} mjd='{self.mjd}' at {hex(id(self))}>"
