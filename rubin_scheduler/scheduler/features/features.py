@@ -207,9 +207,9 @@ class NObsCount(BaseSurveyFeature):
 
 
 class LastObservation(BaseSurveyFeature):
-    """Track the last observation.
-    Useful if you want to see when the
-    last time a survey took an observation.
+    """Track the (entire) last observation.
+
+    All visits, no healpix dependency.
 
     Parameters
     ----------
@@ -217,40 +217,40 @@ class LastObservation(BaseSurveyFeature):
         The scheduler_note to match.
         Scheduler_note values which match this OR which contain this value
         as a subset of their string will match.
+    filtername : `str` or None, optional
+        The required filter to match.
     survey_name : `str` or None, optional
         Backwards compatible shim for scheduler_note. Deprecated.
     """
 
-    def __init__(self, scheduler_note=None, survey_name=None):
+    def __init__(self, scheduler_note=None, filtername=None, survey_name=None):
         if scheduler_note is None and survey_name is not None:
             self.scheduler_note = survey_name
         else:
             self.scheduler_note = scheduler_note
+        self.filtername = filtername
         # Start out with an empty observation
         self.feature = utils.ObservationArray()
 
     def add_observations_array(self, observations_array, observations_hpid):
+        valid_indx = np.ones(observations_array.size, dtype=bool)
+        if self.filtername is not None:
+            valid_indx[np.where(observations_array["filter"] != self.filtername)[0]] = False
         if self.scheduler_note is not None:
-            valid_indx = np.ones(observations_array.size, dtype=bool)
             tmp = [self.scheduler_note in name for name in observations_array["scheduler_note"]]
             valid_indx = valid_indx * np.array(tmp)
-            if valid_indx.sum() > 0:
-                self.feature = observations_array[valid_indx][-1]
-        else:
-            if len(observations_array) > 0:
-                self.feature = observations_array[-1]
+        if valid_indx.sum() > 0:
+            self.feature = observations_array[valid_indx][-1]
 
     def add_observation(self, observation, indx=None):
-        if self.scheduler_note is not None:
-            if self.scheduler_note in observation["scheduler_note"][0]:
+        if (self.scheduler_note is None) or (self.scheduler_note in observation["scheduler_note"][0]):
+            if (self.filtername is None) or (self.filtername == observation["filter"][0]):
                 self.feature = observation
-        else:
-            self.feature = observation
 
 
 class NObservations(BaseSurveyFeature):
     """
-    Track the number of observations that have been made across the sky.
+    Track the number of observations that have been made at each healpix.
 
     Parameters
     ----------
