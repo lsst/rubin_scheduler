@@ -669,12 +669,17 @@ def simple_greedy_survey(
 
 
 def simple_rewards_field_survey(
-    nside: int = DEFAULT_NSIDE, sun_alt_limit: float = -12.0
+    scheduler_note: str,
+    nside: int = DEFAULT_NSIDE,
+    sun_alt_limit: float = -12.0,
 ) -> list[basis_functions.BaseBasisFunction]:
     """Get some simple rewards to observe a field survey for a long period.
 
     Parameters
     ----------
+    scheduler_note : `str`
+        The scheduler note for the field survey.
+        Typically this will be the same as the field name.
     nside : `int`
         The nside value for the healpix grid.
     sun_alt_limit : `float`, optional
@@ -687,8 +692,8 @@ def simple_rewards_field_survey(
     """
     bfs = [
         basis_functions.NotTwilightBasisFunction(sun_alt_limit=sun_alt_limit),
-        # Avoid revisits within 30 minutes
-        basis_functions.AvoidFastRevisitsBasisFunction(nside=nside, filtername=None, gap_min=30.0),
+        # Avoid revisits within 30 minutes - but we'll have to replace "note"
+        basis_functions.VisitGap(filter_names=None, note=scheduler_note, gap_min=30.0),
         # reward fields which are rising, but don't mask out after zenith
         basis_functions.RewardRisingBasisFunction(nside=nside, slope=0.1, penalty_val=0),
         # Reward parts of the sky which are darker --
@@ -775,7 +780,7 @@ def simple_field_survey(
     if mask_basis_functions is None:
         mask_basis_functions = standard_masks(nside=nside)
     if reward_basis_functions is None:
-        reward_basis_functions = simple_rewards_field_survey(nside=nside)
+        reward_basis_functions = simple_rewards_field_survey(field_name, nside=nside)
     basis_functions = mask_basis_functions + reward_basis_functions
 
     if nvisits is None:
@@ -794,7 +799,6 @@ def simple_field_survey(
         exptimes=exptimes,
         nexps=nexps,
         ignore_obs=None,
-        accept_obs=[field_name],
         survey_name=field_name,
         scheduler_note=field_name,
         target_name=field_name,
