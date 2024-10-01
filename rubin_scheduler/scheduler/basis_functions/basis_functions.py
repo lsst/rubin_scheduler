@@ -1336,7 +1336,7 @@ class VisitGap(BaseBasisFunction):
 
     Parameters
     ----------
-    note : str
+    note : `str`
         Value of the observation "scheduler_note" field to be masked.
     filter_names : list [str], optional
         List of filter names that will be considered when evaluating
@@ -1364,11 +1364,11 @@ class VisitGap(BaseBasisFunction):
         self.survey_features = dict()
         if self.filter_names is not None:
             for filtername in self.filter_names:
-                self.survey_features[f"NoteLastObserved::{filtername}"] = features.NoteLastObserved(
+                self.survey_features[f"LastObservationMjd::{filtername}"] = features.NoteLastObserved(
                     note=note, filtername=filtername
                 )
         else:
-            self.survey_features["NoteLastObserved"] = features.NoteLastObserved(note=note)
+            self.survey_features["LastObservationMjd"] = features.LastObservationMjd(scheduler_note=note)
 
     def check_feasibility(self, conditions):
         notes_last_observed = [last_observed.feature for last_observed in self.survey_features.values()]
