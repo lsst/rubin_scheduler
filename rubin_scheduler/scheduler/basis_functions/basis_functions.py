@@ -1364,7 +1364,7 @@ class VisitGap(BaseBasisFunction):
         self.survey_features = dict()
         if self.filter_names is not None:
             for filtername in self.filter_names:
-                self.survey_features[f"LastObservationMjd::{filtername}"] = features.NoteLastObserved(
+                self.survey_features[f"LastObservationMjd::{filtername}"] = features.LastObservationMjd(
                     note=note, filtername=filtername
                 )
         else:

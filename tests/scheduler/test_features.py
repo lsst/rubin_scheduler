@@ -133,55 +133,65 @@ class TestFeatures(unittest.TestCase):
         _ = conditions_naked.__str__()
 
     def test_note_last_observed(self):
-        note_last_observed = features.NoteLastObserved(note="test")
 
-        observation = ObservationArray()
-        observation["mjd"] = 59000.0
+        observations_list = make_observations_list(5)
+        for i, obs in enumerate(observations_list):
+            if i == 1:
+                obs["scheduler_note"] = "test 2"
+            if i > 3:
+                obs["filter"] = "g"
+        observations_array, observations_hpid = make_observations_arrays(observations_list)
 
-        note_last_observed.add_observation(observation=observation)
+        # Test with no note - match all
+        note_last_observed = features.LastObservationMjd(scheduler_note=None)
+        for obs in observations_list:
+            note_last_observed.add_observation(observation=obs)
+        self.assertTrue(note_last_observed.feature == observations_list[-1]["mjd"])
 
-        assert note_last_observed.feature is None
         note_last_observed.add_observations_array(observations_array, observations_hpid)
+        self.assertTrue(note_last_observed.feature == observations_list[-1]["mjd"])
 
-        observation["scheduler_note"] = "foo"
+        # Test not matching the note
+        note_last_observed = features.LastObservationMjd(scheduler_note="special")
+        for obs in observations_list:
+            note_last_observed.add_observation(observation=obs)
+        self.assertTrue(note_last_observed.feature is None)
 
-        note_last_observed.add_observation(observation=observation)
-        assert note_last_observed.feature is None
+        note_last_observed.add_observations_array(observations_array, observations_hpid)
+        self.assertTrue(note_last_observed.feature is None)
 
-        observation["scheduler_note"] = "test"
+        # Test matching the note
+        note_last_observed = features.LastObservationMjd(scheduler_note="test")
+        for obs in observations_list:
+            note_last_observed.add_observation(observation=obs)
+        self.assertTrue(note_last_observed.feature == observations_list[-1]["mjd"])
 
-        note_last_observed.add_observation(observation=observation)
-        assert note_last_observed.feature == observation["mjd"]
+        note_last_observed.add_observations_array(observations_array, observations_hpid)
+        self.assertTrue(note_last_observed.feature == observations_list[-1]["mjd"])
 
-    def test_note_last_observed_with_filter(self):
-        note_last_observed = features.NoteLastObserved(
+        # Add a filter requirement
+        note_last_observed = features.LastObservationMjd(
+            note="test",
+            filtername="g",
+        )
+        for obs in observations_list:
+            note_last_observed.add_observation(observation=obs)
+        self.assertTrue(note_last_observed.feature == observations_list[-1]["mjd"])
+
+        note_last_observed.add_observations_array(observations_array, observations_hpid)
+        self.assertTrue(note_last_observed.feature == observations_list[-1]["mjd"])
+
+        # Add a different filter requirement
+        note_last_observed = features.LastObservationMjd(
             note="test",
             filtername="r",
         )
+        for obs in observations_list:
+            note_last_observed.add_observation(observation=obs)
+        self.assertTrue(note_last_observed.feature == observations_list[3]["mjd"])
 
-        observation = ObservationArray()
-        observation["mjd"] = 59000.0
-
-        note_last_observed.add_observation(observation=observation)
-
-        assert note_last_observed.feature is None
-
-        observation["scheduler_note"] = "foo"
-
-        note_last_observed.add_observation(observation=observation)
-        assert note_last_observed.feature is None
-
-        observation["scheduler_note"] = "test"
-        observation["filter"] = "g"
-
-        note_last_observed.add_observation(observation=observation)
-        assert note_last_observed.feature is None
-
-        observation["scheduler_note"] = "test"
-        observation["filter"] = "r"
-
-        note_last_observed.add_observation(observation=observation)
-        assert note_last_observed.feature == observation["mjd"]
+        note_last_observed.add_observations_array(observations_array, observations_hpid)
+        self.assertTrue(note_last_observed.feature == observations_list[3]["mjd"])
 
     def test_NObservationsCurrentSeason(self):
         # Start with basic NObservationsCurrentSeason - no restrictions
