@@ -947,11 +947,6 @@ class SlewtimeBasisFunction(BaseBasisFunction):
         self.nside = nside
         self.filtername = filtername
 
-    def add_observation(self, observation, indx=None):
-        # No tracking of observations in this basis function.
-        # Purely based on conditions.
-        pass
-
     def _calc_value(self, conditions, indx=None):
         # If we are in a different filter, the
         # FilterChangeBasisFunction will take it
