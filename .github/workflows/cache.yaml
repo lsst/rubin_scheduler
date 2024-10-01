@@ -17,7 +17,7 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
-          miniforge-variant: Mambaforge
+          miniforge-variant: Miniforge3
           channels: conda-forge,defaults
           use-mamba: true
           channel-priority: strict
@@ -34,7 +34,7 @@ jobs:
         run: |
           echo `pwd`
           ls ${{ github.workspace }}
-          python -m pip install .       
+          python -m pip install .
 
       - name: Access rubin-sim-data cache
         id: cache-rs
@@ -50,7 +50,7 @@ jobs:
       - name: Download data.
         shell: bash -l {0}
         run: |
-          export RUBIN_SIM_DATA_DIR=~/rubin_sim_data       
+          export RUBIN_SIM_DATA_DIR=~/rubin_sim_data
           scheduler_download_data --force --tdqm_disable
 
       - name: Check data
@@ -61,6 +61,6 @@ jobs:
           ls $RUBIN_SIM_DATA_DIR
           echo "__contents of versions.txt__"
           cat $RUBIN_SIM_DATA_DIR/versions.txt
-  
-  
+
+
 
