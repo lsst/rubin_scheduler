@@ -1452,8 +1452,8 @@ class BalanceVisits(BaseBasisFunction):
         self.nobs_reference = nobs_reference
 
         self.survey_features = {}
-        self.survey_features["n_obs_survey"] = features.NObsCount(note=note_survey)
-        self.survey_features["n_obs_survey_interest"] = features.NObsCount(note=note_interest)
+        self.survey_features["n_obs_survey"] = features.NObsCount(scheduler_note=note_survey)
+        self.survey_features["n_obs_survey_interest"] = features.NObsCount(scheduler_note=note_interest)
 
     def _calc_value(self, conditions, indx=None):
         return (1 + np.floor(self.survey_features["n_obs_survey_interest"].feature / self.nobs_reference)) / (
@@ -1488,7 +1488,7 @@ class RewardNObsSequence(BaseBasisFunction):
         self.n_obs_survey = n_obs_survey
 
         self.survey_features = {}
-        self.survey_features["n_obs_survey"] = features.NObsCount(note=note_survey)
+        self.survey_features["n_obs_survey"] = features.NObsCount(scheduler_note=note_survey)
 
     def _calc_value(self, conditions, indx=None):
         return self.survey_features["n_obs_survey"].feature % self.n_obs_survey
