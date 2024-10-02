@@ -458,8 +458,6 @@ class ModelObservatory:
         sun_moon_info_start_of_night = self.almanac.get_sun_moon_positions(self.conditions.sunset)
         self.conditions.moon_phase_sunset = sun_moon_info_start_of_night["moon_phase"]
 
-        self.conditions.mjd_start = self.mjd_start
-
         # Telescope limits
         self.conditions.sky_az_limits = self.sky_az_limits
         self.conditions.sky_alt_limits = self.sky_alt_limits

@@ -158,8 +158,6 @@ class Conditions:
             during the current night. From interpolation.
         sunrise : `float`
             The MJD of sunrise during the current night. From interpolation
-        mjd_start : `float`
-            The starting MJD of the survey.
         moonrise : `float`
             The MJD of moonrise during the current night. From interpolation.
         moonset : `float`
@@ -543,6 +541,42 @@ class Conditions:
     ):
         """Method to set all the information we expect will be required by
         a standard auxtel scheduler. Extra attributes can be set via **kwargs.
+
+        Parameters
+        ----------
+        mjd : `float`
+            Modified Julian Date (days).
+        slewtime : `np.ndarray`, (N,)
+            Healpix showing the slewtime to each healpixel center (seconds)
+        moon_alt : `float`
+            The altitude of the Moon (radians)
+        moon_az : `float`
+            The Azimuth of the moon (radians)
+        wind_speed : `float`
+            Wind speed (m/s).
+        wind_direction : `float`
+            Direction from which the wind originates. A direction of
+            0.0 degrees means the wind originates from the north and 90.0
+            degrees from the east (radians).
+        sun_n18_setting : `float`
+            The MJD when the sun is at -18 degrees altitude and setting
+            during the current night. From interpolation.
+        sun_n18_rising : `float`
+            The MJD when the sun is at -18 degrees altitude and rising
+            during the current night. From interpolation.
+        sky_az_limits : `list` [[`float`, `float`]]
+            A list of lists giving valid azimuth ranges. e.g.,
+            [0, 2*np.pi] would mean all azimuth values are valid, while
+            [[0, np.pi/2], [3*np.pi/2, 2*np.pi]] would mean anywhere in
+            the south is invalid.  Radians.
+        sky_alt_limits : `list` [[`float`, `float`]]
+            A list of lists giving valid altitude ranges. Radians.
+        tel_az_limits : `list` [`float`, `float`]
+            A simple two-element list giving the valid azimuth ranges
+            for the telescope movement. Radians.
+        tel_alt_limits : `list` [`float`, `float`]
+            A simple two-element list giving the valid altitude ranges
+            for the telescope movement. Radians
         """
         self._init_attributes()
         auxtel_args = signature(self.set_auxtel_info)
@@ -550,21 +584,161 @@ class Conditions:
         for key in auxtel_args.parameters.keys():
             setattr(self, key, loc[key])
 
+        potential_attrs = dir(self)
         for key in kwargs:
+            if key not in potential_attrs:
+                warnings.warn("Setting unexpected Conditions attribute %s" % key)
             setattr(self, key, kwargs[key])
 
-    def set_maintel_info(self, mjd, **kwargs):
+    def set_maintel_info(
+        self,
+        mjd,
+        slewtime,
+        current_filter,
+        mounted_filters,
+        night,
+        skybrightness,
+        fwhm_eff,
+        moon_alt,
+        moon_az,
+        moon_ra,
+        moon_dec,
+        moon_phase,
+        sun_alt,
+        sun_az,
+        sun_ra,
+        sun_dec,
+        tel_ra,
+        tel_dec,
+        tel_alt,
+        tel_az,
+        wind_speed,
+        wind_direction,
+        sun_n12_setting,
+        sun_n12_rising,
+        sun_n18_setting,
+        sun_n18_rising,
+        moonrise,
+        moonset,
+        planet_positions,
+        tel_alt_limits,
+        tel_az_limits,
+        sky_alt_limits,
+        sky_az_limits,
+        **kwargs,
+    ):
         """Method to set all the information we expect will be required by
         a standard maintel scheduler. Extra attributes can be set via **kwargs.
+
+        mjd : `float`
+            Modified Julian Date (days).
+        slewtime : `np.ndarray`, (N,)
+            Healpix showing the slewtime to each healpixel center (seconds)
+        current_filter : `str`
+            The name of the current filter. (expect one of u, g, r, i, z, y).
+        mounted_filters : `list` [`str`]
+            The filters that are currently mounted and thus available
+            (expect 5 of u, g, r, i, z, y for LSSTCam).
+        night : `int`
+            The current night number (days). Probably starts at 1.
+        skybrightness : `dict` {`str: `np.ndarray`, (N,)}
+            Dictionary keyed by filter name.
+            Values are healpix arrays with the sky brightness at each
+            healpix center (mag/acsec^2)
+        fwhm_eff : `dict` {`str: `np.ndarray`, (N,)}
+            Dictionary keyed by filtername.
+            Values are the effective seeing FWHM at each healpix
+            center (arcseconds)
+        moon_alt : `float`
+            The altitude of the Moon (radians)
+        moon_az : `float`
+            The Azimuth of the moon (radians)
+        moon_ra : `float`
+            RA of the moon (radians)
+        moon_dec : `float`
+            Declination of the moon (radians)
+        moon_phase : `float`
+            The Phase of the moon. (percent, 0=new moon, 100=full moon)
+        sun_alt : `float`
+            The altitude of the sun (radians).
+        sun_az : `float`
+            The Azimuth of the sun (radians).
+        sun_ra : `float`
+            The RA of the sun (radians).
+        sun_dec : `float`
+            The Dec of the sun (radians).
+        tel_ra : `float`
+            The current telescope RA pointing (radians).
+        tel_dec : `float`
+            The current telescope Declination (radians).
+        tel_alt : `float`
+            The current telescope altitude (radians).
+        tel_az : `float`
+            The current telescope azimuth (radians).
+        wind_speed : `float`
+            Wind speed (m/s).
+        wind_direction : `float`
+            Direction from which the wind originates. A direction of
+            0.0 degrees means the wind originates from the north and 90.0
+            degrees from the east (radians).
+        sun_n12_setting : `float`
+            The MJD of when the sun is at -12 degrees altitude and
+            setting during the current night. From interpolation.
+        sun_n18_setting : `float`
+            The MJD when the sun is at -18 degrees altitude and setting
+            during the current night. From interpolation.
+        sun_n18_rising : `float`
+            The MJD when the sun is at -18 degrees altitude and rising
+            during the current night. From interpolation.
+        sun_n12_rising : `float`
+            The MJD when the sun is at -12 degrees altitude and rising
+            during the current night. From interpolation.
+        moonrise : `float`
+            The MJD of moonrise during the current night. From interpolation.
+        moonset : `float`
+            The MJD of moon set during the current night. From interpolation.
+        moon_phase_sunset : `float`
+            The phase of the moon (0-100 illuminated) at sunset.
+            Useful for setting which filters should be loaded.
+        targets_of_opportunity : `list` [`rubin_scheduler.scheduler.targetoO`]
+            targetoO objects.
+        planet_positions : `dict` {`str`: `float`}
+            Dictionary of planet name and coordinate e.g., 'venus_RA',
+            'mars_dec'
+        sky_az_limits : `list` [[`float`, `float`]]
+            A list of lists giving valid azimuth ranges. e.g.,
+            [0, 2*np.pi] would mean all azimuth values are valid, while
+            [[0, np.pi/2], [3*np.pi/2, 2*np.pi]] would mean anywhere in
+            the south is invalid.  Radians.
+        sky_alt_limits : `list` [[`float`, `float`]]
+            A list of lists giving valid altitude ranges. Radians.
+        tel_az_limits : `list` [`float`, `float`]
+            A simple two-element list giving the valid azimuth ranges
+            for the telescope movement. Radians.
+        tel_alt_limits : `list` [`float`, `float`]
+            A simple two-element list giving the valid altitude ranges
+            for the telescope movement. Radians
         """
         self._init_attributes()
 
-        maintel_args = signature(self.set_auxtel_info)
+        maintel_args = signature(self.set_maintel_info)
         loc = locals()
         for key in maintel_args.parameters.keys():
             setattr(self, key, loc[key])
 
+        potential_attrs = dir(self)
         for key in kwargs:
+            if key not in potential_attrs:
+                warnings.warn("Setting unexpected Conditions attribute %s" % key)
+            setattr(self, key, kwargs[key])
+
+    def set_attrs(self, **kwargs):
+        """Convience function for setting lots of attributes at once.
+        See __init__ docstring for full list of potential attributes."""
+        potential_attrs = dir(self)
+        for key in kwargs:
+            if key not in potential_attrs:
+                warnings.warn("Setting unexpected Conditions attribute %s" % key)
             setattr(self, key, kwargs[key])
 
     def __repr__(self):
@@ -661,7 +835,6 @@ class Conditions:
         print(positions_deg.to_markdown(), file=output)
 
         events = (
-            "mjd_start",
             "mjd",
             "sunset",
             "sun_n12_setting",
