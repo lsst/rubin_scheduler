@@ -113,6 +113,11 @@ class FieldSurvey(BaseSurvey):
             science_program=science_program,
             observation_reason=observation_reason,
         )
+        # It's useful to save these as class attributes too
+        self.target_name = target_name
+        self.science_program = science_program
+        self.observation_reason = observation_reason
+
         self.indx = ra_dec2_hpid(self.nside, self.ra_deg, self.dec_deg)
 
         # Set all basis function equal.
@@ -145,7 +150,9 @@ class FieldSurvey(BaseSurvey):
             if isinstance(nexps, (float, int)):
                 nexps = dict([(filtername, nexps) for filtername in sequence])
 
-        if isinstance(sequence, str):
+        if isinstance(sequence, ObservationArray) | isinstance(sequence[0], ObservationArray):
+            self.observations = sequence
+        else:
             self.observations = []
             for filtername in sequence:
                 for j in range(nvisits[filtername]):
@@ -157,8 +164,6 @@ class FieldSurvey(BaseSurvey):
                     obs["nexp"] = nexps[filtername]
                     obs["scheduler_note"] = self.scheduler_note
                     self.observations.append(obs)
-        else:
-            self.observations = sequence
 
         # Let's just make this an array for ease of use
         self.observations = np.concatenate(self.observations)
