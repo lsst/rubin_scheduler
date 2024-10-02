@@ -30,6 +30,7 @@ from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD
 
 
 def get_ideal_model_observatory(
+    nside: int = DEFAULT_NSIDE,
     dayobs: str = "2024-09-09",
     fwhm_500: float = 1.6,
     wind_speed: float = 5.0,
@@ -48,6 +49,8 @@ def get_ideal_model_observatory(
 
     Parameters
     ----------
+    nside : `int`
+        The nside for the model observatory.
     dayobs : `str`
         DAYOBS formatted str (YYYY-MM-DD) for the evening to start
         up the observatory.
@@ -103,6 +106,7 @@ def get_ideal_model_observatory(
 
     # Set up the model observatory
     observatory = ModelObservatory(
+        nside=nside,
         mjd=mjd_now,
         mjd_start=survey_start,
         kinem_model=kinematic_model,  # Modified kinematics
