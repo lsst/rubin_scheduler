@@ -309,7 +309,7 @@ class LargestN:
 
     def __call__(self, in_arr):
         if np.size(in_arr) < self.n:
-            return -1
+            return 0
         result = in_arr[-self.n]
         return result
 
@@ -341,10 +341,11 @@ class LastNObsTimes(BaseSurveyFeature):
         data = observations_hpid[valid_indx]
 
         if np.size(data) > 0:
+            # If self.n_obs is very large, this is a bad idea, but
+            # our use is intended to be around n_obs 3.
             for i in range(1, self.n_obs + 1):
                 func = LargestN(i)
                 result, _be, _bn = binned_statistic(data["hpid"], data["mjd"], statistic=func, bins=self.bins)
-                # some_vals = np.where(np.sum(result, axis=1) > 0)[0]
                 self.feature[-i, :] = result
 
     def add_observation(self, observation, indx=None):
@@ -600,9 +601,9 @@ class LastObserved(BaseSurveyFeature):
             valid_indx[np.where(observations_hpid["filter"] != self.filtername)[0]] = False
         data = observations_hpid[valid_indx]
 
-        if np.size(data) > 0:
-            result, _be, _bn = binned_statistic(data["hpid"], data["mjd"], statistic=np.size, bins=self.bins)
-            self.feature += result
+        result, _be, _bn = binned_statistic(data["hpid"], data["mjd"], statistic=np.max, bins=self.bins)
+        good = np.where(result > 0)
+        self.feature[good] = result[good]
 
     def add_observation(self, observation, indx=None):
         if self.filtername is None:
@@ -669,8 +670,9 @@ class NObsNight(BaseSurveyFeature):
 
     def __init__(self, filtername="r", nside=DEFAULT_NSIDE):
         self.filtername = filtername
-        self.feature = np.zeros(hp.nside2npix(nside), dtype=int)
+        self.feature = np.zeros(hp.nside2npix(nside), dtype=float)
         self.night = None
+        self.bins = np.arange(hp.nside2npix(nside) + 1) - 0.5
 
     def add_observations_array(self, observations_array, observations_hpid):
         latest_night = observations_array["night"].max()
@@ -682,7 +684,13 @@ class NObsNight(BaseSurveyFeature):
             valid_indx[np.where(observations_hpid["filter"] != self.filtername)[0]] = False
         if self.night is not None:
             valid_indx[np.where(observations_hpid["night"] != self.night)] = False
-        self.feature += observations_hpid[valid_indx].size
+
+        data = observations_hpid[valid_indx]
+        if np.size(data) > 0:
+            result, _be, _bn = binned_statistic(
+                data["hpid"], np.ones(data.size), statistic=np.sum, bins=self.bins
+            )
+            self.feature += result
 
     def add_observation(self, observation, indx=None):
         if observation["night"] != self.night:
