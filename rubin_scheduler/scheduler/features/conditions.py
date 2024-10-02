@@ -312,16 +312,13 @@ class Conditions:
         self.tel_az = None
         self.cumulative_azimuth_rad = None
 
-        # Telescope limits - these can be None
+        # Sky coverage limits.
         # These should be in radians.
         self.sky_az_limits = None
         self.sky_alt_limits = None
-        # Kinematic model (real slew) limits - these can't be None
-        # if you are using the AltAzShadowMaskBasisFunction.
-        # Setting default values here that will not restrict any choices,
-        # but just avoiding "None".  Values in Radians.
-        self.tel_alt_limits = [np.radians(-10), np.radians(100)]
-        self.tel_az_limits = [np.radians(-270), np.radians(270)]
+        # Kinematic model (real slew) limits.
+        self.tel_alt_limits = None
+        self.tel_az_limits = None
 
         # Full sky cloud map
         self._cloud_map = None

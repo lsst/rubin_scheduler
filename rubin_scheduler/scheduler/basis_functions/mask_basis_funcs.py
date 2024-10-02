@@ -264,12 +264,13 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         # disjoint allowable areas, while the tel_alt_limits are a single
         # wide set of allowable area which explicitly disallows anything
         # outside that range. The az limits versions are similar.
-        min_alt = IntRounded(conditions.tel_alt_limits[0] + self.altaz_limit_pad)
-        max_alt = IntRounded(conditions.tel_alt_limits[1] - self.altaz_limit_pad)
-        result[np.where(r_current_alt < min_alt)] = np.nan
-        result[np.where(r_current_alt > max_alt)] = np.nan
-        result[np.where(r_future_alt < min_alt)] = np.nan
-        result[np.where(r_future_alt > max_alt)] = np.nan
+        if conditions.tel_alt_limits is not None:
+            min_alt = IntRounded(conditions.tel_alt_limits[0] + self.altaz_limit_pad)
+            max_alt = IntRounded(conditions.tel_alt_limits[1] - self.altaz_limit_pad)
+            result[np.where(r_current_alt < min_alt)] = np.nan
+            result[np.where(r_current_alt > max_alt)] = np.nan
+            result[np.where(r_future_alt < min_alt)] = np.nan
+            result[np.where(r_future_alt > max_alt)] = np.nan
 
         # note that % (mod) is not supported for IntRounded
         two_pi = 2 * np.pi
@@ -300,18 +301,19 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
                 combined += in_bounds
             result[np.where(combined == 0)] = np.nan
         # Check against the kinematic hard limits.
-        if np.abs(conditions.tel_az_limits[1] - conditions.tel_az_limits[0]) < two_pi:
-            az_range = (conditions.tel_az_limits[1] - conditions.tel_az_limits[0]) % (
-                two_pi
-            ) - self.altaz_limit_pad * 2
-            out_of_bounds = np.where(
-                (conditions.az - conditions.tel_az_limits[0] - self.altaz_limit_pad) % (two_pi) > az_range
-            )[0]
-            result[out_of_bounds] = np.nan
-            out_of_bounds = np.where(
-                (future_az - conditions.tel_az_limits[0] - self.altaz_limit_pad) % (two_pi) > az_range
-            )[0]
-            result[out_of_bounds] = np.nan
+        if conditions.tel_az_limits is not None:
+            if np.abs(conditions.tel_az_limits[1] - conditions.tel_az_limits[0]) < two_pi:
+                az_range = (conditions.tel_az_limits[1] - conditions.tel_az_limits[0]) % (
+                    two_pi
+                ) - self.altaz_limit_pad * 2
+                out_of_bounds = np.where(
+                    (conditions.az - conditions.tel_az_limits[0] - self.altaz_limit_pad) % (two_pi) > az_range
+                )[0]
+                result[out_of_bounds] = np.nan
+                out_of_bounds = np.where(
+                    (future_az - conditions.tel_az_limits[0] - self.altaz_limit_pad) % (two_pi) > az_range
+                )[0]
+                result[out_of_bounds] = np.nan
 
         return result
 
