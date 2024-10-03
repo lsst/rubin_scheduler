@@ -207,22 +207,22 @@ class TestBasis(unittest.TestCase):
         conditions.tel_alt_limits = [np.radians(-100), np.radians(100)]
         # With no (real) limits, including no limits in conditions
         bf = basis_functions.AltAzShadowMaskBasisFunction(
-            nside=nside, min_alt=0, max_alt=90, min_az=0, max_az=360, shadow_minutes=0
+            nside=nside, min_alt=0, max_alt=90, min_az=0, max_az=360, shadow_minutes=0, altaz_limit_pad=0
         )
         result = bf(conditions)
         self.assertTrue(np.all(np.isnan(result[np.where(conditions.alt < 0)])))
         self.assertTrue(np.all(result[np.where(conditions.alt >= 0)] == 0))
-        # Set altitude limits
+        # Set altitude limits but still no padding
         bf = basis_functions.AltAzShadowMaskBasisFunction(
-            nside=nside, min_alt=40, max_alt=60, min_az=0, max_az=360, shadow_minutes=0
+            nside=nside, min_alt=40, max_alt=60, min_az=0, max_az=360, shadow_minutes=0, altaz_limit_pad=0
         )
         result = bf(conditions)
         good = np.where((conditions.alt > np.radians(40)) & (conditions.alt < np.radians(60)), True, False)
         self.assertTrue(np.all(np.isnan(result[~good])))
         self.assertTrue(np.all(result[good] == 0))
-        # And set azimuth limits
+        # And set azimuth limits but no padding
         bf = basis_functions.AltAzShadowMaskBasisFunction(
-            nside=nside, min_alt=-90, max_alt=90, min_az=90, max_az=180, shadow_minutes=0
+            nside=nside, min_alt=-90, max_alt=100, min_az=90, max_az=180, shadow_minutes=0, altaz_limit_pad=0
         )
         result = bf(conditions)
         good = np.where((conditions.az > np.radians(90)) & (conditions.az < np.radians(180)), True, False)
@@ -230,7 +230,7 @@ class TestBasis(unittest.TestCase):
         self.assertTrue(np.all(result[good] == 0))
         # And set azimuth limits - order sensitive
         bf = basis_functions.AltAzShadowMaskBasisFunction(
-            nside=nside, min_alt=-90, max_alt=90, min_az=180, max_az=90, shadow_minutes=0
+            nside=nside, min_alt=-90, max_alt=90, min_az=180, max_az=90, shadow_minutes=0, altaz_limit_pad=0
         )
         result = bf(conditions)
         good = np.where((conditions.az > np.radians(180)) | (conditions.az < np.radians(90)), True, False)
@@ -242,23 +242,26 @@ class TestBasis(unittest.TestCase):
             nside=nside, min_alt=0, max_alt=90, min_az=0, max_az=360, shadow_minutes=0
         )
         result = bf(conditions)
-        good = np.where((conditions.alt > np.radians(42)) & (conditions.alt < np.radians(58)), True, False)
-        self.assertTrue(np.all(np.isnan(result[~good])))
+        good = np.where((conditions.alt > np.radians(43)) & (conditions.alt < np.radians(57)))
+        bad = np.where((conditions.alt < np.radians(42)) & (conditions.alt > np.radians(58)))
+        self.assertTrue(np.all(np.isnan(result[bad])))
         self.assertTrue(np.all(result[good] == 0))
         # Set multiple altitude limits from the conditions
         conditions.sky_alt_limits = [[np.radians(40), np.radians(60)], [np.radians(80), np.radians(90)]]
         bf = basis_functions.AltAzShadowMaskBasisFunction(
-            nside=nside, min_alt=-90, max_alt=90, min_az=0, max_az=360, shadow_minutes=0
+            nside=nside, min_alt=-90, max_alt=90, min_az=0, max_az=360, shadow_minutes=0, altaz_limit_pad=2
         )
         result = bf(conditions)
         # Conditions value get padded
         good = np.where(
-            ((conditions.alt > np.radians(42)) & (conditions.alt < np.radians(58)))
-            | ((conditions.alt > np.radians(82)) & (conditions.alt < np.radians(88))),
-            True,
-            False,
+            ((conditions.alt > np.radians(43)) & (conditions.alt < np.radians(57)))
+            | ((conditions.alt > np.radians(83)) & (conditions.alt < np.radians(87))),
         )
-        self.assertTrue(np.all(np.isnan(result[~good])))
+        bad = np.where(
+            (conditions.alt < np.radians(41))
+            | ((conditions.alt > np.radians(59)) & (conditions.alt < np.radians(81)))
+        )
+        self.assertTrue(np.all(np.isnan(result[bad])))
         self.assertTrue(np.all(result[good] == 0))
         # Set azimuth limits
         conditions.sky_alt_limits = None
@@ -279,16 +282,19 @@ class TestBasis(unittest.TestCase):
         conditions.sky_alt_limits = None
         conditions.sky_az_limits = [[np.radians(90), np.radians(270)]]
         bf = basis_functions.AltAzShadowMaskBasisFunction(
-            nside=nside, min_alt=-90, max_alt=90, min_az=0, max_az=360, shadow_minutes=0
+            nside=nside, min_alt=-90, max_alt=90, min_az=0, max_az=360, shadow_minutes=0, altaz_limit_pad=2
         )
         result = bf(conditions)
+        # To more accurately count in azimuth, remove very high altitudes
         good = np.where(
-            (conditions.az < np.radians(268)) & (conditions.az > np.radians(92)),
-            True,
-            False,
+            (conditions.alt < np.radians(80))
+            & (conditions.alt > np.radians(0))
+            & (conditions.az < np.radians(260))
+            & (conditions.az > np.radians(110))
         )
+        bad = np.where((conditions.az > np.radians(269)) | (conditions.az < np.radians(91)))
         # Check this area is masked
-        self.assertTrue(np.all(np.isnan(result[~good])))
+        self.assertTrue(np.all(np.isnan(result[bad])))
         self.assertTrue(np.all(result[good] == 0))
         # Set altitude limits from kinematic model
         conditions.sky_alt_limits = None
@@ -299,12 +305,11 @@ class TestBasis(unittest.TestCase):
         )
         result = bf(conditions)
         good = np.where(
-            (conditions.alt > np.radians(22)) & (conditions.alt < np.radians(84.5)),
-            True,
-            False,
+            (conditions.alt > np.radians(23)) & (conditions.alt < np.radians(84)),
         )
+        bad = np.where((conditions.alt < np.radians(21)) | (conditions.alt > np.radians(85)))
         # Check this area is masked
-        self.assertTrue(np.all(np.isnan(result[~good])))
+        self.assertTrue(np.all(np.isnan(result[bad])))
         self.assertTrue(np.all(result[good] == 0))
         # Set azimuth limits from kinematic model
         conditions.sky_alt_limits = None
@@ -315,13 +320,17 @@ class TestBasis(unittest.TestCase):
             nside=nside, min_alt=-90, max_alt=90, min_az=0, max_az=360, shadow_minutes=0
         )
         result = bf(conditions)
+        bad = np.where(
+            (conditions.az > np.radians(268)) | (conditions.az < np.radians(92)),
+        )
         good = np.where(
-            (conditions.az < np.radians(268)) & (conditions.az > np.radians(92)),
-            True,
-            False,
+            (conditions.alt < np.radians(80))
+            & (conditions.alt > np.radians(0))
+            & (conditions.az < np.radians(260))
+            & (conditions.az > np.radians(110))
         )
         # Check this area is masked
-        self.assertTrue(np.all(np.isnan(result[~good])))
+        self.assertTrue(np.all(np.isnan(result[bad])))
         self.assertTrue(np.all(result[good] == 0))
         # Check very simple shadow minutes
         # Set azimuth limits from kinematic model

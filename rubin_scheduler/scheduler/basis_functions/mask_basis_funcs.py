@@ -250,8 +250,8 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
                 # For conditions-based limits, must add pad
                 # And remember that discontinuous areas can be allowed
                 in_bounds = np.ones(hp.nside2npix(self.nside), dtype=float)
-                min_alt = IntRounded(limits[0] + self.altaz_limit_pad)
-                max_alt = IntRounded(limits[1] - self.altaz_limit_pad)
+                min_alt = IntRounded(limits[0])
+                max_alt = IntRounded(limits[1])
                 in_bounds[np.where(r_current_alt < min_alt)] = 0
                 in_bounds[np.where(r_current_alt > max_alt)] = 0
                 in_bounds[np.where(r_future_alt < min_alt)] = 0
@@ -265,8 +265,8 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         # wide set of allowable area which explicitly disallows anything
         # outside that range. The az limits versions are similar.
         if conditions.tel_alt_limits is not None:
-            min_alt = IntRounded(conditions.tel_alt_limits[0] + self.altaz_limit_pad)
-            max_alt = IntRounded(conditions.tel_alt_limits[1] - self.altaz_limit_pad)
+            min_alt = IntRounded(conditions.tel_alt_limits[0])
+            max_alt = IntRounded(conditions.tel_alt_limits[1])
             result[np.where(r_current_alt < min_alt)] = np.nan
             result[np.where(r_current_alt > max_alt)] = np.nan
             result[np.where(r_future_alt < min_alt)] = np.nan
@@ -289,31 +289,33 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
                 min_az = limits[0]
                 max_az = limits[1]
                 if np.abs(max_az - min_az) < two_pi:
-                    az_range = (max_az - min_az) % (two_pi) - 2 * self.altaz_limit_pad
-                    out_of_bounds = np.where(
-                        (conditions.az - min_az - self.altaz_limit_pad) % (two_pi) > az_range
-                    )[0]
+                    az_range = (max_az - min_az) % (two_pi)
+                    out_of_bounds = np.where((conditions.az - min_az) % (two_pi) > az_range)[0]
                     in_bounds[out_of_bounds] = 0
-                    out_of_bounds = np.where(
-                        (future_az - min_az - self.altaz_limit_pad) % (two_pi) > az_range
-                    )[0]
+                    out_of_bounds = np.where((future_az - min_az) % (two_pi) > az_range)[0]
                     in_bounds[out_of_bounds] = 0
                 combined += in_bounds
             result[np.where(combined == 0)] = np.nan
         # Check against the kinematic hard limits.
         if conditions.tel_az_limits is not None:
             if np.abs(conditions.tel_az_limits[1] - conditions.tel_az_limits[0]) < two_pi:
-                az_range = (conditions.tel_az_limits[1] - conditions.tel_az_limits[0]) % (
-                    two_pi
-                ) - self.altaz_limit_pad * 2
-                out_of_bounds = np.where(
-                    (conditions.az - conditions.tel_az_limits[0] - self.altaz_limit_pad) % (two_pi) > az_range
-                )[0]
+                az_range = (conditions.tel_az_limits[1] - conditions.tel_az_limits[0]) % (two_pi)
+                out_of_bounds = np.where((conditions.az - conditions.tel_az_limits[0]) % (two_pi) > az_range)[
+                    0
+                ]
                 result[out_of_bounds] = np.nan
-                out_of_bounds = np.where(
-                    (future_az - conditions.tel_az_limits[0] - self.altaz_limit_pad) % (two_pi) > az_range
-                )[0]
+                out_of_bounds = np.where((future_az - conditions.tel_az_limits[0]) % (two_pi) > az_range)[0]
                 result[out_of_bounds] = np.nan
+
+        # Grow the resulting mask by self.altaz_limit_pad (approximately),
+        # to avoid pushing field centers
+        # outside the boundaries of what is actually reachable.
+        if self.altaz_limit_pad > 0:
+            # Can't smooth a map with nan
+            map_to_smooth = np.where(np.isnan(result), hp.UNSEEN, 1)
+            map_back = hp.smoothing(map_to_smooth, fwhm=self.altaz_limit_pad * 2)
+            # Replace values and nans
+            result = np.where(map_back < 0.9, np.nan, result)
 
         return result
 
