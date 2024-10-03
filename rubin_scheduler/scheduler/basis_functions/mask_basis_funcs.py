@@ -14,7 +14,7 @@ import numpy as np
 
 from rubin_scheduler.scheduler.basis_functions import BaseBasisFunction
 from rubin_scheduler.scheduler.utils import HpInLsstFov, IntRounded
-from rubin_scheduler.utils import DEFAULT_NSIDE, _angular_separation
+from rubin_scheduler.utils import DEFAULT_NSIDE, _angular_separation, _hp_grow_mask
 
 
 class SolarElongMaskBasisFunction(BaseBasisFunction):
@@ -213,6 +213,7 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         max_az=360,
         shadow_minutes=40.0,
         altaz_limit_pad=2.0,
+        scale=1000,
     ):
         super().__init__(nside=nside)
         self.min_alt = np.radians(min_alt)
@@ -224,6 +225,7 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
 
         self.r_min_alt = IntRounded(self.min_alt)
         self.r_max_alt = IntRounded(self.max_alt)
+        self.scale = scale
 
     def _calc_value(self, conditions, indx=None):
         # Basis function value will be 0 except where masked (then np.nan)
@@ -310,12 +312,7 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         # Grow the resulting mask by self.altaz_limit_pad (approximately),
         # to avoid pushing field centers
         # outside the boundaries of what is actually reachable.
-        if self.altaz_limit_pad > 0:
-            # Can't smooth a map with nan
-            map_to_smooth = np.where(np.isnan(result), hp.UNSEEN, 1)
-            map_back = hp.smoothing(map_to_smooth, fwhm=self.altaz_limit_pad * 2)
-            # Replace values and nans
-            result = np.where(map_back < 0.9, np.nan, result)
+        result = _hp_grow_mask(result, self.altaz_limit_pad, scale=self.scale)
 
         return result
 
