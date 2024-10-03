@@ -383,19 +383,13 @@ class ModelObservatory:
 
         good = np.where(alts > self.alt_min)
 
-        # Compute the airmass at each heapix
-        airmass = np.zeros(alts.size, dtype=float)
-        airmass.fill(np.nan)
-        airmass[good] = 1.0 / np.cos(np.pi / 2.0 - alts[good])
-        self.conditions.airmass = airmass
-
         # reset the seeing
         for key in self.seeing_fwhm_eff:
             self.seeing_fwhm_eff[key].fill(np.nan)
         # Use the model to get the seeing at this time and airmasses.
         fwhm_500 = self.seeing_data(current_time)
         self.fwhm_500 = fwhm_500
-        seeing_dict = self.seeing_model(fwhm_500, airmass[good])
+        seeing_dict = self.seeing_model(fwhm_500, self.conditions.airmass[good])
         fwhm_eff = seeing_dict["fwhmEff"]
         for i, key in enumerate(self.seeing_model.filter_list):
             self.seeing_fwhm_eff[key][good] = fwhm_eff[i, :]
@@ -463,8 +457,6 @@ class ModelObservatory:
         self.conditions.moonset = self.almanac.sunsets["moonset"][self.almanac_indx]
         sun_moon_info_start_of_night = self.almanac.get_sun_moon_positions(self.conditions.sunset)
         self.conditions.moon_phase_sunset = sun_moon_info_start_of_night["moon_phase"]
-
-        self.conditions.mjd_start = self.mjd_start
 
         # Telescope limits
         self.conditions.sky_az_limits = self.sky_az_limits
