@@ -12,13 +12,7 @@ import pandas as pd
 from astropy.time import Time
 
 from rubin_scheduler.scheduler.utils import HpInComcamFov, HpInLsstFov, IntRounded, ObservationArray
-from rubin_scheduler.utils import (
-    DEFAULT_NSIDE,
-    _approx_altaz2pa,
-    _approx_ra_dec2_alt_az,
-    _hpid2_ra_dec,
-    rotation_converter,
-)
+from rubin_scheduler.utils import DEFAULT_NSIDE, _hpid2_ra_dec, rotation_converter
 
 
 class CoreScheduler:
@@ -39,8 +33,6 @@ class CoreScheduler:
         Which camera to use to compute the correspondence between
         visits and HEALpixels when recording observations.
         Can be 'LSST' or 'comcam'.
-    rotator_limits : `list` [`float`, `float`]
-        Limits for the camera rotator.
     log : `logging.Logger`
         If None, a new logger is created.
     keep_rewards : `bool`
@@ -56,7 +48,6 @@ class CoreScheduler:
         surveys,
         nside=DEFAULT_NSIDE,
         camera="LSST",
-        rotator_limits=[85.0, 275.0],
         log=None,
         keep_rewards=False,
         telescope="rubin",
@@ -97,7 +88,6 @@ class CoreScheduler:
 
         # keep track of how many observations get flushed from the queue
         self.flushed = 0
-        self.rotator_limits = np.sort(np.radians(rotator_limits))
 
     def flush_queue(self):
         """Like it sounds, clear any currently queued desired observations."""
@@ -213,21 +203,27 @@ class CoreScheduler:
                 result = True
         return result
 
-    def request_observation(self, mjd=None):
+    def request_observation(self, mjd=None, whole_queue=False):
         """
         Ask the scheduler what it wants to observe next
 
         Parameters
         ----------
-        mjd : `float` (None)
+        mjd : `float`
             The Modified Julian Date.
             If None, it uses the MJD from the conditions from the
             last conditions update.
+        whole_queue : `bool`
+            Return the entire list of observations in the queue (True),
+            or just a single observation (False). Default False
 
         Returns
         -------
-        observation :  observation object (ra,dec,filter,rotangle)
+        observation : `list` [`~.scheduler.utils.ObservationArray`]
+            Returns ~.scheduler.utils.ObservationArray if
+            whole_queue is False
             Returns None if the queue fails to fill
+            Returns list of ObservationArray if whole_queue is True
 
         Notes
         -----
@@ -256,28 +252,13 @@ class CoreScheduler:
                 self._fill_queue()
             if len(self.queue) == 0:
                 return None
-            observation = self.queue.pop(0)
-            # If we are limiting the camera rotator
-            if self.rotator_limits is not None:
-                alt, az = _approx_ra_dec2_alt_az(
-                    observation["RA"],
-                    observation["dec"],
-                    self.conditions.site.latitude_rad,
-                    self.conditions.site.longitude_rad,
-                    mjd,
-                )
-                obs_pa = _approx_altaz2pa(alt, az, self.conditions.site.latitude_rad)
-                rot_tel_pos_expected = self.rc._rotskypos2rottelpos(observation["rotSkyPos"], obs_pa)
-                if np.isfinite(observation["rotSkyPos"]):
-                    if (IntRounded(rot_tel_pos_expected) > IntRounded(self.rotator_limits[0])) & (
-                        IntRounded(rot_tel_pos_expected) < IntRounded(self.rotator_limits[1])
-                    ):
-                        diff = np.abs(self.rotator_limits - rot_tel_pos_expected)
-                        limit_indx = np.min(np.where(diff == np.min(diff))[0])
-                        observation["rotSkyPos"] = self.rc.rottelpos2rotskypos(
-                            self.rotator_limits[limit_indx], obs_pa
-                        )
-            return observation
+            if whole_queue:
+                result = deepcopy(self.queue)
+                self.flush_queue()
+            else:
+                result = self.queue.pop(0)
+
+            return result
 
     def _fill_queue(self):
         """
@@ -424,7 +405,6 @@ class CoreScheduler:
             surveys={repr(self.survey_lists)},
             camera="{camera}",
             nside={repr(self.nside)},
-            rotator_limits={repr(self.rotator_limits)},
             survey_index={repr(self.survey_index)},
             log={repr(self.log)}
         )"""
@@ -456,7 +436,6 @@ class CoreScheduler:
             {
                 "camera": camera,
                 "nside": self.nside,
-                "rotator limits": list(self.rotator_limits),
                 "survey index": list(self.survey_index),
                 "Last chosen": last_chosen,
             }
