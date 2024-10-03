@@ -215,22 +215,22 @@ class ScriptedSurvey(BaseSurvey):
 
         # Also check the alt,az limits given by the conditions object
         count = in_range * 0
-        if conditions.tel_alt_limits is not None:
-            for limits in conditions.tel_alt_limits:
+        if conditions.sky_alt_limits is not None:
+            for limits in conditions.sky_alt_limits:
                 ir = np.where((alt[in_range] >= np.min(limits)) & (alt[in_range] <= np.max(limits)))[0]
                 count[ir] += 1
             good = np.where(count > 0)[0]
             in_range = in_range[good]
         # Check against kinematic limits too
         ir = np.where(
-            (alt[in_range] >= np.min(conditions.kinematic_alt_limits))
-            & (alt[in_range] <= np.max(conditions.kinematic_alt_limits))
+            (alt[in_range] >= np.min(conditions.tel_alt_limits))
+            & (alt[in_range] <= np.max(conditions.tel_alt_limits))
         )[0]
         in_range = in_range[ir]
 
         count = in_range * 0
-        if conditions.tel_az_limits is not None:
-            for limits in conditions.tel_az_limits:
+        if conditions.sky_az_limits is not None:
+            for limits in conditions.sky_az_limits:
                 az_min = limits[0]
                 az_max = limits[1]
                 if np.abs(az_max - az_min) >= (2 * np.pi):
@@ -241,9 +241,9 @@ class ScriptedSurvey(BaseSurvey):
                     count[ir] += 1
             good = np.where(count > 0)[0]
             in_range = in_range[good]
-        if np.abs(conditions.kinematic_az_limits[1] - conditions.kinematic_az_limits[0]) < (2 * np.pi):
-            az_range = (conditions.kinematic_az_limits[1] - conditions.kinematic_az_limits[0]) % (2 * np.pi)
-            ir = np.where((az[in_range] - conditions.kinematic_az_limits[0]) % (2 * np.pi) <= az_range)[0]
+        if np.abs(conditions.tel_az_limits[1] - conditions.tel_az_limits[0]) < (2 * np.pi):
+            az_range = (conditions.tel_az_limits[1] - conditions.tel_az_limits[0]) % (2 * np.pi)
+            ir = np.where((az[in_range] - conditions.tel_az_limits[0]) % (2 * np.pi) <= az_range)[0]
             in_range = in_range[ir]
 
         # Check that filter needed is mounted

@@ -1,6 +1,7 @@
 import os
 import unittest
 
+import healpy as hp
 import numpy as np
 
 from rubin_scheduler.data import get_data_dir
@@ -8,6 +9,7 @@ from rubin_scheduler.scheduler.utils import (
     EuclidOverlapFootprint,
     SkyAreaGenerator,
     SkyAreaGeneratorGalplane,
+    generate_all_sky,
     make_rolling_footprints,
 )
 
@@ -99,6 +101,15 @@ class TestSkyArea(unittest.TestCase):
         # This doesn't always have to be the case, but should be with defaults
         lowdust = np.where(labels == "lowdust")
         self.assertTrue(np.all(footprints["r"][lowdust] == 1))
+
+    def test_generate_all_sky(self):
+        # Test that the utility generate_all_sky returns appropriately
+        nside = 32
+        sky = generate_all_sky(nside=nside)
+        expected_keys = ["map", "ra", "dec", "eclip_lat", "eclip_lon", "gal_lat", "gal_lon"]
+        for k in expected_keys:
+            self.assertTrue(k in sky.keys())
+        self.assertEqual(sky["ra"].size, hp.nside2npix(nside))
 
 
 if __name__ == "__main__":

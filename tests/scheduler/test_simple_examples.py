@@ -128,9 +128,9 @@ class TestSurveyConveniences(unittest.TestCase):
         field_obs = observations[np.where(observations["target_name"] == "almost_cosmos")]
         self.assertTrue(field_obs.size > 200)
         self.assertTrue(np.all(field_obs["science_program"] == "BLOCK-TEST"))
-        self.assertTrue(field[0].extra_features["ObsRecorded"].feature == field_obs.size)
+        self.assertTrue(field[0].extra_features["ObsRecorded_note"].feature == field_obs.size)
         self.assertTrue(
-            np.abs(field_obs[-1]["mjd"] - field[0].extra_features["LastObs"].feature["mjd"])
+            np.abs(field_obs[-1]["mjd"] - field[0].extra_features["LastObs_note"].feature["mjd"])
             < 15 / 60 / 60 / 24
         )
 

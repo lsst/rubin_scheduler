@@ -108,7 +108,7 @@ class TestUtils(unittest.TestCase):
             mjd=observations[-1]["mjd"],
             mjd_start=mjd_start,
             kinem_model=km,
-            tel_az_limits=[
+            sky_az_limits=[
                 [az_min, az_max],
             ],
         )
@@ -128,7 +128,7 @@ class TestUtils(unittest.TestCase):
         forbidden = np.where((az > az_max) & (az < az_min))[0]
         # Some visits will occur in this forbidden range, due to
         # some complications about the shadow mask and pair completion
-        # Since this is like a "preference" when set with tel_az_limits,
+        # Since this is like a "preference" when set with sky_az_limits,
         # should allow some to occur in this set of forbidden azimuths
         second_pairs = [
             scheduler_note
@@ -143,7 +143,7 @@ class TestUtils(unittest.TestCase):
             mjd=observations[-1]["mjd"],
             mjd_start=mjd_start,
             kinem_model=km,
-            tel_alt_limits=[
+            sky_alt_limits=[
                 [alt_min, alt_max],
             ],
         )

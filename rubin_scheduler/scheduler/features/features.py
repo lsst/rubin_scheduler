@@ -7,14 +7,14 @@ __all__ = (
     "LastObserved",
     "NObsNight",
     "PairInNight",
-    "RotatorAngle",
     "NObservationsCurrentSeason",
     "LastNObsTimes",
     "NoteInNight",
-    "NoteLastObserved",
+    "LastObservationMjd",
 )
 
 import warnings
+from abc import ABC, abstractmethod
 
 import healpy as hp
 import numpy as np
@@ -36,7 +36,7 @@ def send_unused_deprecation_warning(name):
     warnings.warn(message, FutureWarning)
 
 
-class BaseFeature:
+class BaseFeature(ABC):
     """The base class for features.
     This defines the standard API: a Feature should include
     a `self.feature` attribute, which could be a float, bool,
@@ -64,6 +64,7 @@ class BaseSurveyFeature(BaseFeature):
     `add_observation_array`.
     """
 
+    @abstractmethod
     def add_observations_array(self, observations_array, observations_hpid):
         """Update self.feature based on information in `observations_array`
         and `observations_hpid`.
@@ -87,6 +88,7 @@ class BaseSurveyFeature(BaseFeature):
         print(self)
         raise NotImplementedError
 
+    @abstractmethod
     def add_observation(self, observation, indx=None, **kwargs):
         """Update self.feature based on information in `observation`.
         Observations should be ordered in monotonically increasing time.
@@ -154,95 +156,103 @@ class NObsCount(BaseSurveyFeature):
 
     Parameters
     ----------
-    note : `str` or None
+    scheduler_note : `str` or None
         Count observations that match `str` in their scheduler_note field.
         Note can be a substring of scheduler_note, and will still match.
     filtername : `str` or None
         Optionally also (or independently) specify a filter to match.
+    note : `str` or None
+        Backwards compatible shim for scheduler_note.
     """
 
-    def __init__(self, note=None, filtername=None):
+    def __init__(self, scheduler_note=None, filtername=None, note=None):
         self.feature = 0
-        self.note = note
-        if self.note == "":
-            self.note = None
+        if scheduler_note is None:
+            self.scheduler_note = note
+        else:
+            self.scheduler_note = scheduler_note
+        # In case scheduler_note got set with empty string, replace with None
+        if self.scheduler_note == "":
+            self.scheduler_note = None
         self.filtername = filtername
 
     def add_observations_array(self, observations_array, observations_hpid):
-        if self.note is None and self.filtername is None:
+        if self.scheduler_note is None and self.filtername is None:
             self.feature += observations_array.size
-        elif self.note is None and self.filtername is not None:
+        elif self.scheduler_note is None and self.filtername is not None:
             in_filt = np.where(observations_array["filter"] == self.filtername)
             self.feature += np.size(in_filt)
-        elif self.note is not None and self.filtername is None:
-            count = [self.note in note for note in observations_array["scheduler_note"]]
+        elif self.scheduler_note is not None and self.filtername is None:
+            count = [self.scheduler_note in note for note in observations_array["scheduler_note"]]
             self.feature += np.sum(count)
         else:
             # note and filtername are defined
             in_filt = np.where(observations_array["filter"] == self.filtername)
-            count = [self.note in note for note in observations_array["scheduler_note"][in_filt]]
+            count = [self.scheduler_note in note for note in observations_array["scheduler_note"][in_filt]]
             self.feature += np.sum(count)
 
     def add_observation(self, observation, indx=None):
         # Track all observations
-        if self.note is None and self.filtername is None:
+        if self.scheduler_note is None and self.filtername is None:
             self.feature += 1
-        elif self.note is None and self.filtername is not None:
+        elif self.scheduler_note is None and self.filtername is not None:
             if observation["filter"][0] in self.filtername:
                 self.feature += 1
-        elif self.note is not None and self.filtername is None:
-            if self.note in observation["scheduler_note"][0]:
+        elif self.scheduler_note is not None and self.filtername is None:
+            if self.scheduler_note in observation["scheduler_note"][0]:
                 self.feature += 1
         else:
-            if (observation["filter"][0] in self.filtername) and self.note in observation["scheduler_note"][
-                0
-            ]:
+            if (observation["filter"][0] in self.filtername) and self.scheduler_note in observation[
+                "scheduler_note"
+            ][0]:
                 self.feature += 1
 
 
 class LastObservation(BaseSurveyFeature):
-    """Track the last observation.
-    Useful if you want to see when the
-    last time a survey took an observation.
+    """Track the (entire) last observation.
+
+    All visits, no healpix dependency.
 
     Parameters
     ----------
     scheduler_note : `str` or None, optional
-        Value of the scheduler_note to match, if not None.
+        The scheduler_note to match.
+        Scheduler_note values which match this OR which contain this value
+        as a subset of their string will match.
+    filtername : `str` or None, optional
+        The required filter to match.
     survey_name : `str` or None, optional
-        Backwards compatible version of scheduler_note. Deprecated.
+        Backwards compatible shim for scheduler_note. Deprecated.
     """
 
-    def __init__(self, scheduler_note=None, survey_name=None):
+    def __init__(self, scheduler_note=None, filtername=None, survey_name=None):
         if scheduler_note is None and survey_name is not None:
             self.scheduler_note = survey_name
         else:
             self.scheduler_note = scheduler_note
+        self.filtername = filtername
         # Start out with an empty observation
         self.feature = utils.ObservationArray()
 
     def add_observations_array(self, observations_array, observations_hpid):
+        valid_indx = np.ones(observations_array.size, dtype=bool)
+        if self.filtername is not None:
+            valid_indx[np.where(observations_array["filter"] != self.filtername)[0]] = False
         if self.scheduler_note is not None:
-            valid_indx = np.ones(observations_array.size, dtype=bool)
             tmp = [self.scheduler_note in name for name in observations_array["scheduler_note"]]
             valid_indx = valid_indx * np.array(tmp)
-            if len(tmp) > 0:
-                self.feature = observations_array[valid_indx][-1]
-        else:
-            if len(observations_array) > 0:
-                self.feature = observations_array[-1]
+        if valid_indx.sum() > 0:
+            self.feature = observations_array[valid_indx][-1]
 
     def add_observation(self, observation, indx=None):
-        if self.scheduler_note is not None:
-            if self.scheduler_note in observation["scheduler_note"][0]:
+        if (self.scheduler_note is None) or (self.scheduler_note in observation["scheduler_note"][0]):
+            if (self.filtername is None) or (self.filtername == observation["filter"][0]):
                 self.feature = observation
-        else:
-            self.feature = observation
 
 
 class NObservations(BaseSurveyFeature):
     """
-    Track the number of observations that have been made across the sky.
+    Track the number of observations that have been made at each healpix.
 
     Parameters
     ----------
@@ -269,12 +279,6 @@ class NObservations(BaseSurveyFeature):
             self.scheduler_note = survey_name
         else:
             self.scheduler_note = scheduler_note
-        # This feature is not used with "scheduler_note" in the baseline
-        # survey. Should it really match scheduler_notes which contain
-        # self.scheduler_note or should it be vice versa?
-        # (i.e. this works as: self.scheduler_note = "survey" matches only
-        # scheduler_note == "survey", but self.scheduler_note = "survey a"
-        # will match both "survey" and "survey a".
         self.bins = np.arange(hp.nside2npix(nside) + 1) - 0.5
 
     def add_observations_array(self, observations_array, observations_hpid):
@@ -305,13 +309,23 @@ class LargestN:
 
     def __call__(self, in_arr):
         if np.size(in_arr) < self.n:
-            return -1
+            return 0
         result = in_arr[-self.n]
         return result
 
 
 class LastNObsTimes(BaseSurveyFeature):
-    """Record the last three observations for each healpixel"""
+    """Record the last three observations for each healpixel.
+
+    Parameters
+    ----------
+    filtername : `str` or None
+        Match visits in this filtername.
+    n_obs : `int`
+        The number of prior observations to track.
+    nside : `int`
+        The nside of the healpix map.
+    """
 
     def __init__(self, filtername=None, n_obs=3, nside=DEFAULT_NSIDE):
         self.filtername = filtername
@@ -327,10 +341,11 @@ class LastNObsTimes(BaseSurveyFeature):
         data = observations_hpid[valid_indx]
 
         if np.size(data) > 0:
+            # If self.n_obs is very large, this is a bad idea, but
+            # our use is intended to be around n_obs 3.
             for i in range(1, self.n_obs + 1):
                 func = LargestN(i)
                 result, _be, _bn = binned_statistic(data["hpid"], data["mjd"], statistic=func, bins=self.bins)
-                # some_vals = np.where(np.sum(result, axis=1) > 0)[0]
                 self.feature[-i, :] = result
 
     def add_observation(self, observation, indx=None):
@@ -562,6 +577,8 @@ class LastObserved(BaseSurveyFeature):
     Track the MJD when a pixel was last observed.
     Assumes observations are added in chronological order.
 
+    Calculated per healpix.
+
     Parameters
     ----------
     filtername : `str` or None
@@ -584,10 +601,9 @@ class LastObserved(BaseSurveyFeature):
             valid_indx[np.where(observations_hpid["filter"] != self.filtername)[0]] = False
         data = observations_hpid[valid_indx]
 
-        if np.size(data) > 0:
-            result, _be, _bn = binned_statistic(data["hpid"], data["mjd"], statistic=np.max, bins=self.bins)
-            good = np.where(result > 0)
-            self.feature[good] = result[good]
+        result, _be, _bn = binned_statistic(data["hpid"], data["mjd"], statistic=np.max, bins=self.bins)
+        good = np.where(result > 0)
+        self.feature[good] = result[good]
 
     def add_observation(self, observation, indx=None):
         if self.filtername is None:
@@ -596,26 +612,47 @@ class LastObserved(BaseSurveyFeature):
             self.feature[indx] = observation["mjd"]
 
 
-class NoteLastObserved(BaseSurveyFeature):
-    """Track the last time an observation with a particular `note` field was
-    made.
+class LastObservationMjd(BaseSurveyFeature):
+    """Track the MJD of the last observation.
+
+    All visits, no healpix dependency.
 
     Parameters
     ----------
-    note : `str`
-        Substring to match an observation note field to keep track of.
+    scheduler_note : `str` or None, optional
+        The scheduler_note to match.
+        Scheduler_note values which match this OR which contain this value
+        as a subset of their string will match.
+    filtername : `str` or None, optional
+        The required filter to match.
+
+    Notes
+    -----
+    Very similar to LastObservation, but only tracks the MJD of the
+    last matching visit.
     """
 
-    def __init__(self, note, filtername=None):
-        self.note = note
+    def __init__(self, scheduler_note=None, filtername=None, note=None):
+        self.scheduler_note = scheduler_note
+        if self.scheduler_note is None and note is not None:
+            self.scheduler_note = note
         self.filtername = filtername
         self.feature = None
 
+    def add_observations_array(self, observations_array, observations_hpid):
+        valid_indx = np.ones(observations_array.size, dtype=bool)
+        if self.filtername is not None:
+            valid_indx[np.where(observations_array["filter"] != self.filtername)[0]] = False
+        if self.scheduler_note is not None:
+            tmp = [self.scheduler_note in name for name in observations_array["scheduler_note"]]
+            valid_indx = valid_indx * np.array(tmp)
+        if valid_indx.sum() > 0:
+            self.feature = observations_array[valid_indx][-1]["mjd"]
+
     def add_observation(self, observation, indx=None):
-        if self.note in observation["scheduler_note"][0] and (
-            self.filtername is None or self.filtername == observation["filter"][0]
-        ):
-            self.feature = observation["mjd"]
+        if (self.scheduler_note is None) or (self.scheduler_note in observation["scheduler_note"][0]):
+            if (self.filtername is None) or (self.filtername == observation["filter"][0]):
+                self.feature = observation["mjd"]
 
 
 class NObsNight(BaseSurveyFeature):
@@ -633,8 +670,27 @@ class NObsNight(BaseSurveyFeature):
 
     def __init__(self, filtername="r", nside=DEFAULT_NSIDE):
         self.filtername = filtername
-        self.feature = np.zeros(hp.nside2npix(nside), dtype=int)
+        self.feature = np.zeros(hp.nside2npix(nside), dtype=float)
         self.night = None
+        self.bins = np.arange(hp.nside2npix(nside) + 1) - 0.5
+
+    def add_observations_array(self, observations_array, observations_hpid):
+        latest_night = observations_array["night"].max()
+        if latest_night != self.night:
+            self.feature *= 0
+            self.night = latest_night
+        valid_indx = np.ones(observations_hpid.size, dtype=bool)
+        if self.filtername is not None:
+            valid_indx[np.where(observations_hpid["filter"] != self.filtername)[0]] = False
+        if self.night is not None:
+            valid_indx[np.where(observations_hpid["night"] != self.night)] = False
+
+        data = observations_hpid[valid_indx]
+        if np.size(data) > 0:
+            result, _be, _bn = binned_statistic(
+                data["hpid"], np.ones(data.size), statistic=np.sum, bins=self.bins
+            )
+            self.feature += result
 
     def add_observation(self, observation, indx=None):
         if observation["night"] != self.night:
@@ -715,21 +771,3 @@ class PairInNight(BaseSurveyFeature):
             # record the mjds and healpixels that were observed
             self.mjd_log.extend([np.max(observation["mjd"])] * np.size(indx))
             self.hpid_log.extend(list(indx))
-
-
-class RotatorAngle(BaseSurveyFeature):
-    """
-    Track what rotation angles things are observed with.
-    XXX-under construction
-    """
-
-    def __init__(self, filtername="r", binsize=10.0, nside=DEFAULT_NSIDE):
-        self.filtername = filtername
-        # Actually keep a histogram at each healpixel
-        self.feature = np.zeros((hp.nside2npix(nside), 360.0 / binsize), dtype=float)
-        self.bins = np.arange(0, 360 + binsize, binsize)
-
-    def add_observation(self, observation, indx=None):
-        if observation["filter"][0] == self.filtername:
-            # I think this is how to broadcast things properly.
-            self.feature[indx, :] += np.histogram(observation.rotSkyPos, bins=self.bins)[0]

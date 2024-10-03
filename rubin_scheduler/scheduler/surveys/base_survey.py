@@ -108,7 +108,9 @@ class BaseSurvey:
         if detailers is None:
             self.detailers = [ZeroRotDetailer(nside=nside)]
         else:
-            self.detailers = detailers
+            # If there are detailers -- copy them, because we're
+            # about to change the list (and users can be reusing this list).
+            self.detailers = deepcopy(detailers)
 
         # Scheduled observations
         self.scheduled_obs = scheduled_obs

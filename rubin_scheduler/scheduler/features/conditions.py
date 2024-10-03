@@ -176,15 +176,19 @@ class Conditions:
         scheduled_observations : `np.ndarray`, (M,)
             A list of MJD times when there are scheduled observations.
             Defaults to empty array.
-        tel_az_limits : `list` [[`float`, `float`]]
+        sky_az_limits : `list` [[`float`, `float`]]
             A list of lists giving valid azimuth ranges. e.g.,
             [0, 2*np.pi] would mean all azimuth values are valid, while
             [[0, np.pi/2], [3*np.pi/2, 2*np.pi]] would mean anywhere in
             the south is invalid.  Radians.
-        tel_alt_limits : `list` [[`float`, `float`]]
+        sky_alt_limits : `list` [[`float`, `float`]]
             A list of lists giving valid altitude ranges. Radians.
-        altaz_limit_pad : `float`
-            Pad to surround the tel_az_limits and tel_alt_limits with.
+        tel_az_limits : `list` [`float`, `float`]
+            A simple two-element list giving the valid azimuth ranges
+            for the telescope movement. Radians.
+        tel_alt_limits : `list` [`float`, `float`]
+            A simple two-element list giving the valid altitude ranges
+            for the telescope movement. Radians
 
         Attributes (calculated on demand and cached)
         ------------------------------------------
@@ -308,19 +312,13 @@ class Conditions:
         self.tel_az = None
         self.cumulative_azimuth_rad = None
 
-        # Telescope limits - these can be None
+        # Sky coverage limits.
         # These should be in radians.
-        self.tel_az_limits = None
+        self.sky_az_limits = None
+        self.sky_alt_limits = None
+        # Kinematic model (real slew) limits.
         self.tel_alt_limits = None
-        # Kinematic model (real slew) limits - these can't be None
-        # if you are using the AltAzShadowMaskBasisFunction.
-        # These generous limits won't restrict the AltAzShadowMask.
-        # Radians.
-        self.kinematic_alt_limits = [np.radians(-10), np.radians(100)]
-        self.kinematic_az_limits = [np.radians(-250), np.radians(250)]
-        # This has a (reasonable) default value, to avoid failure of
-        # AltAzShadowMask in case this isn't set otherwise.
-        self.altaz_limit_pad = np.radians(2)
+        self.tel_az_limits = None
 
         # Full sky cloud map
         self._cloud_map = None

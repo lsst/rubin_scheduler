@@ -170,7 +170,7 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
      regions which will enter the mask within `shadow_minutes`.
 
     Masks any alt/az regions as specified by the conditions object in
-    `conditions.tel_az_limits` and `conditions.tel_alt_limits`,
+    `conditions.sky_az_limits` and `conditions.sky_alt_limits`,
     as well as values as provided by `min_alt`, `max_alt`,
     `min_az` and `max_az`.
 
@@ -197,6 +197,11 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         For sequences, try the length of the sequence + some buffer.
         Note that this just sets up the shadow *at* the shadow_minutes time
         (and not all times up to shadow_minutes).
+    altaz_limit_pad : `float`
+        The value by which to pad the telescope limits, to avoid
+        healpix values mapping into pointings from the field tesselations
+        which are actually out of bounds. This should typically be
+        a bit more than the radius of the fov.  (degrees).
     """
 
     def __init__(
@@ -207,6 +212,7 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         min_az=0,
         max_az=360,
         shadow_minutes=40.0,
+        altaz_limit_pad=2.0,
     ):
         super().__init__(nside=nside)
         self.min_alt = np.radians(min_alt)
@@ -214,6 +220,7 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         self.min_az = np.radians(min_az)
         self.max_az = np.radians(max_az)
         self.shadow_time = shadow_minutes / 60.0 / 24.0  # To days
+        self.altaz_limit_pad = np.radians(altaz_limit_pad)
 
         self.r_min_alt = IntRounded(self.min_alt)
         self.r_max_alt = IntRounded(self.max_alt)
@@ -235,29 +242,35 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         result[np.where(r_current_alt > self.r_max_alt)] = np.nan
         result[np.where(r_future_alt < self.r_min_alt)] = np.nan
         result[np.where(r_future_alt > self.r_max_alt)] = np.nan
-        # Check the conditions objects altitude limits, now and future
-        if (conditions.tel_alt_limits is not None) and (len(conditions.tel_alt_limits) > 0):
+
+        # Check the conditions objects 'sky_alt_limit', now and future
+        if (conditions.sky_alt_limits is not None) and (len(conditions.sky_alt_limits) > 0):
             combined = np.zeros(hp.nside2npix(self.nside), dtype=float)
-            for limits in conditions.tel_alt_limits:
+            for limits in conditions.sky_alt_limits:
                 # For conditions-based limits, must add pad
                 # And remember that discontinuous areas can be allowed
                 in_bounds = np.ones(hp.nside2npix(self.nside), dtype=float)
-                min_alt = IntRounded(limits[0] + conditions.altaz_limit_pad)
-                max_alt = IntRounded(limits[1] - conditions.altaz_limit_pad)
+                min_alt = IntRounded(limits[0])
+                max_alt = IntRounded(limits[1])
                 in_bounds[np.where(r_current_alt < min_alt)] = 0
                 in_bounds[np.where(r_current_alt > max_alt)] = 0
                 in_bounds[np.where(r_future_alt < min_alt)] = 0
                 in_bounds[np.where(r_future_alt > max_alt)] = 0
                 combined += in_bounds
             result[np.where(combined == 0)] = np.nan
-        # And check against the kinematic hard limits.
-        # These are separate so they don't override user tel_alt_limits.
-        min_alt = IntRounded(conditions.kinematic_alt_limits[0] + conditions.altaz_limit_pad)
-        max_alt = IntRounded(conditions.kinematic_alt_limits[1] - conditions.altaz_limit_pad)
-        result[np.where(r_current_alt < min_alt)] = np.nan
-        result[np.where(r_current_alt > max_alt)] = np.nan
-        result[np.where(r_future_alt < min_alt)] = np.nan
-        result[np.where(r_future_alt > max_alt)] = np.nan
+        # And check against the telescope 'tel_alt_limits'.
+        # The tel_alt_limits could be combined with the sky_alt_limits,
+        # but it's a bit tricky because sky_alt_limits are (potentially)
+        # disjoint allowable areas, while the tel_alt_limits are a single
+        # wide set of allowable area which explicitly disallows anything
+        # outside that range. The az limits versions are similar.
+        if conditions.tel_alt_limits is not None:
+            min_alt = IntRounded(conditions.tel_alt_limits[0])
+            max_alt = IntRounded(conditions.tel_alt_limits[1])
+            result[np.where(r_current_alt < min_alt)] = np.nan
+            result[np.where(r_current_alt > max_alt)] = np.nan
+            result[np.where(r_future_alt < min_alt)] = np.nan
+            result[np.where(r_future_alt > max_alt)] = np.nan
 
         # note that % (mod) is not supported for IntRounded
         two_pi = 2 * np.pi
@@ -269,39 +282,40 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
             out_of_bounds = np.where((future_az - self.min_az) % (two_pi) > az_range)[0]
             result[out_of_bounds] = np.nan
         # Check the conditions objects azimuth limits, now and future
-        if (conditions.tel_az_limits is not None) and (len(conditions.tel_az_limits) > 0):
+        if (conditions.sky_az_limits is not None) and (len(conditions.sky_az_limits) > 0):
             combined = np.zeros(hp.nside2npix(self.nside), dtype=float)
-            for limits in conditions.tel_az_limits:
+            for limits in conditions.sky_az_limits:
                 in_bounds = np.ones(hp.nside2npix(self.nside), dtype=float)
                 min_az = limits[0]
                 max_az = limits[1]
                 if np.abs(max_az - min_az) < two_pi:
-                    az_range = (max_az - min_az) % (two_pi) - 2 * conditions.altaz_limit_pad
-                    out_of_bounds = np.where(
-                        (conditions.az - min_az - conditions.altaz_limit_pad) % (two_pi) > az_range
-                    )[0]
+                    az_range = (max_az - min_az) % (two_pi)
+                    out_of_bounds = np.where((conditions.az - min_az) % (two_pi) > az_range)[0]
                     in_bounds[out_of_bounds] = 0
-                    out_of_bounds = np.where(
-                        (future_az - min_az - conditions.altaz_limit_pad) % (two_pi) > az_range
-                    )[0]
+                    out_of_bounds = np.where((future_az - min_az) % (two_pi) > az_range)[0]
                     in_bounds[out_of_bounds] = 0
                 combined += in_bounds
             result[np.where(combined == 0)] = np.nan
         # Check against the kinematic hard limits.
-        if np.abs(conditions.kinematic_az_limits[1] - conditions.kinematic_az_limits[0]) < two_pi:
-            az_range = (conditions.kinematic_az_limits[1] - conditions.kinematic_az_limits[0]) % (
-                two_pi
-            ) - conditions.altaz_limit_pad * 2
-            out_of_bounds = np.where(
-                (conditions.az - conditions.kinematic_az_limits[0] - conditions.altaz_limit_pad) % (two_pi)
-                > az_range
-            )[0]
-            result[out_of_bounds] = np.nan
-            out_of_bounds = np.where(
-                (future_az - conditions.kinematic_az_limits[0] - conditions.altaz_limit_pad) % (two_pi)
-                > az_range
-            )[0]
-            result[out_of_bounds] = np.nan
+        if conditions.tel_az_limits is not None:
+            if np.abs(conditions.tel_az_limits[1] - conditions.tel_az_limits[0]) < two_pi:
+                az_range = (conditions.tel_az_limits[1] - conditions.tel_az_limits[0]) % (two_pi)
+                out_of_bounds = np.where((conditions.az - conditions.tel_az_limits[0]) % (two_pi) > az_range)[
+                    0
+                ]
+                result[out_of_bounds] = np.nan
+                out_of_bounds = np.where((future_az - conditions.tel_az_limits[0]) % (two_pi) > az_range)[0]
+                result[out_of_bounds] = np.nan
+
+        # Grow the resulting mask by self.altaz_limit_pad (approximately),
+        # to avoid pushing field centers
+        # outside the boundaries of what is actually reachable.
+        if self.altaz_limit_pad > 0:
+            # Can't smooth a map with nan
+            map_to_smooth = np.where(np.isnan(result), hp.UNSEEN, 1)
+            map_back = hp.smoothing(map_to_smooth, fwhm=self.altaz_limit_pad * 2)
+            # Replace values and nans
+            result = np.where(map_back < 0.9, np.nan, result)
 
         return result
 

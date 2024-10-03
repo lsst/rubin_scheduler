@@ -678,7 +678,7 @@ class AvoidFastRevisitsBasisFunction(BaseBasisFunction):
 
     Parameters
     ----------
-    filtername: `str` or None
+    filtername : `str` or None
         The name of the filter for this target map.
         Using None will match visits in any filter.
     gap_min : `float`
@@ -947,11 +947,6 @@ class SlewtimeBasisFunction(BaseBasisFunction):
         self.nside = nside
         self.filtername = filtername
 
-    def add_observation(self, observation, indx=None):
-        # No tracking of observations in this basis function.
-        # Purely based on conditions.
-        pass
-
     def _calc_value(self, conditions, indx=None):
         # If we are in a different filter, the
         # FilterChangeBasisFunction will take it
@@ -989,7 +984,7 @@ class CadenceEnhanceBasisFunction(BaseBasisFunction):
         (days)
     apply_area : healpix map
         The area over which to try and drive the cadence.
-        Good values as 1, no candece drive 0.
+        Good values as 1, no cadence drive 0.
         Probably works as a bool array too.
     """
 
@@ -1341,7 +1336,7 @@ class VisitGap(BaseBasisFunction):
 
     Parameters
     ----------
-    note : str
+    note : `str`
         Value of the observation "scheduler_note" field to be masked.
     filter_names : list [str], optional
         List of filter names that will be considered when evaluating
@@ -1369,11 +1364,11 @@ class VisitGap(BaseBasisFunction):
         self.survey_features = dict()
         if self.filter_names is not None:
             for filtername in self.filter_names:
-                self.survey_features[f"NoteLastObserved::{filtername}"] = features.NoteLastObserved(
+                self.survey_features[f"LastObservationMjd::{filtername}"] = features.LastObservationMjd(
                     note=note, filtername=filtername
                 )
         else:
-            self.survey_features["NoteLastObserved"] = features.NoteLastObserved(note=note)
+            self.survey_features["LastObservationMjd"] = features.LastObservationMjd(scheduler_note=note)
 
     def check_feasibility(self, conditions):
         notes_last_observed = [last_observed.feature for last_observed in self.survey_features.values()]
@@ -1457,8 +1452,8 @@ class BalanceVisits(BaseBasisFunction):
         self.nobs_reference = nobs_reference
 
         self.survey_features = {}
-        self.survey_features["n_obs_survey"] = features.NObsCount(note=note_survey)
-        self.survey_features["n_obs_survey_interest"] = features.NObsCount(note=note_interest)
+        self.survey_features["n_obs_survey"] = features.NObsCount(scheduler_note=note_survey)
+        self.survey_features["n_obs_survey_interest"] = features.NObsCount(scheduler_note=note_interest)
 
     def _calc_value(self, conditions, indx=None):
         return (1 + np.floor(self.survey_features["n_obs_survey_interest"].feature / self.nobs_reference)) / (
@@ -1493,7 +1488,7 @@ class RewardNObsSequence(BaseBasisFunction):
         self.n_obs_survey = n_obs_survey
 
         self.survey_features = {}
-        self.survey_features["n_obs_survey"] = features.NObsCount(note=note_survey)
+        self.survey_features["n_obs_survey"] = features.NObsCount(scheduler_note=note_survey)
 
     def _calc_value(self, conditions, indx=None):
         return self.survey_features["n_obs_survey"].feature % self.n_obs_survey

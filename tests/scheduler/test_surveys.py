@@ -79,7 +79,7 @@ class TestSurveys(unittest.TestCase):
         self.assertIsInstance(reward, float)
         reward_df = survey.make_reward_df(conditions)
         self.assertIsInstance(reward_df, pd.DataFrame)
-        reward_df = survey.make_reward_df(conditions, accum=False)
+        _ = survey.make_reward_df(conditions, accum=False)
 
     def test_field_survey_add_observations(self):
         nside = 32
@@ -104,40 +104,32 @@ class TestSurveys(unittest.TestCase):
         observations_array, observations_hpid_array = make_observations_arrays(observations_list)
 
         # Try adding observations to survey one at a time.
-        survey = surveys.FieldSurvey(bfs, RA=90.0, dec=-30.0, accept_obs=None)
+        survey = surveys.FieldSurvey(bfs, RA=90.0, dec=-30.0)
         for obs, indx in zip(observations_list, indexes):
             survey.add_observation(obs, indx=indx)
         self.assertTrue(survey.extra_features["ObsRecorded"].feature == len(observations_list))
         self.assertTrue(survey.extra_features["LastObs"].feature["mjd"] == observations_list[-1]["mjd"])
         # Try adding observations to survey in array
-        survey = surveys.FieldSurvey(bfs, RA=90.0, dec=-30.0, accept_obs=None)
+        survey = surveys.FieldSurvey(bfs, RA=90.0, dec=-30.0)
         survey.add_observations_array(observations_array, observations_hpid_array)
         self.assertTrue(survey.extra_features["ObsRecorded"].feature == len(observations_list))
         self.assertTrue(survey.extra_features["LastObs"].feature["mjd"] == observations_list[-1]["mjd"])
 
-        # Now with specific requirements on obs to accept.
-        # Try adding observations to survey one at a time.
-        survey = surveys.FieldSurvey(bfs, RA=90.0, dec=-30.0, accept_obs=["r band"])
+        # Now with different scheduler_notes.
+        survey = surveys.FieldSurvey(bfs, RA=90.0, dec=-30.0, scheduler_note="r band")
         for obs, indx in zip(observations_list, indexes):
             survey.add_observation(obs, indx=indx)
-        self.assertTrue(survey.extra_features["ObsRecorded"].feature == 5)
-        self.assertTrue(survey.extra_features["LastObs"].feature["mjd"] == observations_list[4]["mjd"])
-        # Try adding observations to survey in array
-        survey = surveys.FieldSurvey(bfs, RA=90.0, dec=-30.0, accept_obs=["r band"])
-        survey.add_observations_array(observations_array, observations_hpid_array)
-        self.assertTrue(survey.extra_features["ObsRecorded"].feature == 5)
-        self.assertTrue(survey.extra_features["LastObs"].feature["mjd"] == observations_list[4]["mjd"])
-        # Try adding observations to survey one at a time.
-        survey = surveys.FieldSurvey(bfs, RA=90.0, dec=-30.0, accept_obs=["r band", "g band"])
-        for obs, indx in zip(observations_list, indexes):
-            survey.add_observation(obs, indx=indx)
-        self.assertTrue(survey.extra_features["ObsRecorded"].feature == 10)
+        self.assertTrue(survey.extra_features["ObsRecorded"].feature == len(observations_list))
         self.assertTrue(survey.extra_features["LastObs"].feature["mjd"] == observations_list[-1]["mjd"])
+        self.assertTrue(survey.extra_features["ObsRecorded_note"].feature == 5)
+        self.assertTrue(survey.extra_features["LastObs_note"].feature["mjd"] == observations_list[4]["mjd"])
         # Try adding observations to survey in array
-        survey = surveys.FieldSurvey(bfs, RA=90.0, dec=-30.0, accept_obs=["r band", "g band"])
+        survey = surveys.FieldSurvey(bfs, RA=90.0, dec=-30.0, scheduler_note="r band")
         survey.add_observations_array(observations_array, observations_hpid_array)
-        self.assertTrue(survey.extra_features["ObsRecorded"].feature == 10)
+        self.assertTrue(survey.extra_features["ObsRecorded"].feature == len(observations_list))
         self.assertTrue(survey.extra_features["LastObs"].feature["mjd"] == observations_list[-1]["mjd"])
+        self.assertTrue(survey.extra_features["ObsRecorded_note"].feature == 5)
+        self.assertTrue(survey.extra_features["LastObs_note"].feature["mjd"] == observations_list[4]["mjd"])
 
     def test_pointings_survey(self):
         """Test the pointing survey."""

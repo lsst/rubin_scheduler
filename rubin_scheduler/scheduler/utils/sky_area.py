@@ -81,7 +81,7 @@ def generate_all_sky(nside=DEFAULT_NSIDE, elevation_limit=20, mask=hp.UNSEEN):
 
     # Calculate coordinates of everything.
     skymap = np.zeros(hp.nside2npix(nside), float)
-    ra, dec = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(nside)))(nside=nside)
+    ra, dec = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(nside)))
     coord = SkyCoord(ra=ra * u.rad, dec=dec * u.rad, frame="icrs")
     eclip_lat = coord.barycentrictrueecliptic.lat.deg
     eclip_lon = coord.barycentrictrueecliptic.lon.deg
