@@ -197,7 +197,7 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         For sequences, try the length of the sequence + some buffer.
         Note that this just sets up the shadow *at* the shadow_minutes time
         (and not all times up to shadow_minutes).
-    altaz_limit_pad : `float`
+    pad : `float`
         The value by which to pad the telescope limits, to avoid
         healpix values mapping into pointings from the field tesselations
         which are actually out of bounds. This should typically be
@@ -212,7 +212,7 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         min_az=0,
         max_az=360,
         shadow_minutes=40.0,
-        altaz_limit_pad=2.0,
+        pad=3.0,
         scale=1000,
     ):
         super().__init__(nside=nside)
@@ -221,7 +221,7 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         self.min_az = np.radians(min_az)
         self.max_az = np.radians(max_az)
         self.shadow_time = shadow_minutes / 60.0 / 24.0  # To days
-        self.altaz_limit_pad = np.radians(altaz_limit_pad)
+        self.pad = np.radians(pad)
 
         self.r_min_alt = IntRounded(self.min_alt)
         self.r_max_alt = IntRounded(self.max_alt)
@@ -309,10 +309,12 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
                 out_of_bounds = np.where((future_az - conditions.tel_az_limits[0]) % (two_pi) > az_range)[0]
                 result[out_of_bounds] = np.nan
 
-        # Grow the resulting mask by self.altaz_limit_pad (approximately),
-        # to avoid pushing field centers
-        # outside the boundaries of what is actually reachable.
-        result = _hp_grow_mask(result, self.altaz_limit_pad, scale=self.scale)
+        # Grow the resulting mask by self.pad, to avoid field centers
+        # falling outside the boundaries of what is actually reachable.
+        if self.pad > 0:
+            mask_indx = np.where(np.isnan(result))[0]
+            to_mask_indx = _hp_grow_mask(self.nside, tuple(mask_indx), scale=self.scale, grow_size=self.pad)
+            result[to_mask_indx] = np.nan
 
         return result
 

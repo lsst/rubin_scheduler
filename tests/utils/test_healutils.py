@@ -77,6 +77,31 @@ class TestHealUtils(unittest.TestCase):
         self.assertEqual(map3[hpid], 0.0)
         self.assertEqual(hp.maptype(map3), 0)
 
+    def test_mask_grow(self):
+        """Test we can grow a healpix mask map"""
+
+        nside = 32
+        nan_indx = tuple([0, 100])
+        scale = hp.nside2resol(nside)
+
+        to_mask = utils._hp_grow_mask(nside, nan_indx, grow_size=scale * 2)
+
+        # That should have made some things mask
+        assert 100 > np.size(to_mask) > 5
+
+        # Test another nside
+        nside = 128
+        nan_indx = tuple([0, 100])
+        scale = hp.nside2resol(nside)
+        to_mask = utils._hp_grow_mask(nside, nan_indx, grow_size=scale * 2)
+
+        # That should have made some things mask
+        assert 100 > np.size(to_mask) > 5
+
+        # Check that 0 distance doesn't mask anything new
+        to_mask = utils._hp_grow_mask(nside, nan_indx, grow_size=0)
+        assert np.size(to_mask) == np.size(nan_indx)
+
 
 if __name__ == "__main__":
     unittest.main()
