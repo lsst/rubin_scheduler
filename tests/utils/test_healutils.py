@@ -77,6 +77,50 @@ class TestHealUtils(unittest.TestCase):
         self.assertEqual(map3[hpid], 0.0)
         self.assertEqual(hp.maptype(map3), 0)
 
+    def test_mask_grow(self):
+        """Test we can grow a healpix mask map"""
+
+        nside = 32
+        nan_indx = tuple([0, 100])
+        scale = hp.nside2resol(nside)
+
+        to_mask = utils._hp_grow_mask(nside, nan_indx, grow_size=scale * 2)
+
+        # That should have made some things mask
+        assert 100 > np.size(to_mask) > 5
+
+        # Test another nside
+        nside = 128
+        nan_indx = tuple([0, 100])
+        scale = hp.nside2resol(nside)
+        to_mask = utils._hp_grow_mask(nside, nan_indx, grow_size=scale * 2)
+
+        # That should have made some things mask
+        assert 100 > np.size(to_mask) > 5
+
+        # Do a silly loop check to make sure things got masked properly
+        # Need to turn off the machine precision kwarg
+        nside = 128
+        nan_indx = tuple([0, 100])
+        scale = hp.nside2resol(nside) * 5
+        to_mask = utils._hp_grow_mask(nside, nan_indx, grow_size=scale, scale=None)
+
+        ra, dec = utils._hpid2_ra_dec(nside, np.arange(hp.nside2npix(nside)))
+        to_mask_set = set(to_mask)
+        all_close = []
+        for indx in nan_indx:
+            distances = utils._angular_separation(ra, dec, ra[indx], dec[indx])
+            close = np.where(distances <= scale)[0]
+            all_close.extend(close)
+            assert set(close).issubset(to_mask_set)
+        all_close = np.unique(all_close)
+        # Make sure we aren't including any extra pixels
+        assert np.size(all_close) == np.size(to_mask)
+
+        # Check that 0 distance doesn't mask anything new
+        to_mask = utils._hp_grow_mask(nside, nan_indx, grow_size=0)
+        assert np.size(to_mask) == np.size(nan_indx)
+
 
 if __name__ == "__main__":
     unittest.main()

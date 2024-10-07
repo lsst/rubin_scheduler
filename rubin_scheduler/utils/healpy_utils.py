@@ -7,12 +7,16 @@ __all__ = (
     "_healbin",
     "moc2array",
     "hp_grow_argsort",
+    "_hp_grow_mask",
 )
 
 import warnings
+from functools import lru_cache
 
 import healpy as hp
 import numpy as np
+
+from .tree_utils import _build_tree, _xyz_from_ra_dec
 
 
 def _hpid2_ra_dec(nside, hpids, **kwargs):
@@ -347,3 +351,62 @@ def hp_grow_argsort(in_map, ignore_nan=True):
         valid_neighbors_mask[(neighbors_of_current[sub_indx[0]], sub_indx[1])] = False
 
     return ordered_hp
+
+
+def _tree_for_mask(nside, scale=1000):
+    """Build a kdTree for HEALpixels"""
+    ra, dec = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(nside)))
+    tree = _build_tree(ra, dec, scale=scale)
+    return tree
+
+
+@lru_cache(maxsize=10)
+def _hp_grow_mask(nside, masked_indx_tuple, grow_size=np.radians(2.0), scale=1000):
+    """Grow a HEALpix mask.
+
+    Would be nice if healpy.query_disc was vectorized, but here we are.
+
+    Parameters
+    ----------
+    nside : int
+        HEALpix nside to use
+    masked_indx_tuple : `tuple`
+        Indices that are currently masked. Needs to be tuple of ints
+        so cache can hash it.
+    scale : `int`
+        Scale passed to _build_tree to maintain cross-platform repeatability.
+        Default 1000.
+
+    Returns
+    -------
+    out_array : `np.array`
+        The input mask with any masked pixels grown the correct amount
+    """
+
+    # Set nside and kdTree as attributes so they will be cached for later
+    if not hasattr(_hp_grow_mask, "nside"):
+        _hp_grow_mask.nside = nside
+        _hp_grow_mask.tree = _tree_for_mask(nside, scale=scale)
+        _hp_grow_mask.scale = scale
+    if (_hp_grow_mask.nside != nside) | (_hp_grow_mask.scale != scale):
+        _hp_grow_mask.nside = nside
+        _hp_grow_mask.tree = _tree_for_mask(nside, scale=scale)
+        _hp_grow_mask.scale = scale
+
+    # Where are we masked
+    # Technically might be able to reach into the tree object and
+    # get the points that way and save an _hpid2_ra_dec call.
+    ra, dec = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(nside))[list(masked_indx_tuple)])
+    x, y, z = _xyz_from_ra_dec(ra, dec)
+    if scale is not None:
+        x = np.round(x * scale).astype(int)
+        y = np.round(y * scale).astype(int)
+        z = np.round(z * scale).astype(int)
+        grow_size = np.round(grow_size * scale).astype(int)
+    # If there are lots of points, may want to use query_ball_tree
+    # instead for speed.
+    lists_of_neighbors = _hp_grow_mask.tree.query_ball_point(np.vstack([x, y, z]).T, grow_size)
+
+    u_indx = np.unique(np.concatenate(lists_of_neighbors))
+
+    return u_indx
