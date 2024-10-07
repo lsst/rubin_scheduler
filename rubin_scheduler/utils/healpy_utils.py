@@ -387,11 +387,15 @@ def _hp_grow_mask(nside, masked_indx_tuple, grow_size=np.radians(2.0), scale=100
     if not hasattr(_hp_grow_mask, "nside"):
         _hp_grow_mask.nside = nside
         _hp_grow_mask.tree = _tree_for_mask(nside, scale=scale)
-    if _hp_grow_mask.nside != nside:
+        _hp_grow_mask.scale = scale
+    if (_hp_grow_mask.nside != nside) | (_hp_grow_mask.scale != scale):
         _hp_grow_mask.nside = nside
         _hp_grow_mask.tree = _tree_for_mask(nside, scale=scale)
+        _hp_grow_mask.scale = scale
 
     # Where are we masked
+    # Technically might be able to reach into the tree object and
+    # get the points that way and save an _hpid2_ra_dec call.
     ra, dec = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(nside))[list(masked_indx_tuple)])
     x, y, z = _xyz_from_ra_dec(ra, dec)
     if scale is not None:
