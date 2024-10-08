@@ -162,6 +162,9 @@ class IntRounded:
         result = IntRounded(self.initial / other.initial, scale=out_scale)
         return result
 
+    def __hash__(self):
+        return hash(tuple(self.__dict__.items()))
+
 
 def restore_scheduler(observation_id, scheduler, observatory, in_obs, filter_sched=None, fast=True):
     """Put the scheduler and observatory in the state they were in.
