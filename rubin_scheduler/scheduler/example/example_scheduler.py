@@ -1414,7 +1414,7 @@ def gen_scheduler(args):
     nside = args.nside
     mjd_plus = args.mjd_plus
     split_long = args.split_long
-    too = args.too
+    too = ~args.no_too
 
     max_dither = 0.7  # Degrees. For DDFs
     ddf_season_frac = 0.2  # Amount of season to use for DDFs
@@ -1644,8 +1644,8 @@ def sched_argparser():
         help="Split long ToO exposures into standard visit lengths",
     )
     parser.set_defaults(split_long=False)
-    parser.add_argument("--too", dest="too", action="store_true")
-    parser.set_defaults(too=False)
+    parser.add_argument("--no_too", dest="no_too", action="store_true")
+    parser.set_defaults(no_too=False)
 
     return parser
 
