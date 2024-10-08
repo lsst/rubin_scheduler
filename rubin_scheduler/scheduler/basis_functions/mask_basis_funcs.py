@@ -233,21 +233,27 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
     @lru_cache(maxsize=2)
     def _static_calc_value(
         nside,
-        future_alt,
-        future_az,
-        alt,
+        future_alt_tuple,
+        future_az_tuple,
+        alt_tuple,
         r_min_alt,
         r_max_alt,
         sky_alt_limits,
         tel_alt_limits,
         min_az,
         max_az,
-        az,
+        az_tuple,
         sky_az_limits,
         tel_az_limits,
         pad,
         scale
     ):
+        # Numpy arrays are not hashable, but hashable arguments are needed
+        # to make caching work. So, convert to and from tuples.
+        future_alt = np.array(future_alt_tuple)
+        future_az = np.array(future_az_tuple)
+        alt = np.array(alt_tuple)
+        az = np.array(az_tuple)
         # Basis function value will be 0 except where masked (then np.nan)
         result = np.zeros(hp.nside2npix(nside), dtype=float)
 
@@ -342,18 +348,18 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
 
         result = self._static_calc_value(
             self.nside,
-            future_alt,
-            future_az,
-            conditions.alt,
+            tuple(future_alt),
+            tuple(future_az),
+            tuple(conditions.alt),
             self.r_min_alt,
             self.r_max_alt,
-            tuple(conditions.sky_alt_limits),
-            tuple(conditions.tel_alt_limits),
+            None if conditions.sky_alt_limits is None else tuple(conditions.sky_alt_limits),
+            None if conditions.tel_alt_limits is None else tuple(conditions.tel_alt_limits),
             self.min_az,
             self.max_az,
-            conditions.az,
-            tuple(conditions.sky_az_limits),
-            tuple(conditions.tel_az_limits),
+            tuple(conditions.az),
+            None if conditions.sky_az_limits is None else tuple(conditions.sky_az_limits),
+            None if conditions.tel_az_limits is None else tuple(conditions.tel_az_limits),
             self.pad,
             self.scale
         )
