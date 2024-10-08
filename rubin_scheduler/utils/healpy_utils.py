@@ -398,14 +398,20 @@ def _hp_grow_mask(nside, masked_indx_tuple, grow_size=np.radians(2.0), scale=100
     # get the points that way and save an _hpid2_ra_dec call.
     ra, dec = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(nside))[list(masked_indx_tuple)])
     x, y, z = _xyz_from_ra_dec(ra, dec)
+
+    # convert angular distance to Euclidian distance
+    zp = _xyz_from_ra_dec(0, 0)
+    new_pt = _xyz_from_ra_dec(0, grow_size)
+    dist = np.linalg.norm(zp-new_pt)
+
     if scale is not None:
         x = np.round(x * scale).astype(int)
         y = np.round(y * scale).astype(int)
         z = np.round(z * scale).astype(int)
-        grow_size = np.round(grow_size * scale).astype(int)
+        dist = np.round(dist * scale).astype(int)
     # If there are lots of points, may want to use query_ball_tree
     # instead for speed.
-    lists_of_neighbors = _hp_grow_mask.tree.query_ball_point(np.vstack([x, y, z]).T, grow_size)
+    lists_of_neighbors = _hp_grow_mask.tree.query_ball_point(np.vstack([x, y, z]).T, dist)
 
     u_indx = np.unique(np.concatenate(lists_of_neighbors))
 
