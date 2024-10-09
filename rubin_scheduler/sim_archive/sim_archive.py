@@ -485,7 +485,9 @@ def make_sim_archive_cli(*args):
     return sim_archive_uri
 
 
-def compile_sim_metadata(archive_uri: str, compilation_resource: str | ResourcePath, num_nights: int=10000) -> str:
+def compile_sim_metadata(
+    archive_uri: str, compilation_resource: str | ResourcePath, num_nights: int = 10000
+) -> str:
     """Read sim archive metadata and export it to tables in an hdf5 files.
 
     Parameters
@@ -542,7 +544,7 @@ def compile_sim_metadata(archive_uri: str, compilation_resource: str | ResourceP
         sim_runner_kwargs_df.to_hdf(local_hdf_fname, key="kwargs", format="table")
         tags_df.to_hdf(local_hdf_fname, key="tags", format="table")
 
-        with open(local_hdf_fname, 'rb') as local_hdf_io:
+        with open(local_hdf_fname, "rb") as local_hdf_io:
             hdf_bytes = local_hdf_io.read()
 
         if isinstance(compilation_resource, str):
@@ -612,14 +614,110 @@ def read_sim_metadata_from_hdf(compilation_resource: str | ResourcePath) -> dict
     sim_metadata = sim_df.to_dict(orient="index")
 
     for sim_uri in sim_metadata:
-        sim_metadata[sim_uri]['simulated_dates'] = {
-            'first': sim_metadata[sim_uri]['first_simulated_date'],
-            'last': sim_metadata[sim_uri]['last_simulated_date']
+        # Return begin and end date to their nested dict format.
+        sim_metadata[sim_uri]["simulated_dates"] = {
+            "first": sim_metadata[sim_uri]["first_simulated_date"],
+            "last": sim_metadata[sim_uri]["last_simulated_date"],
         }
-        del sim_metadata[sim_uri]['first_simulated_date']
-        del sim_metadata[sim_uri]['last_simulated_date']
+        del sim_metadata[sim_uri]["first_simulated_date"]
+        del sim_metadata[sim_uri]["last_simulated_date"]
+
+        # Unset keys show up as nans.
+        # Do not put them in the resultant dict.
+        nan_keys = []
+        for key in sim_metadata[sim_uri]:
+            try:
+                if np.isnan(sim_metadata[sim_uri][key]):
+                    nan_keys.append(key)
+            except TypeError:
+                pass
+
+        for key in nan_keys:
+            del sim_metadata[sim_uri][key]
 
     return sim_metadata
+
+
+def verify_compiled_sim_metadata(
+    archive_uri: str, compilation_resource: str | ResourcePath, num_nights: int = 10000
+) -> list[dict]:
+    """Verify that a compilation of sim archive metadata matches directaly
+    read metadata.
+
+    Parameters
+    ----------
+    archive_uri : `str`
+        Archive from which to directly read metadata.
+    compilation_resource : `str` or `ResourcePath`
+        Resource for the metadata compilation
+    num_nights : `int`, optional
+        number of nights to check, by default 10000
+
+    Returns
+    -------
+    differences : `list[dict]`
+        A list of dicts describing differences. If they match, it will return
+        and empty list.
+    """
+
+    direct_sim_metadata = read_archived_sim_metadata(archive_uri, num_nights=num_nights)
+
+    try:
+        # One old sim uses a couple of non-standard keywords, so update them.
+        simulated_dates = direct_sim_metadata["s3://rubin:rubin-scheduler-prenight/opsim/2023-12-15/1/"][
+            "simulated_dates"
+        ]
+        simulated_dates["first"] = simulated_dates["start"]
+        del simulated_dates["start"]
+        simulated_dates["last"] = simulated_dates["end"]
+        del simulated_dates["end"]
+    except KeyError:
+        # If the archive doesn't have this old sim, don't worry about it.
+        pass
+
+    compiled_sim_metadata = read_sim_metadata_from_hdf(compilation_resource)
+
+    # Test that everything in direct_sim_metadata has a corresponding matching
+    # entry in the compilation.
+    differences = []
+    for sim_uri in direct_sim_metadata:
+        for key in direct_sim_metadata[sim_uri]:
+            try:
+                if direct_sim_metadata[sim_uri][key] != compiled_sim_metadata[sim_uri][key]:
+                    differences.append(
+                        {
+                            "sim_uri": sim_uri,
+                            "key": key,
+                            "direct_value": direct_sim_metadata[sim_uri][key],
+                            "compiled_value": compiled_sim_metadata[sim_uri][key],
+                        }
+                    )
+            except KeyError:
+                differences.append(
+                    {
+                        "sim_uri": sim_uri,
+                        "key": key,
+                        "direct_value": direct_sim_metadata[sim_uri][key],
+                        "compiled_value": "MISSING",
+                    }
+                )
+                raise
+
+    # Test that everything in the compilation has a corresponding matching
+    # entry in direct_sim_metadata.
+    for sim_uri in compiled_sim_metadata:
+        for key in compiled_sim_metadata[sim_uri]:
+            if key not in direct_sim_metadata[sim_uri]:
+                differences.append(
+                    {
+                        "sim_uri": sim_uri,
+                        "key": key,
+                        "direct_value": "MISSING",
+                        "compiled_value": compiled_sim_metadata[sim_uri][key],
+                    }
+                )
+
+    return differences
 
 
 def drive_sim(
