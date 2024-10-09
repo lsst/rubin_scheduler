@@ -49,7 +49,9 @@ iers.conf.auto_download = False
 iers.conf.auto_max_age = None
 
 
-def example_scheduler(nside: int = DEFAULT_NSIDE, mjd_start: float = SURVEY_START_MJD) -> CoreScheduler:
+def example_scheduler(
+    nside: int = DEFAULT_NSIDE, mjd_start: float = SURVEY_START_MJD, no_too: bool = False
+) -> CoreScheduler:
     """Provide an example baseline survey-strategy scheduler.
 
     Parameters
@@ -58,6 +60,8 @@ def example_scheduler(nside: int = DEFAULT_NSIDE, mjd_start: float = SURVEY_STAR
         Nside for the scheduler maps and basis functions.
     mjd_start : `float`
         Start date for the survey (MJD).
+    no_too : `bool`
+        Turn off ToO simulation. Default False.
 
     Returns
     -------
@@ -67,6 +71,7 @@ def example_scheduler(nside: int = DEFAULT_NSIDE, mjd_start: float = SURVEY_STAR
     parser = sched_argparser()
     args = parser.parse_args(args=[])
     args.setup_only = True
+    args.no_too = no_too
     args.dbroot = "example_"
     args.outDir = "."
     args.nside = nside
@@ -99,7 +104,7 @@ def standard_bf(
 
     Parameters
     ----------
-    nside : int (32)
+    nside : int (DEFAULT_NSIDE)
         The HEALpix nside to use
     nexp : int (1)
         The number of exposures to use in a visit.
@@ -321,7 +326,7 @@ def blob_for_long(
 
     Parameters
     ----------
-    nside : int (32)
+    nside : int (DEFAULT_NSIDE)
         The HEALpix nside to use
     nexp : int (1)
         The number of exposures to use in a visit.
@@ -479,7 +484,7 @@ def blob_for_long(
 
 def gen_long_gaps_survey(
     footprints,
-    nside=32,
+    nside=DEFAULT_NSIDE,
     night_pattern=[True, True],
     gap_range=[2, 7],
     HA_min=12,
@@ -532,7 +537,7 @@ def gen_long_gaps_survey(
 
 
 def gen_greedy_surveys(
-    nside=32,
+    nside=DEFAULT_NSIDE,
     nexp=2,
     exptime=29.2,
     filters=["r", "i", "z", "y"],
@@ -560,7 +565,7 @@ def gen_greedy_surveys(
 
     Parameters
     ----------
-    nside : int (32)
+    nside : int (DEFAULT_NSIDE)
         The HEALpix nside to use
     nexp : int (1)
         The number of exposures to use in a visit.
@@ -697,7 +702,7 @@ def generate_blobs(
 
     Parameters
     ----------
-    nside : int (32)
+    nside : int
         The HEALpix nside to use
     nexp : int (1)
         The number of exposures to use in a visit.
@@ -934,7 +939,7 @@ def generate_twi_blobs(
 
     Parameters
     ----------
-    nside : int (32)
+    nside : int
         The HEALpix nside to use
     nexp : int (1)
         The number of exposures to use in a visit.
@@ -1136,12 +1141,12 @@ def ddf_surveys(
     return [survey1, survey2]
 
 
-def ecliptic_target(nside=32, dist_to_eclip=40.0, dec_max=30.0, mask=None):
+def ecliptic_target(nside=DEFAULT_NSIDE, dist_to_eclip=40.0, dec_max=30.0, mask=None):
     """Generate a target_map for the area around the ecliptic
 
     Parameters
     ----------
-    nside : int (32)
+    nside : int
         The HEALpix nside to use
     dist_to_eclip : float (40)
         The distance to the ecliptic to constrain to (degrees).
@@ -1376,7 +1381,7 @@ def set_run_info(dbroot=None, file_end="v3.4_", out_dir="."):
 def run_sched(
     scheduler,
     survey_length=365.25,
-    nside=32,
+    nside=DEFAULT_NSIDE,
     filename=None,
     verbose=False,
     extra_info=None,
@@ -1416,26 +1421,28 @@ def gen_scheduler(args):
     split_long = args.split_long
     too = ~args.no_too
 
-    max_dither = 0.7  # Degrees. For DDFs
+    # Parameters that were previously command-line
+    # arguments.
+    max_dither = 0.2  # Degrees. For DDFs
     ddf_season_frac = 0.2  # Amount of season to use for DDFs
-    illum_limit = 40.0  # Percent. Lunar illumination
-    u_exptime = 38.0
+    illum_limit = 40.0  # Percent. Lunar illumination used for filter loading
+    u_exptime = 38.0  # Deconds
     nslice = 2  # N slices for rolling
     rolling_scale = 0.9  # Strength of rolling
     rolling_uniform = True  # Should we use the uniform rolling flag
     nights_off = 3  # For long gaps
-    neo_night_pattern = 4
-    neo_filters = "riz"
-    neo_repeat = 4
-    neo_am = 2.5  # NEO airmass limit
-    neo_elong_req = 45.0  # Solar elongation required for inner solar system
-    neo_area_req = 0.0  # Sky area required before attempting inner solar system
+    ei_night_pattern = 4  # select doing earth interior observation every 4 nights
+    ei_filters = "riz"  # Filters to use for earth interior observations.
+    ei_repeat = 4  # Number of times to repeat earth interior observations
+    ei_am = 2.5  # Earth interior airmass limit
+    ei_elong_req = 45.0  # Solar elongation required for inner solar system
+    ei_area_req = 0.0  # Sky area required before attempting inner solar system
+    per_night = True  # Dither DDF per night
+    camera_ddf_rot_limit = 75.0  # degrees
 
     # Be sure to also update and regenerate DDF grid save file
     # if changing mjd_start
     mjd_start = SURVEY_START_MJD + mjd_plus
-    per_night = True  # Dither DDF per night
-    camera_ddf_rot_limit = 75.0  # degrees
 
     fileroot, extra_info = set_run_info(dbroot=dbroot, file_end="v4.0_", out_dir=out_dir)
 
@@ -1450,20 +1457,11 @@ def gen_scheduler(args):
         6: [True, True, True, False, False, False, False],
         7: [True, True, False, False, False, False],
     }
-    neo_night_pattern = pattern_dict[neo_night_pattern]
-    reverse_neo_night_pattern = [not val for val in neo_night_pattern]
+    ei_night_pattern = pattern_dict[ei_night_pattern]
+    reverse_ei_night_pattern = [not val for val in ei_night_pattern]
 
-    # Modify the footprint
-    magellenic_clouds_ratios = {
-        "u": 0.65,
-        "g": 0.65,
-        "r": 1.1,
-        "i": 1.1,
-        "z": 0.34,
-        "y": 0.35,
-    }
     sky = CurrentAreaMap(nside=nside)
-    footprints_hp_array, labels = sky.return_maps(magellenic_clouds_ratios=magellenic_clouds_ratios)
+    footprints_hp_array, labels = sky.return_maps()
 
     wfd_indx = np.where((labels == "lowdust") | (labels == "virgo"))[0]
     wfd_footprint = footprints_hp_array["r"] * 0
@@ -1532,13 +1530,13 @@ def gen_scheduler(args):
     greedy = gen_greedy_surveys(nside, nexp=nexp, footprints=footprints)
     neo = generate_twilight_near_sun(
         nside,
-        night_pattern=neo_night_pattern,
-        filters=neo_filters,
-        n_repeat=neo_repeat,
+        night_pattern=ei_night_pattern,
+        filters=ei_filters,
+        n_repeat=ei_repeat,
         footprint_mask=footprint_mask,
-        max_airmass=neo_am,
-        max_elong=neo_elong_req,
-        min_area=neo_area_req,
+        max_airmass=ei_am,
+        max_elong=ei_elong_req,
+        min_area=ei_area_req,
     )
     blobs = generate_blobs(
         nside,
@@ -1553,7 +1551,7 @@ def gen_scheduler(args):
         footprints=footprints,
         wfd_footprint=wfd_footprint,
         repeat_night_weight=repeat_night_weight,
-        night_pattern=reverse_neo_night_pattern,
+        night_pattern=reverse_ei_night_pattern,
     )
 
     roman_surveys = [
