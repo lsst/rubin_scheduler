@@ -11,7 +11,7 @@ import rubin_scheduler.scheduler.basis_functions as basis_functions
 from rubin_scheduler.scheduler import features
 from rubin_scheduler.scheduler.surveys import BaseSurvey
 from rubin_scheduler.scheduler.utils import ObservationArray
-from rubin_scheduler.utils import ddf_locations, ra_dec2_hpid
+from rubin_scheduler.utils import DEFAULT_NSIDE, ddf_locations, ra_dec2_hpid
 
 log = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ class DeepDrillingSurvey(BaseSurvey):
         reward_value=None,
         readtime=2.0,
         filter_change_time=120.0,
-        nside=None,
+        nside=DEFAULT_NSIDE,
         flush_pad=30.0,
         seed=42,
         detailers=None,
