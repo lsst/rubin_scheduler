@@ -399,6 +399,7 @@ def read_archived_sim_metadata(
                 compiled_uris_by_date[iso_date].append(uri)
                 max_compiled_date = max(max_compiled_date, iso_date)
         except FileNotFoundError:
+            LOGGER.warning(f"No metadata cache {compilation_resource}, not using cache.")
             pass
 
     all_metadata = {}
