@@ -160,6 +160,29 @@ Optional (for debugging or speculative future uses only) file types listed above
 ``statistics``
   Basic statistics for the visit database.
 
+Metadata cache
+--------------
+
+Reading each ``sim_metadata.yaml`` individually when loading metadata for a large number of simulations can be slow.
+Therefore, metadata for sets of simulations can be compiled into a ``compiled_metadata_cache.h5`` file.
+This file stores four tables in `hdf5` format: ``simulations``, ``files``, ``kwargs``, and ``tags``.
+Each of these tables is indexed by the URI of a simulation.
+
+The ``files`` table contains one column for each key in the ``files`` dictionary in the yaml metadata file for the simulation, providing the metadata needed to reconstruct this element of the dictionary.
+
+The ``kwargs`` table contains one column for each key in the ``sim_runner_kwargs`` dictionary in the yaml metadata file for the simulation, providing the metadata needed to reconstruct this element of the dictionary.
+If a keyword argument is not set, an `numpy.nan` value is stored in the table.
+
+The ``tags`` table contains one column: ``tag``, and contains one row for each tag in each simulation.
+
+The ``simulations`` table contains one column for every other keyword found in the metadata yaml files.
+If a keyword argument is not set, an `numpy.nan` value is stored in the table.
+
+The ``compile_sim_archive_metadata_resource`` command in ``rubin_scheduler`` maintains the ``compiled_metadata_cache.h5`` file in an archive.
+By default, it reads every ``sim_metadata.yaml`` file in the archive and builds a corresponding cache hdf5 file from scratch.
+If called with an ``--append`` flag, it reads an existing metadata cache file, reads ``sim_metadata.yaml`` files for simulations more recently added than the last file in the existing cache, appends them to the previous results from the cache, and writes the result to the cache.
+The ``append`` flag therefore speeds up the update considerably, but does not update the cache for any changes to previously added simulations (including deletions).
+
 Automatic archiving of generated data
 -------------------------------------
 
