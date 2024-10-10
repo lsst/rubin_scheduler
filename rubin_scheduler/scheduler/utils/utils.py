@@ -1077,6 +1077,8 @@ class TargetoO:
         RA of the estimated center of the event (radians).
     dec_rad_center : float
         Dec of the estimated center of the event (radians).
+    too_type : str
+        The type of ToO that is made
     """
 
     def __init__(
@@ -1087,6 +1089,7 @@ class TargetoO:
         duration,
         ra_rad_center=None,
         dec_rad_center=None,
+        too_type=None,
     ):
         self.footprint = footprint
         self.duration = duration
@@ -1094,6 +1097,7 @@ class TargetoO:
         self.mjd_start = mjd_start
         self.ra_rad_center = ra_rad_center
         self.dec_rad_center = dec_rad_center
+        self.too_type = too_type
 
 
 class SimTargetooServer:
