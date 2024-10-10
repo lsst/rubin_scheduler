@@ -15,7 +15,8 @@ import lzma
 import os
 import pickle
 import typing
-from datetime import datetime
+import warnings
+from datetime import datetime, date
 from functools import partial
 from tempfile import TemporaryFile
 from typing import Callable, Optional, Sequence
@@ -321,6 +322,34 @@ def _parse_dayobs_to_mjd(dayobs: str | float) -> float:
     return day_obs_mjd
 
 
+def _query_current_opsim_config_reference():
+    current_week = date.today().isocalendar().week
+
+    if current_week % 2 == 0:
+        wkstr = f"Weeks {current_week-1}-{current_week}"
+    else:
+        wkstr = f"Weeks {current_week}-{current_week+1}"
+
+    jql_str = f'Summary ~ "Support Summit Observing {wkstr} ORDER BY createdDate DESC"'
+
+    from jira import JIRA
+
+    jira = JIRA({"server": "https://rubinobs.atlassian.net/"})
+
+    results = jira.search_issues(jql_str=jql_str, json_result=True, maxResults=2, fields="key")
+    issue_keys = [i["key"] for i in results["issues"]]
+
+    if len(issue_keys) < 1:
+        warnings.warn("No issues found. Using head of develop instead.")
+        git_reference = "develop"
+    else:
+        if len(issue_keys) > 1:
+            warnings.warn("Multiple issues match: {', '.join(issue_keys)}, using the most recent")
+        git_reference = issue_keys[0]
+
+    return git_reference
+
+
 def prenight_sim_cli(cli_args: list = []) -> None:
 
     parser = argparse.ArgumentParser(description="Run prenight simulations")
@@ -361,13 +390,15 @@ def prenight_sim_cli(cli_args: list = []) -> None:
         if os.path.exists(scheduler_file):
             raise ValueError(f"File {scheduler_file} already exists!")
 
-        scheduler: CoreScheduler = get_scheduler(args.repo, args.script, args.branch)
+        git_reference = _query_current_opsim_config_reference() if args.branch == 'jira' else args.branch
+
+        scheduler: CoreScheduler = get_scheduler(args.repo, args.script, git_reference)
         save_scheduler(scheduler, scheduler_file)
 
         opsim_metadata = {
             "opsim_config_repository": args.repo,
             "opsim_config_script": args.script,
-            "opsim_config_branch": args.branch,
+            "opsim_config_branch": git_reference,
         }
     else:
         opsim_metadata = None
