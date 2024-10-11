@@ -270,7 +270,7 @@ def run_prenights(
     """
 
     if len(anomalous_overhead_seeds) > 0:
-        if "anomalous_overhead_func" in _VALID_DRIVE_SIM_KWARGS:
+        if "anomalous_overhead_func" not in _VALID_DRIVE_SIM_KWARGS:
             raise ValueError("anomalous overhead is not supported in this version of rubin_scheduler.")
 
     exec_time: str = _iso8601_now()
