@@ -38,7 +38,7 @@ if [ -f "/sdf/group/rubin/user/neilsen/mambaforge/etc/profile.d/mamba.sh" ]; the
     . "/sdf/group/rubin/user/neilsen/mambaforge/etc/profile.d/mamba.sh"
 fi
 
-mamba activate rubin_scheduler110
+mamba activate prenight
 export AWS_PROFILE=prenight
 WORK_DIR=$(date '+/sdf/data/rubin/user/neilsen/batch/auxtel_prenight_daily/%Y-%m-%dT%H%M%S' --utc)
 echo "Working in $WORK_DIR"
