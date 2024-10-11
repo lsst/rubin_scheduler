@@ -45,7 +45,7 @@ echo "Working in $WORK_DIR"
 mkdir ${WORK_DIR}
 printenv > env.out
 cd ${WORK_DIR}
-python /sdf/data/rubin/user/neilsen/batch/auxtel_prenight_daily/scripts/rubin_scheduler/rubin_scheduler/sim_archive/make_snapshot.p \
+python /sdf/data/rubin/user/neilsen/batch/auxtel_prenight_daily/scripts/rubin_scheduler/rubin_scheduler/sim_archive/make_snapshot.py \
     --scheduler_fname "auxtel.pickle.xz" \
     --repo "https://github.com/lsst-ts/ts_config_ocs.git" \
     --script "Scheduler/feature_scheduler/auxtel/fbs_config_image_photocal_survey.py" \
