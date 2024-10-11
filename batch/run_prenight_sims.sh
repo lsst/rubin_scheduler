@@ -38,13 +38,22 @@ if [ -f "/sdf/group/rubin/user/neilsen/mambaforge/etc/profile.d/mamba.sh" ]; the
     . "/sdf/group/rubin/user/neilsen/mambaforge/etc/profile.d/mamba.sh"
 fi
 
-mamba activate prenight
+mamba activate rubin_scheduler110
 export AWS_PROFILE=prenight
 WORK_DIR=$(date '+/sdf/data/rubin/user/neilsen/batch/auxtel_prenight_daily/%Y-%m-%dT%H%M%S' --utc)
 echo "Working in $WORK_DIR"
 mkdir ${WORK_DIR}
 printenv > env.out
 cd ${WORK_DIR}
-prenight_sim --scheduler auxtel.pickle.xz --opsim None --repo "https://github.com/lsst-ts/ts_config_ocs.git" --script "Scheduler/feature_scheduler/auxtel/fbs_config_image_photocal_survey.py" --branch main
+python /sdf/data/rubin/user/neilsen/batch/auxtel_prenight_daily/scripts/rubin_scheduler/rubin_scheduler/sim_archive/make_snapshot.py \
+    --scheduler_fname "auxtel.pickle.xz" \
+    --repo "https://github.com/lsst-ts/ts_config_ocs.git" \
+    --script "Scheduler/feature_scheduler/auxtel/fbs_config_image_photocal_survey.py" \
+    --branch jira \
+    --metadata_fname scheduler_md.json
+python /sdf/data/rubin/user/neilsen/batch/auxtel_prenight_daily/scripts/rubin_scheduler/rubin_scheduler/sim_archive/prenight.py \
+    --scheduler "auxtel.pickle.xz" \
+    --scheduler_metadata scheduler_md.json
+
 echo "******* END of run_prenight_sims.sh *********"
 

@@ -9,15 +9,16 @@ __all__ = [
 import argparse
 import bz2
 import gzip
+import importlib.util
 import io
+import json
 import logging
 import lzma
 import os
 import pickle
 import typing
-import warnings
-from datetime import datetime, date
 from functools import partial
+from inspect import getfullargspec
 from tempfile import TemporaryFile
 from typing import Callable, Optional, Sequence
 from warnings import warn
@@ -31,10 +32,9 @@ from rubin_scheduler.scheduler.example import example_scheduler
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
 from rubin_scheduler.scheduler.schedulers.core_scheduler import CoreScheduler
 from rubin_scheduler.scheduler.utils import SchemaConverter
+from rubin_scheduler.scheduler import sim_runner
 from rubin_scheduler.sim_archive.sim_archive import drive_sim
 from rubin_scheduler.site_models import Almanac
-
-from .make_snapshot import add_make_scheduler_snapshot_args, get_scheduler, save_scheduler
 
 try:
     from rubin_sim.data import get_baseline  # type: ignore
@@ -42,6 +42,7 @@ except ModuleNotFoundError:
     get_baseline = partial(warn, "Cannot find default baseline because rubin_sim is not installed.")
 
 DEFAULT_ARCHIVE_URI = "s3://rubin-scheduler-prenight/opsim/"
+_VALID_DRIVE_SIM_KWARGS = set(getfullargspec(drive_sim).args) | set(getfullargspec(sim_runner).args)
 
 
 def _run_sim(
@@ -59,26 +60,54 @@ def _run_sim(
     scheduler_io.seek(0)
     scheduler = pickle.load(scheduler_io)
 
-    observatory = ModelObservatory(
-        nside=scheduler.nside,
-        cloud_data="ideal",
-        seeing_data="ideal",
-        downtimes="ideal",
-    )
+    if "ideal_conditions" in getfullargspec(ModelObservatory).args:
+        # Work in older versions of rubin_scheduler
+        observatory = ModelObservatory(
+            nside=scheduler.nside,
+            ideal_conditions=True,
+        )
+    else:
+        observatory = ModelObservatory(
+            nside=scheduler.nside,
+            cloud_data="ideal",
+            seeing_data="ideal",
+            downtimes="ideal",
+        )
 
-    drive_sim(
-        observatory=observatory,
-        scheduler=scheduler,
-        archive_uri=archive_uri,
-        label=label,
-        tags=tags,
-        script=__file__,
-        sim_start_mjd=sim_start_mjd,
-        sim_duration=sim_duration,
-        record_rewards=True,
-        anomalous_overhead_func=anomalous_overhead_func,
-        opsim_metadata=opsim_metadata,
-    )
+    drive_sim_kwargs = {
+        "observatory": observatory,
+        "scheduler": scheduler,
+        "archive_uri": archive_uri,
+        "label": label,
+        "tags": tags,
+        "script": __file__,
+        "record_rewards": True,
+    }
+
+    not_supported_message = "This version of rubin_scheduler is not supported"
+
+    if "sim_start_mjd" in _VALID_DRIVE_SIM_KWARGS:
+        drive_sim_kwargs["sim_start_mjd"] = sim_start_mjd
+    elif "mjd_start" in _VALID_DRIVE_SIM_KWARGS:
+        drive_sim_kwargs["mjd_start"] = sim_start_mjd
+    else:
+        raise NotImplementedError(not_supported_message)
+
+    if "sim_duration" in _VALID_DRIVE_SIM_KWARGS:
+        drive_sim_kwargs["sim_duration"] = sim_duration
+    elif "survey_length" in _VALID_DRIVE_SIM_KWARGS:
+        drive_sim_kwargs["survey_length"] = sim_duration
+    else:
+        raise NotImplementedError(not_supported_message)
+
+    if anomalous_overhead_func is not None:
+        assert "anomalous_overhead_func" in _VALID_DRIVE_SIM_KWARGS, not_supported_message
+        drive_sim_kwargs["anomalous_overhead_func"] = anomalous_overhead_func
+
+    if "opsim_metadata" in _VALID_DRIVE_SIM_KWARGS:
+        drive_sim_kwargs["opsim_metadata"] = opsim_metadata
+
+    drive_sim(**drive_sim_kwargs)
 
 
 def _mjd_now() -> float:
@@ -240,6 +269,10 @@ def run_prenights(
         Extra metadata for the archive
     """
 
+    if len(anomalous_overhead_seeds) > 0:
+        if "anomalous_overhead_func" in _VALID_DRIVE_SIM_KWARGS:
+            raise ValueError("anomalous overhead is not supported in this version of rubin_scheduler.")
+
     exec_time: str = _iso8601_now()
     scheduler_io: io.BufferedRandom = _create_scheduler_io(
         day_obs_mjd, scheduler_fname=scheduler_file, opsim_db=opsim_db
@@ -322,34 +355,6 @@ def _parse_dayobs_to_mjd(dayobs: str | float) -> float:
     return day_obs_mjd
 
 
-def _query_current_opsim_config_reference():
-    current_week = date.today().isocalendar().week
-
-    if current_week % 2 == 0:
-        wkstr = f"Weeks {current_week-1}-{current_week}"
-    else:
-        wkstr = f"Weeks {current_week}-{current_week+1}"
-
-    jql_str = f'Summary ~ "Support Summit Observing {wkstr} ORDER BY createdDate DESC"'
-
-    from jira import JIRA
-
-    jira = JIRA({"server": "https://rubinobs.atlassian.net/"})
-
-    results = jira.search_issues(jql_str=jql_str, json_result=True, maxResults=2, fields="key")
-    issue_keys = [i["key"] for i in results["issues"]]
-
-    if len(issue_keys) < 1:
-        warnings.warn("No issues found. Using head of develop instead.")
-        git_reference = "develop"
-    else:
-        if len(issue_keys) > 1:
-            warnings.warn("Multiple issues match: {', '.join(issue_keys)}, using the most recent")
-        git_reference = issue_keys[0]
-
-    return git_reference
-
-
 def prenight_sim_cli(cli_args: list = []) -> None:
 
     parser = argparse.ArgumentParser(description="Run prenight simulations")
@@ -360,13 +365,14 @@ def prenight_sim_cli(cli_args: list = []) -> None:
         default=default_time.iso,
         help="The day_obs of the night to simulate.",
     )
+    parser.add_argument("--scheduler", type=str, help="pickle file of the scheduler to run.")
+    parser.add_argument("--scheduler_metadata", type=str, default="", help="metadata about the scheduler.")
     parser.add_argument(
         "--archive",
         type=str,
         default=DEFAULT_ARCHIVE_URI,
         help="Archive in which to store simulation results.",
     )
-    parser.add_argument("--scheduler", type=str, default=None, help="pickle file of the scheduler to run.")
 
     # Only pass a default if we have an opsim
     baseline = get_baseline()
@@ -377,8 +383,6 @@ def prenight_sim_cli(cli_args: list = []) -> None:
     else:
         parser.add_argument("--opsim", type=str, help="Opsim database from which to load previous visits.")
 
-    add_make_scheduler_snapshot_args(parser)
-
     args = parser.parse_args() if len(cli_args) == 0 else parser.parse_args(cli_args)
 
     day_obs_mjd = _parse_dayobs_to_mjd(args.dayobs)
@@ -386,22 +390,13 @@ def prenight_sim_cli(cli_args: list = []) -> None:
     opsim_db = None if args.opsim in ("", "None") else args.opsim
 
     scheduler_file = args.scheduler
-    if args.repo is not None:
-        if os.path.exists(scheduler_file):
-            raise ValueError(f"File {scheduler_file} already exists!")
-
-        git_reference = _query_current_opsim_config_reference() if args.branch == 'jira' else args.branch
-
-        scheduler: CoreScheduler = get_scheduler(args.repo, args.script, git_reference)
-        save_scheduler(scheduler, scheduler_file)
-
-        opsim_metadata = {
-            "opsim_config_repository": args.repo,
-            "opsim_config_script": args.script,
-            "opsim_config_branch": git_reference,
-        }
+    if len(args.scheduler_metadata)>0:
+        with open(args.scheduler_metadata, 'r') as metadata_io:
+            opsim_metadata = json.load(metadata_io)
     else:
         opsim_metadata = None
+
+    anomalous_overhead_seeds = (101, 102) if "anomalous_overhead_func" in _VALID_DRIVE_SIM_KWARGS else tuple()
 
     run_prenights(
         day_obs_mjd,
@@ -409,7 +404,7 @@ def prenight_sim_cli(cli_args: list = []) -> None:
         scheduler_file,
         opsim_db,
         minutes_delays=(0, 1, 10, 60),
-        anomalous_overhead_seeds=(101, 102),
+        anomalous_overhead_seeds=anomalous_overhead_seeds,
         opsim_metadata=opsim_metadata,
     )
 
