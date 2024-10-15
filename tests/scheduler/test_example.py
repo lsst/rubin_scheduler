@@ -64,7 +64,7 @@ class TestExample(unittest.TestCase):
         "Test data not available.",
     )
     def test_example_64(self):
-        """Test the example scheduler executes all the expected surveys 
+        """Test the example scheduler executes all the expected surveys
         and can run on a different nside."""
         mjd_start = SURVEY_START_MJD
         scheduler = example_scheduler(mjd_start=mjd_start, nside=64)
