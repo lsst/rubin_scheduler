@@ -68,6 +68,8 @@ class LongGapSurvey(BaseSurvey):
     ):
         self.blob_survey = blob_survey
         self.scripted_survey = scripted_survey
+        # Set the nside to be the same as the blob
+        self.nside = self.blob_survey.nside
         self.night = -1
         self.gap_range = np.array(gap_range) / 24.0  # To days
         rng = np.random.default_rng(seed)
