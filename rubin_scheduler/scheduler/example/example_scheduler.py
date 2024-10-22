@@ -104,46 +104,52 @@ def standard_bf(
 
     Parameters
     ----------
-    nside : int (DEFAULT_NSIDE)
-        The HEALpix nside to use
-    nexp : int (1)
-        The number of exposures to use in a visit.
-    exptime : float (30.)
-        The exposure time to use per visit (seconds)
-    filtername : list of str
-        The filternames for the first set
-    filtername2 : list of str
-        The filter names for the second in the pair (None if unpaired)
-    n_obs_template : dict (None)
-        The number of observations to take every season in each filter
-    season : float (300)
-        The length of season (i.e., how long before templates expire) (days)
-    season_start_hour : float (-4.)
-        For weighting how strongly a template image needs to be
-        observed (hours)
-    sesason_end_hour : float (2.)
-        For weighting how strongly a template image needs to be
-        observed (hours)
-    moon_distance : float (30.)
-        The mask radius to apply around the moon (degrees)
-    m5_weight : float (3.)
-        The weight for the 5-sigma depth difference basis function
-    footprint_weight : float (0.3)
+    nside : `int`
+        The HEALpix nside to use. Defaults to DEFAULT_NSIDE
+    filtername : `str`
+        The filter name for the first observation. Default "g".
+    filtername2 : `str`
+        The filter name for the second in the pair (None if unpaired).
+        Default "i".
+    n_obs_template : `dict`
+        The number of observations to take every season in each filter.
+        Default None.
+    season : `float`
+        The length of season (i.e., how long before templates expire) (days).
+        Default 300.
+    season_start_hour : `float`
+        Hour angle limits to use when gathering templates.
+        Default -4 (hours)
+    sesason_end_hour : `float`
+       Hour angle limits to use when gathering templates.
+       Default +2 (hours)
+    moon_distance : `float`
+        The mask radius to apply around the moon (degrees).
+        Default 30.
+    m5_weight : `float`
+        The weight for the 5-sigma depth difference basis function.
+        Default 6.0 (unitless)
+    footprint_weight : `float`
         The weight on the survey footprint basis function.
-    slewtime_weight : float (3.)
-        The weight on the slewtime basis function
-    stayfilter_weight : float (3.)
+        Default 0.3 (unitless)
+    slewtime_weight : `float`
+        The weight on the slewtime basis function. Default 3 (unitless).
+    stayfilter_weight : `float`
         The weight on basis function that tries to stay avoid filter changes.
-    template_weight : float (12.)
-        The weight to place on getting image templates every season
-    u_template_weight : float (24.)
+        Default 3 (unitless).
+    template_weight : `float`
+        The weight to place on getting image templates every season.
+        Default 12 (unitless).
+    u_template_weight : `float`
         The weight to place on getting image templates in u-band. Since there
         are so few u-visits, it can be helpful to turn this up a little
         higher than the standard template_weight kwarg.
-    g_template_weight : float (24.)
+        Default 24 (unitless)
+    g_template_weight : `float`
         The weight to place on getting image templates in g-band. Since there
         are so few g-visits, it can be helpful to turn this up a
         little higher than the standard template_weight kwarg.
+        Default 24 (unitless).
 
     Returns
     -------
@@ -326,56 +332,71 @@ def blob_for_long(
 
     Parameters
     ----------
-    nside : int (DEFAULT_NSIDE)
-        The HEALpix nside to use
-    nexp : int (1)
-        The number of exposures to use in a visit.
-    exptime : float (30.)
-        The exposure time to use per visit (seconds)
-    filter1s : list of str
-        The filternames for the first set
-    filter2s : list of str
-        The filter names for the second in the pair (None if unpaired)
-    pair_time : float (33)
-        The ideal time between pairs (minutes)
-    camera_rot_limits : list of float ([-80., 80.])
+    nside : `int`
+        The HEALpix nside to use. Default to DEFAULT_NSIDE.
+    nexp : `int`
+        The number of exposures to use in a visit. Default 2.
+    exptime : `float`
+        The exposure time to use per visit (seconds).
+        Default 29.2
+    filter1s : `list` [`str`]
+        The filternames for the first filter in a pair.
+        Default ["g"].
+    filter2s : `list` of `str`
+        The filter names for the second in the pair (None if unpaired).
+        Default ["i"].
+    pair_time : `float`
+        The ideal time between pairs (minutes). Default 33.
+    camera_rot_limits : `list` of `float`
         The limits to impose when rotationally dithering the camera (degrees).
-    n_obs_template : dict (None)
+        Default [-80., 80.].
+    n_obs_template : `dict`
         The number of observations to take every season in each filter.
-        If None, sets to 3 each.
-    season : float (300)
+        If None, sets to 3 each. Default None.
+    season : float
         The length of season (i.e., how long before templates expire) (days)
-    season_start_hour : float (-4.)
-        For weighting how strongly a template image needs to be
-        observed (hours)
-    sesason_end_hour : float (2.)
-        For weighting how strongly a template image needs to be
-        observed (hours)
-    shadow_minutes : float (60.)
-        Used to mask regions around zenith (minutes)
-    max_alt : float (76.
-        The maximium altitude to use when masking zenith (degrees)
-    moon_distance : float (30.)
-        The mask radius to apply around the moon (degrees)
-    ignore_obs : str or list of str ('DD')
+        Default 300.
+    season_start_hour : `float`
+        Hour angle limits to use when gathering templates.
+        Default -4 (hours)
+    sesason_end_hour : `float`
+       Hour angle limits to use when gathering templates.
+       Default +2 (hours)
+    shadow_minutes : `float`
+        Used to mask regions around zenith (minutes). Default 60.
+    max_alt : `float`
+        The maximium altitude to use when masking zenith (degrees).
+        Default 76.
+    moon_distance : `float`
+        The mask radius to apply around the moon (degrees).
+        Default 30.
+    ignore_obs : `str` or `list` of `str`
         Ignore observations by surveys that include the given substring(s).
-    m5_weight : float (3.)
-        The weight for the 5-sigma depth difference basis function
-    footprint_weight : float (0.3)
+        Default "DD".
+    m5_weight : `float`
+        The weight for the 5-sigma depth difference basis function.
+        Default 3 (unitless).
+    footprint_weight : `float`
         The weight on the survey footprint basis function.
-    slewtime_weight : float (3.)
-        The weight on the slewtime basis function
-    stayfilter_weight : float (3.)
+        Default 0.3 (uniteless).
+    slewtime_weight : `float`
+        The weight on the slewtime basis function.
+        Default 3.0 (uniteless).
+    stayfilter_weight : `float`
         The weight on basis function that tries to stay avoid filter changes.
-    template_weight : float (12.)
-        The weight to place on getting image templates every season
-    u_template_weight : float (24.)
+        Default 3.0 (uniteless).
+    template_weight : `float`
+        The weight to place on getting image templates every season.
+        Default 12 (uniteless).
+    u_template_weight : `float`
         The weight to place on getting image templates in u-band. Since there
         are so few u-visits, it can be helpful to turn this up a
         little higher than the standard template_weight kwarg.
-    u_nexp1 : bool (True)
+        Default 24 (unitless.)
+    u_nexp1 : `bool`
         Add a detailer to make sure the number of expossures
         in a visit is always 1 for u observations.
+        Default True.
     """
 
     BlobSurvey_params = {
@@ -498,8 +519,38 @@ def gen_long_gaps_survey(
     """
     Paramterers
     -----------
-    HA_min(_max) : float
+    footprints : `rubin_scheduler.scheduler.utils.footprints.Footprints`
+        The footprints to be used.
+    night_pattern : `list` [`bool`]
+        Which nights to let the survey execute. Default of [True, True]
+        executes every night.
+    gap_range : `list` of `float`
+        Range of times to attempt to to gather pairs (hours).
+        Default [2, 7].
+    HA_min : `float`
         The hour angle limits passed to the initial blob scheduler.
+        Default 12 (hours)
+    HA_max : `float`
+        The hour angle limits passed to the initial blob scheduler.
+        Default 20.5 (hours).
+    time_after_twi : `float`
+        The time after evening twilight to attempt long gaps (minutes).
+        Default 120.
+    u_template_weight : `float`
+        The weight to place on getting image templates in u-band. Since there
+        are so few u-visits, it can be helpful to turn this up a
+        little higher than the standard template_weight kwarg.
+        Default 50 (unitless.)
+    g_template_weight : `float`
+        The weight to place on getting image templates in u-band. Since there
+        are so few u-visits, it can be helpful to turn this up a
+        little higher than the standard template_weight kwarg.
+        Default 50 (unitless.)
+    u_exptime : `float`
+        Exposure time to use for u-band visits (seconds).
+        Default 38.
+    nexp : `int`
+        Number of exposures per visit. Default 2.
     """
 
     surveys = []
@@ -565,32 +616,43 @@ def gen_greedy_surveys(
 
     Parameters
     ----------
-    nside : int (DEFAULT_NSIDE)
+    nside : `int`
         The HEALpix nside to use
-    nexp : int (1)
-        The number of exposures to use in a visit.
-    exptime : float (30.)
-        The exposure time to use per visit (seconds)
-    filters : list of str (['r', 'i', 'z', 'y'])
+    nexp : `int`
+        The number of exposures to use in a visit. Default 1.
+    exptime : `float`
+        The exposure time to use per visit (seconds).
+        Default 29.2
+    filters : `list` of `str`
         Which filters to generate surveys for.
-    camera_rot_limits : list of float ([-80., 80.])
+        Default ['r', 'i', 'z', 'y'].
+    camera_rot_limits : `list` of `float`
         The limits to impose when rotationally dithering the camera (degrees).
-    shadow_minutes : float (60.)
-        Used to mask regions around zenith (minutes)
-    max_alt : float (76.
-        The maximium altitude to use when masking zenith (degrees)
-    moon_distance : float (30.)
-        The mask radius to apply around the moon (degrees)
-    ignore_obs : str or list of str ('DD')
+        Default [-80., 80.].
+    shadow_minutes : `float`
+        Used to mask regions around zenith (minutes).
+        Default 60.
+    max_alt : `float`
+        The maximium altitude to use when masking zenith (degrees).
+        Default 76
+    moon_distance : `float`
+        The mask radius to apply around the moon (degrees).
+        Default 30.
+    ignore_obs : `str` or `list` of `str`
         Ignore observations by surveys that include the given substring(s).
-    m5_weight : float (3.)
-        The weight for the 5-sigma depth difference basis function
-    footprint_weight : float (0.3)
+        Default ["DD", "twilight_near_sun"].
+    m5_weight : `float`
+        The weight for the 5-sigma depth difference basis function.
+        Default 3 (unitless).
+    footprint_weight : `float`
         The weight on the survey footprint basis function.
-    slewtime_weight : float (3.)
-        The weight on the slewtime basis function
-    stayfilter_weight : float (3.)
+        Default 0.3 (uniteless).
+    slewtime_weight : `float`
+        The weight on the slewtime basis function.
+        Default 3.0 (uniteless).
+    stayfilter_weight : `float`
         The weight on basis function that tries to stay avoid filter changes.
+        Default 3.0 (uniteless).
     """
     # Define the extra parameters that are used in the greedy survey. I
     # think these are fairly set, so no need to promote to utility func kwargs
@@ -702,59 +764,76 @@ def generate_blobs(
 
     Parameters
     ----------
-    nside : int
+    nside : `int`
         The HEALpix nside to use
-    nexp : int (1)
+    nexp : int
         The number of exposures to use in a visit.
-    exptime : float (30.)
-        The exposure time to use per visit (seconds)
-    filter1s : list of str
-        The filternames for the first set
-    filter2s : list of str
+        Default 1.
+    exptime : `float`
+        The exposure time to use per visit (seconds).
+        Default 29.2
+    filter1s : `list` [`str`]
+        The filternames for the first set.
+        Default ["u", "u", "g", "r", "i", "z", "y"]
+    filter2s : `list` of `str`
         The filter names for the second in the pair (None if unpaired)
-    pair_time : float (33)
-        The ideal time between pairs (minutes)
-    camera_rot_limits : list of float ([-80., 80.])
+        Default ["g", "r", "r", "i", "z", "y", "y"].
+    pair_time : `float`
+        The ideal time between pairs (minutes).
+        Default 33.
+    camera_rot_limits : `list` of `float`
         The limits to impose when rotationally dithering the camera (degrees).
-    n_obs_template : Dict (None)
+        Default [-80., 80.].
+    n_obs_template : `dict`
         The number of observations to take every season in each filter.
         If None, sets to 3 each.
-    season : float (300)
-        The length of season (i.e., how long before templates expire) (days)
-    season_start_hour : float (-4.)
-        For weighting how strongly a template image needs to be
-        observed (hours)
-    sesason_end_hour : float (2.)
-        For weighting how strongly a template image needs to
-        be observed (hours)
-    shadow_minutes : float (60.)
-        Used to mask regions around zenith (minutes)
-    max_alt : float (76.
-        The maximium altitude to use when masking zenith (degrees)
-    moon_distance : float (30.)
-        The mask radius to apply around the moon (degrees)
-    ignore_obs : str or list of str ('DD')
+    season : `float`
+        The length of season (i.e., how long before templates expire) (days).
+        Default 300.
+    season_start_hour : `float`
+        Hour angle limits to use when gathering templates.
+        Default -4 (hours)
+    sesason_end_hour : `float`
+       Hour angle limits to use when gathering templates.
+       Default +2 (hours)
+    shadow_minutes : `float`
+        Used to mask regions around zenith (minutes).
+        Default 60.
+    max_alt : `float`
+        The maximium altitude to use when masking zenith (degrees).
+        Default 76.
+    moon_distance : `float`
+        The mask radius to apply around the moon (degrees).
+        Default 30.
+    ignore_obs : `str` or `list` of `str`
         Ignore observations by surveys that include the given substring(s).
-    m5_weight : float (3.)
-        The weight for the 5-sigma depth difference basis function
-    footprint_weight : float (0.3)
+        Default ["DD", "twilight_near_sun"].
+    m5_weight : `float`
+        The weight for the 5-sigma depth difference basis function.
+        Default 3 (unitless).
+    footprint_weight : `float`
         The weight on the survey footprint basis function.
-    slewtime_weight : float (3.)
-        The weight on the slewtime basis function
-    stayfilter_weight : float (3.)
+        Default 0.3 (uniteless).
+    slewtime_weight : `float`
+        The weight on the slewtime basis function.
+        Default 3.0 (uniteless).
+    stayfilter_weight : `float`
         The weight on basis function that tries to stay avoid filter changes.
-    template_weight : float (12.)
-        The weight to place on getting image templates every season
-    u_template_weight : float (24.)
+        Default 3.0 (uniteless).
+    template_weight : `float`
+        The weight to place on getting image templates every season.
+        Default 12 (unitless).
+    u_template_weight : `float`
         The weight to place on getting image templates in u-band. Since there
         are so few u-visits, it can be helpful to turn this up a
         little higher than the standard template_weight kwarg.
-    u_nexp1 : bool (True)
+        Default 24 (unitless).
+    u_nexp1 : `bool`
         Add a detailer to make sure the number of expossures in a visit
-        is always 1 for u observations.
-    scheduled_respect : float (45)
+        is always 1 for u observations. Default True.
+    scheduled_respect : `float`
         How much time to require there be before a pre-scheduled
-        observation (minutes)
+        observation (minutes). Default 45.
     """
 
     BlobSurvey_params = {
@@ -939,53 +1018,68 @@ def generate_twi_blobs(
 
     Parameters
     ----------
-    nside : int
+    nside : `int`
         The HEALpix nside to use
-    nexp : int (1)
+    nexp : `int`
         The number of exposures to use in a visit.
-    exptime : float (30.)
-        The exposure time to use per visit (seconds)
-    filter1s : list of str
-        The filternames for the first set
-    filter2s : list of str
-        The filter names for the second in the pair (None if unpaired)
-    pair_time : float (22)
-        The ideal time between pairs (minutes)
-    camera_rot_limits : list of float ([-80., 80.])
+    exptime : `float`
+        The exposure time to use per visit (seconds).
+        Default 29.2
+    filter1s : `list` of `str`
+        The filternames for the first set.
+        Default ["r", "i", "z", "y"].
+    filter2s : `list` of `str`
+        The filter names for the second in the pair (None if unpaired).
+        Default ["i", "z", "y", "y"].
+    pair_time : `float`
+        The ideal time between pairs (minutes). Default 22.
+    camera_rot_limits : `list` of `float`
         The limits to impose when rotationally dithering the camera (degrees).
-    n_obs_template : dict (None)
+        Default [-80., 80.].
+    n_obs_template : `dict`
         The number of observations to take every season in each filter.
-        If None, sets to 3 each.
-    season : float (300)
-        The length of season (i.e., how long before templates expire) (days)
-    season_start_hour : float (-4.)
-        For weighting how strongly a template image needs to be
-        observed (hours)
-    sesason_end_hour : float (2.)
-        For weighting how strongly a template image needs to
-        be observed (hours)
-    shadow_minutes : float (60.)
-        Used to mask regions around zenith (minutes)
-    max_alt : float (76.
-        The maximium altitude to use when masking zenith (degrees)
-    moon_distance : float (30.)
-        The mask radius to apply around the moon (degrees)
-    ignore_obs : str or list of str ('DD')
+        If None, sets to 3 each. Default None.
+    season : `float`
+        The length of season (i.e., how long before templates expire) (days).
+        Default 300.
+    season_start_hour : `float`
+        Hour angle limits to use when gathering templates.
+        Default -4 (hours)
+    sesason_end_hour : `float`
+       Hour angle limits to use when gathering templates.
+       Default +2 (hours)
+    shadow_minutes : `float`
+        Used to mask regions around zenith (minutes).
+        Default 60.
+    max_alt : `float`
+        The maximium altitude to use when masking zenith (degrees).
+        Default 76.
+    moon_distance : `float`
+        The mask radius to apply around the moon (degrees).
+        Default 30.
+    ignore_obs : `str` or `list` of `str`
         Ignore observations by surveys that include the given substring(s).
-    m5_weight : float (3.)
-        The weight for the 5-sigma depth difference basis function
-    footprint_weight : float (0.3)
+        Default ["DD", "twilight_near_sun"].
+    m5_weight : `float`
+        The weight for the 5-sigma depth difference basis function.
+        Default 3 (unitless).
+    footprint_weight : `float`
         The weight on the survey footprint basis function.
-    slewtime_weight : float (3.)
-        The weight on the slewtime basis function
-    stayfilter_weight : float (3.)
+        Default 0.3 (uniteless).
+    slewtime_weight : `float`
+        The weight on the slewtime basis function.
+        Default 3.0 (uniteless).
+    stayfilter_weight : `float`
         The weight on basis function that tries to stay avoid filter changes.
-    template_weight : float (12.)
-        The weight to place on getting image templates every season
-    u_template_weight : float (24.)
-        The weight to place on getting image templates in u-band.
-        Since there are so few u-visits, it can be helpful to turn
-        this up a little higher than the standard template_weight kwarg.
+        Default 3.0 (uniteless).
+    template_weight : `float`
+        The weight to place on getting image templates every season.
+        Default 12 (unitless).
+    u_template_weight : `float`
+        The weight to place on getting image templates in u-band. Since there
+        are so few u-visits, it can be helpful to turn this up a
+        little higher than the standard template_weight kwarg.
+        Default 24 (unitless).
     """
 
     BlobSurvey_params = {
@@ -1121,6 +1215,21 @@ def ddf_surveys(
     expt=29.2,
     nexp=2,
 ):
+    """Generate surveys for DDF observations
+
+    Parameters
+    ----------
+    detailers : `list` of `rubin_scheduler.scheduler.Detailer`
+        Detailers for DDFs. Default None.
+    season_unobs_frac : `float`
+        Fraction of the season to not attempt DDF observations.
+        Default 0.2.
+    euclid_detailers : `list` of `rubin_scheduler.scheduler.Detailer`
+        Detailers to use for Euclid DDF observations.
+        Default None.
+    expt : `float`
+        Exposure time for DDF visits. Default 29.2.
+    """
     nsnaps = [1, 2, 2, 2, 2, 2]
     if nexp == 1:
         nsnaps = [1, 1, 1, 1, 1, 1]
@@ -1146,15 +1255,17 @@ def ecliptic_target(nside=DEFAULT_NSIDE, dist_to_eclip=40.0, dec_max=30.0, mask=
 
     Parameters
     ----------
-    nside : int
+    nside : `int`
         The HEALpix nside to use
-    dist_to_eclip : float (40)
+    dist_to_eclip : `float`
         The distance to the ecliptic to constrain to (degrees).
-    dec_max : float (30)
+        Default 40.
+    dec_max : `float`
         The max declination to alow (degrees).
-    mask : np.array (None)
+        Default 30.
+    mask : `np.array`
         Any additional mask to apply, should be a
-        HEALpix mask with matching nside.
+        HEALpix mask with matching nside. Default None.
     """
 
     ra, dec = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(nside)))
@@ -1201,45 +1312,53 @@ def generate_twilight_near_sun(
 
     Parameters
     ----------
-    night_pattern : list of bool (None)
+    night_pattern : `list` of `bool`
         A list of bools that set when the survey will be
         active. e.g., [True, False] for every-other night,
         [True, False, False] for every third night.
-    nexp : int (1)
-        Number of snaps in a visit
-    exptime : float (15)
-        Exposure time of visits
-    ideal_pair_time : float (5)
+        Default None.
+    nexp : `int`
+        Number of snaps in a visit. Default 1.
+    exptime : `float`
+        Exposure time of visits. Default 15.
+    ideal_pair_time : `float`
         Ideal time between repeat visits (minutes).
-    max_airmass : float (2)
-        Maximum airmass to attempt (unitless).
-    camera_rot_limits : list of float ([-80, 80])
+        Default 5
+    max_airmass : `float`
+        Maximum airmass to attempt (unitless). Default 2.
+    camera_rot_limits : `list` of `float`
         The camera rotation limits to use (degrees).
-    time_needed : float (10)
+        Default [-80, 80].
+    time_needed : `float`
         How much time should be available
         (e.g., before twilight ends) (minutes).
-    footprint_mask : np.array (None)
+        Default 10
+    footprint_mask : `np.array`
         Mask to apply to the constructed ecliptic target mask (None).
-    footprint_weight : float (0.1)
-        Weight for footprint basis function
-    slewtime_weight : float (3.)
-        Weight for slewtime basis function
-    stayfilter_weight : float (3.)
-        Weight for staying in the same filter basis function
-    min_area : float (None)
+        Default None
+    footprint_weight : `float`
+        Weight for footprint basis function. Default 0.1 (uniteless).
+    slewtime_weight : `float`
+        Weight for slewtime basis function. Default 3 (unitless)
+    stayfilter_weight : `float`
+        Weight for staying in the same filter basis function.
+        Default 3 (unitless)
+    min_area : `float`
         The area that needs to be available before the survey will return
-        observations (sq degrees?)
-    filters : str ('riz')
+        observations (sq degrees?). Default None.
+    filters : `str`
         The filters to use, default 'riz'
-    n_repeat : int (4)
+    n_repeat : `int`
         The number of times a blob should be repeated, default 4.
-    sun_alt_limit : float (-14.8)
-        Do not start unless sun is higher than this limit (degrees)
-    slew_estimate : float (4.5)
+    sun_alt_limit : `float`
+        Do not start unless sun is higher than this limit (degrees).
+        Default -14.8.
+    slew_estimate : `float`
         An estimate of how long it takes to slew between
-        neighboring fields (seconds).
-    time_to_sunrise : float (25.)
+        neighboring fields (seconds). Default 4.5
+    time_to_sunrise : `float`
         Do not execute if time to sunrise is greater than (minutes).
+        Default 25.
     """
     survey_name = "twilight_near_sun"
     footprint = ecliptic_target(nside=nside, mask=footprint_mask)
