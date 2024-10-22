@@ -799,6 +799,22 @@ class ConsDBVisits(ABC):
         return self.consdb_visits["eff_time_m5"]
 
     @cached_property
+    def seq_num(self) -> pd.Series:
+        """The sequences number.
+
+        Returns
+        -------
+        seq_num : `pd.Series`
+            The sequence number.
+        """
+        if len(self.consdb_visits["seq_num"]) == 1:
+            seq_num = self.consdb_visits["seq_num"]
+        else:
+            seq_num = pd.Series(self.consdb_visits["seq_num"].values[:, 0], index=self.consdb_visits.index)
+
+        return seq_num
+
+    @cached_property
     def opsim(self) -> pd.DataFrame:
         """The table of visits, in a format replicating opsim output.
 
@@ -858,7 +874,7 @@ class ConsDBVisits(ABC):
                 #                "scripted_id": None,
                 "start_date": self.consdb_visits["obs_start"],
                 "t_eff": self.consdb_visits["eff_time_median"],
-                "seq_num": self.consdb_visits["seq_num"],
+                "seq_num": self.seq_num,
             }
         )
 
