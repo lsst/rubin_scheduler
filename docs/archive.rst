@@ -183,6 +183,10 @@ By default, it reads every ``sim_metadata.yaml`` file in the archive and builds 
 If called with an ``--append`` flag, it reads an existing metadata cache file, reads ``sim_metadata.yaml`` files for simulations more recently added than the last file in the existing cache, appends them to the previous results from the cache, and writes the result to the cache.
 The ``append`` flag therefore speeds up the update considerably, but does not update the cache for any changes to previously added simulations (including deletions).
 
+The ``compile_sim_archive_metadata_resource`` needs to be run to update the cache.
+Normall, a cron job will execute this command routinely to keep the cache reasonably up to date.
+Because the tools read the metadata yaml files for any simulations added after the most recent cache update, it will function correctly even if the cache is out of date (but slower).
+
 Automatic archiving of generated data
 -------------------------------------
 
