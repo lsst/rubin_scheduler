@@ -17,10 +17,13 @@ if HAVE_LSST_RESOURCES:
 
     from rubin_scheduler.sim_archive.sim_archive import (
         check_opsim_archive_resource,
+        compile_sim_metadata,
         make_sim_archive_cli,
         make_sim_archive_dir,
         read_archived_sim_metadata,
+        read_sim_metadata_from_hdf,
         transfer_archive_dir,
+        verify_compiled_sim_metadata,
     )
 
 
@@ -95,6 +98,15 @@ class TestSimArchive(unittest.TestCase):
         base = sim_archive_uri.dirname().geturl().removeprefix(test_resource_uri).rstrip("/").lstrip("/")
         expected_label = f"{base} test"
         self.assertEqual(archive_metadata[sim_archive_uri.geturl()]["label"], expected_label)
+
+        # Cache the metadata
+        test_compiled_metadata_uri = test_resource_uri + "/compiled_metadata_cache.h5"
+
+        # Test reading from cached metadata
+        compile_sim_metadata(test_resource_uri, test_compiled_metadata_uri)
+        read_sim_metadata_from_hdf(test_compiled_metadata_uri)
+        read_archived_sim_metadata(test_resource_uri, compilation_resource=test_compiled_metadata_uri)
+        verify_compiled_sim_metadata(test_resource_uri, test_compiled_metadata_uri)
 
     @unittest.skipIf(not HAVE_LSST_RESOURCES, "No lsst.resources")
     @unittest.skipIf(importlib.util.find_spec("schedview") is None, "No schedview")
