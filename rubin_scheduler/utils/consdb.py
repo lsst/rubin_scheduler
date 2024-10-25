@@ -110,10 +110,13 @@ class ConsDBVisits(ABC):
         The date for which to query the database.
     url : `str`
         The connection string from the database.
+    num_nights : `int`
+        The number of nights (ending in day_obs) for which to get visits.
     """
 
     day_obs: str | int
     url: str = "postgresql://usdf@usdf-summitdb.slac.stanford.edu:5432/exposurelog"
+    num_nights: int = 1
 
     @property
     @abstractmethod
@@ -314,7 +317,8 @@ class ConsDBVisits(ABC):
                 AND e.s_dec IS NOT NULL
                 AND e.sky_rotation IS NOT NULL
                 AND ((e.band IS NOT NULL) OR (e.physical_filter IS NOT NULL))
-                AND e.day_obs = {self.day_obs_int}
+                AND e.day_obs <= {self.day_obs_int}
+                AND e.day_obs > {self.day_obs_int - self.num_nights}
         """
         return query_consdb(consdb_visits_query, self.url)
 
