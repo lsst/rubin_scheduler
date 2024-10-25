@@ -2,6 +2,7 @@ import importlib.util
 import urllib.parse
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from functools import cache, cached_property
 from math import log, sqrt
 from warnings import warn
@@ -110,10 +111,14 @@ class ConsDBVisits(ABC):
         The date for which to query the database.
     url : `str`
         The connection string from the database.
+    num_nights : `int`
+        The number of nights (up to and including day_obs)
+        for which to get visits. Defaults to 1.
     """
 
     day_obs: str | int
     url: str = "postgresql://usdf@usdf-summitdb.slac.stanford.edu:5432/exposurelog"
+    num_nights: int = 1
 
     @property
     @abstractmethod
@@ -305,6 +310,10 @@ class ConsDBVisits(ABC):
         # and visit_id = exposure_id.
         # To support 2 exposures snaps in the future, this query will
         # need to be rewritten to group by visit_id.
+        day_obs_date = datetime.strptime(f"{self.day_obs_int}", "%Y%m%d").date()
+        prior_day_obs_date = day_obs_date - timedelta(days=self.num_nights)
+        prior_day_obs_int = int(prior_day_obs_date.strftime("%Y%m%d"))
+
         consdb_visits_query: str = f"""
             SELECT * FROM cdb_{self.instrument}.exposure AS e
             LEFT JOIN cdb_{self.instrument}.visit{self.num_exposures}_quicklook
@@ -314,7 +323,8 @@ class ConsDBVisits(ABC):
                 AND e.s_dec IS NOT NULL
                 AND e.sky_rotation IS NOT NULL
                 AND ((e.band IS NOT NULL) OR (e.physical_filter IS NOT NULL))
-                AND e.day_obs = {self.day_obs_int}
+                AND e.day_obs <= {self.day_obs_int}
+                AND e.day_obs > {prior_day_obs_int}
         """
         return query_consdb(consdb_visits_query, self.url)
 
