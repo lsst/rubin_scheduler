@@ -316,8 +316,32 @@ class ConsDBVisits(ABC):
         prior_day_obs_date = day_obs_date - timedelta(days=self.num_nights)
         prior_day_obs_int = int(prior_day_obs_date.strftime("%Y%m%d"))
 
+        # To avoid duplicate columns, explicitly include list of columns to
+        # to return in the query instead of using a "SELECT *".
+        def columns_query(table, instrument):
+            return f"""
+                SELECT column_name FROM information_schema.columns
+                WHERE table_name = '{table}'
+                  AND table_schema = 'cdb_{instrument}'
+            """
+
+        exposure_columns = (
+            query_consdb(columns_query("exposure", self.instrument)).loc[:, "column_name"].values
+        )
+        ql_columns = (
+            query_consdb(columns_query(f"visit{self.num_exposures}_quicklook", self.instrument))
+            .loc[:, "column_name"]
+            .values
+        )
+        visit_query_exposure_columns = ", ".join([f"e.{c} AS {c}" for c in exposure_columns])
+        visit_query_ql_columns = ", ".join(
+            [f"v{self.num_exposures}q.{c} AS {c}" for c in ql_columns if c not in exposure_columns]
+        )
+        visit_query_columns = ", ".join([visit_query_exposure_columns, visit_query_ql_columns])
+
         consdb_visits_query: str = f"""
-            SELECT * FROM cdb_{self.instrument}.exposure AS e
+            SELECT {visit_query_columns}
+            FROM cdb_{self.instrument}.exposure AS e
             LEFT JOIN cdb_{self.instrument}.visit{self.num_exposures}_quicklook
                 AS v{self.num_exposures}q ON e.exposure_id = v{self.num_exposures}q.visit_id
             WHERE e.obs_start_mjd IS NOT NULL
@@ -340,6 +364,20 @@ class ConsDBVisits(ABC):
             The unique identifier from the consdb database.
         """
         return self.consdb_visits["visit_id"]
+
+    @cached_property
+    def observation_id(self) -> pd.Series:
+        """The unique identifier from the consdb database.
+
+        Returns
+        -------
+        observation_id : `pd.Series`
+            The unique identifier from the consdb database.
+        """
+        # Instead of just using visit_id, create a separate property
+        # that can be overridden by subclasses which might not get a valid
+        # visit_id.
+        return self.visit_id
 
     @cached_property
     def ra(self) -> pd.Series:
@@ -819,12 +857,7 @@ class ConsDBVisits(ABC):
         seq_num : `pd.Series`
             The sequence number.
         """
-        if len(self.consdb_visits["seq_num"]) == 1:
-            seq_num = self.consdb_visits["seq_num"]
-        else:
-            seq_num = pd.Series(self.consdb_visits["seq_num"].values[:, 0], index=self.consdb_visits.index)
-
-        return seq_num
+        return self.consdb_visits["seq_num"]
 
     @cached_property
     def opsim(self) -> pd.DataFrame:
@@ -838,7 +871,7 @@ class ConsDBVisits(ABC):
 
         opsim_df = pd.DataFrame(
             {
-                "observationId": self.visit_id,
+                "observationId": self.observation_id,
                 "fieldRA": self.ra,
                 "fieldDec": self.decl,
                 "observationStartMJD": self.obs_start_mjd,
@@ -955,6 +988,34 @@ class ComcamConsDBVisits(ConsDBVisits):
     @property
     def site(self):
         return Site("LSST")
+
+    @cached_property
+    def observation_id(self) -> pd.Series:
+        """The unique identifier from the consdb database.
+
+        Returns
+        -------
+        visit_id : `pd.Series`
+            The unique identifier from the consdb database.
+        """
+        if self._have_numeric_values("visit_id"):
+            observation_id = self.consdb_visits["visit_id"]
+        elif self._have_numeric_values("exposure_id"):
+            observation_id = self.consdb_visits["exposure_id"]
+            warn("Cannot use visit_id as observation_id, using exposure_id instead!")
+        elif self._have_numeric_values("day_obs") and self._have_numeric_values("seq_num"):
+            observation_id = self.consdb_visits["day_obs"] * 10000 + self.consdb_visits["seq_num"]
+            warn("Cannot use either visit_id or exposure_id as observation_id, guessing instead!")
+        else:
+            warn(
+                "Cannot use either visit_id, exposure_id, or guess observation_id, just making something up!"
+            )
+            observation_id = pd.Series(
+                Time(self.consdb_visits.obs_start).strftime("9%Y%m%d%H%M%S").astype(int),
+                index=self.consdb_visits.index,
+            )
+
+        return observation_id
 
     @cached_property
     def azimuth(self) -> pd.Series:
