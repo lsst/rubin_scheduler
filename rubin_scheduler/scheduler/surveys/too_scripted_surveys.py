@@ -56,7 +56,15 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
     target_name_base : `str`
         String to use as the base of the target name. Will be appended
         with an integer for the object id.
-
+    split_long : `bool`
+        Should long exposure times be split into multiple snaps.
+        Default False.
+    split_long_max : `float`
+        Maximum exposure time to allow before splitting into 
+        multiple snaps if split_long is True. Default 30s.
+    split_long_div : `float`
+        Time to divide the exposure time by to decide how many
+        snaps to use. Default 60s.
     """
 
     def __init__(
@@ -89,6 +97,8 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         detailers=None,
         too_types_to_follow=[""],
         split_long=False,
+        split_long_max=30.,
+        split_long_div=60.,
     ):
 
         # Make sure lists all match
@@ -132,6 +142,8 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         self.too_types_to_follow = too_types_to_follow
         self.split_long = split_long
         self.target_name_base = target_name_base
+        self.split_long_max = split_long_max
+        self.split_long_div = split_long_div
 
         self.camera = camera
         # Load the OpSim field tesselation and map healpix to fields
@@ -363,8 +375,8 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
                             # check if we should break
                             # long exposures into multiple
                             if self.split_long:
-                                if exptime > 119:
-                                    nexp = int(np.round(exptime / 30.0))
+                                if exptime > self.split_long_max:
+                                    nexp = int(np.round(exptime / self.split_long_div))
 
                             obs = ScheduledObservationArray(ras.size)
                             obs["RA"] = ras
@@ -440,6 +452,7 @@ def gen_too_surveys(
     detailer_list=None,
     too_footprint=None,
     split_long=False,
+    long_exp_nsnaps=2,
     n_snaps=2,
 ):
     result = []
@@ -473,7 +486,7 @@ def gen_too_surveys(
             survey_name="ToO, GW_case_A",
             split_long=split_long,
             flushtime=48.0,
-            n_snaps=n_snaps,
+            n_snaps=long_exp_nsnaps,
             target_name_base="GW_case_A",
         )
     )
@@ -497,7 +510,7 @@ def gen_too_surveys(
             target_name_base="GW_case_B_C",
             split_long=split_long,
             flushtime=48,
-            n_snaps=n_snaps,
+            n_snaps=long_exp_nsnaps,
         )
     )
 
@@ -520,7 +533,7 @@ def gen_too_surveys(
             target_name_base="GW_case_D_E",
             split_long=split_long,
             flushtime=48,
-            n_snaps=n_snaps,
+            n_snaps=long_exp_nsnaps,
         )
     )
 
@@ -604,7 +617,7 @@ def gen_too_surveys(
             target_name_base="LensedBNS_B",
             split_long=split_long,
             flushtime=48.0,
-            n_snaps=n_snaps,
+            n_snaps=long_exp_nsnaps,
         )
     )
 
@@ -641,6 +654,7 @@ def gen_too_surveys(
             survey_name="ToO, neutrino",
             target_name_base="neutrino",
             split_long=split_long,
+            split_long=True,
             flushtime=8.0,
             n_snaps=n_snaps,
         )
