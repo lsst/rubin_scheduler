@@ -6,8 +6,11 @@ import sys
 import time
 import warnings
 
+import astropy.units as u
 import numpy as np
 import pandas as pd
+from astropy.coordinates import AltAz, EarthLocation, SkyCoord
+from astropy.time import Time
 
 from rubin_scheduler.scheduler.schedulers import SimpleFilterSched
 from rubin_scheduler.scheduler.utils import ObservationArray, SchemaConverter, run_info_table
@@ -32,6 +35,7 @@ def sim_runner(
     append_result_size=int(2.5e6),
     anomalous_overhead_func=None,
     telescope="rubin",
+    refraction_correction=True,
 ):
     """
     run a simulation
@@ -63,6 +67,8 @@ def sim_runner(
         Defaults to None.
     telescope : `str`
         Name of telecope for camera rotation. Default "rubin".
+    refraction_correction : `bool`
+        Should alt,az values be updated to include refraction. Default True.
     """
 
     if extra_info is None:
@@ -195,6 +201,23 @@ def sim_runner(
     # Also include traditional parallactic angle
     pa = _approx_altaz2pa(observations["alt"], observations["az"], lsst.latitude_rad)
     observations["pa"] = pa
+
+    if refraction_correction:
+        times = Time(observations["mjd"], format="mjd")
+        location = EarthLocation(
+            lat=lsst.latitude * u.deg, lon=lsst.longitude * u.deg, height=lsst.height * u.m
+        )
+        sc = SkyCoord(ra=observations["RA"] * u.rad, dec=observations["dec"] * u.rad, obstime=times)
+        altaz_coors = sc.transform_to(
+            AltAz(
+                location=location,
+                pressure=lsst.pressure * u.mbar,
+                temperature=lsst.temperature * u.deg_C,
+                relative_humidity=lsst.humidity,
+            )
+        )
+        observations["alt"] = altaz_coors.alt.rad
+        observations["az"] = altaz_coors.az.rad
 
     runtime = time.time() - t0
     print("Skipped %i observations" % nskip)
