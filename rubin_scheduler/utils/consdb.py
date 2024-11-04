@@ -308,10 +308,6 @@ class ConsDBVisits(ABC):
         consdb_visits : `pd.DataFrame`
             The visit data.
         """
-        # In the schema as of now, all visits are one exposure,
-        # and visit_id = exposure_id.
-        # To support 2 exposures snaps in the future, this query will
-        # need to be rewritten to group by visit_id.
         day_obs_date = datetime.strptime(f"{self.day_obs_int}", "%Y%m%d").date()
         prior_day_obs_date = day_obs_date - timedelta(days=self.num_nights)
         prior_day_obs_int = int(prior_day_obs_date.strftime("%Y%m%d"))
@@ -325,32 +321,34 @@ class ConsDBVisits(ABC):
                   AND table_schema = 'cdb_{instrument}'
             """
 
-        exposure_columns = (
-            query_consdb(columns_query("exposure", self.instrument)).loc[:, "column_name"].values
+        visit_columns = (
+            query_consdb(columns_query(f"visit{self.num_exposures}", self.instrument))
+            .loc[:, "column_name"]
+            .values
         )
         ql_columns = (
             query_consdb(columns_query(f"visit{self.num_exposures}_quicklook", self.instrument))
             .loc[:, "column_name"]
             .values
         )
-        visit_query_exposure_columns = ", ".join([f"e.{c} AS {c}" for c in exposure_columns])
+        visit_query_visit_columns = ", ".join([f"v.{c} AS {c}" for c in visit_columns])
         visit_query_ql_columns = ", ".join(
-            [f"v{self.num_exposures}q.{c} AS {c}" for c in ql_columns if c not in exposure_columns]
+            [f"v{self.num_exposures}q.{c} AS {c}" for c in ql_columns if c not in visit_columns]
         )
-        visit_query_columns = ", ".join([visit_query_exposure_columns, visit_query_ql_columns])
+        visit_query_columns = ", ".join([visit_query_visit_columns, visit_query_ql_columns])
 
         consdb_visits_query: str = f"""
             SELECT {visit_query_columns}
-            FROM cdb_{self.instrument}.exposure AS e
+            FROM cdb_{self.instrument}.visit1 AS v
             LEFT JOIN cdb_{self.instrument}.visit{self.num_exposures}_quicklook
-                AS v{self.num_exposures}q ON e.exposure_id = v{self.num_exposures}q.visit_id
-            WHERE e.obs_start_mjd IS NOT NULL
-                AND e.s_ra IS NOT NULL
-                AND e.s_dec IS NOT NULL
-                AND e.sky_rotation IS NOT NULL
-                AND ((e.band IS NOT NULL) OR (e.physical_filter IS NOT NULL))
-                AND e.day_obs <= {self.day_obs_int}
-                AND e.day_obs > {prior_day_obs_int}
+                AS v{self.num_exposures}q ON v.visit_id = v{self.num_exposures}q.visit_id
+            WHERE v.obs_start_mjd IS NOT NULL
+                AND v.s_ra IS NOT NULL
+                AND v.s_dec IS NOT NULL
+                AND v.sky_rotation IS NOT NULL
+                AND ((v.band IS NOT NULL) OR (v.physical_filter IS NOT NULL))
+                AND v.day_obs <= {self.day_obs_int}
+                AND v.day_obs > {prior_day_obs_int}
         """
         return query_consdb(consdb_visits_query, self.url)
 
