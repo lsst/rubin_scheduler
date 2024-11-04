@@ -1,6 +1,7 @@
 import importlib.util
 import urllib.parse
 from abc import ABC, abstractmethod
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from functools import cache, cached_property
@@ -29,6 +30,7 @@ from rubin_scheduler.utils import (
 )
 
 GAUSSIAN_FWHM_OVER_SIGMA: float = 2.0 * sqrt(2.0 * log(2.0))
+KNOWN_INSTRUMENTS = ["lsstcomcam", "lsstcomcamsim"]
 
 
 def query_consdb(query: str, url: str = "postgresql://usdf@usdf-summitdb.slac.stanford.edu:5432/exposurelog"):
@@ -306,25 +308,47 @@ class ConsDBVisits(ABC):
         consdb_visits : `pd.DataFrame`
             The visit data.
         """
-        # In the schema as of now, all visits are one exposure,
-        # and visit_id = exposure_id.
-        # To support 2 exposures snaps in the future, this query will
-        # need to be rewritten to group by visit_id.
         day_obs_date = datetime.strptime(f"{self.day_obs_int}", "%Y%m%d").date()
         prior_day_obs_date = day_obs_date - timedelta(days=self.num_nights)
         prior_day_obs_int = int(prior_day_obs_date.strftime("%Y%m%d"))
 
+        # To avoid duplicate columns, explicitly include list of columns to
+        # to return in the query instead of using a "SELECT *".
+        def columns_query(table, instrument):
+            return f"""
+                SELECT column_name FROM information_schema.columns
+                WHERE table_name = '{table}'
+                  AND table_schema = 'cdb_{instrument}'
+            """
+
+        visit_columns = (
+            query_consdb(columns_query(f"visit{self.num_exposures}", self.instrument))
+            .loc[:, "column_name"]
+            .values
+        )
+        ql_columns = (
+            query_consdb(columns_query(f"visit{self.num_exposures}_quicklook", self.instrument))
+            .loc[:, "column_name"]
+            .values
+        )
+        visit_query_visit_columns = ", ".join([f"v.{c} AS {c}" for c in visit_columns])
+        visit_query_ql_columns = ", ".join(
+            [f"v{self.num_exposures}q.{c} AS {c}" for c in ql_columns if c not in visit_columns]
+        )
+        visit_query_columns = ", ".join([visit_query_visit_columns, visit_query_ql_columns])
+
         consdb_visits_query: str = f"""
-            SELECT * FROM cdb_{self.instrument}.exposure AS e
+            SELECT {visit_query_columns}
+            FROM cdb_{self.instrument}.visit1 AS v
             LEFT JOIN cdb_{self.instrument}.visit{self.num_exposures}_quicklook
-                AS v{self.num_exposures}q ON e.exposure_id = v{self.num_exposures}q.visit_id
-            WHERE e.obs_start_mjd IS NOT NULL
-                AND e.s_ra IS NOT NULL
-                AND e.s_dec IS NOT NULL
-                AND e.sky_rotation IS NOT NULL
-                AND ((e.band IS NOT NULL) OR (e.physical_filter IS NOT NULL))
-                AND e.day_obs <= {self.day_obs_int}
-                AND e.day_obs > {prior_day_obs_int}
+                AS v{self.num_exposures}q ON v.visit_id = v{self.num_exposures}q.visit_id
+            WHERE v.obs_start_mjd IS NOT NULL
+                AND v.s_ra IS NOT NULL
+                AND v.s_dec IS NOT NULL
+                AND v.sky_rotation IS NOT NULL
+                AND ((v.band IS NOT NULL) OR (v.physical_filter IS NOT NULL))
+                AND v.day_obs <= {self.day_obs_int}
+                AND v.day_obs > {prior_day_obs_int}
         """
         return query_consdb(consdb_visits_query, self.url)
 
@@ -338,6 +362,20 @@ class ConsDBVisits(ABC):
             The unique identifier from the consdb database.
         """
         return self.consdb_visits["visit_id"]
+
+    @cached_property
+    def observation_id(self) -> pd.Series:
+        """The unique identifier from the consdb database.
+
+        Returns
+        -------
+        observation_id : `pd.Series`
+            The unique identifier from the consdb database.
+        """
+        # Instead of just using visit_id, create a separate property
+        # that can be overridden by subclasses which might not get a valid
+        # visit_id.
+        return self.visit_id
 
     @cached_property
     def ra(self) -> pd.Series:
@@ -817,12 +855,7 @@ class ConsDBVisits(ABC):
         seq_num : `pd.Series`
             The sequence number.
         """
-        if len(self.consdb_visits["seq_num"]) == 1:
-            seq_num = self.consdb_visits["seq_num"]
-        else:
-            seq_num = pd.Series(self.consdb_visits["seq_num"].values[:, 0], index=self.consdb_visits.index)
-
-        return seq_num
+        return self.consdb_visits["seq_num"]
 
     @cached_property
     def opsim(self) -> pd.DataFrame:
@@ -836,7 +869,7 @@ class ConsDBVisits(ABC):
 
         opsim_df = pd.DataFrame(
             {
-                "observationId": self.visit_id,
+                "observationId": self.observation_id,
                 "fieldRA": self.ra,
                 "fieldDec": self.decl,
                 "observationStartMJD": self.obs_start_mjd,
@@ -902,7 +935,7 @@ class ConsDBVisits(ABC):
         return SchemaConverter().opsimdf2obs(self.opsim)
 
 
-class ComcamSimConsDBVisits(ConsDBVisits):
+class ComcamConsDBVisits(ConsDBVisits):
 
     def _have_numeric_values(self, column) -> bool:
         if column not in self.consdb_visits.columns:
@@ -928,7 +961,7 @@ class ComcamSimConsDBVisits(ConsDBVisits):
 
     @property
     def instrument(self) -> str:
-        return "lsstcomcamsim"
+        return "lsstcomcam"
 
     @property
     def num_exposures(self) -> int:
@@ -947,11 +980,35 @@ class ComcamSimConsDBVisits(ConsDBVisits):
         return pd.Series(0.2, index=self.consdb_visits.index)
 
     def instrumental_zeropoint_for_band(self, band: str) -> float:
-        return SysEngVals().zp_t[band]
+        zp_t = defaultdict(np.array(np.nan).item, SysEngVals().zp_t.items())
+        return zp_t[band]
 
     @property
     def site(self):
         return Site("LSST")
+
+    @cached_property
+    def observation_id(self) -> pd.Series:
+        """The unique identifier from the consdb database.
+
+        Returns
+        -------
+        visit_id : `pd.Series`
+            The unique identifier from the consdb database.
+        """
+        if self._have_numeric_values("visit_id"):
+            observation_id = self.consdb_visits["visit_id"]
+        elif self._have_numeric_values("day_obs") and self._have_numeric_values("seq_num"):
+            observation_id = self.consdb_visits["day_obs"] * 10000 + self.consdb_visits["seq_num"]
+            warn("Cannot use visit_id as observation_id, guessing instead!")
+        else:
+            warn("Can use neither visit_id nor guess observation_id, just making something up!")
+            observation_id = pd.Series(
+                Time(self.consdb_visits.obs_start).strftime("9%Y%m%d%H%M%S").astype(int),
+                index=self.consdb_visits.index,
+            )
+
+        return observation_id
 
     @cached_property
     def azimuth(self) -> pd.Series:
@@ -1020,10 +1077,15 @@ class ComcamSimConsDBVisits(ConsDBVisits):
     def eff_time_m5(self):
         if self._have_numeric_values("eff_time_m5"):
             eff_time = super().eff_time_m5
-        else:
-            # From SMTN-002
-            ref_mags = {"u": 23.70, "g": 24.97, "r": 24.52, "i": 24.13, "z": 23.56, "y": 22.55}
+        elif self._have_numeric_values("eff_time_median"):
+            # From SMTN-002, and map to np.nan if not a standard band.
+            ref_mags = defaultdict(
+                np.array(np.nan).item,
+                {"u": 23.70, "g": 24.97, "r": 24.52, "i": 24.13, "z": 23.56, "y": 22.55}.items(),
+            )
             eff_time = self.band.map(ref_mags) + 1.25 * np.log10(self.consdb_visits["eff_time_median"] / 30)
+        else:
+            eff_time = pd.Series(np.nan, index=self.consdb_visits.index)
 
         return eff_time
 
@@ -1034,11 +1096,33 @@ class ComcamSimConsDBVisits(ConsDBVisits):
         band[missing_band] = self.consdb_visits.loc[missing_band, "physical_filter"].str.get(0)
         return band
 
+    @cached_property
+    def sky_e_per_pixel(self) -> pd.Series:
+        """Median sky background of each visit (in electons).
+
+        Returns
+        -------
+        sky : `pd.Series`
+            Median sky background of each visit (in electons).
+        """
+        if self._have_numeric_values("sky_bg_median"):
+            sky = self.consdb_visits["sky_bg_median"] * self.gain
+        else:
+            sky = pd.Series(np.nan, index=self.consdb_visits.index)
+        return sky
+
+
+class ComcamSimConsDBVisits(ComcamConsDBVisits):
+
+    @property
+    def instrument(self) -> str:
+        return "lsstcomcamsim"
+
 
 # Different subclasses of ConsDBOpsimConverter are needed for
 # different instruments.
 # Make a factory function to return the correct one.
-def load_consdb_visits(instrument: str = "lsstcomcamsim", *args, **kwargs) -> ConsDBVisits:
+def load_consdb_visits(instrument: str = "lsstcomcam", *args, **kwargs) -> ConsDBVisits:
     """Return visits from the consdb.
 
     Parameters
@@ -1051,7 +1135,16 @@ def load_consdb_visits(instrument: str = "lsstcomcamsim", *args, **kwargs) -> Co
     visits : `ConsDBVisits`
         Visits from the consdb.
     """
+
+    if instrument not in KNOWN_INSTRUMENTS:
+        # Yes, the "case: _" clause below would take care of this,
+        # but having this explicitly here makes sure KNOWN_INSTRUMENTS
+        # gets properly updated when new instruments are added.
+        raise NotImplementedError
+
     match instrument:
+        case "lsstcomcam":
+            converter: ConsDBVisits = ComcamConsDBVisits(*args, **kwargs)
         case "lsstcomcamsim":
             converter: ConsDBVisits = ComcamSimConsDBVisits(*args, **kwargs)
         case _:
