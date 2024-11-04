@@ -998,16 +998,11 @@ class ComcamConsDBVisits(ConsDBVisits):
         """
         if self._have_numeric_values("visit_id"):
             observation_id = self.consdb_visits["visit_id"]
-        elif self._have_numeric_values("exposure_id"):
-            observation_id = self.consdb_visits["exposure_id"]
-            warn("Cannot use visit_id as observation_id, using exposure_id instead!")
         elif self._have_numeric_values("day_obs") and self._have_numeric_values("seq_num"):
             observation_id = self.consdb_visits["day_obs"] * 10000 + self.consdb_visits["seq_num"]
-            warn("Cannot use either visit_id or exposure_id as observation_id, guessing instead!")
+            warn("Cannot use visit_id as observation_id, guessing instead!")
         else:
-            warn(
-                "Cannot use either visit_id, exposure_id, or guess observation_id, just making something up!"
-            )
+            warn("Can use neither visit_id nor guess observation_id, just making something up!")
             observation_id = pd.Series(
                 Time(self.consdb_visits.obs_start).strftime("9%Y%m%d%H%M%S").astype(int),
                 index=self.consdb_visits.index,
