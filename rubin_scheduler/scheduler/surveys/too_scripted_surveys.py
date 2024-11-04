@@ -53,6 +53,9 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         and filter change time means alt_min here should be set higher
         (otherwise, target will pass altitude check, but then fail
         to observe by the time the telescope gets there).
+    target_name_base : `str`
+        String to use as the base of the target name. Will be appended
+        with an integer for the object id.
 
     """
 
@@ -68,6 +71,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         exptimes=[DEFAULT_EXP_TIME] * 6,
         camera="LSST",
         survey_name="ToO",
+        target_name_base="ToO",
         flushtime=2.0,
         mjd_tol=1.0 / 24.0,
         dist_tol=0.5,
@@ -127,6 +131,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         self.last_mjd = -1
         self.too_types_to_follow = too_types_to_follow
         self.split_long = split_long
+        self.target_name_base = target_name_base
 
         self.camera = camera
         # Load the OpSim field tesselation and map healpix to fields
@@ -382,6 +387,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
                                 time * 24,
                                 index,
                             )
+                            obs["target_name"] = self.target_name_base + "_i%i" % index
                             obs_list.append(obs)
                 observations = np.concatenate(obs_list)
                 self.set_script(observations)
@@ -468,6 +474,7 @@ def gen_too_surveys(
             split_long=split_long,
             flushtime=48.0,
             n_snaps=n_snaps,
+            target_name_base="GW_case_A",
         )
     )
 
@@ -487,6 +494,7 @@ def gen_too_surveys(
             detailers=detailer_list,
             too_types_to_follow=["GW_case_B", "GW_case_C"],
             survey_name="ToO, GW_case_B_C",
+            target_name_base="GW_case_B_C",
             split_long=split_long,
             flushtime=48,
             n_snaps=n_snaps,
@@ -509,6 +517,7 @@ def gen_too_surveys(
             detailers=detailer_list,
             too_types_to_follow=["GW_case_D", "GW_case_E"],
             survey_name="ToO, GW_case_D_E",
+            target_name_base="GW_case_D_E",
             split_long=split_long,
             flushtime=48,
             n_snaps=n_snaps,
@@ -538,6 +547,7 @@ def gen_too_surveys(
             detailers=detailer_list,
             too_types_to_follow=["BBH_case_A", "BBH_case_B", "BBH_case_C"],
             survey_name="ToO, BBH",
+            target_name_base="BBH",
             split_long=split_long,
             flushtime=48,
             n_snaps=n_snaps,
@@ -565,6 +575,7 @@ def gen_too_surveys(
             detailers=detailer_list,
             too_types_to_follow=["lensed_BNS_case_A"],
             survey_name="ToO, LensedBNS_A",
+            target_name_base="LensedBNS_A",
             split_long=split_long,
             flushtime=48.0,
             n_snaps=n_snaps,
@@ -590,6 +601,7 @@ def gen_too_surveys(
             detailers=detailer_list,
             too_types_to_follow=["lensed_BNS_case_B"],
             survey_name="ToO, LensedBNS_B",
+            target_name_base="LensedBNS_B",
             split_long=split_long,
             flushtime=48.0,
             n_snaps=n_snaps,
@@ -627,6 +639,7 @@ def gen_too_surveys(
             detailers=detailer_list,
             too_types_to_follow=["neutrino"],
             survey_name="ToO, neutrino",
+            target_name_base="neutrino",
             split_long=split_long,
             flushtime=8.0,
             n_snaps=n_snaps,
@@ -652,6 +665,7 @@ def gen_too_surveys(
             detailers=detailer_list,
             too_types_to_follow=["neutrino"],
             survey_name="ToO, neutrino_u",
+            target_name_base="neutrino_u",
             split_long=split_long,
             flushtime=1440,
             n_snaps=n_snaps,
@@ -682,6 +696,7 @@ def gen_too_surveys(
             detailers=detailer_list,
             too_types_to_follow=["SSO_night"],
             survey_name="ToO, SSO_night",
+            target_name_base="SSO_night",
             split_long=split_long,
             flushtime=2.0,
             n_snaps=n_snaps,
@@ -705,6 +720,7 @@ def gen_too_surveys(
             detailers=detailer_list,
             too_types_to_follow=["SSO_twilight"],
             survey_name="ToO, SSO_twi",
+            target_name_base="SSO_twi",
             split_long=split_long,
             flushtime=2.0,
             n_snaps=n_snaps,
