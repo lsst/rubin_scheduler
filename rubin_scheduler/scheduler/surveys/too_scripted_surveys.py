@@ -60,7 +60,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         Should long exposure times be split into multiple snaps.
         Default False.
     split_long_max : `float`
-        Maximum exposure time to allow before splitting into 
+        Maximum exposure time to allow before splitting into
         multiple snaps if split_long is True. Default 30s.
     split_long_div : `float`
         Time to divide the exposure time by to decide how many
@@ -97,8 +97,8 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         detailers=None,
         too_types_to_follow=[""],
         split_long=False,
-        split_long_max=30.,
-        split_long_div=60.,
+        split_long_max=30.0,
+        split_long_div=60.0,
     ):
 
         # Make sure lists all match
@@ -376,7 +376,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
                             # long exposures into multiple
                             if self.split_long:
                                 if exptime > self.split_long_max:
-                                    nexp = int(np.round(exptime / self.split_long_div))
+                                    nexp = int(np.ceil(exptime / self.split_long_div))
 
                             obs = ScheduledObservationArray(ras.size)
                             obs["RA"] = ras
@@ -654,7 +654,6 @@ def gen_too_surveys(
             survey_name="ToO, neutrino",
             target_name_base="neutrino",
             split_long=split_long,
-            split_long=True,
             flushtime=8.0,
             n_snaps=n_snaps,
         )
