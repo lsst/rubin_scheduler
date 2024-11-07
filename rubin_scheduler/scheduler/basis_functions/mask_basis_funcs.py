@@ -9,6 +9,8 @@ __all__ = (
     "AltAzShadowMaskBasisFunction",
 )
 
+import warnings
+
 import healpy as hp
 import numpy as np
 
@@ -27,6 +29,11 @@ class SolarElongMaskBasisFunction(BaseBasisFunction):
     """
 
     def __init__(self, elong_limit=45.0, nside=DEFAULT_NSIDE):
+        msg = (
+            "SolarElongMaskBasisFunction is scheduled for"
+            " deprecation, swap to SolarElongationMaskBasisFunction."
+        )
+        warnings.warn(msg, DeprecationWarning)
         super(SolarElongMaskBasisFunction, self).__init__(nside=nside)
         self.elong_limit = IntRounded(np.radians(elong_limit))
         self.result = np.zeros(hp.nside2npix(self.nside), dtype=float)
