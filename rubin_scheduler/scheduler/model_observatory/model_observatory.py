@@ -626,7 +626,7 @@ class ModelObservatory:
 
         # Grab the rotator limit from the observatory model
         rot_limit = [
-            self.observatory.telrot_minpos_rad + 2.0 * np.pi,
+            self.observatory.telrot_minpos_rad,
             self.observatory.telrot_maxpos_rad,
         ]
 
@@ -648,7 +648,7 @@ class ModelObservatory:
             # Try to fall back to rotSkyPos_desired
             possible_rot_tel_pos = self.rc._rotskypos2rottelpos(observation["rotSkyPos_desired"], obs_pa)
             # If in range, use rotSkyPos_desired for rotSkyPos
-            if (possible_rot_tel_pos > rot_limit[0]) | (possible_rot_tel_pos < rot_limit[1]):
+            if (possible_rot_tel_pos > rot_limit[0]) & (possible_rot_tel_pos < rot_limit[1]):
                 observation["rotSkyPos"] = observation["rotSkyPos_desired"]
                 observation["rotTelPos"] = np.nan
             else:
@@ -672,6 +672,9 @@ class ModelObservatory:
 
         start_night = self.night.copy()
 
+        #if observation["scripted_id"] == 297:
+        #    import pdb ; pdb.set_trace()
+
         if np.isnan(observation["rotSkyPos"]):
             observation = self._update_rot_sky_pos(observation)
 
@@ -686,6 +689,7 @@ class ModelObservatory:
         # Slew to new position and execute observation. Use the
         # requested rotTelPos position, obsevation['rotSkyPos'] will
         # be ignored.
+        
         slewtime, visittime = self.observatory.observe(
             observation,
             self.mjd,
