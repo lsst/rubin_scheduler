@@ -131,6 +131,46 @@ class TestSurveys(unittest.TestCase):
         self.assertTrue(survey.extra_features["ObsRecorded_note"].feature == 5)
         self.assertTrue(survey.extra_features["LastObs_note"].feature["mjd"] == observations_list[4]["mjd"])
 
+    def test_field_altaz(self):
+        """Test that we can use alt,az pointings"""
+        survey = surveys.FieldAltAzSurvey([], alt=75, az=180.0)
+        observatory = ModelObservatory()
+        conditions = observatory.return_conditions()
+
+        reward = survey.calc_reward_function(conditions)
+        self.assertIsInstance(reward, float)
+        reward_df = survey.make_reward_df(conditions)
+        self.assertIsInstance(reward_df, pd.DataFrame)
+        _ = survey.make_reward_df(conditions, accum=False)
+
+        observation = survey.generate_observations(conditions)
+        assert observation[0].dtype == ObservationArray().dtype
+
+        # Advance time slightly
+        observatory.mjd = observatory.mjd + 0.1
+        conditions = observatory.return_conditions()
+
+        observation_2 = survey.generate_observations(conditions)
+
+        # Dec should stay the same, but RA will shift
+        assert observation[0]["dec"] == observation_2[0]["dec"]
+        assert observation[0]["RA"] != observation_2[0]["RA"]
+
+        # Test that masks are respected
+        # Point at a masked altitude. Reward should be nan or -inf
+        survey = surveys.FieldAltAzSurvey(
+            [basis_functions.AltAzShadowMaskBasisFunction(max_alt=85.0)], alt=90, az=180.0
+        )
+        reward = survey.calc_reward_function(conditions)
+        assert ~np.isfinite(reward)
+
+        # Point at an allowed region. Reward should be finite now.
+        survey = surveys.FieldAltAzSurvey(
+            [basis_functions.AltAzShadowMaskBasisFunction(max_alt=85.0)], alt=80, az=180.0
+        )
+        reward = survey.calc_reward_function(conditions)
+        assert np.isfinite(reward)
+
     def test_pointings_survey(self):
         """Test the pointing survey."""
         mo = ModelObservatory()

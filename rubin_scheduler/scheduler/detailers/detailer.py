@@ -13,6 +13,7 @@ __all__ = (
     "FlushByDetailer",
     "RandomFilterDetailer",
     "TrackingInfoDetailer",
+    "AltAz2RaDecDetailer",
 )
 
 import copy
@@ -23,6 +24,7 @@ from rubin_scheduler.scheduler.utils import IntRounded
 from rubin_scheduler.utils import (
     DEFAULT_NSIDE,
     _angular_separation,
+    _approx_alt_az2_ra_dec,
     _approx_altaz2pa,
     _approx_ra_dec2_alt_az,
     pseudo_parallactic_angle,
@@ -123,6 +125,24 @@ class FlushByDetailer(BaseDetailer):
     def __call__(self, observation_list, conditions):
         for obs in observation_list:
             obs["flush_by_mjd"] = conditions.mjd + self.flush_time
+        return observation_list
+
+
+class AltAz2RaDecDetailer(BaseDetailer):
+    """Set RA,dec for an observation that only has alt,az"""
+
+    def __call__(self, observation_list, conditions):
+        for observation in observation_list:
+            ra, dec = _approx_alt_az2_ra_dec(
+                observation["alt"],
+                observation["az"],
+                conditions.site.latitude,
+                conditions.site.longitude,
+                conditions.mjd,
+            )
+            observation["RA"] = ra
+            observation["dec"] = dec
+
         return observation_list
 
 
