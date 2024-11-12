@@ -1508,6 +1508,7 @@ def run_sched(
     mjd_start=60796.0,
     event_table=None,
     sim_to_o=None,
+    snapshot_dir=None,
 ):
     """Run survey"""
     n_visit_limit = None
@@ -1524,6 +1525,7 @@ def run_sched(
         extra_info=extra_info,
         filter_scheduler=fs,
         event_table=event_table,
+        snapshot_dir=snapshot_dir,
     )
 
     return observatory, scheduler, observations
@@ -1539,6 +1541,7 @@ def gen_scheduler(args):
     mjd_plus = args.mjd_plus
     split_long = args.split_long
     too = ~args.no_too
+    snapshot_dir = args.snapshot_dir
 
     # Parameters that were previously command-line
     # arguments.
@@ -1723,6 +1726,7 @@ def gen_scheduler(args):
             mjd_start=mjd_start,
             event_table=event_table,
             sim_to_o=sim_ToOs,
+            snapshot_dir=snapshot_dir,
         )
         return observatory, scheduler, observations
 
@@ -1760,6 +1764,7 @@ def sched_argparser():
         action="store_true",
         help="Split long ToO exposures into standard visit lengths",
     )
+    parser.add_argument("--snapshot_dir", type=str, default="", help="Directory for scheduler snapshots.")
     parser.set_defaults(split_long=False)
     parser.add_argument("--no_too", dest="no_too", action="store_true")
     parser.set_defaults(no_too=False)

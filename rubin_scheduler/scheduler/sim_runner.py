@@ -1,13 +1,17 @@
 __all__ = ("sim_runner",)
 
 import copy
+import gzip
+import pickle
 import sqlite3
 import sys
 import time
 import warnings
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from astropy.time import Time
 
 from rubin_scheduler.scheduler.schedulers import SimpleFilterSched
 from rubin_scheduler.scheduler.utils import ObservationArray, SchemaConverter, run_info_table
@@ -32,6 +36,7 @@ def sim_runner(
     append_result_size=int(2.5e6),
     anomalous_overhead_func=None,
     telescope="rubin",
+    snapshot_dir="",
 ):
     """
     run a simulation
@@ -63,6 +68,10 @@ def sim_runner(
         Defaults to None.
     telescope : `str`
         Name of telecope for camera rotation. Default "rubin".
+    snapshot_dir : `str`
+        Dir in which to safe scheduler + pickle snapshots with
+        each scheduler call. An empty string if the snapshots should not be
+        saved. Defaults to an empty string.
     """
 
     if extra_info is None:
@@ -103,8 +112,40 @@ def sim_runner(
 
     counter = 0
     while mjd < sim_end_mjd:
+        # Save pickle here
+        if snapshot_dir is not None and len(snapshot_dir) > 0:
+            snapshot_dt_isot = Time(mjd, format="mjd").isot
+            # The assert is needed to make type hint checkers happy, because
+            # they cannot tell whether Time.isot will return a sting or an
+            # array of strings. But, mjd here is a single value, so
+            # Time.isot will be as well.
+            if isinstance(snapshot_dt_isot, np.ndarray):
+                assert len(snapshot_dt_isot) == 1
+                snapshot_dt_isot = snapshot_dt_isot.item()
+
+            assert isinstance(snapshot_dt_isot, str)
+            snapshot_dt = snapshot_dt_isot.replace(":", "")
+            snapshot_fname = Path(snapshot_dir).joinpath(f"sched_snapshot_{snapshot_dt}.p.gz").as_posix()
+            # Save before updating the conditions to mimic observatory.
+            # There is a significant tradeoff in compression: even a little
+            # compression makes the save both much smaller and much slower.
+            # A simple test on a USDF devel node, running one night:
+            # open method                     time     size
+            # open                            3m18s    173G
+            # gzip.open(compresslevel=1)      16m56s   19G
+            # lzma.open(preset=1)             48m33s   8.7G
+            # lzma.open(preset=9)             4h20m31s 2.7G
+            # For equivilent times, lzma always seems better, but its lowest
+            # compression level is slower than gzip's lowest compression
+            # level.
+            # I also explored bzip2, but for any given compression level,
+            # it was always slower then either gzip or lzma (or both).
+            with gzip.open(snapshot_fname, "wb", compresslevel=1) as pio:
+                pickle.dump([scheduler, observatory.return_conditions()], file=pio)
+
         if not scheduler._check_queue_mjd_only(observatory.mjd):
             scheduler.update_conditions(observatory.return_conditions())
+
         desired_obs = scheduler.request_observation(mjd=observatory.mjd)
         if record_rewards:
             if last_obs_queue_fill_mjd_ns != scheduler.queue_fill_mjd_ns:
