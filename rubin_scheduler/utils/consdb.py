@@ -520,7 +520,41 @@ class ConsDBVisits(ABC):
         note : `pd.Series`
             Note for each visit.
         """
-        return self.consdb_visits["observation_reason"]
+        if "note" in self.consdb_visits:
+            note = self.consdb_visits["note"]
+        else:
+            note = pd.Series("", index=self.consdb_visits.index)
+        return note
+
+    @cached_property
+    def observation_reason(self) -> pd.Series:
+        """Observation reason for each visit.
+
+        Returns
+        -------
+        observation_reason : `pd.Series`
+            Observation reason for each visit.
+        """
+        if "observation_reason" in self.consdb_visits:
+            reason = self.consdb_visits["observation_reason"]
+        else:
+            reason = pd.Series("", index=self.consdb_visits.index)
+        return reason
+
+    @cached_property
+    def science_program(self) -> pd.Series:
+        """Science program each visit.
+
+        Returns
+        -------
+        science_progarm : `pd.Series`
+            Science program for each visit.
+        """
+        if "science_program" in self.consdb_visits:
+            science_program = self.consdb_visits["science_program"]
+        else:
+            science_program = pd.Series("", index=self.consdb_visits.index)
+        return science_program
 
     @cached_property
     def visit_time(self) -> pd.Series:
@@ -847,17 +881,6 @@ class ConsDBVisits(ABC):
         return self.consdb_visits["eff_time_m5"]
 
     @cached_property
-    def seq_num(self) -> pd.Series:
-        """The sequences number.
-
-        Returns
-        -------
-        seq_num : `pd.Series`
-            The sequence number.
-        """
-        return self.consdb_visits["seq_num"]
-
-    @cached_property
     def opsim(self) -> pd.DataFrame:
         """The table of visits, in a format replicating opsim output.
 
@@ -867,59 +890,58 @@ class ConsDBVisits(ABC):
             The table of visits, in a format replicating opsim output.
         """
 
-        opsim_df = pd.DataFrame(
-            {
-                "observationId": self.observation_id,
-                "fieldRA": self.ra,
-                "fieldDec": self.decl,
-                "observationStartMJD": self.obs_start_mjd,
-                "flush_by_mjd": np.nan,
-                "visitExposureTime": self.shut_time,
-                "filter": self.band,
-                "rotSkyPos": self.sky_rotation,
-                "rotSkyPos_desired": np.nan,
-                "numExposures": self.num_exposures,
-                "airmass": self.airmass,
-                "seeingFwhm500": self.fwhm_500,
-                "seeingFwhmEff": self.fwhm_eff,
-                "seeingFwhmGeom": self.fwhm_geom,
-                "skyBrightness": self.sky_mag_per_asec,
-                "night": self.night,
-                "slewTime": np.nan,
-                "visitTime": self.visit_time,
-                "slewDistance": self.slew_distance,
-                "fiveSigmaDepth": self.eff_time_m5,
-                "altitude": self.altitude,
-                "azimuth": self.azimuth,
-                "paraAngle": self.parallactic_angle,
-                "psudoParaAngle": self.pseudo_parallactic_angle,
-                "cloud": self.cloud,
-                "moonAlt": self.sun_moon_positions["moon_alt"],
-                "sunAlt": self.sun_moon_positions["sun_alt"],
-                "note": self.note,
-                "target": self.target_name,
-                #                "fieldId": None,
-                #                "proposalId": None,
-                #                "block_id": None,
-                "observationStartLST": self.observation_start_lst,
-                "rotTelPos": self.rot_tel_pos,
-                "rotTelPos_backup": None,
-                "moonAz": self.sun_moon_positions["moon_az"],
-                "sunAz": self.sun_moon_positions["sun_az"],
-                "sunRA": self.sun_moon_positions["sun_RA"],
-                "sunDec": self.sun_moon_positions["sun_dec"],
-                "moonRA": self.sun_moon_positions["moon_RA"],
-                "moonDec": self.sun_moon_positions["moon_dec"],
-                "moonDistance": self.moon_distance,
-                "solarElong": self.solar_elong,
-                "moonPhase": self.sun_moon_positions["moon_phase"],
-                #                "cummTelAz": None,
-                #                "scripted_id": None,
-                "start_date": self.consdb_visits["obs_start"],
-                "t_eff": self.consdb_visits["eff_time_median"],
-                "seq_num": self.seq_num,
-            }
-        )
+        opsim_dict = {
+            "observationId": self.observation_id,
+            "fieldRA": self.ra,
+            "fieldDec": self.decl,
+            "observationStartMJD": self.obs_start_mjd,
+            "flush_by_mjd": np.nan,
+            "visitExposureTime": self.shut_time,
+            "filter": self.band,
+            "rotSkyPos": self.sky_rotation,
+            "rotSkyPos_desired": np.nan,
+            "numExposures": self.num_exposures,
+            "airmass": self.airmass,
+            "seeingFwhm500": self.fwhm_500,
+            "seeingFwhmEff": self.fwhm_eff,
+            "seeingFwhmGeom": self.fwhm_geom,
+            "skyBrightness": self.sky_mag_per_asec,
+            "night": self.night,
+            "slewTime": np.nan,
+            "visitTime": self.visit_time,
+            "slewDistance": self.slew_distance,
+            "fiveSigmaDepth": self.eff_time_m5,
+            "altitude": self.altitude,
+            "azimuth": self.azimuth,
+            "paraAngle": self.parallactic_angle,
+            "psudoParaAngle": self.pseudo_parallactic_angle,
+            "cloud": self.cloud,
+            "moonAlt": self.sun_moon_positions["moon_alt"],
+            "sunAlt": self.sun_moon_positions["sun_alt"],
+            "note": self.note,
+            "scheduler_note": "NOT AVAILABLE",
+            "target_name": self.target_name,
+            #            "block_id": "NOT AVAILABLE",
+            "observationStartLST": self.observation_start_lst,
+            "rotTelPos": self.rot_tel_pos,
+            "rotTelPos_backup": np.nan,
+            "moonAz": self.sun_moon_positions["moon_az"],
+            "sunAz": self.sun_moon_positions["sun_az"],
+            "sunRA": self.sun_moon_positions["sun_RA"],
+            "sunDec": self.sun_moon_positions["sun_dec"],
+            "moonRA": self.sun_moon_positions["moon_RA"],
+            "moonDec": self.sun_moon_positions["moon_dec"],
+            "moonDistance": self.moon_distance,
+            "solarElong": self.solar_elong,
+            "moonPhase": self.sun_moon_positions["moon_phase"],
+            "cummTelAz": np.nan,
+            #            "scripted_id": "NOT AVAILABLE",
+            "observation_reason": self.observation_reason,
+            "science_program": self.science_program,
+            "start_date": self.consdb_visits["obs_start"],
+        }
+
+        opsim_df = pd.DataFrame(opsim_dict)
 
         return opsim_df
 
@@ -933,6 +955,13 @@ class ConsDBVisits(ABC):
             The observation array.
         """
         return SchemaConverter().opsimdf2obs(self.opsim)
+
+    @cached_property
+    def merged_opsim_consdb(self):
+        merged_visits = self.consdb_visits.merge(
+            self.opsim, left_on="visit_id", right_on="observationId", suffixes=(None, "_opsim")
+        )
+        return merged_visits
 
 
 class ComcamConsDBVisits(ConsDBVisits):
@@ -948,11 +977,11 @@ class ComcamConsDBVisits(ConsDBVisits):
         # Needed to make mypy happy
         assert isinstance(value_dtype, np.dtype)
 
-        have_values = isinstance(value_dtype, np.number)
+        have_values = np.issubdtype(value_dtype, np.number)
         if not have_values:
             warn(f"Consdb does not have values for {column}, guessing values instead")
 
-        return isinstance(value_dtype, np.number)
+        return np.issubdtype(value_dtype, np.number)
 
     # Set "constant" properties using cached_property rather
     # than actual attributes, because abstract "members" can only be declared
