@@ -193,12 +193,6 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         """
 
         obs_wanted.sort(order=["mjd", "filter"])
-        # Give each desired observation a unique "scripted ID". To be used for
-        # matching and logging later.
-        obs_wanted["scripted_id"] = np.arange(self.id_start, self.id_start + np.size(obs_wanted))
-        # Update so if we set the script again the IDs will not be reused.
-        self.id_start = np.max(obs_wanted["scripted_id"]) + 1
-
         # If we already have a script and append
         if append & (self.obs_wanted is not None):
             self.obs_wanted = np.concatenate([self.obs_wanted, obs_wanted])

@@ -105,21 +105,25 @@ class ScriptedSurvey(BaseSurvey):
             for detailer in self.detailers:
                 detailer.add_observations_array(observations_array, observations_hpid)
 
-            # If scripted_id, note, and filter match, then consider
-            # the observation completed.
-            completed = np.char.add(
-                observations_array["scripted_id"].astype(str),
-                observations_array["scheduler_note"],
-            )
-            completed = np.char.add(completed, observations_array["filter"])
+            # Need to cut down to unique observations
+            u_id = np.unique(observations_array["ID"])
+            indx = np.searchsorted(observations_array["ID"], u_id)
+            observations_array = observations_array[indx]
 
-            wanted = np.char.add(
-                self.obs_wanted["scripted_id"].astype(str), self.obs_wanted["scheduler_note"]
-            )
-            wanted = np.char.add(wanted, self.obs_wanted["filter"])
+            # Can crop off any scheduler notes that won't match
+            indx = np.in1d(observations_array["scheduler_note"], np.unique(self.obs_wanted["scheduler_note"]))
+            observations_array = observations_array[indx]
 
-            indx = np.in1d(wanted, completed)
-            self.obs_wanted["observed"][indx] = True
+            # Bad loop, but tough to get rid of I think.
+            for obs in observations_array:
+                potential_indx = np.where(
+                    (~self.obs_wanted["observed"])
+                    & (obs["mjd"] >= self.mjd_start)
+                    & (obs["mjd"] < self.obs_wanted["flush_by_mjd"])
+                    & (obs["scheduler_note"] == self.obs_wanted["scheduler_note"])
+                )[0]
+                if potential_indx.size > 0:
+                    self.obs_wanted["observed"][potential_indx.min()] = True
             self.scheduled_obs = self.obs_wanted["mjd"][~self.obs_wanted["observed"]]
 
     def add_observation(self, observation, indx=None, **kwargs):
@@ -136,18 +140,16 @@ class ScriptedSurvey(BaseSurvey):
                     detailer.add_observation(observation, **kwargs)
                 self.reward_checked = False
 
-                # Find the index
-                indx = np.where(self.obs_wanted["scripted_id"] == observation["scripted_id"])[0]
-                # If it matches scripted_id, note, and filter, mark it as
-                # observed and update scheduled observation list.
-                if indx.size > 0:
-                    if (
-                        (self.obs_wanted["scripted_id"][indx] == observation["scripted_id"])
-                        & (self.obs_wanted["scheduler_note"][indx] == observation["scheduler_note"])
-                        & (self.obs_wanted["filter"][indx] == observation["filter"])
-                    ):
-                        self.obs_wanted["observed"][indx] = True
-                        self.scheduled_obs = self.obs_wanted["mjd"][~self.obs_wanted["observed"]]
+                # If we match note and filter and less than mjd flush time, consider it a match
+                potential_indx = np.where(
+                    (~self.obs_wanted["observed"])
+                    & (observation["mjd"] >= self.mjd_start)
+                    & (observation["mjd"] < self.obs_wanted["flush_by_mjd"])
+                    & (observation["scheduler_note"] == self.obs_wanted["scheduler_note"])
+                )[0]
+                if potential_indx.size > 0:
+                    self.obs_wanted["observed"][potential_indx.min()] = True
+                    self.scheduled_obs = self.obs_wanted["mjd"][~self.obs_wanted["observed"]]
 
     def calc_reward_function(self, conditions):
         """If there is an observation ready to go, execute it,
@@ -173,7 +175,6 @@ class ScriptedSurvey(BaseSurvey):
             "rotSkyPos",
             "rotTelPos",
             "flush_by_mjd",
-            "scripted_id",
         ]:
             observation[key] = obs_row[key]
         return observation
@@ -326,11 +327,6 @@ class ScriptedSurvey(BaseSurvey):
         self.obs_wanted = obs_wanted
 
         self.obs_wanted.sort(order=["mjd", "filter"])
-        # Give each desired observation a unique "scripted ID". To be used for
-        # matching and logging later.
-        self.obs_wanted["scripted_id"] = np.arange(self.id_start, self.id_start + np.size(self.obs_wanted))
-        # Update so if we set the script again the IDs will not be reused.
-        self.id_start = np.max(self.obs_wanted["scripted_id"]) + 1
 
         self.mjd_start = self.obs_wanted["mjd"] - self.obs_wanted["mjd_tol"]
         # Here is the attribute that core scheduler checks to
