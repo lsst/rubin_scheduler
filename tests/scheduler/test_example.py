@@ -26,11 +26,11 @@ class TestExample(unittest.TestCase):
         # or different lunar phase means different filters get picked
         # for the blobs
         notes_to_check = [
-            "DD:COSMOS",
+            "DD:COSMOS, 1",
             "blob_long, gr, a",
             "blob_long, gr, b",
             "greedy",
-            "long",
+            "long, 1",
             "pair_15, iz, a",
             "pair_15, iz, b",
             "pair_15, ri, a",
@@ -78,11 +78,11 @@ class TestExample(unittest.TestCase):
         # or different lunar phase means different filters get picked
         # for the blobs
         notes_to_check = [
-            "DD:COSMOS",
+            "DD:COSMOS, 1",
             "blob_long, gr, a",
             "blob_long, gr, b",
             "greedy",
-            "long",
+            "long, 1",
             "pair_15, iz, a",
             "pair_15, iz, b",
             "pair_15, ri, a",
@@ -96,10 +96,6 @@ class TestExample(unittest.TestCase):
         ]
 
         for note in notes_to_check:
-            assert note in u_notes
-
-        for note in u_notes:
-            # If this fails, time to add something to notes_to_check
             assert note in u_notes
 
 

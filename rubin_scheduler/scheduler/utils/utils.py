@@ -669,7 +669,6 @@ class ObservationArray(np.ndarray):
             ("solarElong", float),
             ("moonPhase", float),
             ("cummTelAz", float),
-            ("scripted_id", int),
             ("observation_reason", "U40"),
             ("science_program", "U40"),
         ]
@@ -748,7 +747,6 @@ class ScheduledObservationArray(np.ndarray):
             ("sun_alt_max", float),
             ("moon_min_distance", float),
             ("observed", bool),
-            ("scripted_id", int),
         ]
 
         obj = np.zeros(n, dtype=dtypes1 + dtype2).view(cls)

@@ -152,9 +152,6 @@ All values are for the center of the field of view (e.g., airmass, altitude, etc
    * - cummTelAz
      - degrees
      - Cumulative azimuth of the telescope mount, tracks cable wrap.
-   * - scripted_id
-     - integer
-     - Links scheduled observations with their acquisition.
    * - observation_reason
      - string
      - The reason for the observation. Identifier for DM. Translates to observation_reason in the headers/consdb.

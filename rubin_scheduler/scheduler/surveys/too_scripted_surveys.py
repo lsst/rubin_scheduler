@@ -181,40 +181,10 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         # list to keep track of alerts we have already seen
         self.seen_alerts = []
 
-    # Need to make sure new set_script call doesn't clobber old script!
-    def set_script(self, obs_wanted, append=True):
-        """
-        Parameters
-        ----------
-        obs_wanted : rubin_scheduler.scheduler.utils.ScheduledObservationArray
-            The observations that should be executed.
-        append : bool
-            Should the obs_wanted be appended to any script already set?
-        """
-
-        obs_wanted.sort(order=["mjd", "filter"])
-        # Give each desired observation a unique "scripted ID". To be used for
-        # matching and logging later.
-        obs_wanted["scripted_id"] = np.arange(self.id_start, self.id_start + np.size(obs_wanted))
-        # Update so if we set the script again the IDs will not be reused.
-        self.id_start = np.max(obs_wanted["scripted_id"]) + 1
-
-        # If we already have a script and append
-        if append & (self.obs_wanted is not None):
-            self.obs_wanted = np.concatenate([self.obs_wanted, obs_wanted])
-            self.obs_wanted.sort(order=["mjd", "filter"])
-        else:
-            self.obs_wanted = obs_wanted
-
-        self.mjd_start = self.obs_wanted["mjd"] - self.obs_wanted["mjd_tol"]
-        # Here is the atribute that core scheduler checks to
-        # broadcast scheduled observations in the conditions object.
-        self.scheduled_obs = self.obs_wanted["mjd"]
-
     def _check_list(self, conditions):
         """Check to see if the current mjd is good"""
         observation = None
-        if self.obs_wanted is not None:
+        if self.obs_wanted.size > 0:
             # Scheduled observations that are in the right
             # time window and have not been executed
             in_time_window = np.where(
@@ -243,7 +213,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
 
             if np.size(still_relevant) > 0:
                 observations = self.obs_wanted[still_relevant]
-                self.set_script(observations, append=False)
+                self.set_script(observations, append=False, add_index=False)
             else:
                 self.clear_script()
 
