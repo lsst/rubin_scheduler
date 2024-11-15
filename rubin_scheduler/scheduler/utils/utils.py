@@ -493,6 +493,9 @@ class SchemaConverter:
         obs : `np.recarray`
             Numpy array with OpSim observations.
         """
+        # Do not modify the passed DataFrame, and avoid pandas getting
+        # upset if a view is passed in.
+        df = df.copy()
 
         # Make it backwards compatible if there are
         # columns that have changed names
