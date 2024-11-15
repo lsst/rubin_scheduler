@@ -541,7 +541,6 @@ class ConsDBVisits(ABC):
             note = pd.Series("", index=self.consdb_visits.index)
         return note
 
-
     @cached_property
     def observation_reason(self) -> pd.Series:
         """Observation reason for each visit.
