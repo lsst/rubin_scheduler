@@ -527,6 +527,22 @@ class ConsDBVisits(ABC):
         return note
 
     @cached_property
+    def scheduler_note(self) -> pd.Series:
+        """scheduler_note for each visit.
+
+        Returns
+        -------
+        note : `pd.Series`
+            Note for each visit.
+        """
+        if "scheduler_note" in self.consdb_visits:
+            note = self.consdb_visits["scheduler_note"]
+        else:
+            note = pd.Series("", index=self.consdb_visits.index)
+        return note
+
+
+    @cached_property
     def observation_reason(self) -> pd.Series:
         """Observation reason for each visit.
 
@@ -919,7 +935,7 @@ class ConsDBVisits(ABC):
             "moonAlt": self.sun_moon_positions["moon_alt"],
             "sunAlt": self.sun_moon_positions["sun_alt"],
             "note": self.note,
-            "scheduler_note": "NOT AVAILABLE",
+            "scheduler_note": self.scheduler_note,
             "target_name": self.target_name,
             #            "block_id": "NOT AVAILABLE",
             "observationStartLST": self.observation_start_lst,
