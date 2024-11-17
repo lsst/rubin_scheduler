@@ -361,6 +361,7 @@ class CameraSmallRotPerObservationListDetailer(BaseDetailer):
             # (we'll wipe this when we get to next fchange_idx)
             offsets[fchange_idx:] += self.per_visit_rot * np.arange(len(filter_list) - fchange_idx)
 
+		offsets = np.where(offsets > self.max_rot, max_rot, offsets)
         return offsets
 
     def __call__(self, observation_list, conditions):
