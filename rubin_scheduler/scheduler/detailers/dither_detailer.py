@@ -356,11 +356,12 @@ class CameraSmallRotPerObservationListDetailer(BaseDetailer):
         for fchange_idx, nvis_f in zip(filter_changes, nvis_per_filter):
             rot_range = self.rot_range - self.per_visit_rot * nvis_f
             # At the filter change spot, update to random offset
-            offsets[fchange_idx] = rng.random() * rot_range + self.min_rot
+            offsets[fchange_idx:] = rng.random() * rot_range + self.min_rot
             # After the filter change point, add incremental rotation
             # (we'll wipe this when we get to next fchange_idx)
             offsets[fchange_idx:] += self.per_visit_rot * np.arange(len(filter_list) - fchange_idx)
 
+		offsets = np.where(offsets > self.max_rot, max_rot, offsets)
         return offsets
 
     def __call__(self, observation_list, conditions):
