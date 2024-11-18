@@ -6,9 +6,47 @@ import numpy as np
 import rubin_scheduler.scheduler.basis_functions as basis_functions
 from rubin_scheduler.scheduler.features import Conditions
 from rubin_scheduler.scheduler.utils import ObservationArray
+from rubin_scheduler.scheduler.model_observatory import ModelObservatory
 
 
 class TestBasis(unittest.TestCase):
+
+    def test_basics(self):
+        """Test the basics of each basis function
+        """
+
+        bfs = [basis_functions.ConstantBasisFunction,
+               basis_functions.DelayStartBasisFunction,
+               basis_functions.AvoidFastRevisitsBasisFunction,
+               basis_functions.VisitRepeatBasisFunction,
+               basis_functions.M5DiffBasisFunction,
+               basis_functions.StrictFilterBasisFunction,
+               basis_functions.FilterChangeBasisFunction,
+               basis_functions.SlewtimeBasisFunction,
+               basis_functions.AzModuloBasisFunction,
+               basis_functions.DecModuloBasisFunction,
+               basis_functions.NearSunHighAirmassBasisFunction,
+               basis_functions.EclipticBasisFunction,
+               basis_functions.NGoodSeeingBasisFunction,
+               basis_functions.AvoidDirectWind,
+               basis_functions.FilterDistBasisFunction,
+               basis_functions.RewardRisingBasisFunction]
+
+        obs = ObservationArray()
+        obs["filter"] = "r"
+        obs["mjd"] = 59000.0
+        observatory = ModelObservatory()
+        conditions = observatory.return_conditions()
+        indx = np.array([1000])
+
+        for bf in bfs:
+            awake_bf = bf()
+            awake_bf.add_observation(obs, indx=indx)
+            feas = awake_bf.check_feasibility(conditions=conditions)
+            reward = awake_bf(conditions)
+            assert feas is not None
+            assert reward is not None
+
     def test_visit_repeat_basis_function(self):
         bf = basis_functions.VisitRepeatBasisFunction()
 
@@ -353,7 +391,10 @@ class TestBasis(unittest.TestCase):
 
     def test_deprecated(self):
         # Add to-be-deprecated functions here as they appear
-        deprecated_basis_functions = []
+        deprecated_basis_functions = [basis_functions.SolarElongMaskBasisFunction, basis_functions.AzimuthBasisFunction,
+                                      basis_functions.SeasonCoverageBasisFunction,
+               basis_functions.GoodSeeingBasisFunction,
+               basis_functions.NObsHighAmBasisFunction,]
         for dep_bf in deprecated_basis_functions:
             print(dep_bf)
             with warnings.catch_warnings(record=True) as w:
