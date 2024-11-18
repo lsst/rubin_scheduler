@@ -1,4 +1,10 @@
-__all__ = ["rotation_converter", "RotationConverter", "RotationConverterAuxtel", "pseudo_parallactic_angle"]
+__all__ = [
+    "rotation_converter",
+    "RotationConverter",
+    "RotationConverterComCam",
+    "RotationConverterAuxtel",
+    "pseudo_parallactic_angle",
+]
 
 import astropy.units as u
 import numpy as np
@@ -88,6 +94,8 @@ def rotation_converter(telescope="rubin"):
         return RotationConverter()
     elif telescope.lower() == "auxtel":
         return RotationConverterAuxtel()
+    elif telescope.lower() == "comcam":
+        return RotationConverterComCam()
     else:
         raise ValueError("Unknown telescope name")
 
@@ -114,7 +122,7 @@ def _wrap_180(in_angle):
 
 
 class RotationConverter(object):
-    """Class to convert between rotTelPos and rotSkyPos"""
+    """Class to convert between rotTelPos and rotSkyPos for LSSTcam."""
 
     def rottelpos2rotskypos(self, rottelpos_in, pa):
         """convert rotTelPos to rotSkyPos
@@ -147,6 +155,19 @@ class RotationConverter(object):
 
     def _rotskypos2rottelpos(self, rotskypos_in, pa):
         result = (pa - rotskypos_in - np.pi / 2) % (2.0 * np.pi)
+        # Enforce rotTelPos between -pi and pi
+        return _wrap_180(result)
+
+
+class RotationConverterComCam(RotationConverter):
+    """Class to convert between rotTelPos and rotSkyPos for ComCam."""
+
+    def _rottelpos2rotskypos(self, rottelpos_in, pa):
+        result = (pa - rottelpos_in) % (2.0 * np.pi)
+        return result
+
+    def _rotskypos2rottelpos(self, rotskypos_in, pa):
+        result = (pa - rotskypos_in) % (2.0 * np.pi)
         # Enforce rotTelPos between -pi and pi
         return _wrap_180(result)
 
