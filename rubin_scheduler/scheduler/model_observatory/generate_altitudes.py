@@ -1,4 +1,4 @@
-__all__ = ("generate_nights",)
+__all__ = ("generate_nights", "gen_altitudes")
 
 import numpy as np
 from astropy.coordinates import AltAz, EarthLocation, get_body, get_sun
@@ -203,15 +203,15 @@ def generate_nights(mjd_start, duration=3653.0, rough_step=2, verbose=False):
     return alt_info_array, refined_mjds
 
 
-if __name__ == "__main__":
-    # Let's use astropy to pre-compute the
-    # sunrise/sunset/twilight/moonrise/moonset times we're interested in.
-    mjd_start = 59853.5
-    #
+def gen_altitudes(mjd_start=59853.5, duration=365.25 * 24 + 80, rough_step=2, filename="night_info.npz"):
+
     rough_times, refined_mjds = generate_nights(
-        mjd_start - 365.25 * 2 - 40.0, duration=365.25 * 24 + 80, rough_step=2
+        mjd_start - 365.25 * 2 - 40.0, duration=duration, rough_step=rough_step
     )
-    # rough_times, refined_mjds = generate_nights(mjd_start, duration=50,
-    # rough_step=2)
-    # Maybe just use pandas to dump it to a csv file?
-    np.savez("night_info.npz", rough_times=rough_times, refined_mjds=refined_mjds)
+    if filename is not None:
+        np.savez(filename, rough_times=rough_times, refined_mjds=refined_mjds)
+
+
+if __name__ == "__main__":
+
+    gen_altitudes()

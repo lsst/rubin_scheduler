@@ -477,6 +477,8 @@ class NObsHighAmBasisFunction(BaseBasisFunction):
         am_limits=[1.5, 2.2],
         out_of_bounds_val=np.nan,
     ):
+        send_unused_deprecation_warning("NObsHighAmBasisFunction")
+        return
         super(NObsHighAmBasisFunction, self).__init__(nside=nside, filtername=filtername)
         if footprint is None:
             footprints, labels = get_current_footprint(self.nside)
@@ -629,6 +631,7 @@ class SeasonCoverageBasisFunction(BaseBasisFunction):
         mjd_start=None,
         season_frac_start=0.5,
     ):
+        send_unused_deprecation_warning("SeasonCoverageBasisFunction")
         super().__init__(nside=nside, filtername=filtername)
 
         if footprint is None:
@@ -655,7 +658,7 @@ class SeasonCoverageBasisFunction(BaseBasisFunction):
         result = self.result.copy()
 
         # Update the feature to the current time
-        self.survey_features["n_obs_season"].season_update(conditions)
+        self.survey_features["n_obs_season"].season_update(conditions=conditions)
         feature = self.survey_features["n_obs_season"].feature
 
         # Get the season from the conditions object.
@@ -1163,10 +1166,11 @@ class AzimuthBasisFunction(BaseBasisFunction):
     """
 
     def __init__(self, nside=DEFAULT_NSIDE):
+        send_unused_deprecation_warning("AzimuthBasisFunction")
         super(AzimuthBasisFunction, self).__init__(nside=nside)
 
     def _calc_value(self, conditions, indx=None):
-        az_dist = conditions.az - conditions.telAz
+        az_dist = conditions.az - conditions.tel_az
         az_dist = az_dist % (2.0 * np.pi)
         over = np.where(az_dist > np.pi)
         az_dist[over] = 2.0 * np.pi - az_dist[over]
@@ -1289,6 +1293,8 @@ class GoodSeeingBasisFunction(BaseBasisFunction):
         fwhm_eff_limit=0.8,
         mag_diff=0.75,
     ):
+        send_unused_deprecation_warning("GoodSeeingBasisFunction")
+        return
         super(GoodSeeingBasisFunction, self).__init__(nside=nside)
 
         self.filtername = filtername
