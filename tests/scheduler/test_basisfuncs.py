@@ -14,6 +14,8 @@ class TestBasis(unittest.TestCase):
     def test_basics(self):
         """Test the basics of each basis function"""
 
+        # List of simple basis functions that don't have
+        # any required args
         bfs = [
             basis_functions.ConstantBasisFunction,
             basis_functions.DelayStartBasisFunction,
@@ -31,6 +33,29 @@ class TestBasis(unittest.TestCase):
             basis_functions.AvoidDirectWind,
             basis_functions.FilterDistBasisFunction,
             basis_functions.RewardRisingBasisFunction,
+            basis_functions.FilterLoadedBasisFunction,
+            basis_functions.OnceInNightBasisFunction,
+            basis_functions.SunAltHighLimitBasisFunction,
+            basis_functions.TimeToTwilightBasisFunction,
+            basis_functions.NotTwilightBasisFunction,
+            basis_functions.AfterEveningTwiBasisFunction,
+            basis_functions.ForceDelayBasisFunction,
+            basis_functions.HourAngleLimitBasisFunction,
+            basis_functions.MoonDownBasisFunction,
+            basis_functions.CloudedOutBasisFunction,
+            basis_functions.SoftDelayBasisFunction,
+            basis_functions.SunAltLimitBasisFunction,
+            basis_functions.NightModuloBasisFunction,
+            basis_functions.EndOfEveningBasisFunction,
+            basis_functions.TimeToScheduledBasisFunction,
+            basis_functions.CloseToTwilightBasisFunction,
+            basis_functions.InTimeWindowBasisFunction,
+            basis_functions.HaMaskBasisFunction,
+            basis_functions.MoonAvoidanceBasisFunction,
+            basis_functions.MapCloudBasisFunction,
+            basis_functions.PlanetMaskBasisFunction,
+            basis_functions.SolarElongationMaskBasisFunction,
+            basis_functions.AltAzShadowMaskBasisFunction
         ]
 
         obs = ObservationArray()
@@ -398,6 +423,7 @@ class TestBasis(unittest.TestCase):
             basis_functions.SeasonCoverageBasisFunction,
             basis_functions.GoodSeeingBasisFunction,
             basis_functions.NObsHighAmBasisFunction,
+            basis_functions.TimeInTwilightBasisFunction,
         ]
         for dep_bf in deprecated_basis_functions:
             print(dep_bf)

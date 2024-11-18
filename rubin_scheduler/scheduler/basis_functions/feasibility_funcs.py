@@ -267,6 +267,7 @@ class TimeInTwilightBasisFunction(BaseBasisFunction):
     """
 
     def __init__(self, time_needed=5.0):
+        send_unused_deprecation_warning("TimeInTwilightBasisFunction")
         super(TimeInTwilightBasisFunction, self).__init__()
         self.time_needed = time_needed / 60.0 / 24.0  # To days
 
@@ -278,7 +279,7 @@ class TimeInTwilightBasisFunction(BaseBasisFunction):
         if time1 > self.time_needed:
             result = True
         else:
-            if conditions.sunAlt > np.radians(-18.0):
+            if conditions.sun_alt > np.radians(-18.0):
                 if time2 > self.time_needed:
                     result = True
         return result
@@ -463,7 +464,7 @@ class HourAngleLimitBasisFunction(BaseBasisFunction):
         to give 4 hour window around RA=0, ha_limits=[[22,24], [0,2]]
     """
 
-    def __init__(self, RA=0.0, ha_limits=None):
+    def __init__(self, RA=0.0, ha_limits=[[22, 24], [0, 2]]):
         super(HourAngleLimitBasisFunction, self).__init__()
         self.ra_hours = RA / 360.0 * 24.0
         self.ha_limits = np.array(ha_limits)
