@@ -430,7 +430,7 @@ class MapCloudBasisFunction(BaseBasisFunction):
     """
 
     def __init__(self, nside=DEFAULT_NSIDE, max_cloud_map=None, max_val=0.7, out_of_bounds_val=np.nan):
-        super(BulkCloudBasisFunction, self).__init__(nside=nside)
+        super().__init__(nside=nside)
         self.update_on_newobs = False
 
         if max_cloud_map is None:
