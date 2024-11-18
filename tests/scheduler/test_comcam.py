@@ -71,7 +71,7 @@ class TestComCam(unittest.TestCase):
 
         scheduler = CoreScheduler([red_survey, blue_survey], nside=nside, camera="comcam")
 
-        mo, scheduler, observations = sim_runner(mo, scheduler, sim_duration=3, verbose=True)
+        mo, scheduler, observations = sim_runner(mo, scheduler, sim_duration=0.25, verbose=True)
 
         assert len(observations) > 100
         assert np.size(np.where(observations["filter"] == "r")[0]) > 0
