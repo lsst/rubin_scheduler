@@ -5,32 +5,33 @@ import numpy as np
 
 import rubin_scheduler.scheduler.basis_functions as basis_functions
 from rubin_scheduler.scheduler.features import Conditions
-from rubin_scheduler.scheduler.utils import ObservationArray
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
+from rubin_scheduler.scheduler.utils import ObservationArray
 
 
 class TestBasis(unittest.TestCase):
 
     def test_basics(self):
-        """Test the basics of each basis function
-        """
+        """Test the basics of each basis function"""
 
-        bfs = [basis_functions.ConstantBasisFunction,
-               basis_functions.DelayStartBasisFunction,
-               basis_functions.AvoidFastRevisitsBasisFunction,
-               basis_functions.VisitRepeatBasisFunction,
-               basis_functions.M5DiffBasisFunction,
-               basis_functions.StrictFilterBasisFunction,
-               basis_functions.FilterChangeBasisFunction,
-               basis_functions.SlewtimeBasisFunction,
-               basis_functions.AzModuloBasisFunction,
-               basis_functions.DecModuloBasisFunction,
-               basis_functions.NearSunHighAirmassBasisFunction,
-               basis_functions.EclipticBasisFunction,
-               basis_functions.NGoodSeeingBasisFunction,
-               basis_functions.AvoidDirectWind,
-               basis_functions.FilterDistBasisFunction,
-               basis_functions.RewardRisingBasisFunction]
+        bfs = [
+            basis_functions.ConstantBasisFunction,
+            basis_functions.DelayStartBasisFunction,
+            basis_functions.AvoidFastRevisitsBasisFunction,
+            basis_functions.VisitRepeatBasisFunction,
+            basis_functions.M5DiffBasisFunction,
+            basis_functions.StrictFilterBasisFunction,
+            basis_functions.FilterChangeBasisFunction,
+            basis_functions.SlewtimeBasisFunction,
+            basis_functions.AzModuloBasisFunction,
+            basis_functions.DecModuloBasisFunction,
+            basis_functions.NearSunHighAirmassBasisFunction,
+            basis_functions.EclipticBasisFunction,
+            basis_functions.NGoodSeeingBasisFunction,
+            basis_functions.AvoidDirectWind,
+            basis_functions.FilterDistBasisFunction,
+            basis_functions.RewardRisingBasisFunction,
+        ]
 
         obs = ObservationArray()
         obs["filter"] = "r"
@@ -391,10 +392,13 @@ class TestBasis(unittest.TestCase):
 
     def test_deprecated(self):
         # Add to-be-deprecated functions here as they appear
-        deprecated_basis_functions = [basis_functions.SolarElongMaskBasisFunction, basis_functions.AzimuthBasisFunction,
-                                      basis_functions.SeasonCoverageBasisFunction,
-               basis_functions.GoodSeeingBasisFunction,
-               basis_functions.NObsHighAmBasisFunction,]
+        deprecated_basis_functions = [
+            basis_functions.SolarElongMaskBasisFunction,
+            basis_functions.AzimuthBasisFunction,
+            basis_functions.SeasonCoverageBasisFunction,
+            basis_functions.GoodSeeingBasisFunction,
+            basis_functions.NObsHighAmBasisFunction,
+        ]
         for dep_bf in deprecated_basis_functions:
             print(dep_bf)
             with warnings.catch_warnings(record=True) as w:
