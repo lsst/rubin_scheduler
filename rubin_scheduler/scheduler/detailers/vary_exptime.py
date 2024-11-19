@@ -6,7 +6,7 @@ from scipy.stats import binned_statistic
 
 from rubin_scheduler.scheduler.detailers import BaseDetailer
 from rubin_scheduler.skybrightness_pre import dark_sky
-from rubin_scheduler.utils import DEFAULT_NSIDE, Site, hpid2_ra_dec, m5_flat_sed, ra_dec2_hpid
+from rubin_scheduler.utils import DEFAULT_NSIDE, Site, hpid2_ra_dec, m5_flat_sed, _ra_dec2_hpid
 
 
 def calc_target_m5s(alt=65.0, fiducial_seeing=0.9, exptime=20.0):
@@ -103,11 +103,11 @@ class VaryExptDetailer(BaseDetailer):
         List of observations.
         """
         obs_array = np.concatenate(observation_list)
-        hpids = ra_dec2_hpid(self.nside, obs_array["RA"], obs_array["dec"])
+        hpids = _ra_dec2_hpid(self.nside, obs_array["RA"], obs_array["dec"])
         new_expts = np.zeros(obs_array.size, dtype=float)
         for filtername in np.unique(obs_array["filter"]):
             in_filt = np.where(obs_array["filter"] == filtername)
-            delta_m5 = self.target_m5[filtername] - conditions.M5Depth[filtername][hpids[in_filt]]
+            delta_m5 = self.target_m5[filtername] - conditions.m5_depth[filtername][hpids[in_filt]]
             # We can get NaNs because dithering pushes the center of the
             # pointing into masked regions.
             nan_indices = np.argwhere(np.isnan(delta_m5)).ravel()
@@ -116,7 +116,7 @@ class VaryExptDetailer(BaseDetailer):
                 # Note this might fail if we run at higher resolution,
                 # then we'd need to look farther for pixels to interpolate.
                 near_pix = hp.get_all_neighbours(conditions.nside, bad_hp)
-                vals = conditions.M5Depth[filtername][near_pix]
+                vals = conditions.m5_depth[filtername][near_pix]
                 if True in np.isfinite(vals):
                     estimate_m5 = np.mean(vals[np.isfinite(vals)])
                     delta_m5[indx] = self.target_m5[filtername] - estimate_m5

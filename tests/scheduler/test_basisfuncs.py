@@ -55,7 +55,7 @@ class TestBasis(unittest.TestCase):
             basis_functions.MapCloudBasisFunction,
             basis_functions.PlanetMaskBasisFunction,
             basis_functions.SolarElongationMaskBasisFunction,
-            basis_functions.AltAzShadowMaskBasisFunction
+            basis_functions.AltAzShadowMaskBasisFunction,
         ]
 
         obs = ObservationArray()
