@@ -17,8 +17,7 @@ class TestComCam(unittest.TestCase):
         # Specify the HEALpix resolution we want to do everything in.
         # Need to turn up for comcam
         nside = 512
-        mjd_start = 60796.0
-        mo = ModelObservatory(nside=nside, mjd_start=mjd_start)
+        mo = ModelObservatory(nside=nside)
         conditions = mo.return_conditions()
 
         # Let's start out with a simple 2-band footprint where
