@@ -1,11 +1,64 @@
+import copy
 import unittest
+
+import numpy as np
 
 import rubin_scheduler.scheduler.detailers as detailers
 from rubin_scheduler.scheduler.features import Conditions
+from rubin_scheduler.scheduler.model_observatory import ModelObservatory
 from rubin_scheduler.scheduler.utils import ObservationArray
+from rubin_scheduler.utils import DEFAULT_NSIDE, _ra_dec2_hpid
 
 
 class TestDetailers(unittest.TestCase):
+
+    def test_basics(self):
+        """Test basic detailer functionality"""
+
+        observatory = ModelObservatory()
+        conditions = observatory.return_conditions()
+
+        obs_list_orig = []
+        dec = np.radians(-20)
+        for ra in np.arange(0, 2 * np.pi, np.pi / 4):
+            hpid = _ra_dec2_hpid(DEFAULT_NSIDE, ra, dec)
+            if np.isfinite(conditions.m5_depth["r"][hpid]):
+                obs = ObservationArray()
+                obs["filter"] = "r"
+                obs["RA"] = ra.copy()
+                obs["dec"] = dec
+                obs["mjd"] = 59000.0
+                obs["exptime"] = 30.0
+                obs["scheduler_note"] = "test_note, a"
+                obs_list_orig.append(obs)
+
+        det_list = [
+            detailers.VaryExptDetailer,
+            detailers.ZeroRotDetailer,
+            detailers.Comcam90rotDetailer,
+            detailers.Rottep2RotspDesiredDetailer,
+            detailers.CloseAltDetailer,
+            detailers.TakeAsPairsDetailer,
+            detailers.TwilightTripleDetailer,
+            detailers.FlushForSchedDetailer,
+            detailers.FilterNexp,
+            detailers.FixedSkyAngleDetailer,
+            detailers.ParallacticRotationDetailer,
+            detailers.FlushByDetailer,
+            detailers.RandomFilterDetailer,
+            detailers.TrackingInfoDetailer,
+            detailers.AltAz2RaDecDetailer,
+            detailers.DitherDetailer,
+            detailers.EuclidDitherDetailer,
+            detailers.CameraRotDetailer,
+            detailers.CameraSmallRotPerObservationListDetailer,
+        ]
+
+        for det in det_list:
+            obs_list = copy.deepcopy(obs_list_orig)
+            live_det = det()
+            result = live_det(obs_list, conditions)
+            assert len(result) > 0
 
     def test_random_filter(self):
         obs = ObservationArray(1)
