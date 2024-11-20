@@ -32,8 +32,8 @@ class TestExample(unittest.TestCase):
         assert observations.size > 1000
         # Make sure nothing tried to look through the earth
         assert np.min(observations["alt"]) > 0
-        # Make sure a DDF executed
-        assert np.any(["DD" in note for note in observations["scheduler_note"]])
+        # Make sure a twilight executed
+        assert np.any(["twilight_near_sun, 1" in note for note in observations["scheduler_note"]])
 
 
 if __name__ == "__main__":
