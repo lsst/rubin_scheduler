@@ -100,10 +100,11 @@ class TestSurveyConveniences(unittest.TestCase):
     def test_simple_field_survey(self):
         # Just test that it still instantiates and provides observations.
         observatory = get_ideal_model_observatory(dayobs=self.day_obs_start, survey_start=self.survey_start)
-        # This field ought to be observable at our current survey_start
-        ra = 150
-        dec = 2.2
-        field_name = "almost_cosmos"
+        # Find a good field position
+        conditions = observatory.return_conditions()
+        ra = conditions.lmst * 180 / 12.0
+        dec = -89.0
+        field_name = "almost_pole"
         field = [
             simple_field_survey(
                 field_ra_deg=ra, field_dec_deg=dec, field_name=field_name, science_program="BLOCK-TEST"
@@ -122,10 +123,10 @@ class TestSurveyConveniences(unittest.TestCase):
         self.assertTrue(observations["mjd"].max() - observations["mjd"].min() > 0.4)
         # Check some information about the observation notes and names
         self.assertTrue(np.unique(observations["scheduler_note"]).size == 2)
-        self.assertTrue("almost_cosmos" in observations["scheduler_note"])
-        self.assertTrue("almost_cosmos" in observations["target_name"])
+        self.assertTrue("almost_pole" in observations["scheduler_note"])
+        self.assertTrue("almost_pole" in observations["target_name"])
         # Check that the field survey got lots of visits
-        field_obs = observations[np.where(observations["target_name"] == "almost_cosmos")]
+        field_obs = observations[np.where(observations["target_name"] == "almost_pole")]
         self.assertTrue(field_obs.size > 200)
         self.assertTrue(np.all(field_obs["science_program"] == "BLOCK-TEST"))
         self.assertTrue(field[0].extra_features["ObsRecorded_note"].feature == field_obs.size)
