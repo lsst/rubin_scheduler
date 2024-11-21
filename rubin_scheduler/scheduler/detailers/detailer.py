@@ -136,8 +136,8 @@ class AltAz2RaDecDetailer(BaseDetailer):
             ra, dec = _approx_alt_az2_ra_dec(
                 observation["alt"],
                 observation["az"],
-                conditions.site.latitude,
-                conditions.site.longitude,
+                conditions.site.latitude_rad,
+                conditions.site.longitude_rad,
                 conditions.mjd,
             )
             observation["RA"] = ra
