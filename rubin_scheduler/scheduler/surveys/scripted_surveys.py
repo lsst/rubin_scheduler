@@ -332,13 +332,23 @@ class ScriptedSurvey(BaseSurvey):
             self.script_id_array = np.array(
                 [int(note.split(", ")[-1]) for note in self.obs_wanted["scheduler_note"]]
             )
-            self.id_start = self.script_id_array.max() + 1
+            if np.size(self.script_id_array) > 0:
+                self.id_start = self.script_id_array.max() + 1
 
         if append & (self.obs_wanted is not None):
             self.obs_wanted = np.concatenate([self.obs_wanted, obs_wanted])
             self.obs_wanted.sort(order=["mjd", "filter"])
         else:
             self.obs_wanted = obs_wanted
+
+        # check that we have valid unique keys for observations
+        potential_keys = np.char.add(self.obs_wanted["scheduler_note"], self.obs_wanted["filter"])
+        if np.size(np.unique(potential_keys)) < np.size(self.obs_wanted):
+            msg = (
+                "Scripted observations do not have unique scheduler_note "
+                "+ filter values. Consider setting add_index=True"
+            )
+            raise ValueError(msg)
 
         self.mjd_start = self.obs_wanted["mjd"] - self.obs_wanted["mjd_tol"]
         # Here is the attribute that core scheduler checks to

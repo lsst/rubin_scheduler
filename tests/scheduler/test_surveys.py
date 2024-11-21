@@ -209,6 +209,13 @@ class TestSurveys(unittest.TestCase):
         sched.add_observations_array(completed_observations)
         assert np.sum(survey.obs_wanted["observed"]) == 3
 
+        # Make sure error gets raised if we set a script wrong
+        survey = surveys.ScriptedSurvey([])
+        observations["scheduler_note"] = ["a", "a", "c", "d", "a"]
+        with self.assertRaises(Exception) as context:
+            survey.set_script(observations, add_index=False)
+            self.assertTrue("unique scheduler_note" in str(context))
+
     def test_pointings_survey(self):
         """Test the pointing survey."""
         mo = ModelObservatory()
