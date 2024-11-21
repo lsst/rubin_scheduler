@@ -367,7 +367,7 @@ class FieldAltAzSurvey(FieldSurvey):
             basis_functions=basis_functions,
             RA=0.0,
             dec=0.0,
-            sequence="ugrizy",
+            sequence=sequence,
             nvisits=nvisits,
             exptimes=exptimes,
             nexps=nexps,
