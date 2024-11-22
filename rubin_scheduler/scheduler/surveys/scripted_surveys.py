@@ -6,7 +6,7 @@ import healpy as hp
 import numpy as np
 
 from rubin_scheduler.scheduler.surveys import BaseSurvey
-from rubin_scheduler.scheduler.utils import ObservationArray
+from rubin_scheduler.scheduler.utils import ObservationArray, ScheduledObservationArray
 from rubin_scheduler.utils import DEFAULT_NSIDE, _angular_separation, _approx_ra_dec2_alt_az
 
 log = logging.getLogger(__name__)
@@ -105,22 +105,16 @@ class ScriptedSurvey(BaseSurvey):
             for detailer in self.detailers:
                 detailer.add_observations_array(observations_array, observations_hpid)
 
-            # If scripted_id, note, and filter match, then consider
-            # the observation completed.
-            completed = np.char.add(
-                observations_array["scripted_id"].astype(str),
-                observations_array["scheduler_note"],
-            )
-            completed = np.char.add(completed, observations_array["filter"])
+            if (self.obs_wanted is not None) & (np.size(self.obs_wanted) > 0):
+                full_note_in = np.char.add(
+                    observations_array_in["scheduler_note"], observations_array_in["filter"]
+                )
+                full_note_queue = np.char.add(self.obs_wanted["scheduler_note"], self.obs_wanted["filter"])
 
-            wanted = np.char.add(
-                self.obs_wanted["scripted_id"].astype(str), self.obs_wanted["scheduler_note"]
-            )
-            wanted = np.char.add(wanted, self.obs_wanted["filter"])
+                indx = np.in1d(full_note_queue, full_note_in)
 
-            indx = np.in1d(wanted, completed)
-            self.obs_wanted["observed"][indx] = True
-            self.scheduled_obs = self.obs_wanted["mjd"][~self.obs_wanted["observed"]]
+                self.obs_wanted["observed"][indx] = True
+                self.scheduled_obs = self.obs_wanted["mjd"][~self.obs_wanted["observed"]]
 
     def add_observation(self, observation, indx=None, **kwargs):
         """Check if observation matches a scripted observation"""
@@ -136,18 +130,14 @@ class ScriptedSurvey(BaseSurvey):
                     detailer.add_observation(observation, **kwargs)
                 self.reward_checked = False
 
-                # Find the index
-                indx = np.where(self.obs_wanted["scripted_id"] == observation["scripted_id"])[0]
-                # If it matches scripted_id, note, and filter, mark it as
-                # observed and update scheduled observation list.
-                if indx.size > 0:
-                    if (
-                        (self.obs_wanted["scripted_id"][indx] == observation["scripted_id"])
-                        & (self.obs_wanted["scheduler_note"][indx] == observation["scheduler_note"])
-                        & (self.obs_wanted["filter"][indx] == observation["filter"])
-                    ):
-                        self.obs_wanted["observed"][indx] = True
-                        self.scheduled_obs = self.obs_wanted["mjd"][~self.obs_wanted["observed"]]
+                key = observation["scheduler_note"][0] + observation["filter"][0]
+                try:
+                    # Could add an additional check here for if the observation
+                    # is in the desired mjd window.
+                    self.obs_wanted["observed"][self.note_filter_dict[key]] = True
+                # If the key does not exist, nothing to do
+                except KeyError:
+                    return
 
     def calc_reward_function(self, conditions):
         """If there is an observation ready to go, execute it,
@@ -173,7 +163,6 @@ class ScriptedSurvey(BaseSurvey):
             "rotSkyPos",
             "rotTelPos",
             "flush_by_mjd",
-            "scripted_id",
         ]:
             observation[key] = obs_row[key]
         return observation
@@ -255,7 +244,7 @@ class ScriptedSurvey(BaseSurvey):
     def _check_list(self, conditions):
         """Check to see if the current mjd is good"""
         observations = None
-        if self.obs_wanted is not None:
+        if self.obs_wanted.size > 0:
             # Scheduled observations that are in the right time
             # window and have not been executed
             in_time_window = np.where(
@@ -303,11 +292,12 @@ class ScriptedSurvey(BaseSurvey):
 
     def clear_script(self):
         """set an empty list to serve up"""
-        self.obs_wanted = None
+        self.obs_wanted = ScheduledObservationArray(n=0)
         self.mjd_start = None
         self.scheduled_obs = None
+        self.note_filter_dict = {}
 
-    def set_script(self, obs_wanted):
+    def set_script(self, obs_wanted, append=True, add_index=True):
         """
         Parameters
         ----------
@@ -321,21 +311,55 @@ class ScriptedSurvey(BaseSurvey):
         mjd_tol : float (15.)
             The tolerance to consider an observation as still good to
             observe (min)
+        append : `bool`
+            Should the obs_wanted be appended to any existing scheduled
+            observations. Default True.
+        add_index : `bool`
+            Should the scheduler_note be modified to include a unique
+            index value. Default True.
         """
 
-        self.obs_wanted = obs_wanted
+        obs_wanted.sort(order=["mjd", "filter"])
 
-        self.obs_wanted.sort(order=["mjd", "filter"])
-        # Give each desired observation a unique "scripted ID". To be used for
-        # matching and logging later.
-        self.obs_wanted["scripted_id"] = np.arange(self.id_start, self.id_start + np.size(self.obs_wanted))
-        # Update so if we set the script again the IDs will not be reused.
-        self.id_start = np.max(self.obs_wanted["scripted_id"]) + 1
+        if add_index:
+            sep = [", "] * obs_wanted.size
+            indx = np.arange(self.id_start, self.id_start + obs_wanted.size, 1).astype(str)
+            new_note = np.char.add(obs_wanted["scheduler_note"], sep)
+            obs_wanted["scheduler_note"] = np.char.add(new_note, indx)
+            self.id_start += obs_wanted.size
+        else:
+            # go through and pull the index as an int
+            self.script_id_array = np.array(
+                [int(note.split(", ")[-1]) for note in self.obs_wanted["scheduler_note"]]
+            )
+            if np.size(self.script_id_array) > 0:
+                self.id_start = self.script_id_array.max() + 1
+
+        if append & (self.obs_wanted is not None):
+            self.obs_wanted = np.concatenate([self.obs_wanted, obs_wanted])
+            self.obs_wanted.sort(order=["mjd", "filter"])
+        else:
+            self.obs_wanted = obs_wanted
+
+        # check that we have valid unique keys for observations
+        potential_keys = np.char.add(self.obs_wanted["scheduler_note"], self.obs_wanted["filter"])
+        if np.size(np.unique(potential_keys)) < np.size(self.obs_wanted):
+            msg = (
+                "Scripted observations do not have unique scheduler_note "
+                "+ filter values. Consider setting add_index=True"
+            )
+            raise ValueError(msg)
 
         self.mjd_start = self.obs_wanted["mjd"] - self.obs_wanted["mjd_tol"]
         # Here is the attribute that core scheduler checks to
         # broadcast scheduled observations in the conditions object.
         self.scheduled_obs = self.obs_wanted["mjd"]
+
+        # Generate a dict so it can be fast to check if an observation matches
+        # the combination of scheduler_note and filter
+        self.note_filter_dict = {}
+        for i, obs in enumerate(self.obs_wanted):
+            self.note_filter_dict[obs["scheduler_note"] + obs["filter"]] = i
 
     def generate_observations_rough(self, conditions):
         # if we have already called for this mjd, no need to repeat.

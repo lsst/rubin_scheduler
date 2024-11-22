@@ -8,7 +8,8 @@ import rubin_scheduler.scheduler.basis_functions as basis_functions
 import rubin_scheduler.scheduler.surveys as surveys
 from rubin_scheduler.scheduler.basis_functions import SimpleArrayBasisFunction
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
-from rubin_scheduler.scheduler.utils import HpInLsstFov, ObservationArray
+from rubin_scheduler.scheduler.schedulers import CoreScheduler
+from rubin_scheduler.scheduler.utils import HpInLsstFov, ObservationArray, ScheduledObservationArray
 from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD
 
 
@@ -170,6 +171,50 @@ class TestSurveys(unittest.TestCase):
         )
         reward = survey.calc_reward_function(conditions)
         assert np.isfinite(reward)
+
+    def test_scripted_survey(self):
+        """Test the add observations methods of scripted surveys"""
+
+        survey = surveys.ScriptedSurvey([])
+
+        observations = ScheduledObservationArray(n=5)
+        observations["filter"] = "r"
+        observations["scheduler_note"] = ["a", "a", "c", "d", "a"]
+        observations["mjd_tol"] = 1
+        observations["mjd"] = 1
+        observations["flush_by_mjd"] = 2
+
+        survey.set_script(observations)
+
+        # Make a completed list that has the first 3 observations
+        completed_observations = ObservationArray(n=3)
+        completed_observations["filter"] = survey.obs_wanted["filter"][0:3]
+        completed_observations["scheduler_note"] = survey.obs_wanted["scheduler_note"][0:3]
+
+        # Add one at a time
+        for obs in completed_observations:
+            not_a_slice = ObservationArray(n=1)
+            for key in obs.dtype.names:
+                not_a_slice[key] = obs[key]
+            survey.add_observation(not_a_slice)
+
+        assert np.sum(survey.obs_wanted["observed"]) == 3
+
+        # Init to clear the internal counter
+        survey = surveys.ScriptedSurvey([])
+        observations["scheduler_note"] = ["a", "a", "c", "d", "a"]
+        survey.set_script(observations)
+        sched = CoreScheduler([survey])
+        # Add full array at once
+        sched.add_observations_array(completed_observations)
+        assert np.sum(survey.obs_wanted["observed"]) == 3
+
+        # Make sure error gets raised if we set a script wrong
+        survey = surveys.ScriptedSurvey([])
+        observations["scheduler_note"] = ["a", "a", "c", "d", "a"]
+        with self.assertRaises(Exception) as context:
+            survey.set_script(observations, add_index=False)
+            self.assertTrue("unique scheduler_note" in str(context))
 
     def test_pointings_survey(self):
         """Test the pointing survey."""

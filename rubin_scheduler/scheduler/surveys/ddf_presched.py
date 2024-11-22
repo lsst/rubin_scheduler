@@ -515,6 +515,4 @@ def generate_ddf_scheduled_obs(
                     all_scheduled_obs.append(obs)
 
     result = np.concatenate(all_scheduled_obs)
-    # Put in the scripted ID so it's easier to track which ones fail.
-    result["scripted_id"] = np.arange(result.size)
     return result

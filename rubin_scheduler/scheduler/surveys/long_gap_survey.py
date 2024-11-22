@@ -198,11 +198,8 @@ class LongGapSurvey(BaseSurvey):
             # Don't let the desired rotSkyPos block the observation.
             sched_array["rotSkyPos_desired"] = sched_array["rotSkyPos"]
             sched_array["rotSkyPos"] = np.nan
-            # See if we need to append things to the scripted survey object
-            if self.scripted_survey.obs_wanted is not None:
-                sched_array = np.concatenate([self.scripted_survey.obs_wanted, sched_array])
 
-            self.scripted_survey.set_script(sched_array)
+            self.scripted_survey.set_script(sched_array, append=True)
 
     def add_observations_array(self, observations_array_in, observations_hpid_in):
         self._schedule_obs(observations_array_in)
