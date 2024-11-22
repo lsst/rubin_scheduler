@@ -23,6 +23,7 @@ __all__ = (
     "thetaphi2xyz",
     "xyz2thetaphi",
     "mean_azimuth",
+    "wrap_ra_dec",
 )
 
 import datetime
@@ -73,6 +74,35 @@ def xyz2thetaphi(x, y, z):
     phi = np.arccos(z)
     theta = np.arctan2(y, x)
     return theta, phi
+
+
+def wrap_ra_dec(ra, dec):
+    # XXX--from MAF, should put in general utils
+    """
+    Wrap RA into 0-2pi and Dec into +/0 pi/2.
+
+    Parameters
+    ----------
+    ra : numpy.ndarray
+        RA in radians
+    dec : numpy.ndarray
+        Dec in radians
+
+    Returns
+    -------
+    numpy.ndarray, numpy.ndarray
+        Wrapped RA/Dec values, in radians.
+    """
+    # Wrap dec.
+    low = np.where(dec < -np.pi / 2.0)[0]
+    dec[low] = -1 * (np.pi + dec[low])
+    ra[low] = ra[low] - np.pi
+    high = np.where(dec > np.pi / 2.0)[0]
+    dec[high] = np.pi - dec[high]
+    ra[high] = ra[high] - np.pi
+    # Wrap RA.
+    ra = ra % (2.0 * np.pi)
+    return ra, dec
 
 
 def mean_azimuth(az, min_val=0.1):

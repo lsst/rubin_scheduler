@@ -286,7 +286,7 @@ class ZeroRotDetailer(BaseDetailer):
                 np.degrees(conditions.site.latitude_rad),
             )
 
-            obs["rotSkyPos"] = self.rc.rottelpos2rotskypos(0.0, obs_pa)
+            obs["rotSkyPos"] = np.radians(self.rc.rottelpos2rotskypos(0.0, obs_pa))
 
         return observation_list
 
@@ -317,7 +317,7 @@ class Comcam90rotDetailer(BaseDetailer):
 
         # need to find the
 
-        ang_diff = np.abs(self.rc._rotskypos2rottelpos(favored_rot_sky_pos, parallactic_angle))
+        ang_diff = np.abs(self.rc._rotskypos2rottelpos(favored_rot_sky_pos, np.radians(parallactic_angle)))
         min_indxs = np.argmin(ang_diff, axis=0)
         # can swap 360 and zero if needed?
         final_rot_sky_pos = favored_rot_sky_pos[min_indxs]
