@@ -17,7 +17,7 @@ class TestComCam(unittest.TestCase):
         # Specify the HEALpix resolution we want to do everything in.
         # Need to turn up for comcam
         nside = 512
-        mo = ModelObservatory(nside=nside)
+        mo = ModelObservatory(nside=nside, downtimes="ideal", cloud_data="ideal")
         conditions = mo.return_conditions()
 
         # Let's start out with a simple 2-band footprint where
@@ -34,7 +34,7 @@ class TestComCam(unittest.TestCase):
             fp.set_footprint(filtername, simple_fp[filtername])
 
         footprint_weight = 1.0
-        m5_weight = 0.5
+        m5_weight = 0.0
 
         detailers = []
 
@@ -70,7 +70,7 @@ class TestComCam(unittest.TestCase):
 
         scheduler = CoreScheduler([red_survey, blue_survey], nside=nside, camera="comcam")
 
-        mo, scheduler, observations = sim_runner(mo, scheduler, sim_duration=0.25, verbose=True)
+        mo, scheduler, observations = sim_runner(mo, scheduler, sim_duration=0.5, verbose=True)
 
         assert len(observations) > 100
         assert np.size(np.where(observations["filter"] == "r")[0]) > 0

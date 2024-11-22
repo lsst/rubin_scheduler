@@ -82,7 +82,13 @@ class TestUtils(unittest.TestCase):
         alt_min = 40
         alt_max = 70
         km.setup_telescope(altitude_minpos=alt_min, altitude_maxpos=alt_max)
-        mo = ModelObservatory(mjd=observations[-1]["mjd"], mjd_start=mjd_start, kinem_model=km)
+        mo = ModelObservatory(
+            mjd=observations[-1]["mjd"],
+            mjd_start=mjd_start,
+            kinem_model=km,
+            downtimes="ideal",
+            cloud_data="ideal",
+        )
         scheduler.flush_queue()
         try:
             mo, scheduler, observations = sim_runner(

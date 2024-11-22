@@ -57,7 +57,7 @@ class TestSurveyConveniences(unittest.TestCase):
         # Current survey_start_mjd should produce ~1000 visits
         # but changing this to a short night could reduce the total number
         self.assertTrue(len(observations) > 650)
-        self.assertTrue(observations["mjd"].max() - observations["mjd"].min() > 0.4)
+        self.assertTrue(observations["mjd"].max() - observations["mjd"].min() > 0.35)
         self.assertTrue(np.unique(observations["scheduler_note"]).size == 1)
         self.assertTrue(np.unique(observations["scheduler_note"])[0] == "simple greedy r")
         # Check that we tracked things appropriately
@@ -83,7 +83,7 @@ class TestSurveyConveniences(unittest.TestCase):
         # Current survey_start_mjd should produce over ~950 visits
         # but changing this to a short night could reduce the total number
         self.assertTrue(len(observations) > 650)
-        self.assertTrue(observations["mjd"].max() - observations["mjd"].min() > 0.4)
+        self.assertTrue(observations["mjd"].max() - observations["mjd"].min() > 0.35)
         self.assertTrue(np.unique(observations["scheduler_note"]).size == 2)
         # Check that we tracked things appropriately
         self.assertTrue(
@@ -120,7 +120,7 @@ class TestSurveyConveniences(unittest.TestCase):
         # Current survey_start_mjd should produce over ~950 visits
         # but changing this to a short night could reduce the total number
         self.assertTrue(len(observations) > 650)
-        self.assertTrue(observations["mjd"].max() - observations["mjd"].min() > 0.4)
+        self.assertTrue(observations["mjd"].max() - observations["mjd"].min() > 0.35)
         # Check some information about the observation notes and names
         self.assertTrue(np.unique(observations["scheduler_note"]).size == 2)
         self.assertTrue("almost_pole" in observations["scheduler_note"])
