@@ -403,6 +403,8 @@ class ComCamGridDitherDetailer(BaseDetailer):
     """
 
     def __init__(self, rotTelPosDesired=0.0, scale=0.355, dither=0.05, telescope="comcam"):
+        self.survey_features = {}
+
         self.rotTelPosDesired = np.radians(rotTelPosDesired)
         self.scale = np.radians(scale)
         self.dither = np.radians(dither)
