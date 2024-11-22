@@ -22,8 +22,9 @@ class TestNside(unittest.TestCase):
         """
         mjd_start = utils.SURVEY_START_MJD
         nside = 64
-        observatory = ModelObservatory(nside=nside, mjd_start=mjd_start, 
-                                       cloud_data="ideal", downtimes="ideal")
+        observatory = ModelObservatory(
+            nside=nside, mjd_start=mjd_start, cloud_data="ideal", downtimes="ideal"
+        )
         conditions = observatory.return_conditions()
         # set the mjd to start of night
         observatory.mjd = conditions.sun_n12_setting + 1.01
@@ -43,7 +44,7 @@ class TestNside(unittest.TestCase):
         ]
 
         scheduler = CoreScheduler([pairs_surveys, greedy_surveys], nside=nside)
-        
+
         observatory, scheduler, observations = sim_runner(
             observatory, scheduler, sim_duration=survey_length, filename=None
         )

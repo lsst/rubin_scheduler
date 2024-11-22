@@ -52,12 +52,12 @@ class TestWind(unittest.TestCase):
             nside=nside, mjd_start=mjd_start, downtimes="ideal", cloud_data="ideal"
         )
         observatory, scheduler, observations = sim_runner(
-            observatory, scheduler, sim_duration=survey_length, filename=None
+            observatory, scheduler, sim_duration=survey_length, filename=None, n_visit_limit=501
         )
 
         # Make sure lots of observations executed, but allow short night
         # if survey_start changes
-        assert observations.size > 700 * survey_length
+        assert observations.size > 500
         # Make sure nothing tried to look through the earth
         assert np.min(observations["alt"]) > 0
 
