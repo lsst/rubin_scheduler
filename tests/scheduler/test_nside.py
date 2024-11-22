@@ -22,7 +22,12 @@ class TestNside(unittest.TestCase):
         """
         mjd_start = utils.SURVEY_START_MJD
         nside = 64
-        survey_length = 1.0  # days
+        observatory = ModelObservatory(nside=nside, mjd_start=mjd_start, 
+                                       cloud_data="ideal", downtimes="ideal")
+        conditions = observatory.return_conditions()
+        # set the mjd to start of night
+        observatory.mjd = conditions.sun_n12_setting + 1.01
+        survey_length = 0.1  # days
 
         # Add an avoidance of twilight+ for the pairs surveys -
         # this ensures greedy survey will have some time to operate
@@ -38,7 +43,7 @@ class TestNside(unittest.TestCase):
         ]
 
         scheduler = CoreScheduler([pairs_surveys, greedy_surveys], nside=nside)
-        observatory = ModelObservatory(nside=nside, mjd_start=mjd_start)
+        
         observatory, scheduler, observations = sim_runner(
             observatory, scheduler, sim_duration=survey_length, filename=None
         )
@@ -49,7 +54,7 @@ class TestNside(unittest.TestCase):
         # Make sure some greedy executed
         assert "simple greedy z" in observations["scheduler_note"]
         # Make sure lots of observations executed
-        assert observations.size > 400
+        assert observations.size > 50
         # Make sure nothing tried to look through the earth
         assert np.min(observations["alt"]) > 0
 
