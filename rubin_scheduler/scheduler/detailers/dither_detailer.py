@@ -402,9 +402,7 @@ class ComCamGridDitherDetailer(BaseDetailer):
         This is used to determine conversions between rotSkyPos and rotTelPos.
     """
 
-    def __init__(
-        self, rotTelPosDesired=0.0, scale=0.355, dither=0.05, telescope="comcam"
-    ):
+    def __init__(self, rotTelPosDesired=0.0, scale=0.355, dither=0.05, telescope="comcam"):
         self.rotTelPosDesired = np.radians(rotTelPosDesired)
         self.scale = np.radians(scale)
         self.dither = np.radians(dither)
@@ -417,12 +415,8 @@ class ComCamGridDitherDetailer(BaseDetailer):
 
     def _generate_offsets(self, n_offsets, filter_list, rotSkyPos):
         # 2 x 2 pointing grid
-        x_grid = np.array(
-            [-1.0 * self.scale, -1.0 * self.scale, self.scale, self.scale]
-        )
-        y_grid = np.array(
-            [-1.0 * self.scale, self.scale, self.scale, -1.0 * self.scale]
-        )
+        x_grid = np.array([-1.0 * self.scale, -1.0 * self.scale, self.scale, self.scale])
+        y_grid = np.array([-1.0 * self.scale, self.scale, self.scale, -1.0 * self.scale])
         x_grid_rot, y_grid_rot = self._rotate(x_grid, y_grid, -1.0 * rotSkyPos)
         offsets_grid_rot = np.array([x_grid_rot, y_grid_rot]).T
 
@@ -450,9 +444,7 @@ class ComCamGridDitherDetailer(BaseDetailer):
         offsets_dither_rot = np.array([x_dither_rot, y_dither_rot]).T
 
         # Find the indices of the filter changes
-        filter_changes = np.where(
-            np.array(filter_list[:-1]) != np.array(filter_list[1:])
-        )[0]
+        filter_changes = np.where(np.array(filter_list[:-1]) != np.array(filter_list[1:]))[0]
         filter_changes = np.concatenate([np.array([-1]), filter_changes])
         filter_changes += 1
 
@@ -465,9 +457,7 @@ class ComCamGridDitherDetailer(BaseDetailer):
 
             index_grid = index_filter % 4
             index_dither = np.floor(index_filter / 4).astype(int) % 5
-            offsets.append(
-                offsets_grid_rot[index_grid] + offsets_dither_rot[index_dither]
-            )
+            offsets.append(offsets_grid_rot[index_grid] + offsets_dither_rot[index_dither])
             index_filter += 1
 
         return np.vstack(offsets)
@@ -513,8 +503,6 @@ class ComCamGridDitherDetailer(BaseDetailer):
                 return_pa=True,
             )
             observation_list[ii]["rotSkyPos"] = rotSkyPos
-            observation_list[ii]["rotTelPos"] = self.rc._rotskypos2rottelpos(
-                rotSkyPos, pa
-            )
+            observation_list[ii]["rotTelPos"] = self.rc._rotskypos2rottelpos(rotSkyPos, pa)
 
         return observation_list
