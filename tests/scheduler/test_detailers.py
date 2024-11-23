@@ -32,33 +32,14 @@ class TestDetailers(unittest.TestCase):
                 obs["scheduler_note"] = "test_note, a"
                 obs_list_orig.append(obs)
 
-        det_list = [
-            detailers.VaryExptDetailer,
-            detailers.ZeroRotDetailer,
-            detailers.Comcam90rotDetailer,
-            detailers.Rottep2RotspDesiredDetailer,
-            detailers.CloseAltDetailer,
-            detailers.TakeAsPairsDetailer,
-            detailers.TwilightTripleDetailer,
-            detailers.FlushForSchedDetailer,
-            detailers.FilterNexp,
-            detailers.FixedSkyAngleDetailer,
-            detailers.ParallacticRotationDetailer,
-            detailers.FlushByDetailer,
-            detailers.RandomFilterDetailer,
-            detailers.TrackingInfoDetailer,
-            detailers.AltAz2RaDecDetailer,
-            detailers.DitherDetailer,
-            detailers.EuclidDitherDetailer,
-            detailers.CameraRotDetailer,
-            detailers.CameraSmallRotPerObservationListDetailer,
-        ]
-
-        for det in det_list:
+        for det in detailers.BaseDetailer.__subclasses__():
             obs_list = copy.deepcopy(obs_list_orig)
             live_det = det()
             result = live_det(obs_list, conditions)
             assert len(result) > 0
+            # Check that we can add an observation.
+            # Should catch anyone who forgot self.features attribute
+            live_det.add_observation(obs_list_orig[0])
 
     def test_random_filter(self):
         obs = ObservationArray(1)

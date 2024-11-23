@@ -4,7 +4,7 @@ import numpy as np
 
 import rubin_scheduler.scheduler.features as features
 from rubin_scheduler.scheduler.detailers import BaseDetailer
-from rubin_scheduler.scheduler.utils import HpInLsstFov
+from rubin_scheduler.scheduler.utils import HpInLsstFov, get_current_footprint
 from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD
 
 
@@ -57,11 +57,14 @@ class ShortExptDetailer(BaseDetailer):
 
         self.survey_features = {}
         # XXX--need a feature that tracks short exposures in the filter
-        self.survey_features["nobs"] = features.N_observations(
+        self.survey_features["nobs"] = features.NObservations(
             filtername=filtername, nside=nside, survey_name=self.survey_name
         )
         # Need to be able to look up hpids for each observation
         self.obs2hpid = HpInLsstFov(nside=nside)
+        if footprint is None:
+            self.footprint, _labels = get_current_footprint(nside)
+            self.footprint = self.footprint[filtername]
 
     def __call__(self, observation_list, conditions):
         # XXX--this logic would probably make more sense as a feasability
@@ -81,9 +84,9 @@ class ShortExptDetailer(BaseDetailer):
         for observation in observation_list:
             out_observations.append(observation)
             if observation["filter"] == self.filtername:
-                hpids = self.obs2hpid(observation["RA"], observation["dec"])
+                hpids = np.array(self.obs2hpid(observation["RA"], observation["dec"]))
                 # Crop off anything outside the target footprint
-                hpids = hpids[np.where(self.footprint[hpids] > 0)]
+                hpids = hpids[np.where(self.footprint[hpids] > 0)[0]]
                 # Crop off things where we already have enough observation
                 hpids = hpids[np.where(self.survey_features["nobs"].feature[hpids] < n_goal)]
                 if np.size(hpids) > 0:
