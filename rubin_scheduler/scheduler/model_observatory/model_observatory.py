@@ -433,6 +433,7 @@ class ModelObservatory:
         self.conditions.moon_ra = sun_moon_info["moon_RA"]
         self.conditions.moon_dec = sun_moon_info["moon_dec"]
         self.conditions.sun_alt = sun_moon_info["sun_alt"]
+        self.conditions.sun_az = sun_moon_info["sun_az"]
         self.conditions.sun_ra = sun_moon_info["sun_RA"]
         self.conditions.sun_dec = sun_moon_info["sun_dec"]
 
