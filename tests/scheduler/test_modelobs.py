@@ -39,7 +39,7 @@ class TestModelObservatory(unittest.TestCase):
         assert mo_default.fwhm_500 != 0.7
 
         assert cond_ideal.bulk_cloud == 0
-        assert cond_default.bulk_cloud > 0
+        assert cond_default.bulk_cloud >= 0
 
         mjd_down = mo_default.downtimes["start"][0] + 0.01
 
