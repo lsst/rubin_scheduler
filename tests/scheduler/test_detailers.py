@@ -60,6 +60,25 @@ class TestDetailers(unittest.TestCase):
             result = live_det(obs_list, conditions)
             assert len(result) > 0
 
+    def test_start_field(self):
+
+        observatory = ModelObservatory()
+        conditions = observatory.return_conditions()
+
+        scheduler_note = "prepended"
+
+        obs_to_prepend = [ObservationArray(n=1)] * 3
+        for i, obs in enumerate(obs_to_prepend):
+            obs["RA"] = np.radians(20)
+            obs["filter"] = "r"
+            obs["scheduler_note"] = scheduler_note
+
+        obs_reg = [ObservationArray(n=1)]
+        det = detailers.StartFieldSequenceDetailer(obs_to_prepend, scheduler_note=scheduler_note)
+        obs_out = det(obs_reg, conditions)
+
+        assert len(obs_out) == 4
+
     def test_random_filter(self):
         obs = ObservationArray(1)
         obs["filter"] = "r"

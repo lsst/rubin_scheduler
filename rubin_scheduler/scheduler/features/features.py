@@ -588,14 +588,31 @@ class LastObservedMatching(BaseSurveyFeature):
         self.feature.mjd = -100000
         self.science_program = science_program
         self.scheduler_note = scheduler_note
-        self.ang_distance_match = np.radians(ang_distance_match)
-        if ra is not None:
+        if (ra is not None) | (dec is not None) | (ang_distance_match is not None):
             self.ra = np.radians(ra)
-        if dec is not None:
+            self.ang_distance_match = np.radians(ang_distance_match)
             self.dec = np.radians(dec)
+        else:
+            self.ang_distance_match = None
 
     def add_observations_array(self, observations_array, observations_hpid):
-        raise NotImplementedError("not done yet")
+
+        if self.science_program is not None:
+            good = np.where(observations_array["science_program"] == self.science_program)[0]
+            observations_array = observations_array[good]
+
+        if self.scheduler_note is not None:
+            good = np.where(observations_array["scheduler_note"] == self.scheduler_note)[0]
+            observations_array = observations_array[good]
+
+        if self.ang_distance_match is not None:
+            dist = _angular_separation(observations_array["RA"], observations_array["dec"], self.ra, self.dec)
+            good = np.where(dist <= self.ang_distance_match)
+            observations_array = observations_array[good]
+
+        if np.size(observations_array) > 0:
+            self.feature = ObservationArray(n=1)
+            self.feature[0] = observations_array[-1]
 
     def add_observation(self, observation, indx=None):
         if self.science_program is not None:

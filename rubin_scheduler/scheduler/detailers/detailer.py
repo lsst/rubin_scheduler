@@ -331,41 +331,78 @@ class Comcam90rotDetailer(BaseDetailer):
 
 
 class StartFieldSequenceDetailer(BaseDetailer):
-    """Append a sequence of observations to the start of a list
+    """Prepend a sequence of observations to the start of a list
 
     Parameters
     ----------
+    sequence_obs_list : `list` [`ObservationArray`]
+        List of n=1 ObservationArray objects. The observations should
+        have "scheduler_note" and/or "science_program" set.
     ang_distance_match : `float`
         How close should an observation be on the sky to be considered
         matching (degrees).
     time_match_hours : `float`
         How close in time to demand an observation be matching (hours).
+    science_program : `str` or None
+        The science_program to match against. Default None.
+    scheduler_note : `str` or None
+        The scheduler_note to match observations against.
+        Default "starting_sequence".
+    ra : `float`
+        RA to match against. Default 0 (degrees). Ignored
+        if ang_distance_match is None.
+    dec : `float`
+        Dec to match observations against. Default 0 (degrees).
+        Ignored if ang_distance_match is None.
+
     """
 
     def __init__(
         self,
+        sequence_obs_list,
         ang_distance_match=3.5,
         time_match_hours=5,
-        science_program="starting_sequence",
-        sequence_obs_list=None,
+        science_program=None,
+        scheduler_note="starting_sequence",
         ra=0,
         dec=0,
     ):
         super().__init__()
         self.survey_features["last_matching"] = features.LastObservedMatching(
-            ang_distance_match=3.5, science_program=science_program, ra=ra, dec=dec
+            ang_distance_match=3.5,
+            science_program=science_program,
+            scheduler_note=scheduler_note,
+            ra=ra,
+            dec=dec,
         )
         self.ang_distance_match = np.radians(ang_distance_match)
         self.time_match = time_match_hours / 24.0
         self.science_program = science_program
+        self.scheduler_note = scheduler_note
 
-        if sequence_obs_list is None:
-            raise NotImplementedError("No default sequence yet, set sequence_obs_list")
-        else:
-            self.sequence_obs_list = sequence_obs_list
+        self.sequence_obs_list = sequence_obs_list
 
         for obs in self.sequence_obs_list:
             obs["science_program"] = self.science_program
+            obs["scheduler_note"] = self.scheduler_note
+
+        # Check that things are sensibly set
+        obs_array = np.concatenate(sequence_obs_list)
+        u_scip = np.unique(obs_array["science_program"])
+        u_sn = np.unique(obs_array["scheduler_note"])
+
+        if (np.size(u_scip) > 1) | (np.size(u_sn) > 1):
+            msg = (
+                "The science_program and/or scheduler_note " "values in sequence_obs_list should be the same."
+            )
+            raise ValueError(msg)
+
+        if science_program is not None:
+            if self.science_program != u_scip:
+                ValueError("science_program kwarg not equal to science_programs from sequence_obs_list")
+        if scheduler_note is not None:
+            if self.scheduler_note != u_sn:
+                ValueError("scheduler_note kwarg not equal to scheduler_notes from sequence_obs_list")
 
     def __call__(self, observation_list, conditions):
         # Do we need to add the opening sequence?
