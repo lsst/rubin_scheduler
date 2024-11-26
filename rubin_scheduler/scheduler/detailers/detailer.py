@@ -14,12 +14,14 @@ __all__ = (
     "RandomFilterDetailer",
     "TrackingInfoDetailer",
     "AltAz2RaDecDetailer",
+    "StartFieldSequenceDetailer",
 )
 
 import copy
 
 import numpy as np
 
+import rubin_scheduler.scheduler.features as features
 from rubin_scheduler.scheduler.utils import IntRounded
 from rubin_scheduler.utils import (
     DEFAULT_NSIDE,
@@ -87,22 +89,22 @@ class BaseDetailer:
 
 
 class TrackingInfoDetailer(BaseDetailer):
-    """Fill in lots of the different tracking strings for an observation."""
+    """Fill in lots of the different tracking strings for an observation.
+    Does not clobber information that has already been set"""
 
     def __init__(self, target_name=None, science_program=None, observation_reason=None):
         self.survey_features = {}
         self.target_name = target_name
         self.science_program = science_program
         self.observation_reason = observation_reason
+        self.keys = ["science_program", "target_name", "observation_reason"]
 
     def __call__(self, observation_list, conditions):
         for obs in observation_list:
-            if self.science_program is not None:
-                obs["science_program"] = self.science_program
-            if self.target_name is not None:
-                obs["target_name"] = self.target_name
-            if self.observation_reason is not None:
-                obs["observation_reason"] = self.observation_reason
+            for key in self.keys:
+                if getattr(self, key) is not None:
+                    if (obs[key] == "") | (obs[key] is None):
+                        obs[key] = getattr(self, key)
 
         return observation_list
 
@@ -324,6 +326,51 @@ class Comcam90rotDetailer(BaseDetailer):
         # Set all the observations to the proper rotSkyPos
         for rsp, obs in zip(final_rot_sky_pos, observation_list):
             obs["rotSkyPos"] = rsp
+
+        return observation_list
+
+
+class StartFieldSequenceDetailer(BaseDetailer):
+    """Append a sequence of observations to the start of a list
+
+    Parameters
+    ----------
+    ang_distance_match : `float`
+        How close should an observation be on the sky to be considered
+        matching (degrees).
+    time_match_hours : `float`
+        How close in time to demand an observation be matching (hours).
+    """
+
+    def __init__(
+        self,
+        ang_distance_match=3.5,
+        time_match_hours=5,
+        science_program="starting_sequence",
+        sequence_obs_list=None,
+        ra=0,
+        dec=0,
+    ):
+        super().__init__()
+        self.survey_features["last_matching"] = features.LastObservedMatching(
+            ang_distance_match=3.5, science_program=science_program, ra=ra, dec=dec
+        )
+        self.ang_distance_match = np.radians(ang_distance_match)
+        self.time_match = time_match_hours / 24.0
+        self.science_program = science_program
+
+        if sequence_obs_list is None:
+            raise NotImplementedError("No default sequence yet, set sequence_obs_list")
+        else:
+            self.sequence_obs_list = sequence_obs_list
+
+        for obs in self.sequence_obs_list:
+            obs["science_program"] = self.science_program
+
+    def __call__(self, observation_list, conditions):
+        # Do we need to add the opening sequence?
+        if (conditions.mjd - self.survey_features["last_matching"].feature["mjd"]) >= self.time_match:
+            observation_list = self.sequence_obs_list + observation_list
 
         return observation_list
 
