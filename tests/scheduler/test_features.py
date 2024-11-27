@@ -507,6 +507,56 @@ class TestFeatures(unittest.TestCase):
         count_feature.add_observations_array(observations_array, observations_hpid=observations_hpid_array)
         self.assertTrue(count_feature.feature["mjd"] == observations_list[-1]["mjd"])
 
+    def test_last_obs_matching(self):
+        """Test the LastObservedMatching"""
+
+        feature = features.LastObservedMatching(scheduler_note="test")
+
+        # Add an observation that should count
+        obs = ObservationArray(n=1)
+        obs["scheduler_note"] = "test"
+        obs["mjd"] = 10
+        feature.add_observation(obs)
+
+        assert feature.feature["mjd"] == 10
+
+        # Add observation that should not count
+        obs["scheduler_note"] = "test1"
+        obs["mjd"] = 20
+        feature.add_observation(obs)
+
+        assert feature.feature["mjd"] == 10
+
+        # test add array
+        feature = features.LastObservedMatching(scheduler_note="test")
+        obs = ObservationArray(n=2)
+        obs["scheduler_note"] = "test"
+        obs["mjd"] = 20
+
+        feature.add_observations_array(obs, [])
+        assert feature.feature == obs[-1]
+
+        # Test distance cut
+        feature = features.LastObservedMatching(scheduler_note="test", ra=0, dec=0, ang_distance_match=4.0)
+        obs = ObservationArray(n=1)
+        obs["scheduler_note"] = "test"
+        obs["RA"] = 0
+        obs["dec"] = 0
+        obs["mjd"] = 30
+        feature.add_observation(obs)
+
+        assert feature.feature["mjd"] == 30
+
+        # Add observation beyond distance cut
+        obs = ObservationArray(n=1)
+        obs["scheduler_note"] = "test"
+        obs["RA"] = 0
+        obs["dec"] = np.radians(-20)
+        obs["mjd"] = 40
+        feature.add_observation(obs)
+
+        assert feature.feature["mjd"] == 30
+
     def test_NObservations(self):
         # Make some observations to count
         observations_list = make_observations_list(12)

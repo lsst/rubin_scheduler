@@ -11,6 +11,7 @@ __all__ = (
     "LastNObsTimes",
     "NoteInNight",
     "LastObservationMjd",
+    "LastObservedMatching",
 )
 
 import warnings
@@ -21,9 +22,15 @@ import numpy as np
 from scipy.stats import binned_statistic
 
 from rubin_scheduler.scheduler import utils
-from rubin_scheduler.scheduler.utils import IntRounded
+from rubin_scheduler.scheduler.utils import IntRounded, ObservationArray
 from rubin_scheduler.skybrightness_pre import dark_sky
-from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD, _hpid2_ra_dec, calc_season
+from rubin_scheduler.utils import (
+    DEFAULT_NSIDE,
+    SURVEY_START_MJD,
+    _angular_separation,
+    _hpid2_ra_dec,
+    calc_season,
+)
 
 
 def send_unused_deprecation_warning(name):
@@ -570,6 +577,59 @@ class NObservationsCurrentSeason(BaseSurveyFeature):
 
         if check:
             self.feature[this_season_indx] += 1
+
+
+class LastObservedMatching(BaseSurveyFeature):
+    """Record the last observation that matches a criteria"""
+
+    def __init__(self, ang_distance_match=None, science_program=None, scheduler_note=None, ra=None, dec=None):
+        # set starting feature to something
+        self.feature = ObservationArray(n=1)
+        self.feature.mjd = -100000
+        self.science_program = science_program
+        self.scheduler_note = scheduler_note
+        if (ra is not None) | (dec is not None) | (ang_distance_match is not None):
+            self.ra = np.radians(ra)
+            self.ang_distance_match = np.radians(ang_distance_match)
+            self.dec = np.radians(dec)
+        else:
+            self.ang_distance_match = None
+
+    def add_observations_array(self, observations_array, observations_hpid):
+
+        if self.science_program is not None:
+            good = np.where(observations_array["science_program"] == self.science_program)[0]
+            observations_array = observations_array[good]
+
+        if self.scheduler_note is not None:
+            good = np.where(observations_array["scheduler_note"] == self.scheduler_note)[0]
+            observations_array = observations_array[good]
+
+        if self.ang_distance_match is not None:
+            dist = _angular_separation(observations_array["RA"], observations_array["dec"], self.ra, self.dec)
+            good = np.where(dist <= self.ang_distance_match)
+            observations_array = observations_array[good]
+
+        if np.size(observations_array) > 0:
+            self.feature = ObservationArray(n=1)
+            self.feature[0] = observations_array[-1]
+
+    def add_observation(self, observation, indx=None):
+        if self.science_program is not None:
+            if not self.science_program == observation["science_program"]:
+                return
+
+        if self.scheduler_note is not None:
+            if not self.scheduler_note == observation["scheduler_note"]:
+                return
+
+        if self.ang_distance_match is not None:
+            dist = _angular_separation(observation["RA"], observation["dec"], self.ra, self.dec)
+            if dist >= self.ang_distance_match:
+                return
+
+        # If we make it this far, record the observation as matching
+        self.feature = observation.copy()
 
 
 class LastObserved(BaseSurveyFeature):
