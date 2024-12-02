@@ -22,7 +22,7 @@ import copy
 import numpy as np
 
 import rubin_scheduler.scheduler.features as features
-from rubin_scheduler.scheduler.utils import IntRounded
+from rubin_scheduler.scheduler.utils import IntRounded, obsarray_concat
 from rubin_scheduler.utils import (
     DEFAULT_NSIDE,
     _angular_separation,
@@ -238,7 +238,7 @@ class Rottep2RotspDesiredDetailer(BaseDetailer):
         self.survey_features = {}
 
     def __call__(self, observation_list, conditions):
-        obs_array = np.concatenate(observation_list)
+        obs_array = obsarray_concat(observation_list)
 
         alt, az = _approx_ra_dec2_alt_az(
             obs_array["RA"],
@@ -251,13 +251,12 @@ class Rottep2RotspDesiredDetailer(BaseDetailer):
 
         rot_sky_pos_desired = self.rc._rotskypos2rottelpos(obs_array["rotTelPos"], obs_pa)
 
-        for obs, rotsp_d in zip(observation_list, rot_sky_pos_desired):
-            obs["rotTelPos_backup"] = obs["rotTelPos"] + 0
-            obs["rotTelPos"] = np.nan
-            obs["rotSkyPos"] = np.nan
-            obs["rotSkyPos_desired"] = rotsp_d
+        obs_array["rotTelPos_backup"] = obs_array["rotTelPos"] + 0
+        obs_array["rotTelPos"] = np.nan
+        obs_array["rotSkyPos"] = np.nan
+        obs_array["rotSkyPos_desired"] = rot_sky_pos_desired
 
-        return observation_list
+        return obs_array.tolist()
 
 
 class ZeroRotDetailer(BaseDetailer):
@@ -305,7 +304,7 @@ class Comcam90rotDetailer(BaseDetailer):
 
     def __call__(self, observation_list, conditions):
         favored_rot_sky_pos = np.radians([0.0, 90.0, 180.0, 270.0, 360.0]).reshape(5, 1)
-        obs_array = np.concatenate(observation_list)
+        obs_array = obsarray_concat(observation_list)
 
         parallactic_angle, alt, az = np.radians(
             pseudo_parallactic_angle(
@@ -322,12 +321,9 @@ class Comcam90rotDetailer(BaseDetailer):
         ang_diff = np.abs(self.rc._rotskypos2rottelpos(favored_rot_sky_pos, np.radians(parallactic_angle)))
         min_indxs = np.argmin(ang_diff, axis=0)
         # can swap 360 and zero if needed?
-        final_rot_sky_pos = favored_rot_sky_pos[min_indxs]
-        # Set all the observations to the proper rotSkyPos
-        for rsp, obs in zip(final_rot_sky_pos, observation_list):
-            obs["rotSkyPos"] = rsp
+        obs_array["rotSkyPos"] = favored_rot_sky_pos[min_indxs].ravel()
 
-        return observation_list
+        return obs_array.tolist()
 
 
 class StartFieldSequenceDetailer(BaseDetailer):
