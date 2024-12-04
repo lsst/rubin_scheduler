@@ -24,6 +24,7 @@ __all__ = (
     "xyz2thetaphi",
     "mean_azimuth",
     "wrap_ra_dec",
+    "obsarray_concat",
 )
 
 import datetime
@@ -705,8 +706,18 @@ class ObservationArray(np.ndarray):
         obj = np.zeros(n, dtype=dtypes).view(cls)
         return obj
 
+    def tolist(self):
+        """Convert to a list of 1-element arrays"""
+        obs_list = []
+        for obs in self:
+            new_obs = self.__class__(n=1)
+            new_obs[0] = obs
+            obs_list.append(new_obs)
 
-class ScheduledObservationArray(np.ndarray):
+        return obs_list
+
+
+class ScheduledObservationArray(ObservationArray):
     """Make an array to hold pre-scheduling observations
 
     Note
@@ -781,6 +792,30 @@ class ScheduledObservationArray(np.ndarray):
 
         obj = np.zeros(n, dtype=dtypes1 + dtype2).view(cls)
         return obj
+
+
+def obsarray_concat(in_arrays):
+    """Concatenate ObservationArray objects.
+
+    Can't use np.concatenate because it will no longer
+    be an array subclass
+
+    Parameters
+    ----------
+    in_arrays : `list` of `ObservationArray` or `ScheduledObservationArray`
+    """
+    # Check if we have ScheduledObservationArray
+    array_class = ObservationArray
+    if "observed" in in_arrays[0].dtype.names:
+        array_class = ScheduledObservationArray
+
+    size = 0
+    for arr in in_arrays:
+        size += arr.size
+    # Init empty array of proper class
+    # to hold output.
+    out_arr = array_class(n=size)
+    return np.concatenate(in_arrays, out=out_arr)
 
 
 def hp_kd_tree(nside=DEFAULT_NSIDE, leafsize=100, scale=1e5):

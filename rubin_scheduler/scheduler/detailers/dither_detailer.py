@@ -9,7 +9,7 @@ __all__ = (
 import numpy as np
 
 from rubin_scheduler.scheduler.detailers import BaseDetailer
-from rubin_scheduler.scheduler.utils import wrap_ra_dec
+from rubin_scheduler.scheduler.utils import obsarray_concat, wrap_ra_dec
 from rubin_scheduler.utils import (
     _approx_altaz2pa,
     _approx_ra_dec2_alt_az,
@@ -73,15 +73,16 @@ class DitherDetailer(BaseDetailer):
         # Generate offsets in RA and Dec
         offsets = self._generate_offsets(len(observation_list), conditions.night)
 
-        obs_array = np.concatenate(observation_list)
+        obs_array = obsarray_concat(observation_list)
         new_ra, new_dec = gnomonic_project_tosky(
             offsets[:, 0], offsets[:, 1], obs_array["RA"], obs_array["dec"]
         )
         new_ra, new_dec = wrap_ra_dec(new_ra, new_dec)
-        for i, obs in enumerate(observation_list):
-            observation_list[i]["RA"] = new_ra[i]
-            observation_list[i]["dec"] = new_dec[i]
-        return observation_list
+
+        obs_array["RA"] = new_ra
+        obs_array["dec"] = new_dec
+
+        return obs_array.tolist()
 
 
 class EuclidDitherDetailer(BaseDetailer):

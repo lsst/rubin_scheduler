@@ -5,6 +5,7 @@ import numpy as np
 from scipy.stats import binned_statistic
 
 from rubin_scheduler.scheduler.detailers import BaseDetailer
+from rubin_scheduler.scheduler.utils import obsarray_concat
 from rubin_scheduler.skybrightness_pre import dark_sky
 from rubin_scheduler.utils import DEFAULT_NSIDE, Site, _ra_dec2_hpid, hpid2_ra_dec, m5_flat_sed
 
@@ -102,7 +103,7 @@ class VaryExptDetailer(BaseDetailer):
         -------
         List of observations.
         """
-        obs_array = np.concatenate(observation_list)
+        obs_array = obsarray_concat(observation_list)
         hpids = _ra_dec2_hpid(self.nside, obs_array["RA"], obs_array["dec"])
         new_expts = np.zeros(obs_array.size, dtype=float)
         for filtername in np.unique(obs_array["filter"]):
@@ -127,9 +128,6 @@ class VaryExptDetailer(BaseDetailer):
         new_expts = np.clip(new_expts, self.min_exp, self.max_exp)
         # I'm not sure what level of precision we can expect, so let's
         # just limit to seconds
-        new_expts = np.round(new_expts)
+        obs_array["exptime"] = np.round(new_expts)
 
-        for i, observation in enumerate(observation_list):
-            observation["exptime"] = new_expts[i]
-
-        return observation_list
+        return obs_array.tolist()

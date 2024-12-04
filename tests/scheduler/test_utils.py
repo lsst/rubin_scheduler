@@ -10,8 +10,10 @@ from rubin_scheduler.scheduler.example import example_scheduler, run_sched
 from rubin_scheduler.scheduler.model_observatory import KinemModel, ModelObservatory
 from rubin_scheduler.scheduler.utils import (
     ObservationArray,
+    ScheduledObservationArray,
     SchemaConverter,
     make_rolling_footprints,
+    obsarray_concat,
     restore_scheduler,
     run_info_table,
     season_calc,
@@ -296,6 +298,32 @@ class TestUtils(unittest.TestCase):
 
         mod3 = season_calc(night, modulo=3, offset=-365.25 * 10)
         assert mod3 == -1
+
+    def test_observation_array(self):
+        # Check we can convert ObservationArrays to lists and back
+        n = 20
+        obs = ObservationArray(n=n)
+        obs["ID"] = np.arange(n)
+
+        obs_list = obs.tolist()
+        assert len(obs_list[0]) == 1
+        assert len(obs_list) == n
+
+        back = obsarray_concat(obs_list)
+
+        assert np.array_equal(back, obs)
+
+        # and scheduled arrays
+        obs = ScheduledObservationArray(n=n)
+        obs["ID"] = np.arange(n)
+
+        obs_list = obs.tolist()
+        assert len(obs_list[0]) == 1
+        assert len(obs_list) == n
+
+        back = obsarray_concat(obs_list)
+
+        assert np.array_equal(back, obs)
 
     def test_schema_convert(self):
         sc = SchemaConverter()
