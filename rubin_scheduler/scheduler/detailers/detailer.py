@@ -103,7 +103,7 @@ class TrackingInfoDetailer(BaseDetailer):
     def __call__(self, observation_array, conditions):
 
         for key in self.keys:
-            indx = np.where((observation_array[key] == "") | (observation_array[key] == None))[0]
+            indx = np.where((observation_array[key] == "") | (observation_array[key] is None))[0]
             observation_array[key][indx] = getattr(self, key)
 
         return observation_array

@@ -9,7 +9,7 @@ __all__ = (
 import numpy as np
 
 from rubin_scheduler.scheduler.detailers import BaseDetailer
-from rubin_scheduler.scheduler.utils import obsarray_concat, wrap_ra_dec
+from rubin_scheduler.scheduler.utils import wrap_ra_dec
 from rubin_scheduler.utils import (
     _approx_altaz2pa,
     _approx_ra_dec2_alt_az,
