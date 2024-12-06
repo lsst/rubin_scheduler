@@ -103,7 +103,7 @@ class TrackingInfoDetailer(BaseDetailer):
     def __call__(self, observation_array, conditions):
 
         for key in self.keys:
-            indx = np.where((observation_array[key] == "") | (observation_array[key] == None))[0]
+            indx = np.where((observation_array[key] == "") | (observation_array[key] is None))[0]
             observation_array[key][indx] = getattr(self, key)
 
         return observation_array
@@ -498,9 +498,9 @@ class FilterNexp(BaseDetailer):
     def __call__(self, observation_array, conditions):
 
         indx = np.where(observation_array["filter"] == self.filtername)[0]
-        observation_array[indx]["nexp"] = self.nexp
+        observation_array["nexp"][indx] = self.nexp
         if self.exptime is not None:
-            observation_array[indx]["exptime"] = self.exptime
+            observation_array["exptime"][indx] = self.exptime
 
         return observation_array
 
