@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 from rubin_scheduler.scheduler.detailers import ParallacticRotationDetailer
-from rubin_scheduler.scheduler.utils import IntRounded
+from rubin_scheduler.scheduler.utils import IntRounded, ObservationArray
 from rubin_scheduler.skybrightness_pre import dark_m5
 from rubin_scheduler.utils import _angular_separation, _approx_ra_dec2_alt_az
 
@@ -184,7 +184,9 @@ class PointingsSurvey(BaseSurvey):
         # take the first one in the array if there's a tie
         # Could change logic to return multiple pointings
         winner = np.min(np.where(self.reward == max_reward)[0])
-        return [self.observations[winner].copy().reshape(1)]
+        result = ObservationArray(n=1)
+        result[0] = self.observations[winner].copy()
+        return result
 
     def add_observation(self, observation, indx=None):
         """Let survey know about a completed observation."""

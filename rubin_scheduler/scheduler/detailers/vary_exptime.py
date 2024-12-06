@@ -91,7 +91,7 @@ class VaryExptDetailer(BaseDetailer):
         else:
             self.target_m5 = target_m5
 
-    def __call__(self, observation_list, conditions):
+    def __call__(self, obs_array, conditions):
         """
         Parameters
         ----------
@@ -103,7 +103,6 @@ class VaryExptDetailer(BaseDetailer):
         -------
         List of observations.
         """
-        obs_array = obsarray_concat(observation_list)
         hpids = _ra_dec2_hpid(self.nside, obs_array["RA"], obs_array["dec"])
         new_expts = np.zeros(obs_array.size, dtype=float)
         for filtername in np.unique(obs_array["filter"]):
@@ -130,4 +129,4 @@ class VaryExptDetailer(BaseDetailer):
         # just limit to seconds
         obs_array["exptime"] = np.round(new_expts)
 
-        return obs_array.tolist()
+        return obs_array

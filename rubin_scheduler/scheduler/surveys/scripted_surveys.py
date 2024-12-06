@@ -149,24 +149,6 @@ class ScriptedSurvey(BaseSurvey):
             self.reward = self.reward_val
         return self.reward
 
-    def _slice2obs(self, obs_row):
-        """take a slice and return a full observation object"""
-        observation = ObservationArray()
-        for key in [
-            "RA",
-            "dec",
-            "filter",
-            "exptime",
-            "nexp",
-            "scheduler_note",
-            "target_name",
-            "rotSkyPos",
-            "rotTelPos",
-            "flush_by_mjd",
-        ]:
-            observation[key] = obs_row[key]
-        return observation
-
     def _check_alts_ha(self, observation, conditions):
         """Given scheduled observations, check which ones can be
         done in current conditions.
@@ -390,7 +372,6 @@ class ScriptedSurvey(BaseSurvey):
                 self.last_mjd = conditions.mjd
                 return self.observations
 
-        self.observations = [self._slice2obs(obs) for obs in observations]
         self.last_mjd = conditions.mjd
 
         return self.observations
