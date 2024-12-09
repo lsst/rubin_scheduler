@@ -686,7 +686,7 @@ class ObservationArray(np.ndarray):
             ("note", "U40"),
             ("scheduler_note", "U40"),
             ("target_name", "U40"),
-            ("block_id", int),
+            ("target_id", int),
             ("lmst", float),
             ("rotTelPos", float),
             ("rotTelPos_backup", float),
