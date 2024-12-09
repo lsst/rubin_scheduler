@@ -81,25 +81,21 @@ class GreedySurvey(BaseMarkovSurvey):
         # Crop off any NaNs or Infs
         order = order[np.isfinite(self.reward[order])]
 
-        iter = 0
-        while True:
-            best_hp = order[iter * self.block_size : (iter + 1) * self.block_size]
-            best_fields = np.unique(self.hp2fields[best_hp])
-            observations = []
-            for field in best_fields:
-                obs = ObservationArray()
-                obs["RA"] = self.fields["RA"][field]
-                obs["dec"] = self.fields["dec"][field]
-                obs["rotSkyPos"] = 0.0
-                obs["filter"] = self.filtername
-                obs["nexp"] = self.nexp
-                obs["exptime"] = self.exptime
-                obs["scheduler_note"] = self.scheduler_note
-                observations.append(obs)
-                break
-            iter += 1
-            if len(observations) > 0 or (iter + 2) * self.block_size > len(order):
-                break
+        best_hp = order[0 : self.block_size]
+        best_fields = np.unique(self.hp2fields[best_hp])
+        observations = ObservationArray(n=best_fields.size)
+
+        observations["RA"] = self.fields["RA"][best_fields]
+        observations["dec"] = self.fields["dec"][best_fields]
+        observations["rotSkyPos"] = 0.0
+        observations["filter"] = self.filtername
+        observations["nexp"] = self.nexp
+        observations["exptime"] = self.exptime
+        observations["scheduler_note"] = self.scheduler_note
+
+        # XXX--may need tack on some extra here?
+        # or maybe crop down best fields to the correct length
+
         return observations
 
 
@@ -499,27 +495,22 @@ class BlobSurvey(GreedySurvey):
 
         # XXX-TODO: Could try to roll better_order to start at
         # the nearest/fastest slew from current position.
-        observations = []
-        counter2 = 0
         flush_time = conditions.mjd + self.time_needed + self.flush_time
 
-        for i, indx in enumerate(better_order):
-            field = self.best_fields[indx]
-            obs = ObservationArray()
-            obs["RA"] = self.fields["RA"][field]
-            obs["dec"] = self.fields["dec"][field]
-            obs["rotSkyPos"] = 0.0
-            obs["filter"] = self.filtername1
-            if self.nexp_dict is None:
-                obs["nexp"] = self.nexp
-            else:
-                obs["nexp"] = self.nexp_dict[self.filtername1]
-            obs["exptime"] = self.exptime
-            obs["scheduler_note"] = self.scheduler_note
-            obs["block_id"] = self.counter
-            obs["flush_by_mjd"] = flush_time
-            observations.append(obs)
-            counter2 += 1
+        observations = ObservationArray(n=len(better_order))
+        fields = self.best_fields[better_order]
 
-        result = observations
-        return result
+        observations["RA"] = self.fields["RA"][fields]
+        observations["dec"] = self.fields["dec"][fields]
+        observations["rotSkyPos"] = 0.0
+        observations["filter"] = self.filtername1
+        if self.nexp_dict is None:
+            observations["nexp"] = self.nexp
+        else:
+            observations["nexp"] = self.nexp_dict[self.filtername1]
+        observations["exptime"] = self.exptime
+        observations["scheduler_note"] = self.scheduler_note
+        observations["block_id"] = self.counter
+        observations["flush_by_mjd"] = flush_time
+
+        return observations

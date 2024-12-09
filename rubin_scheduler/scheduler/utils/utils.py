@@ -793,6 +793,16 @@ class ScheduledObservationArray(ObservationArray):
         obj = np.zeros(n, dtype=dtypes1 + dtype2).view(cls)
         return obj
 
+    def to_observation_array(self):
+        """Convert the scheduled observation to a
+        Regular ObservationArray
+        """
+        result = ObservationArray(n=self.size)
+        in_common = np.intersect1d(self.dtype.names, result.dtype.names)
+        for key in in_common:
+            result[key] = self[key]
+        return result
+
 
 def obsarray_concat(in_arrays):
     """Concatenate ObservationArray objects.
