@@ -6,7 +6,7 @@ import warnings
 import numpy as np
 
 from rubin_scheduler.data import get_data_dir
-from rubin_scheduler.scheduler.utils import ScheduledObservationArray
+from rubin_scheduler.scheduler.utils import ScheduledObservationArray, obsarray_concat
 from rubin_scheduler.site_models import Almanac
 from rubin_scheduler.utils import SURVEY_START_MJD, calc_season, ddf_locations
 
@@ -514,5 +514,5 @@ def generate_ddf_scheduled_obs(
                     obs["moon_min_distance"] = moon_min_distance
                     all_scheduled_obs.append(obs)
 
-    result = np.concatenate(all_scheduled_obs)
+    result = obsarray_concat(all_scheduled_obs)
     return result

@@ -200,7 +200,8 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
                 matches = []
 
             if np.size(matches) > 0:
-                observation = self._slice2obs(self.obs_wanted[matches[0]])
+                observation = ScheduledObservationArray(n=1)
+                observation[0] = self.obs_wanted[matches[0]]
 
         return observation
 
