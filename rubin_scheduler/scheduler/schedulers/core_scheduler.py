@@ -135,6 +135,9 @@ class CoreScheduler:
             for survey in surveys:
                 survey.add_observations_array(obs, obs_array_hpid)
 
+        if np.max(obs["target_id"]) >= self.target_id_counter:
+            self.target_id_counter = np.max(obs["target_id"]) + 1
+
     def add_observation(self, observation):
         """
         Record a completed observation and update features accordingly.
@@ -161,6 +164,9 @@ class CoreScheduler:
         for surveys in self.survey_lists:
             for survey in surveys:
                 survey.add_observation(observation, indx=indx)
+
+        if np.max(observation["target_id"]) >= self.target_id_counter:
+            self.target_id_counter = np.max(observation["target_id"]) + 1
 
     def update_conditions(self, conditions_in):
         """
