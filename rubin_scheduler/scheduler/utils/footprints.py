@@ -357,11 +357,17 @@ class Footprint:
 
     Parameters
     ----------
-    mjd_start : float
-        The MJD the survey starts on
-    sun_ra_start : float
-        The RA of the sun at the start of the survey (radians)
-
+    mjd_start : `float`
+        The MJD the survey starts on.
+    sun_ra_start : `float`
+        The RA of the sun at the start of the survey (radians).
+    filters : `list` of `str`
+        The filter names to include in the footprint.
+    period : `float`
+        Used for setting the phase of step_func (days). Default 365.25.
+    step_func : `BasePixelEvolution`
+        Callable class that determines how the footprint evolves with time.
+        Default of None will result in `StepLine` being used.
     """
 
     def __init__(
@@ -369,12 +375,16 @@ class Footprint:
         mjd_start,
         sun_ra_start=0,
         nside=DEFAULT_NSIDE,
-        filters=None,
+        filters=["u", "g", "r", "i", "z", "y"],
         period=365.25,
         step_func=None,
     ):
-        if filters is None:
-            filters = {"u": 0, "g": 1, "r": 2, "i": 3, "z": 4, "y": 5}
+        # Dict to map filtername to array index.
+        if not isinstance(filters, dict):
+            filters_dict = {}
+            for i, filtername in enumerate(filters):
+                filters_dict[filtername] = i
+            filters = filters_dict
         self.period = period
         self.nside = nside
         if step_func is None:
@@ -458,9 +468,12 @@ class Footprint:
 
 
 class ConstantFootprint(Footprint):
-    def __init__(self, nside=DEFAULT_NSIDE, filters=None):
-        if filters is None:
-            filters = {"u": 0, "g": 1, "r": 2, "i": 3, "z": 4, "y": 5}
+    def __init__(self, nside=DEFAULT_NSIDE, filters=["u", "g", "r", "i", "z", "y"]):
+        if not isinstance(filters, dict):
+            filters_dict = {}
+            for i, filtername in enumerate(filters):
+                filters_dict[filtername] = i
+            filters = filters_dict
         self.nside = nside
         self.filters = filters
         self.npix = hp.nside2npix(nside)
