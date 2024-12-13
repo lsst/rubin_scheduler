@@ -18,19 +18,21 @@ class TestDetailers(unittest.TestCase):
         observatory = ModelObservatory()
         conditions = observatory.return_conditions()
 
-        obs_list_orig = []
         dec = np.radians(-20)
-        for ra in np.arange(0, 2 * np.pi, np.pi / 4):
-            hpid = _ra_dec2_hpid(DEFAULT_NSIDE, ra, dec)
-            if np.isfinite(conditions.m5_depth["r"][hpid]):
-                obs = ObservationArray()
-                obs["filter"] = "r"
-                obs["RA"] = ra.copy()
-                obs["dec"] = dec
-                obs["mjd"] = 59000.0
-                obs["exptime"] = 30.0
-                obs["scheduler_note"] = "test_note, a"
-                obs_list_orig.append(obs)
+        ra = np.arange(0, 2 * np.pi, np.pi / 4)
+
+        obs_array = ObservationArray(n=ra.size)
+        obs_array["filter"] = "r"
+        obs_array["RA"] = ra
+        obs_array["dec"] = dec
+        obs_array["mjd"] = 59000.0
+        obs_array["exptime"] = 30.0
+        obs_array["scheduler_note"] = "test_note, a"
+
+        hpid = _ra_dec2_hpid(DEFAULT_NSIDE, ra, dec)
+
+        indx = np.isfinite(conditions.m5_depth["r"][hpid])
+        obs_array = obs_array[indx]
 
         det_list = [
             detailers.VaryExptDetailer,
@@ -55,9 +57,9 @@ class TestDetailers(unittest.TestCase):
         ]
 
         for det in det_list:
-            obs_list = copy.deepcopy(obs_list_orig)
+            obs = copy.deepcopy(obs_array)
             live_det = det()
-            result = live_det(obs_list, conditions)
+            result = live_det(obs, conditions)
             assert len(result) > 0
 
     def test_start_field(self):
@@ -67,13 +69,12 @@ class TestDetailers(unittest.TestCase):
 
         scheduler_note = "prepended"
 
-        obs_to_prepend = [ObservationArray(n=1)] * 3
-        for i, obs in enumerate(obs_to_prepend):
-            obs["RA"] = np.radians(20)
-            obs["filter"] = "r"
-            obs["scheduler_note"] = scheduler_note
+        obs_to_prepend = ObservationArray(n=3)
+        obs_to_prepend["RA"] = np.radians(20)
+        obs_to_prepend["filter"] = "r"
+        obs_to_prepend["scheduler_note"] = scheduler_note
 
-        obs_reg = [ObservationArray(n=1)]
+        obs_reg = ObservationArray(n=1)
         det = detailers.StartFieldSequenceDetailer(obs_to_prepend, scheduler_note=scheduler_note)
         obs_out = det(obs_reg, conditions)
 

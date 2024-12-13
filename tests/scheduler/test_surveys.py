@@ -235,8 +235,8 @@ class TestSurveys(unittest.TestCase):
 
         obs = survey.generate_observations(conditions)
         # Confirm that our desired input values got passed through
-        assert obs[0]["dec"] < 0
-        assert obs[0]["scheduler_note"][0][0:4] == "test"
+        assert obs["dec"][0] < 0
+        assert obs["scheduler_note"][0][0:4] == "test"
 
         # Adding observations
         assert np.sum(survey.n_obs) == 0

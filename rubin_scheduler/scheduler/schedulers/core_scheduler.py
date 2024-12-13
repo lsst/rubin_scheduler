@@ -302,9 +302,11 @@ class CoreScheduler:
             # Take a min here, so the surveys will be executed in the order
             # they are entered if there is a tie.
             self.survey_index[1] = np.min(np.where(rewards == np.nanmax(rewards)))
-            # Survey return list of observations
-            result = self.survey_lists[self.survey_index[0]][self.survey_index[1]].generate_observations(
-                self.conditions
+            # Survey returns ObservationArray. Convert to list.
+            result = (
+                self.survey_lists[self.survey_index[0]][self.survey_index[1]]
+                .generate_observations(self.conditions)
+                .tolist()
             )
 
             self.queue = result

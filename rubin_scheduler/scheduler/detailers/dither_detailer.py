@@ -9,7 +9,7 @@ __all__ = (
 import numpy as np
 
 from rubin_scheduler.scheduler.detailers import BaseDetailer
-from rubin_scheduler.scheduler.utils import obsarray_concat, wrap_ra_dec
+from rubin_scheduler.scheduler.utils import wrap_ra_dec
 from rubin_scheduler.utils import (
     _approx_altaz2pa,
     _approx_ra_dec2_alt_az,
@@ -67,13 +67,12 @@ class DitherDetailer(BaseDetailer):
 
         return offsets
 
-    def __call__(self, observation_list, conditions):
-        if len(observation_list) == 0:
-            return observation_list
+    def __call__(self, obs_array, conditions):
+        if len(obs_array) == 0:
+            return obs_array
         # Generate offsets in RA and Dec
-        offsets = self._generate_offsets(len(observation_list), conditions.night)
+        offsets = self._generate_offsets(len(obs_array), conditions.night)
 
-        obs_array = obsarray_concat(observation_list)
         new_ra, new_dec = gnomonic_project_tosky(
             offsets[:, 0], offsets[:, 1], obs_array["RA"], obs_array["dec"]
         )
@@ -82,7 +81,7 @@ class DitherDetailer(BaseDetailer):
         obs_array["RA"] = new_ra
         obs_array["dec"] = new_dec
 
-        return obs_array.tolist()
+        return obs_array
 
 
 class EuclidDitherDetailer(BaseDetailer):
@@ -221,20 +220,20 @@ class EuclidDitherDetailer(BaseDetailer):
             self.shifted_dec_b,
         )
 
-    def __call__(self, observation_list, conditions):
+    def __call__(self, obs_array, conditions):
         # Generate offsets in RA and Dec
-        ra_a, dec_a, ra_b, dec_b = self._generate_offsets(len(observation_list), conditions.night)
+        ra_a, dec_a, ra_b, dec_b = self._generate_offsets(len(obs_array), conditions.night)
 
-        for i, obs in enumerate(observation_list):
-            if obs[0]["scheduler_note"][-1] == "a":
-                observation_list[i]["RA"] = ra_a
-                observation_list[i]["dec"] = dec_a
-            elif obs[0]["scheduler_note"][-1] == "b":
-                observation_list[i]["RA"] = ra_b
-                observation_list[i]["dec"] = dec_b
+        for i, obs in enumerate(obs_array):
+            if obs["scheduler_note"][-1] == "a":
+                obs_array[i]["RA"] = ra_a
+                obs_array[i]["dec"] = dec_a
+            elif obs["scheduler_note"][-1] == "b":
+                obs_array[i]["RA"] = ra_b
+                obs_array[i]["dec"] = dec_b
             else:
                 ValueError("observation note does not end in a or b.")
-        return observation_list
+        return obs_array
 
 
 class CameraRotDetailer(BaseDetailer):
@@ -280,23 +279,22 @@ class CameraRotDetailer(BaseDetailer):
 
         return offsets
 
-    def __call__(self, observation_list, conditions):
+    def __call__(self, observation_array, conditions):
         # Generate offsets in camamera rotator
-        offsets = self._generate_offsets(len(observation_list), conditions.night)
+        offsets = self._generate_offsets(len(observation_array), conditions.night)
 
-        for i, obs in enumerate(observation_list):
-            alt, az = _approx_ra_dec2_alt_az(
-                obs["RA"],
-                obs["dec"],
-                conditions.site.latitude_rad,
-                conditions.site.longitude_rad,
-                conditions.mjd,
-            )
-            obs_pa = _approx_altaz2pa(alt, az, conditions.site.latitude_rad)
-            obs["rotSkyPos"] = self.rc._rottelpos2rotskypos(offsets[i], obs_pa)
-            obs["rotTelPos"] = offsets[i]
+        alt, az = _approx_ra_dec2_alt_az(
+            observation_array["RA"],
+            observation_array["dec"],
+            conditions.site.latitude_rad,
+            conditions.site.longitude_rad,
+            conditions.mjd,
+        )
+        obs_pa = _approx_altaz2pa(alt, az, conditions.site.latitude_rad)
+        observation_array["rotSkyPos"] = self.rc._rottelpos2rotskypos(offsets, obs_pa)
+        observation_array["rotTelPos"] = offsets
 
-        return observation_list
+        return observation_array
 
 
 class CameraSmallRotPerObservationListDetailer(BaseDetailer):
