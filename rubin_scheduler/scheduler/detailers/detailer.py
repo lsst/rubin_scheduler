@@ -498,9 +498,9 @@ class FilterNexp(BaseDetailer):
     def __call__(self, observation_array, conditions):
 
         indx = np.where(observation_array["filter"] == self.filtername)[0]
-        observation_array[indx]["nexp"] = self.nexp
+        observation_array["nexp"][indx] = self.nexp
         if self.exptime is not None:
-            observation_array[indx]["exptime"] = self.exptime
+            observation_array["exptime"][indx] = self.exptime
 
         return observation_array
 
