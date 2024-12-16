@@ -23,7 +23,7 @@ import warnings
 import numpy as np
 
 import rubin_scheduler.scheduler.features as features
-from rubin_scheduler.scheduler.utils import IntRounded, ObservationArray, obsarray_concat
+from rubin_scheduler.scheduler.utils import IntRounded, ObservationArray
 from rubin_scheduler.utils import (
     DEFAULT_NSIDE,
     _angular_separation,
@@ -373,7 +373,7 @@ class StartFieldSequenceDetailer(BaseDetailer):
         # Make backwards compatible if someone sent in a list
         if isinstance(sequence_obs, list):
             warnings.warn("sequence_obs should be ObsArray, not list of ObsArray. Concatenating")
-            sequence_obs = obsarray_concat(sequence_obs)
+            sequence_obs = np.concatenate(sequence_obs)
 
         self.sequence_obs = sequence_obs
 
@@ -401,7 +401,7 @@ class StartFieldSequenceDetailer(BaseDetailer):
     def __call__(self, observation_array, conditions):
         # Do we need to add the opening sequence?
         if (conditions.mjd - self.survey_features["last_matching"].feature["mjd"]) >= self.time_match:
-            observation_array = obsarray_concat([self.sequence_obs, observation_array])
+            observation_array = np.concatenate([self.sequence_obs, observation_array])
 
         return observation_array
 
@@ -461,7 +461,7 @@ class CloseAltDetailer(BaseDetailer):
         else:
             good = np.min(np.where(ang_dist == ang_dist.min())[0])
         indx = in_band[good]
-        result = obsarray_concat([obs_array[indx:], obs_array[:indx]])
+        result = np.concatenate([obs_array[indx:], obs_array[:indx]])
         return result
 
 
@@ -529,7 +529,7 @@ class TakeAsPairsDetailer(BaseDetailer):
         observation_array["scheduler_note"] = np.char.add(
             observation_array["scheduler_note"], ", %s" % tags[1]
         )
-        result = obsarray_concat([paired, observation_array])
+        result = np.concatenate([paired, observation_array])
 
         return result
 
@@ -576,4 +576,4 @@ class TwilightTripleDetailer(BaseDetailer):
             if self.update_note:
                 sub_arr["scheduler_note"] = np.char.add(sub_arr["scheduler_note"], ", %i" % i)
             out_obs.append(sub_arr)
-        return obsarray_concat(out_obs)
+        return np.concatenate(out_obs)

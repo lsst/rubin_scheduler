@@ -6,7 +6,7 @@ import healpy as hp
 import numpy as np
 
 from rubin_scheduler.scheduler.surveys import BaseSurvey
-from rubin_scheduler.scheduler.utils import ScheduledObservationArray, obsarray_concat
+from rubin_scheduler.scheduler.utils import ScheduledObservationArray
 from rubin_scheduler.utils import DEFAULT_NSIDE, _angular_separation, _approx_ra_dec2_alt_az
 
 log = logging.getLogger(__name__)
@@ -318,7 +318,7 @@ class ScriptedSurvey(BaseSurvey):
                 self.id_start = self.script_id_array.max() + 1
 
         if append & (self.obs_wanted is not None):
-            self.obs_wanted = obsarray_concat([self.obs_wanted, obs_wanted])
+            self.obs_wanted = np.concatenate([self.obs_wanted, obs_wanted])
             self.obs_wanted.sort(order=["mjd", "filter"])
         else:
             self.obs_wanted = obs_wanted

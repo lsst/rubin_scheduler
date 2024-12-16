@@ -193,7 +193,7 @@ class CoreScheduler:
             for sur in sl:
                 scheduled = sur.get_scheduled_obs()
                 if scheduled is not None:
-                    all_scheduled.append(scheduled)
+                    all_scheduled.append(scheduled.view(np.ndarray))
         if len(all_scheduled) == 0:
             self.conditions.scheduled_observations = []
         else:
