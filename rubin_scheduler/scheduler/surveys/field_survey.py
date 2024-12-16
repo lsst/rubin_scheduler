@@ -9,7 +9,7 @@ from rubin_scheduler.utils import DEFAULT_NSIDE, _approx_alt_az2_ra_dec, _ra_dec
 
 from ..detailers import AltAz2RaDecDetailer
 from ..features import LastObservation, NObsCount
-from ..utils import ObservationArray, obsarray_concat
+from ..utils import ObservationArray
 from . import BaseSurvey
 
 
@@ -167,7 +167,7 @@ class FieldSurvey(BaseSurvey):
                     self.observations.append(obs)
 
         # Let's just make this an array for ease of use
-        self.observations = obsarray_concat(self.observations)
+        self.observations = np.concatenate(self.observations)
         order = np.argsort(self.observations["filter"])
         self.observations = self.observations[order]
 
