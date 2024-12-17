@@ -13,7 +13,6 @@ from rubin_scheduler.scheduler.utils import (
     ScheduledObservationArray,
     SchemaConverter,
     make_rolling_footprints,
-    obsarray_concat,
     restore_scheduler,
     run_info_table,
     season_calc,
@@ -309,7 +308,7 @@ class TestUtils(unittest.TestCase):
         assert len(obs_list[0]) == 1
         assert len(obs_list) == n
 
-        back = obsarray_concat(obs_list)
+        back = np.concatenate(obs_list)
 
         assert np.array_equal(back, obs)
 
@@ -321,7 +320,7 @@ class TestUtils(unittest.TestCase):
         assert len(obs_list[0]) == 1
         assert len(obs_list) == n
 
-        back = obsarray_concat(obs_list)
+        back = np.concatenate(obs_list)
 
         assert np.array_equal(back, obs)
 

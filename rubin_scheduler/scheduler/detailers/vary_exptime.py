@@ -5,7 +5,6 @@ import numpy as np
 from scipy.stats import binned_statistic
 
 from rubin_scheduler.scheduler.detailers import BaseDetailer
-from rubin_scheduler.scheduler.utils import obsarray_concat
 from rubin_scheduler.skybrightness_pre import dark_sky
 from rubin_scheduler.utils import DEFAULT_NSIDE, Site, _ra_dec2_hpid, hpid2_ra_dec, m5_flat_sed
 
@@ -91,7 +90,7 @@ class VaryExptDetailer(BaseDetailer):
         else:
             self.target_m5 = target_m5
 
-    def __call__(self, observation_list, conditions):
+    def __call__(self, obs_array, conditions):
         """
         Parameters
         ----------
@@ -103,7 +102,6 @@ class VaryExptDetailer(BaseDetailer):
         -------
         List of observations.
         """
-        obs_array = obsarray_concat(observation_list)
         hpids = _ra_dec2_hpid(self.nside, obs_array["RA"], obs_array["dec"])
         new_expts = np.zeros(obs_array.size, dtype=float)
         for filtername in np.unique(obs_array["filter"]):
@@ -130,4 +128,4 @@ class VaryExptDetailer(BaseDetailer):
         # just limit to seconds
         obs_array["exptime"] = np.round(new_expts)
 
-        return obs_array.tolist()
+        return obs_array

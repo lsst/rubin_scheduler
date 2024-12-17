@@ -168,16 +168,6 @@ class DeepDrillingSurvey(BaseSurvey):
             ind2 = np.where(result["filter"] != conditions.current_filter)[0]
             result = result[ind1.tolist() + (ind2.tolist())]
 
-            # convert to list of array. Arglebargle, don't understand
-            # why I need a reshape there
-            final_result = [
-                row.reshape(
-                    1,
-                )
-                for row in result
-            ]
-            result = final_result
-
         return result
 
     def __repr__(self):
