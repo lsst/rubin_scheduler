@@ -10,7 +10,7 @@ import numpy as np
 import rubin_scheduler.scheduler.basis_functions as basis_functions
 from rubin_scheduler.scheduler import features
 from rubin_scheduler.scheduler.surveys import BaseSurvey
-from rubin_scheduler.scheduler.utils import ObservationArray, obsarray_concat
+from rubin_scheduler.scheduler.utils import ObservationArray
 from rubin_scheduler.utils import DEFAULT_NSIDE, ddf_locations, ra_dec2_hpid
 
 log = logging.getLogger(__name__)
@@ -99,7 +99,7 @@ class DeepDrillingSurvey(BaseSurvey):
             self.observations = sequence
 
         # Let's just make this an array for ease of use
-        self.observations = obsarray_concat(self.observations)
+        self.observations = np.concatenate(self.observations)
         order = np.argsort(self.observations["filter"])
         self.observations = self.observations[order]
 

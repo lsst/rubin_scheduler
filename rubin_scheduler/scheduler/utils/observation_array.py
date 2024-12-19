@@ -1,10 +1,11 @@
 __all__ = (
-    "obsarray_concat",
     "ObservationArray",
     "ScheduledObservationArray",
 )
 
 import numpy as np
+
+HANDLED_FUNCTIONS = {}
 
 
 class ObservationArray(np.ndarray):
@@ -150,6 +151,35 @@ class ObservationArray(np.ndarray):
 
         return obs_list
 
+    def __array_function__(self, func, types, args, kwargs):
+        # If we want "standard numpy behavior",
+        # convert any ObservationArray to ndarray views
+        if func not in HANDLED_FUNCTIONS:
+            new_args = []
+            for arg in args:
+                if issubclass(arg.__class__, ObservationArray):
+                    new_args.append(arg.view(np.ndarray))
+                else:
+                    new_args.append(arg)
+            return func(*new_args, **kwargs)
+        if not all(issubclass(t, ObservationArray) for t in types):
+            return NotImplemented
+        return HANDLED_FUNCTIONS[func](*args, **kwargs)
+
+
+def implements(numpy_function):
+    def decorator(func):
+        HANDLED_FUNCTIONS[numpy_function] = func
+        return func
+
+    return decorator
+
+
+@implements(np.concatenate)
+def concatenate(arrays):
+    result = arrays[0].__class__(n=sum(len(a) for a in arrays))
+    return np.concatenate([np.asarray(a) for a in arrays], out=result)
+
 
 class ScheduledObservationArray(ObservationArray):
     """Make an array to hold pre-scheduling observations
@@ -236,27 +266,3 @@ class ScheduledObservationArray(ObservationArray):
         for key in in_common:
             result[key] = self[key]
         return result
-
-
-def obsarray_concat(in_arrays):
-    """Concatenate ObservationArray objects.
-
-    Can't use np.concatenate because it will no longer
-    be an array subclass
-
-    Parameters
-    ----------
-    in_arrays : `list` of `ObservationArray` or `ScheduledObservationArray`
-    """
-    # Check if we have ScheduledObservationArray
-    array_class = ObservationArray
-    if "observed" in in_arrays[0].dtype.names:
-        array_class = ScheduledObservationArray
-
-    size = 0
-    for arr in in_arrays:
-        size += arr.size
-    # Init empty array of proper class
-    # to hold output.
-    out_arr = array_class(n=size)
-    return np.concatenate(in_arrays, out=out_arr)
