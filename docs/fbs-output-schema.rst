@@ -101,18 +101,12 @@ All values are for the center of the field of view (e.g., airmass, altitude, etc
    * - sunAlt
      - degrees
      - Altitude of the Sun.
-   * - note
-     - string
-     - DEPRECATED. Do not use.
    * - scheduler_note
      - string
      - Descriptive comment about how the observations were scheduled, for use by the FBS.
    * - target_name
      - string
      - Descriptive name for the target. Only used for DDFs, ToOs, or other special targets. Should translate to target_name in the headers/ConsDB.
-   * - block_id
-     - integer
-     - Identification ID of the block (used by some survey objects).
    * - observationStartLST
      - degrees
      - Local Sidereal Time at the start of the observation.
@@ -152,6 +146,9 @@ All values are for the center of the field of view (e.g., airmass, altitude, etc
    * - cummTelAz
      - degrees
      - Cumulative azimuth of the telescope mount, tracks cable wrap.
+   * - target_id
+     - integer
+     - Integer added by the `CoreScheduler`.
    * - observation_reason
      - string
      - The reason for the observation. Identifier for DM. Translates to observation_reason in the headers/consdb.

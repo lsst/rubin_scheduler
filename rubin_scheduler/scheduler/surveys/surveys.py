@@ -510,7 +510,6 @@ class BlobSurvey(GreedySurvey):
             observations["nexp"] = self.nexp_dict[self.filtername1]
         observations["exptime"] = self.exptime
         observations["scheduler_note"] = self.scheduler_note
-        observations["block_id"] = self.counter
         observations["flush_by_mjd"] = flush_time
 
         return observations

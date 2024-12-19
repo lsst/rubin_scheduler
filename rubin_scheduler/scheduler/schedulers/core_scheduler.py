@@ -41,6 +41,10 @@ class CoreScheduler:
     telescope : `str`
         Which telescope model to use for rotTelPos/rotSkyPos conversions.
         Default "rubin".
+    target_id_counter : int
+        Starting value for the target_id. If restarting observations, could
+        be useful to set to whatever value the scheduler was at previously.
+        Default 0.
     """
 
     def __init__(
@@ -51,6 +55,7 @@ class CoreScheduler:
         log=None,
         keep_rewards=False,
         telescope="rubin",
+        target_id_counter=0,
     ):
         self.keep_rewards = keep_rewards
         # Use integer ns just to be sure there are no rounding issues.
@@ -86,8 +91,11 @@ class CoreScheduler:
 
         self.rc = rotation_converter(telescope=telescope)
 
-        # keep track of how many observations get flushed from the queue
+        # Keep track of how many observations get flushed from the queue
         self.flushed = 0
+
+        # Counter for observations added to the queue
+        self.target_id_counter = target_id_counter
 
     def flush_queue(self):
         """Like it sounds, clear any currently queued desired observations."""
@@ -127,6 +135,9 @@ class CoreScheduler:
             for survey in surveys:
                 survey.add_observations_array(obs, obs_array_hpid)
 
+        if np.max(obs["target_id"]) >= self.target_id_counter:
+            self.target_id_counter = np.max(obs["target_id"]) + 1
+
     def add_observation(self, observation):
         """
         Record a completed observation and update features accordingly.
@@ -153,6 +164,9 @@ class CoreScheduler:
         for surveys in self.survey_lists:
             for survey in surveys:
                 survey.add_observation(observation, indx=indx)
+
+        if np.max(observation["target_id"]) >= self.target_id_counter:
+            self.target_id_counter = np.max(observation["target_id"]) + 1
 
     def update_conditions(self, conditions_in):
         """
@@ -302,14 +316,16 @@ class CoreScheduler:
             # Take a min here, so the surveys will be executed in the order
             # they are entered if there is a tie.
             self.survey_index[1] = np.min(np.where(rewards == np.nanmax(rewards)))
-            # Survey returns ObservationArray. Convert to list.
-            result = (
-                self.survey_lists[self.survey_index[0]][self.survey_index[1]]
-                .generate_observations(self.conditions)
-                .tolist()
+            # Survey returns ObservationArray
+            result = self.survey_lists[self.survey_index[0]][self.survey_index[1]].generate_observations(
+                self.conditions
             )
+            # Tag with a unique target_id
+            result["target_id"] = np.arange(self.target_id_counter, self.target_id_counter + result.size)
+            self.target_id_counter += result.size
 
-            self.queue = result
+            # Convert to a list for the queue
+            self.queue = result.tolist()
             self.queue_filled = self.conditions.mjd
 
         if len(self.queue) == 0:
