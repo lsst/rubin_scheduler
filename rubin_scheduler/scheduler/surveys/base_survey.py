@@ -239,16 +239,14 @@ class BaseSurvey:
         """
         Returns
         -------
-        one of:
-            1) None
-            2) A list of observations
+        ObservationArray
         """
         # If the reward function hasn't been updated with the
         # latest info, calculate it
         if not self.reward_checked:
             self.reward = self.calc_reward_function(conditions)
         obs = ObservationArray()
-        return [obs]
+        return obs
 
     def generate_observations(self, conditions):
         observations = self.generate_observations_rough(conditions)

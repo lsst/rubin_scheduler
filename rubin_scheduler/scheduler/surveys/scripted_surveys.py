@@ -6,7 +6,7 @@ import healpy as hp
 import numpy as np
 
 from rubin_scheduler.scheduler.surveys import BaseSurvey
-from rubin_scheduler.scheduler.utils import ObservationArray, ScheduledObservationArray
+from rubin_scheduler.scheduler.utils import ScheduledObservationArray, obsarray_concat
 from rubin_scheduler.utils import DEFAULT_NSIDE, _angular_separation, _approx_ra_dec2_alt_az
 
 log = logging.getLogger(__name__)
@@ -148,24 +148,6 @@ class ScriptedSurvey(BaseSurvey):
         else:
             self.reward = self.reward_val
         return self.reward
-
-    def _slice2obs(self, obs_row):
-        """take a slice and return a full observation object"""
-        observation = ObservationArray()
-        for key in [
-            "RA",
-            "dec",
-            "filter",
-            "exptime",
-            "nexp",
-            "scheduler_note",
-            "target_name",
-            "rotSkyPos",
-            "rotTelPos",
-            "flush_by_mjd",
-        ]:
-            observation[key] = obs_row[key]
-        return observation
 
     def _check_alts_ha(self, observation, conditions):
         """Given scheduled observations, check which ones can be
@@ -336,7 +318,7 @@ class ScriptedSurvey(BaseSurvey):
                 self.id_start = self.script_id_array.max() + 1
 
         if append & (self.obs_wanted is not None):
-            self.obs_wanted = np.concatenate([self.obs_wanted, obs_wanted])
+            self.obs_wanted = obsarray_concat([self.obs_wanted, obs_wanted])
             self.obs_wanted.sort(order=["mjd", "filter"])
         else:
             self.obs_wanted = obs_wanted
@@ -390,7 +372,7 @@ class ScriptedSurvey(BaseSurvey):
                 self.last_mjd = conditions.mjd
                 return self.observations
 
-        self.observations = [self._slice2obs(obs) for obs in observations]
         self.last_mjd = conditions.mjd
-
+        # Cache results, convert to ObservationArray
+        self.observations = observations.to_observation_array()
         return self.observations

@@ -18,11 +18,12 @@ __all__ = (
 )
 
 import copy
+import warnings
 
 import numpy as np
 
 import rubin_scheduler.scheduler.features as features
-from rubin_scheduler.scheduler.utils import IntRounded, obsarray_concat
+from rubin_scheduler.scheduler.utils import IntRounded, ObservationArray, obsarray_concat
 from rubin_scheduler.utils import (
     DEFAULT_NSIDE,
     _angular_separation,
@@ -82,10 +83,10 @@ class BaseDetailer:
 
         Returns
         -------
-        List of observations.
+        ObservationArray
         """
 
-        return observation_list
+        return ObservationArray()
 
 
 class TrackingInfoDetailer(BaseDetailer):
@@ -99,14 +100,13 @@ class TrackingInfoDetailer(BaseDetailer):
         self.observation_reason = observation_reason
         self.keys = ["science_program", "target_name", "observation_reason"]
 
-    def __call__(self, observation_list, conditions):
-        for obs in observation_list:
-            for key in self.keys:
-                if getattr(self, key) is not None:
-                    if (obs[key] == "") | (obs[key] is None):
-                        obs[key] = getattr(self, key)
+    def __call__(self, observation_array, conditions):
 
-        return observation_list
+        for key in self.keys:
+            indx = np.where((observation_array[key] == "") | (observation_array[key] is None))[0]
+            observation_array[key][indx] = getattr(self, key)
+
+        return observation_array
 
 
 class FlushByDetailer(BaseDetailer):
@@ -124,28 +124,27 @@ class FlushByDetailer(BaseDetailer):
         self.nside = nside
         self.flush_time = flush_time / 60 / 24.0
 
-    def __call__(self, observation_list, conditions):
-        for obs in observation_list:
-            obs["flush_by_mjd"] = conditions.mjd + self.flush_time
-        return observation_list
+    def __call__(self, observation_array, conditions):
+        observation_array["flush_by_mjd"] = conditions.mjd + self.flush_time
+        return observation_array
 
 
 class AltAz2RaDecDetailer(BaseDetailer):
     """Set RA,dec for an observation that only has alt,az"""
 
-    def __call__(self, observation_list, conditions):
-        for observation in observation_list:
-            ra, dec = _approx_alt_az2_ra_dec(
-                observation["alt"],
-                observation["az"],
-                conditions.site.latitude_rad,
-                conditions.site.longitude_rad,
-                conditions.mjd,
-            )
-            observation["RA"] = ra
-            observation["dec"] = dec
+    def __call__(self, observation_array, conditions):
 
-        return observation_list
+        ra, dec = _approx_alt_az2_ra_dec(
+            observation_array["alt"],
+            observation_array["az"],
+            conditions.site.latitude_rad,
+            conditions.site.longitude_rad,
+            conditions.mjd,
+        )
+        observation_array["RA"] = ra
+        observation_array["dec"] = dec
+
+        return observation_array
 
 
 class RandomFilterDetailer(BaseDetailer):
@@ -177,7 +176,7 @@ class RandomFilterDetailer(BaseDetailer):
         for i, filtername in enumerate(filters):
             self.filter_dict[i] = filtername
 
-    def __call__(self, observation_list, conditions):
+    def __call__(self, observation_array, conditions):
 
         filter_to_use = self.filter_dict[self.night2filter_int[conditions.night]]
         # Filter not available
@@ -186,9 +185,8 @@ class RandomFilterDetailer(BaseDetailer):
             indx = np.min(np.where(is_mounted))
             filter_to_use = self.fallback_order[indx]
 
-        for obs in observation_list:
-            obs["filter"] = filter_to_use
-        return observation_list
+        observation_array["filter"] = filter_to_use
+        return observation_array
 
 
 class ParallacticRotationDetailer(BaseDetailer):
@@ -198,36 +196,37 @@ class ParallacticRotationDetailer(BaseDetailer):
         self.rc = rotation_converter(telescope=telescope)
         self.survey_features = {}
 
-    def __call__(self, observation_list, conditions, limits=[-270, 270]):
+    def __call__(self, observation_array, conditions, limits=[-270, 270]):
         limits = np.radians(limits)
-        for obs in observation_list:
-            alt, az = _approx_ra_dec2_alt_az(
-                obs["RA"],
-                obs["dec"],
-                conditions.site.latitude_rad,
-                conditions.site.longitude_rad,
-                conditions.mjd,
-            )
-            obs_pa = _approx_altaz2pa(alt, az, conditions.site.latitude_rad)
-            obs["rotSkyPos_desired"] = obs_pa
 
-            resulting_rot_tel_pos = self.rc._rotskypos2rottelpos(obs["rotSkyPos_desired"], obs_pa)
+        alt, az = _approx_ra_dec2_alt_az(
+            observation_array["RA"],
+            observation_array["dec"],
+            conditions.site.latitude_rad,
+            conditions.site.longitude_rad,
+            conditions.mjd,
+        )
+        obs_pa = _approx_altaz2pa(alt, az, conditions.site.latitude_rad)
+        observation_array["rotSkyPos_desired"] = obs_pa
 
-            if resulting_rot_tel_pos > np.max(limits):
-                resulting_rot_tel_pos -= 2 * np.pi
-            if resulting_rot_tel_pos < np.min(limits):
-                resulting_rot_tel_pos += 2 * np.pi
+        resulting_rot_tel_pos = self.rc._rotskypos2rottelpos(observation_array["rotSkyPos_desired"], obs_pa)
 
-            # If those corrections still leave us bad, just pull it back 180.
-            if resulting_rot_tel_pos > np.max(limits):
-                resulting_rot_tel_pos -= np.pi
+        indx = np.where(resulting_rot_tel_pos > np.max(limits))[0]
+        resulting_rot_tel_pos[indx] -= 2 * np.pi
 
-            # The rotTelPos overides everything else.
-            obs["rotTelPos"] = resulting_rot_tel_pos
-            # if the rotSkyPos_desired isn't possible, fall back to this.
-            obs["rotTelPos_backup"] = 0
+        indx = np.where(resulting_rot_tel_pos < np.min(limits))
+        resulting_rot_tel_pos[indx] += 2 * np.pi
 
-        return observation_list
+        # If those corrections still leave us bad, just pull it back 180.
+        indx = np.where(resulting_rot_tel_pos > np.max(limits))
+        resulting_rot_tel_pos[indx] -= np.pi
+
+        # The rotTelPos overides everything else.
+        observation_array["rotTelPos"] = resulting_rot_tel_pos
+        # if the rotSkyPos_desired isn't possible, fall back to this.
+        observation_array["rotTelPos_backup"] = 0
+
+        return observation_array
 
 
 class Rottep2RotspDesiredDetailer(BaseDetailer):
@@ -237,8 +236,7 @@ class Rottep2RotspDesiredDetailer(BaseDetailer):
         self.rc = rotation_converter(telescope=telescope)
         self.survey_features = {}
 
-    def __call__(self, observation_list, conditions):
-        obs_array = obsarray_concat(observation_list)
+    def __call__(self, obs_array, conditions):
 
         alt, az = _approx_ra_dec2_alt_az(
             obs_array["RA"],
@@ -256,7 +254,7 @@ class Rottep2RotspDesiredDetailer(BaseDetailer):
         obs_array["rotSkyPos"] = np.nan
         obs_array["rotSkyPos_desired"] = rot_sky_pos_desired
 
-        return obs_array.tolist()
+        return obs_array
 
 
 class ZeroRotDetailer(BaseDetailer):
@@ -275,21 +273,18 @@ class ZeroRotDetailer(BaseDetailer):
         self.rc = rotation_converter(telescope=telescope)
         self.survey_features = {}
 
-    def __call__(self, observation_list, conditions):
-        # XXX--should I convert the list into an array and get rid of this
-        # loop?
-        for obs in observation_list:
-            obs_pa, alt, az = pseudo_parallactic_angle(
-                obs["RA"],
-                obs["dec"],
-                conditions.mjd,
-                np.degrees(conditions.site.longitude_rad),
-                np.degrees(conditions.site.latitude_rad),
-            )
+    def __call__(self, observation_array, conditions):
+        obs_pa, alt, az = pseudo_parallactic_angle(
+            observation_array["RA"],
+            observation_array["dec"],
+            conditions.mjd,
+            np.degrees(conditions.site.longitude_rad),
+            np.degrees(conditions.site.latitude_rad),
+        )
 
-            obs["rotSkyPos"] = np.radians(self.rc.rottelpos2rotskypos(0.0, obs_pa))
+        observation_array["rotSkyPos"] = np.radians(self.rc.rottelpos2rotskypos(0.0, obs_pa))
 
-        return observation_list
+        return observation_array
 
 
 class Comcam90rotDetailer(BaseDetailer):
@@ -302,9 +297,8 @@ class Comcam90rotDetailer(BaseDetailer):
         self.rc = rotation_converter(telescope=telescope)
         self.survey_features = {}
 
-    def __call__(self, observation_list, conditions):
+    def __call__(self, obs_array, conditions):
         favored_rot_sky_pos = np.radians([0.0, 90.0, 180.0, 270.0, 360.0]).reshape(5, 1)
-        obs_array = obsarray_concat(observation_list)
 
         parallactic_angle, alt, az = np.radians(
             pseudo_parallactic_angle(
@@ -323,16 +317,16 @@ class Comcam90rotDetailer(BaseDetailer):
         # can swap 360 and zero if needed?
         obs_array["rotSkyPos"] = favored_rot_sky_pos[min_indxs].ravel()
 
-        return obs_array.tolist()
+        return obs_array
 
 
 class StartFieldSequenceDetailer(BaseDetailer):
-    """Prepend a sequence of observations to the start of a list
+    """Prepend a sequence of observations to the start of an array
 
     Parameters
     ----------
-    sequence_obs_list : `list` [`ObservationArray`]
-        List of n=1 ObservationArray objects. The observations should
+    sequence_obs : `ObservationArray`
+        ObservationArray object. The observations should
         have "scheduler_note" and/or "science_program" set.
     ang_distance_match : `float`
         How close should an observation be on the sky to be considered
@@ -355,7 +349,7 @@ class StartFieldSequenceDetailer(BaseDetailer):
 
     def __init__(
         self,
-        sequence_obs_list,
+        sequence_obs,
         ang_distance_match=3.5,
         time_match_hours=5,
         science_program=None,
@@ -376,16 +370,20 @@ class StartFieldSequenceDetailer(BaseDetailer):
         self.science_program = science_program
         self.scheduler_note = scheduler_note
 
-        self.sequence_obs_list = sequence_obs_list
+        # Make backwards compatible if someone sent in a list
+        if isinstance(sequence_obs, list):
+            warnings.warn("sequence_obs should be ObsArray, not list of ObsArray. Concatenating")
+            sequence_obs = obsarray_concat(sequence_obs)
 
-        for obs in self.sequence_obs_list:
-            obs["science_program"] = self.science_program
-            obs["scheduler_note"] = self.scheduler_note
+        self.sequence_obs = sequence_obs
+
+        self.sequence_obs["science_program"] = self.science_program
+        self.sequence_obs["scheduler_note"] = self.scheduler_note
 
         # Check that things are sensibly set
-        obs_array = np.concatenate(sequence_obs_list)
-        u_scip = np.unique(obs_array["science_program"])
-        u_sn = np.unique(obs_array["scheduler_note"])
+
+        u_scip = np.unique(sequence_obs["science_program"])
+        u_sn = np.unique(sequence_obs["scheduler_note"])
 
         if (np.size(u_scip) > 1) | (np.size(u_sn) > 1):
             msg = (
@@ -400,12 +398,12 @@ class StartFieldSequenceDetailer(BaseDetailer):
             if self.scheduler_note != u_sn:
                 ValueError("scheduler_note kwarg not equal to scheduler_notes from sequence_obs_list")
 
-    def __call__(self, observation_list, conditions):
+    def __call__(self, observation_array, conditions):
         # Do we need to add the opening sequence?
         if (conditions.mjd - self.survey_features["last_matching"].feature["mjd"]) >= self.time_match:
-            observation_list = self.sequence_obs_list + observation_list
+            observation_array = obsarray_concat([self.sequence_obs, observation_array])
 
-        return observation_list
+        return observation_array
 
 
 class FixedSkyAngleDetailer(BaseDetailer):
@@ -422,11 +420,10 @@ class FixedSkyAngleDetailer(BaseDetailer):
 
         self.sky_angle = np.radians(sky_angle)
 
-    def __call__(self, observation_list, conditions):
-        for observation in observation_list:
-            observation["rotSkyPos"] = self.sky_angle
+    def __call__(self, observation_array, conditions):
+        observation_array["rotSkyPos"] = self.sky_angle
 
-        return observation_list
+        return observation_array
 
 
 class CloseAltDetailer(BaseDetailer):
@@ -444,8 +441,7 @@ class CloseAltDetailer(BaseDetailer):
         super(CloseAltDetailer, self).__init__()
         self.alt_band = IntRounded(np.radians(alt_band))
 
-    def __call__(self, observation_list, conditions):
-        obs_array = np.concatenate(observation_list)
+    def __call__(self, obs_array, conditions):
         alt, az = _approx_ra_dec2_alt_az(
             obs_array["RA"],
             obs_array["dec"],
@@ -465,7 +461,7 @@ class CloseAltDetailer(BaseDetailer):
         else:
             good = np.min(np.where(ang_dist == ang_dist.min())[0])
         indx = in_band[good]
-        result = observation_list[indx:] + observation_list[:indx]
+        result = obsarray_concat([obs_array[indx:], obs_array[:indx]])
         return result
 
 
@@ -482,13 +478,12 @@ class FlushForSchedDetailer(BaseDetailer):
         super(FlushForSchedDetailer, self).__init__()
         self.tol = tol / 24.0 / 60.0  # To days
 
-    def __call__(self, observation_list, conditions):
+    def __call__(self, observation_array, conditions):
         if np.size(conditions.scheduled_observations) > 0:
             new_flush = np.min(conditions.scheduled_observations) - self.tol
-            for obs in observation_list:
-                if obs["flush_by_mjd"] > new_flush:
-                    obs["flush_by_mjd"] = new_flush
-        return observation_list
+            indx = np.where(observation_array["flush_by_mjd"] > new_flush)[0]
+            observation_array[indx]["flush_by_mjd"] = new_flush
+        return observation_array
 
 
 class FilterNexp(BaseDetailer):
@@ -500,13 +495,14 @@ class FilterNexp(BaseDetailer):
         self.nexp = nexp
         self.exptime = exptime
 
-    def __call__(self, observation_list, conditions):
-        for obs in observation_list:
-            if obs["filter"] == self.filtername:
-                obs["nexp"] = self.nexp
-                if self.exptime is not None:
-                    obs["exptime"] = self.exptime
-        return observation_list
+    def __call__(self, observation_array, conditions):
+
+        indx = np.where(observation_array["filter"] == self.filtername)[0]
+        observation_array["nexp"][indx] = self.nexp
+        if self.exptime is not None:
+            observation_array["exptime"][indx] = self.exptime
+
+        return observation_array
 
 
 class TakeAsPairsDetailer(BaseDetailer):
@@ -517,27 +513,24 @@ class TakeAsPairsDetailer(BaseDetailer):
         self.exptime = exptime
         self.nexp_dict = nexp_dict
 
-    def __call__(self, observation_list, conditions):
-        paired = copy.deepcopy(observation_list)
+    def __call__(self, observation_array, conditions):
+        paired = copy.deepcopy(observation_array)
         if self.exptime is not None:
-            for obs in paired:
-                obs["exptime"] = self.exptime
-        for obs in paired:
-            obs["filter"] = self.filtername
-            if self.nexp_dict is not None:
-                obs["nexp"] = self.nexp_dict[self.filtername]
+            paired["exptime"] = self.exptime
+        paired["filter"] = self.filtername
+        if self.nexp_dict is not None:
+            paired["nexp"] = self.nexp_dict[self.filtername]
         if conditions.current_filter == self.filtername:
-            for obs in paired:
-                obs["scheduler_note"] = obs["scheduler_note"][0] + ", a"
-            for obs in observation_list:
-                obs["scheduler_note"] = obs["scheduler_note"][0] + ", b"
-            result = paired + observation_list
+            tags = ["a", "b"]
         else:
-            for obs in paired:
-                obs["scheduler_note"] = obs["scheduler_note"][0] + ", b"
-            for obs in observation_list:
-                obs["scheduler_note"] = obs["scheduler_note"][0] + ", a"
-            result = observation_list + paired
+            tags = ["b", "a"]
+
+        paired["scheduler_note"] = np.char.add(paired["scheduler_note"], ", %s" % tags[0])
+        observation_array["scheduler_note"] = np.char.add(
+            observation_array["scheduler_note"], ", %s" % tags[1]
+        )
+        result = obsarray_concat([paired, observation_array])
+
         return result
 
 
@@ -548,8 +541,7 @@ class TwilightTripleDetailer(BaseDetailer):
         self.n_repeat = n_repeat
         self.update_note = update_note
 
-    def __call__(self, observation_list, conditions):
-        obs_array = np.concatenate(observation_list)
+    def __call__(self, obs_array, conditions):
 
         # Estimate how much time is left in the twilgiht block
         potential_times = np.array(
@@ -575,14 +567,13 @@ class TwilightTripleDetailer(BaseDetailer):
                 max_indx = np.max(max_indx)
                 if max_indx == 0:
                     max_indx += 1
-            observation_list = observation_list[0:max_indx]
+            obs_array = obs_array[0:max_indx]
 
         # Repeat the observations n times
         out_obs = []
         for i in range(self.n_repeat):
-            sub_list = copy.deepcopy(observation_list)
+            sub_arr = copy.deepcopy(obs_array)
             if self.update_note:
-                for obs in sub_list:
-                    obs["scheduler_note"][0] += ", %i" % i
-            out_obs.extend(sub_list)
-        return out_obs
+                sub_arr["scheduler_note"] = np.char.add(sub_arr["scheduler_note"], ", %i" % i)
+            out_obs.append(sub_arr)
+        return obsarray_concat(out_obs)

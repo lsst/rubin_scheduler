@@ -10,7 +10,7 @@ import numpy as np
 import rubin_scheduler.scheduler.basis_functions as basis_functions
 from rubin_scheduler.scheduler import features
 from rubin_scheduler.scheduler.surveys import BaseSurvey
-from rubin_scheduler.scheduler.utils import ObservationArray
+from rubin_scheduler.scheduler.utils import ObservationArray, obsarray_concat
 from rubin_scheduler.utils import DEFAULT_NSIDE, ddf_locations, ra_dec2_hpid
 
 log = logging.getLogger(__name__)
@@ -99,7 +99,7 @@ class DeepDrillingSurvey(BaseSurvey):
             self.observations = sequence
 
         # Let's just make this an array for ease of use
-        self.observations = np.concatenate(self.observations)
+        self.observations = obsarray_concat(self.observations)
         order = np.argsort(self.observations["filter"])
         self.observations = self.observations[order]
 
@@ -167,16 +167,6 @@ class DeepDrillingSurvey(BaseSurvey):
             ind1 = np.where(result["filter"] == conditions.current_filter)[0]
             ind2 = np.where(result["filter"] != conditions.current_filter)[0]
             result = result[ind1.tolist() + (ind2.tolist())]
-
-            # convert to list of array. Arglebargle, don't understand
-            # why I need a reshape there
-            final_result = [
-                row.reshape(
-                    1,
-                )
-                for row in result
-            ]
-            result = final_result
 
         return result
 
