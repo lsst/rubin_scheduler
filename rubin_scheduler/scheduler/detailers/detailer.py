@@ -7,11 +7,11 @@ __all__ = (
     "TakeAsPairsDetailer",
     "TwilightTripleDetailer",
     "FlushForSchedDetailer",
-    "FilterNexp",
+    "BandNexp",
     "FixedSkyAngleDetailer",
     "ParallacticRotationDetailer",
     "FlushByDetailer",
-    "RandomFilterDetailer",
+    "RandomBandDetailer",
     "TrackingInfoDetailer",
     "AltAz2RaDecDetailer",
     "StartFieldSequenceDetailer",
@@ -39,7 +39,7 @@ class BaseDetailer:
     """
     A Detailer is an object that takes a list of proposed observations and
     adds "details" to them. The primary purpose is that the Markov Decision
-    Process does an excelent job selecting RA,Dec,filter combinations, but we
+    Process does an excelent job selecting RA,Dec,band combinations, but we
     may want to add additional logic such as what to set the camera rotation
     angle to, or what to use for an exposure time. We could also modify the
     order of the proposed observations. For Deep Drilling Fields, a detailer
@@ -147,45 +147,45 @@ class AltAz2RaDecDetailer(BaseDetailer):
         return observation_array
 
 
-class RandomFilterDetailer(BaseDetailer):
-    """Pick a random filter for the observations
+class RandomBandDetailer(BaseDetailer):
+    """Pick a random band for the observations
 
     Parameters
     ----------
-    filters : `str`
-        The filters to randomize. Default 'riz'
+    bands : `str`
+        The bands to randomize. Default 'riz'
     nights_to_prep : `int`
-        The number of nights to generate random filters for.
+        The number of nights to generate random bands for.
         Default 10000.
     seed : number
         Seed for RNG. Defaut 42
     fallback_order : `str`
-        If the desired filter is not mounted, goes through
-        `fallback_order` and uses the first filter that is
+        If the desired band is not mounted, goes through
+        `fallback_order` and uses the first band that is
         available
     """
 
-    def __init__(self, filters="riz", nights_to_prep=10000, seed=42, fallback_order="rizgyu"):
+    def __init__(self, bands="riz", nights_to_prep=10000, seed=42, fallback_order="rizgyu"):
         self.survey_features = []
         self.fallback_order = fallback_order
 
         rng = np.random.default_rng(seed)
-        self.night2filter_int = rng.integers(low=0, high=len(filters), size=nights_to_prep)
+        self.night2band_int = rng.integers(low=0, high=len(bands), size=nights_to_prep)
 
-        self.filter_dict = {}
-        for i, filtername in enumerate(filters):
-            self.filter_dict[i] = filtername
+        self.band_dict = {}
+        for i, bandname in enumerate(bands):
+            self.band_dict[i] = bandname
 
     def __call__(self, observation_array, conditions):
 
-        filter_to_use = self.filter_dict[self.night2filter_int[conditions.night]]
-        # Filter not available
-        if filter_to_use not in conditions.mounted_filters:
-            is_mounted = [filtername in conditions.mounted_filters for filtername in self.fallback_order]
+        band_to_use = self.band_dict[self.night2band_int[conditions.night]]
+        # Band not available
+        if band_to_use not in conditions.mounted_bands:
+            is_mounted = [bandname in conditions.mounted_bands for bandname in self.fallback_order]
             indx = np.min(np.where(is_mounted))
-            filter_to_use = self.fallback_order[indx]
+            band_to_use = self.fallback_order[indx]
 
-        observation_array["filter"] = filter_to_use
+        observation_array["band"] = band_to_use
         return observation_array
 
 
@@ -486,18 +486,18 @@ class FlushForSchedDetailer(BaseDetailer):
         return observation_array
 
 
-class FilterNexp(BaseDetailer):
-    """Demand one filter always be taken as a certain number of exposures"""
+class BandNexp(BaseDetailer):
+    """Demand one band always be taken as a certain number of exposures"""
 
-    def __init__(self, filtername="u", nexp=1, exptime=None):
-        super(FilterNexp, self).__init__()
-        self.filtername = filtername
+    def __init__(self, bandname="u", nexp=1, exptime=None):
+        super(BandNexp, self).__init__()
+        self.bandname = bandname
         self.nexp = nexp
         self.exptime = exptime
 
     def __call__(self, observation_array, conditions):
 
-        indx = np.where(observation_array["filter"] == self.filtername)[0]
+        indx = np.where(observation_array["band"] == self.bandname)[0]
         observation_array["nexp"][indx] = self.nexp
         if self.exptime is not None:
             observation_array["exptime"][indx] = self.exptime
@@ -506,10 +506,10 @@ class FilterNexp(BaseDetailer):
 
 
 class TakeAsPairsDetailer(BaseDetailer):
-    def __init__(self, filtername="r", exptime=None, nexp_dict=None):
+    def __init__(self, bandname="r", exptime=None, nexp_dict=None):
         """"""
         super(TakeAsPairsDetailer, self).__init__()
-        self.filtername = filtername
+        self.bandname = bandname
         self.exptime = exptime
         self.nexp_dict = nexp_dict
 
@@ -517,10 +517,10 @@ class TakeAsPairsDetailer(BaseDetailer):
         paired = copy.deepcopy(observation_array)
         if self.exptime is not None:
             paired["exptime"] = self.exptime
-        paired["filter"] = self.filtername
+        paired["band"] = self.bandname
         if self.nexp_dict is not None:
-            paired["nexp"] = self.nexp_dict[self.filtername]
-        if conditions.current_filter == self.filtername:
+            paired["nexp"] = self.nexp_dict[self.bandname]
+        if conditions.current_band == self.bandname:
             tags = ["a", "b"]
         else:
             tags = ["b", "a"]

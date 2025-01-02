@@ -333,7 +333,7 @@ def generate_ddf_scheduled_obs(
     moon_min_distance=25.0,
     dist_tol=3.0,
     nvis_master=[8, 10, 20, 20, 24, 18],
-    filters="ugrizy",
+    bands="ugrizy",
     nsnaps=[1, 2, 2, 2, 2, 2],
     mjd_start=SURVEY_START_MJD,
     survey_length=10.0,
@@ -368,11 +368,11 @@ def generate_ddf_scheduled_obs(
         The distance tolerance for a visit to be considered matching a
         scheduled observation (degrees).
     nvis_master : list of ints ([8, 10, 20, 20, 24, 18])
-        The number of visits to make per filter
-    filters : `str` (ugrizy)
-        The filter names.
+        The number of visits to make per band
+    bands : `str` (ugrizy)
+        The band names.
     nsnaps : `list of ints` ([1, 2, 2, 2, 2, 2])
-        The number of snaps to use per filter
+        The number of snaps to use per band
     mjd_start : `float`
         Starting MJD of the survey. Default None, which calls
         rubin_sim.utils.SURVEY_START_MJD
@@ -442,7 +442,7 @@ def generate_ddf_scheduled_obs(
             low_season_rate=low_season_rate,
         )[0]
         for mjd in mjds:
-            for filtername, nvis, nexp in zip(filters, nvis_master, nsnaps):
+            for bandname, nvis, nexp in zip(bands, nvis_master, nsnaps):
                 if "EDFS" in ddf_name:
                     obs = ScheduledObservationArray(n=int(nvis / 2))
                     obs["RA"] = np.radians(ddfs[ddf_name][0])
@@ -450,7 +450,7 @@ def generate_ddf_scheduled_obs(
                     obs["mjd"] = mjd
                     obs["flush_by_mjd"] = mjd + flush_length
                     obs["exptime"] = expt
-                    obs["filter"] = filtername
+                    obs["band"] = bandname
                     obs["nexp"] = nexp
                     obs["scheduler_note"] = "DD:%s" % ddf_name
                     obs["target_name"] = "DD:%s" % ddf_name
@@ -471,7 +471,7 @@ def generate_ddf_scheduled_obs(
                     obs["mjd"] = mjd
                     obs["flush_by_mjd"] = mjd + flush_length
                     obs["exptime"] = expt
-                    obs["filter"] = filtername
+                    obs["band"] = bandname
                     obs["nexp"] = nexp
                     obs["scheduler_note"] = "DD:%s" % ddf_name.replace("_a", "_b")
                     obs["target_name"] = "DD:%s" % ddf_name.replace("_a", "_b")
@@ -496,7 +496,7 @@ def generate_ddf_scheduled_obs(
                     obs["mjd"] = mjd
                     obs["flush_by_mjd"] = mjd + flush_length
                     obs["exptime"] = expt
-                    obs["filter"] = filtername
+                    obs["band"] = bandname
                     obs["nexp"] = nexp
                     obs["scheduler_note"] = "DD:%s" % ddf_name
                     obs["target_name"] = "DD:%s" % ddf_name

@@ -22,7 +22,7 @@ class DescDdf(BaseSurvey):
         survey_name="DD_DESC",
         reward_value=101.0,
         readtime=2.0,
-        filter_change_time=120.0,
+        band_change_time=120.0,
         nside=None,
         flush_pad=30.0,
         seed=42,
@@ -61,7 +61,7 @@ class DescDdf(BaseSurvey):
                 self.approx_times.append(0)
             else:
                 n_exp_in_seq = np.sum(list(sequence.values()))
-                time_needed = filter_change_time * len(sequence.keys())
+                time_needed = band_change_time * len(sequence.keys())
                 time_needed += exptime * n_exp_in_seq
                 time_needed += readtime * n_exp_in_seq * nexp
                 self.approx_times.append(time_needed / 3600.0 / 24.0)
@@ -122,10 +122,10 @@ class DescDdf(BaseSurvey):
         result = []
         for key in self.sequences[self.sequence_index]:
             # Just skip adding the z-band ones if it's not loaded
-            if key in conditions.mounted_filters:
+            if key in conditions.mounted_bands:
                 for i in np.arange(self.sequences[self.sequence_index][key]):
                     temp_obs = self.simple_obs.copy()
-                    temp_obs["filter"] = key
+                    temp_obs["band"] = key
                     # XXX--need to set flush by mjd
                     result.append(temp_obs)
         for i, obs in enumerate(result):

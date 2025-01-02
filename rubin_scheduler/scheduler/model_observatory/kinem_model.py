@@ -114,8 +114,8 @@ class KinemModel:
         The altitude the telescope gets parked at (degrees)
     park_az : `float` (0)
         The azimuth for telescope park position (degrees)
-    start_filter : `str` ('r')
-        The filter that gets loaded when the telescope is parked
+    start_band : `str` ('r')
+        The band that gets loaded when the telescope is parked
     mjd0 : `float` (0)
         The MJD to assume we are starting from
     telescope : `str'
@@ -127,13 +127,11 @@ class KinemModel:
     setup_dome, setup_telescope, and setup_optics.
     """
 
-    def __init__(
-        self, location=None, park_alt=86.5, park_az=0.0, start_filter="r", mjd0=0, telescope="rubin"
-    ):
+    def __init__(self, location=None, park_alt=86.5, park_az=0.0, start_band="r", mjd0=0, telescope="rubin"):
         self.park_alt_rad = np.radians(park_alt)
         self.park_az_rad = np.radians(park_az)
-        self.start_filter = start_filter
-        self.current_filter = self.start_filter
+        self.start_band = start_band
+        self.current_band = self.start_band
         if location is None:
             self.location = Site("LSST")
             self.location.lat_rad = np.radians(self.location.latitude)
@@ -153,26 +151,26 @@ class KinemModel:
         # Rotation conversion
         self.rc = rotation_converter(telescope=telescope)
 
-    def mount_filters(self, filter_list):
-        """Change which filters are mounted
+    def mount_bands(self, band_list):
+        """Change which bands are mounted
 
         Parameters
         ----------
-        filter_list : `list` [`str`]
-            List of the mounted filters.
+        band_list : `list` [`str`]
+            List of the mounted bands.
         """
-        self.mounted_filters = filter_list
-        # Make sure we're using one of the available filters.
-        if self.current_filter not in self.mounted_filters:
-            self.current_filter = self.mounted_filters[-1]
-        if self.start_filter not in self.mounted_filters:
-            self.start_filter = self.mounted_filters[-1]
+        self.mounted_bands = band_list
+        # Make sure we're using one of the available bands.
+        if self.current_band not in self.mounted_bands:
+            self.current_band = self.mounted_bands[-1]
+        if self.start_band not in self.mounted_bands:
+            self.start_band = self.mounted_bands[-1]
 
     def setup_camera(
         self,
         readtime=2.4,
         shuttertime=1.0,
-        filter_changetime=120.0,
+        band_changetime=120.0,
         fov=3.5,
         rotator_min=-90,
         rotator_max=90,
@@ -190,8 +188,8 @@ class KinemModel:
         shuttertime : `float`
             The time it takes the shutter to go from closed to fully open
             (seconds)
-        filter_changetime : `float`
-            The time it takes to change filters (seconds)
+        band_changetime : `float`
+            The time it takes to change bands (seconds)
         fov : `float`
             The camera field of view (degrees)
         rotator_min : `float`
@@ -214,7 +212,7 @@ class KinemModel:
         """
         self.readtime = readtime
         self.shuttertime = shuttertime
-        self.filter_changetime = filter_changetime
+        self.band_changetime = band_changetime
         self.camera_fov = np.radians(fov)
 
         self.telrot_minpos_rad = np.radians(rotator_min)
@@ -223,7 +221,7 @@ class KinemModel:
         self.telrot_accel_rad = np.radians(accel)
         self.telrot_jerk_rad = np.radians(jerk) if jerk is not None else None
         self.shutter_2motion_min_time = shutter_2motion_min_time
-        self.mounted_filters = ["u", "g", "r", "i", "y"]
+        self.mounted_bands = ["u", "g", "r", "i", "y"]
 
     def setup_dome(
         self,
@@ -384,8 +382,8 @@ class KinemModel:
         # motions are allowed during the overhead time
         self.overhead = 0.0
 
-        # Don't leave random filter in overnight
-        self.current_filter = self.start_filter
+        # Don't leave random band in overnight
+        self.current_band = self.start_band
 
     def current_alt_az(self, mjd):
         """return the current alt az position that we have tracked to."""
@@ -403,7 +401,7 @@ class KinemModel:
         mjd,
         rot_sky_pos=None,
         rot_tel_pos=None,
-        filtername="r",
+        bandname="r",
         lax_dome=True,
         alt_rad=None,
         az_rad=None,
@@ -412,7 +410,7 @@ class KinemModel:
         starting_rot_tel_pos_rad=None,
         update_tracking=False,
     ):
-        """Calculates slew time to a series of alt/az/filter positions
+        """Calculates slew time to a series of alt/az/band positions
         from the current position (stored internally).
 
         Assumptions (currently):
@@ -425,7 +423,7 @@ class KinemModel:
         over 180 degrees.
 
         Calculates the slew time necessary to get from current state
-        to alt2/az2/filter2. The time returned is actually the time between
+        to alt2/az2/band2. The time returned is actually the time between
         the end of an exposure at current location and the beginning of an
         exposure at alt2/az2, since it includes readout time in
         the slew time.
@@ -450,8 +448,8 @@ class KinemModel:
             This overrides rot_sky_pos, if set.
             If neither rot_sky_pos nor rot_tel_pos are set, no rotation
             time is added (equivalent to using current rot_tel_pos).
-        filtername : `str` or None
-            The filter(s) of the desired observations.
+        bandname : `str` or None
+            The band(s) of the desired observations.
             Set to None to compute only telescope and dome motion times.
         alt_rad : `np.ndarray`
             The altitude(s) of the destination pointing(s) (radians).
@@ -483,9 +481,9 @@ class KinemModel:
             The number of seconds between the two specified exposures.
             Will be np.nan or np.inf if slew is not possible.
         """
-        if filtername is None:
-            filtername = self.current_filter
-        elif filtername not in self.mounted_filters:
+        if bandname is None:
+            bandname = self.current_band
+        elif bandname not in self.mounted_bands:
             return np.nan
 
         # if alt,az not provided, then calculate from RA,Dec
@@ -654,11 +652,11 @@ class KinemModel:
 
         # Find the max of the above for slew time.
         slew_time = np.maximum(tot_tel_time, tot_dom_time)
-        # include filter change time if necessary. Assume no filter
+        # include band change time if necessary. Assume no band
         # change time needed if we are starting parked
         if not self.parked:
-            filter_change = np.where(filtername != self.current_filter)
-            slew_time[filter_change] = np.maximum(slew_time[filter_change], self.filter_changetime)
+            band_change = np.where(bandname != self.current_band)
+            slew_time[band_change] = np.maximum(slew_time[band_change], self.band_changetime)
         # Add closed loop optics correction
         # Find the limit where we must add the delay
         cl_limit = self.optics_cl_altlimit[1]
@@ -722,7 +720,7 @@ class KinemModel:
                 self.cumulative_azimuth_rad = az_rad
             else:
                 self.cumulative_azimuth_rad += delta_aztel
-            self.current_filter = filtername
+            self.current_band = bandname
             self.last_mjd = mjd
 
         return slew_time
@@ -767,7 +765,7 @@ class KinemModel:
             mjd,
             rot_sky_pos=observation["rotSkyPos"],
             rot_tel_pos=rot_tel_pos,
-            filtername=observation["filter"],
+            bandname=observation["band"],
             update_tracking=True,
             lax_dome=lax_dome,
         )

@@ -30,20 +30,20 @@ class TestComCam(unittest.TestCase):
         simple_fp["g"][indx] = 1
 
         fp = Footprint(mo.mjd_start, mo.sun_ra_start, nside=nside)
-        for filtername in simple_fp:
-            fp.set_footprint(filtername, simple_fp[filtername])
+        for bandname in simple_fp:
+            fp.set_footprint(bandname, simple_fp[bandname])
 
         footprint_weight = 1.0
         m5_weight = 0.0
 
         detailers = []
 
-        red_fp_basis = bf.FootprintBasisFunction(filtername="r", footprint=fp, nside=nside)
-        m5_basis_r = bf.M5DiffBasisFunction(filtername="r", nside=nside)
+        red_fp_basis = bf.FootprintBasisFunction(bandname="r", footprint=fp, nside=nside)
+        m5_basis_r = bf.M5DiffBasisFunction(bandname="r", nside=nside)
         red_survey = BlobSurvey(
             [red_fp_basis, m5_basis_r],
             [footprint_weight, m5_weight],
-            filtername1="r",
+            bandname1="r",
             survey_name="r_blob",
             nside=nside,
             camera="comcam",
@@ -53,12 +53,12 @@ class TestComCam(unittest.TestCase):
             twilight_scale=False,
         )
 
-        blue_fp_basis = bf.FootprintBasisFunction(filtername="g", footprint=fp, nside=nside)
-        m5_basis_g = bf.M5DiffBasisFunction(filtername="g", nside=nside)
+        blue_fp_basis = bf.FootprintBasisFunction(bandname="g", footprint=fp, nside=nside)
+        m5_basis_g = bf.M5DiffBasisFunction(bandname="g", nside=nside)
         blue_survey = BlobSurvey(
             [blue_fp_basis, m5_basis_g],
             [footprint_weight, m5_weight],
-            filtername1="g",
+            bandname1="g",
             survey_name="g_blob",
             nside=nside,
             camera="comcam",
@@ -73,8 +73,8 @@ class TestComCam(unittest.TestCase):
         mo, scheduler, observations = sim_runner(mo, scheduler, sim_duration=0.5, verbose=True)
 
         assert len(observations) > 100
-        assert np.size(np.where(observations["filter"] == "r")[0]) > 0
-        assert np.size(np.where(observations["filter"] == "g")[0]) > 0
+        assert np.size(np.where(observations["band"] == "r")[0]) > 0
+        assert np.size(np.where(observations["band"] == "g")[0]) > 0
 
 
 if __name__ == "__main__":

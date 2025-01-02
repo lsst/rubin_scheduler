@@ -89,19 +89,19 @@ class Conditions:
             XXX--to be done. HEALpix array with cloudy pixels set to NaN.
         slewtime : `np.ndarray`, (N,)
             Healpix showing the slewtime to each healpixel center (seconds)
-        current_filter : `str`
-            The name of the current filter. (expect one of u, g, r, i, z, y).
-        mounted_filters : `list` [`str`]
-            The filters that are currently mounted and thus available
+        current_band : `str`
+            The name of the current band. (expect one of u, g, r, i, z, y).
+        mounted_bands : `list` [`str`]
+            The bands that are currently mounted and thus available
             (expect 5 of u, g, r, i, z, y for LSSTCam).
         night : `int`
             The current night number (days). Probably starts at 1.
         skybrightness : `dict` {`str: `np.ndarray`, (N,)}
-            Dictionary keyed by filter name.
+            Dictionary keyed by band name.
             Values are healpix arrays with the sky brightness at each
             healpix center (mag/acsec^2)
         fwhm_eff : `dict` {`str: `np.ndarray`, (N,)}
-            Dictionary keyed by filtername.
+            Dictionary keyed by bandname.
             Values are the effective seeing FWHM at each healpix
             center (arcseconds)
         moon_alt : `float`
@@ -164,7 +164,7 @@ class Conditions:
             The MJD of moon set during the current night. From interpolation.
         moon_phase_sunset : `float`
             The phase of the moon (0-100 illuminated) at sunset.
-            Useful for setting which filters should be loaded.
+            Useful for setting which bands should be loaded.
         targets_of_opportunity : `list` [`rubin_scheduler.scheduler.targetoO`]
             targetoO objects.
         planet_positions : `dict` {`str`: `float`}
@@ -205,7 +205,7 @@ class Conditions:
         lmst : `float`
             The local mean sidereal time (hours). Updates is mjd is changed.
         m5_depth : `dict` {`str: `np.ndarray`, (N,)}
-            the 5-sigma limiting depth healpix maps, keyed by filtername
+            the 5-sigma limiting depth healpix maps, keyed by bandname
             (mags). Will be recalculated if the skybrightness, seeing,
             or airmass are updated.
         HA : `np.ndarray`, (N,)
@@ -259,11 +259,11 @@ class Conditions:
         # The cloud level. Fraction, but could upgrade to transparency map
         self.clouds = None
         self._slewtime = None
-        self.current_filter = None
-        self.mounted_filters = None
+        self.current_band = None
+        self.mounted_bands = None
         self.night = None
         self._lmst = None
-        # Should be a dict with filtername keys
+        # Should be a dict with bandname keys
         self._skybrightness = {}
         self._fwhm_eff = {}
         self._m5_depth = None
@@ -485,13 +485,13 @@ class Conditions:
 
     def calc_m5_depth(self):
         self._m5_depth = {}
-        for filtername in self._skybrightness:
-            good = ~np.isnan(self._skybrightness[filtername])
-            self._m5_depth[filtername] = self.nan_map.copy()
-            self._m5_depth[filtername][good] = m5_flat_sed(
-                filtername,
-                self._skybrightness[filtername][good],
-                self._fwhm_eff[filtername][good],
+        for bandname in self._skybrightness:
+            good = ~np.isnan(self._skybrightness[bandname])
+            self._m5_depth[bandname] = self.nan_map.copy()
+            self._m5_depth[bandname][good] = m5_flat_sed(
+                bandname,
+                self._skybrightness[bandname][good],
+                self._fwhm_eff[bandname][good],
                 self.exptime,
                 self._airmass[good],
             )
@@ -594,8 +594,8 @@ class Conditions:
         self,
         mjd,
         slewtime,
-        current_filter,
-        mounted_filters,
+        current_band,
+        mounted_bands,
         night,
         skybrightness,
         fwhm_eff,
@@ -634,19 +634,19 @@ class Conditions:
             Modified Julian Date (days).
         slewtime : `np.ndarray`, (N,)
             Healpix showing the slewtime to each healpixel center (seconds)
-        current_filter : `str`
-            The name of the current filter. (expect one of u, g, r, i, z, y).
-        mounted_filters : `list` [`str`]
-            The filters that are currently mounted and thus available
+        current_band : `str`
+            The name of the current band. (expect one of u, g, r, i, z, y).
+        mounted_bands : `list` [`str`]
+            The bands that are currently mounted and thus available
             (expect 5 of u, g, r, i, z, y for LSSTCam).
         night : `int`
             The current night number (days). Probably starts at 1.
         skybrightness : `dict` {`str: `np.ndarray`, (N,)}
-            Dictionary keyed by filter name.
+            Dictionary keyed by band name.
             Values are healpix arrays with the sky brightness at each
             healpix center (mag/acsec^2)
         fwhm_eff : `dict` {`str: `np.ndarray`, (N,)}
-            Dictionary keyed by filtername.
+            Dictionary keyed by bandname.
             Values are the effective seeing FWHM at each healpix
             center (arcseconds)
         moon_alt : `float`
@@ -699,7 +699,7 @@ class Conditions:
             The MJD of moon set during the current night. From interpolation.
         moon_phase_sunset : `float`
             The phase of the moon (0-100 illuminated) at sunset.
-            Useful for setting which filters should be loaded.
+            Useful for setting which bands should be loaded.
         targets_of_opportunity : `list` [`rubin_scheduler.scheduler.targetoO`]
             targetoO objects.
         planet_positions : `dict` {`str`: `float`}
@@ -764,8 +764,8 @@ class Conditions:
         print("exptime: ", self.exptime, "  ", file=output)
         print("lmst: ", self.lmst, "  ", file=output)
         print("clouds: ", self.clouds, "  ", file=output)
-        print("current_filter: ", self.current_filter, "  ", file=output)
-        print("mounted_filters: ", self.mounted_filters, "  ", file=output)
+        print("current_band: ", self.current_band, "  ", file=output)
+        print("mounted_bands: ", self.mounted_bands, "  ", file=output)
         print("night: ", self.night, "  ", file=output)
         print("wind_speed: ", self.wind_speed, "  ", file=output)
         print("wind_direction: ", self.wind_direction, "  ", file=output)

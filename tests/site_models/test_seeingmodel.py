@@ -24,9 +24,9 @@ class TestSeeingModel(unittest.TestCase):
     def test_call(self):
         # Check the calculation from fwhm_500 to fwhm_eff/fwhm_geom.
         # Use simple effective wavelengths and airmass values.
-        filter_list = ["500", "1000"]
+        band_list = ["500", "1000"]
         effwavelens = np.array([500.0, 1000.0])
-        seeing_model = SeeingModel(filter_list=filter_list, eff_wavelens=effwavelens)
+        seeing_model = SeeingModel(band_list=band_list, eff_wavelens=effwavelens)
         # Simple fwhm_500 input.
         fwhm_500 = 1.0
         # Single airmass.

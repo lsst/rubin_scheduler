@@ -45,7 +45,7 @@ class TestWind(unittest.TestCase):
         nside = 32
         survey_length = 1.0  # days
 
-        surveys = [simple_greedy_survey(filtername=f) for f in "gri"]
+        surveys = [simple_greedy_survey(bandname=f) for f in "gri"]
 
         scheduler = CoreScheduler(surveys, nside=nside)
         observatory = ModelObservatoryWindy(

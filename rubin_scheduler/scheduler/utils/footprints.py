@@ -49,9 +49,9 @@ def make_rolling_footprints(
     Parameters
     ----------
     fp_hp : dict-like
-        A dict with filtername keys and HEALpix map values.
+        A dict with band name keys and HEALpix map values.
         Default None will load CurrentAreaMap. Assumes
-        WFD is where r-filter is 1.
+        WFD is where r-band is 1.
     mjd_start : `float`
         The starting date of the survey.
     sun_ra_start : `float`
@@ -175,7 +175,7 @@ def make_rolling_footprints(
         fp_non_wfd.set_footprint(key, temp)
 
         for i in range(nslice):
-            # make a copy of the current filter
+            # make a copy of the current band
             temp = hp_footprints[key] + 0
             # Set the non-rolling area to zero
             temp[non_wfd_indx] = 0
@@ -188,7 +188,7 @@ def make_rolling_footprints(
             rolling_footprints[i].set_footprint(key, temp)
         if uniform:
             for _i in range(nslice, nslice * 2):
-                # make a copy of the current filter
+                # make a copy of the current band
                 temp = hp_footprints[key] + 0
                 # Set the non-rolling area to zero
                 temp[non_wfd_indx] = 0
@@ -220,7 +220,7 @@ def slice_quad_galactic_cut(target_map, nslice=2, wfd_indx=None, ra_range=None):
     Parameters
     ----------
     target_map : dict of HEALpix maps
-        The final desired footprint as HEALpix maps. Keys are filter names
+        The final desired footprint as HEALpix maps. Keys are band names
     nslice : `int`
         The number of slices to make, can be 2 or 3.
     wfd_indx : array of ints
@@ -361,8 +361,8 @@ class Footprint:
         The MJD the survey starts on.
     sun_ra_start : `float`
         The RA of the sun at the start of the survey (radians).
-    filters : `list` of `str`
-        The filter names to include in the footprint.
+    bands : `list` of `str`
+        The band names to include in the footprint.
     period : `float`
         Used for setting the phase of step_func (days). Default 365.25.
     step_func : `BasePixelEvolution`
@@ -375,16 +375,16 @@ class Footprint:
         mjd_start,
         sun_ra_start=0,
         nside=DEFAULT_NSIDE,
-        filters=["u", "g", "r", "i", "z", "y"],
+        bands=["u", "g", "r", "i", "z", "y"],
         period=365.25,
         step_func=None,
     ):
-        # Dict to map filtername to array index.
-        if not isinstance(filters, dict):
-            filters_dict = {}
-            for i, filtername in enumerate(filters):
-                filters_dict[filtername] = i
-            filters = filters_dict
+        # Dict to map band name to array index.
+        if not isinstance(bands, dict):
+            bands_dict = {}
+            for i, bandname in enumerate(bands):
+                bands_dict[bandname] = i
+            bands = bands_dict
         self.period = period
         self.nside = nside
         if step_func is None:
@@ -393,7 +393,7 @@ class Footprint:
         self.mjd_start = mjd_start
         self.sun_ra_start = sun_ra_start
         self.npix = hp.nside2npix(nside)
-        self.filters = filters
+        self.bands = bands
         self.ra, self.dec = _hpid2_ra_dec(self.nside, np.arange(self.npix))
         # Set the phase of each healpixel.
         # If RA to sun is zero, we are at phase np.pi/2.
@@ -402,18 +402,18 @@ class Footprint:
         self.phase = (-self.ra + self.sun_ra_start + np.pi / 2) % (2.0 * np.pi)
         self.phase = self.phase * (self.period / 2.0 / np.pi)
         # Empty footprints to start
-        self.out_dtype = list(zip(filters, [float] * len(filters)))
-        self.footprints = np.zeros((len(filters), self.npix), dtype=float)
-        self.estimate = np.zeros((len(filters), self.npix), dtype=float)
-        self.current_footprints = np.zeros((len(filters), self.npix), dtype=float)
+        self.out_dtype = list(zip(bands, [float] * len(bands)))
+        self.footprints = np.zeros((len(bands), self.npix), dtype=float)
+        self.estimate = np.zeros((len(bands), self.npix), dtype=float)
+        self.current_footprints = np.zeros((len(bands), self.npix), dtype=float)
         self.zero = self.step_func(0.0, self.phase)
         self.mjd_current = None
 
-    def set_footprint(self, filtername, values):
-        self.footprints[self.filters[filtername], :] = values
+    def set_footprint(self, bandname, values):
+        self.footprints[self.bands[bandname], :] = values
 
-    def get_footprint(self, filtername):
-        return self.footprints[self.filters[filtername], :]
+    def get_footprint(self, bandname):
+        return self.footprints[self.bands[bandname], :]
 
     def _update_mjd(self, mjd, norm=True):
         if mjd != self.mjd_current:
@@ -431,8 +431,8 @@ class Footprint:
     def arr2struc(self, inarr):
         """Take an array and convert it to labeled struc array"""
         result = np.empty(self.npix, dtype=self.out_dtype)
-        for key in self.filters:
-            result[key] = inarr[self.filters[key]]
+        for key in self.bands:
+            result[key] = inarr[self.bands[key]]
         # Argle bargel, why doesn't this view work?
         # struc = inarr.view(dtype=self.out_dtype).squeeze()
         return result
@@ -460,7 +460,7 @@ class Footprint:
         current_footprints : `np.ndarray`, (6, N)
             A numpy structured array with the updated normalized number of
             observations that should be requested at each Healpix.
-            Multiply by the number of HEALpix observations (all filter), to
+            Multiply by the number of HEALpix observations (all bands), to
             convert to the number of observations desired.
         """
         self._update_mjd(mjd, norm=norm)
@@ -468,21 +468,21 @@ class Footprint:
 
 
 class ConstantFootprint(Footprint):
-    def __init__(self, nside=DEFAULT_NSIDE, filters=["u", "g", "r", "i", "z", "y"]):
-        if not isinstance(filters, dict):
-            filters_dict = {}
-            for i, filtername in enumerate(filters):
-                filters_dict[filtername] = i
-            filters = filters_dict
+    def __init__(self, nside=DEFAULT_NSIDE, bands=["u", "g", "r", "i", "z", "y"]):
+        if not isinstance(bands, dict):
+            bands_dict = {}
+            for i, bandname in enumerate(bands):
+                bands_dict[bandname] = i
+            bands = bands_dict
         self.nside = nside
-        self.filters = filters
+        self.bands = bands
         self.npix = hp.nside2npix(nside)
-        self.footprints = np.zeros((len(filters), self.npix), dtype=float)
-        self.out_dtype = list(zip(filters, [float] * len(filters)))
+        self.footprints = np.zeros((len(bands), self.npix), dtype=float)
+        self.out_dtype = list(zip(bands, [float] * len(bands)))
         self.to_return = self.arr2struc(self.footprints)
 
-    def set_footprint(self, filtername, values):
-        self.footprints[self.filters[filtername], :] = values
+    def set_footprint(self, bandname, values):
+        self.footprints[self.bands[bandname], :] = values
         self.to_return = self.arr2struc(self.footprints)
 
     def __call__(self, mjd, array=False):
@@ -500,14 +500,14 @@ class Footprints(Footprint):
         # (same nside, etc)
         self.npix = footprint_list[0].npix
         self.out_dtype = footprint_list[0].out_dtype
-        self.filters = footprint_list[0].filters
+        self.bands = footprint_list[0].bands
         self.nside = footprint_list[0].nside
 
-        self.footprints = np.zeros((len(self.filters), self.npix), dtype=float)
+        self.footprints = np.zeros((len(self.bands), self.npix), dtype=float)
         for fp in self.footprint_list:
             self.footprints += fp.footprints
 
-    def set_footprint(self, filtername, values):
+    def set_footprint(self, bandname, values):
         pass
 
     def _update_mjd(self, mjd, norm=True):

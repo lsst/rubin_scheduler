@@ -22,7 +22,7 @@ from rubin_scheduler.scheduler.model_observatory import (
     rotator_movement,
     tma_movement,
 )
-from rubin_scheduler.scheduler.schedulers import FilterSwapScheduler
+from rubin_scheduler.scheduler.schedulers import BandSwapScheduler
 from rubin_scheduler.scheduler.surveys import BlobSurvey, FieldSurvey, GreedySurvey
 from rubin_scheduler.scheduler.utils import Footprint, get_current_footprint
 from rubin_scheduler.site_models import Almanac, ConstantSeeingData, ConstantWindData
@@ -88,8 +88,8 @@ def get_ideal_model_observatory(
     -----
     The time for the model observatory will be advanced to the time
     of `sunset_start_key` (default -12 degree sunset) in the model
-    observatory. The filters may not be correct however; use
-    `update_model_observatory_sunset` to get filters in place.
+    observatory. The bands may not be correct however; use
+    `update_model_observatory_sunset` to get bands in place.
     """
     # Set up a fresh model observatory
     mjd_now = Time(f"{dayobs}T12:00:00", format="isot", scale="utc").mjd
@@ -121,30 +121,30 @@ def get_ideal_model_observatory(
 
 
 def update_model_observatory_sunset(
-    observatory: ModelObservatory, filter_scheduler: FilterSwapScheduler, twilight: int | float = -12
+    observatory: ModelObservatory, band_scheduler: BandSwapScheduler, twilight: int | float = -12
 ) -> ModelObservatory:
-    """Ensure correct filters are in place according to the filter_scheduler.
+    """Ensure correct bands are in place according to the band_scheduler.
 
     Parameters
     ----------
     observatory : `~.scheduler.model_observatory.ModelObservatory`
         The ModelObservatory simulating the observatory.
-    filter_scheduler : `~.scheduler.schedulers.FilterScheduler`
-        The filter scheduler providing appropriate information on
-        the filters that should be in place on the current observatory day.
+    band_scheduler : `~.scheduler.schedulers.BandScheduler`
+        The band scheduler providing appropriate information on
+        the bands that should be in place on the current observatory day.
     twilight : `int` or `float`
         If twilight is -12 or -18, the Almanac -12 or -18 degree twilight
         times are used to set the current observatory time.
         If  any other value is provided, it is assumed to be a specific
         MJD to start operating the observatory.
-        Filter choices are based on the time after advancing to twilight.
+        Band choices are based on the time after advancing to twilight.
 
     Returns
     -------
     observatory :  `~.scheduler.model_observatory.ModelObservatory`
         The ModelObservatory simulating the observatory, updated to the
-        time of 'twilight' and with mounted_filters matching
-        the filters chosen by the filter_scheduler for the current time
+        time of 'twilight' and with mounted_bands matching
+        the bands chosen by the band_scheduler for the current time
         at 'twilight'.
     """
     # Move to *next* possible sunset
@@ -161,10 +161,10 @@ def update_model_observatory_sunset(
         # Assume twilight was a particular (MJD) time
         observatory.mjd = twilight
 
-    # Make sure correct filters are mounted
+    # Make sure correct bands are mounted
     conditions = observatory.return_conditions()
-    filters_needed = filter_scheduler(conditions)
-    observatory.observatory.mount_filters(filters_needed)
+    bands_needed = band_scheduler(conditions)
+    observatory.observatory.mount_bands(bands_needed)
     return observatory
 
 
@@ -238,12 +238,12 @@ def standard_masks(
 
 def simple_rewards(
     footprints: Footprint,
-    filtername: str,
+    bandname: str,
     nside: int = DEFAULT_NSIDE,
     m5_weight: float = 6.0,
     footprint_weight: float = 1.5,
     slewtime_weight: float = 3.0,
-    stayfilter_weight: float = 3.0,
+    stayband_weight: float = 3.0,
     repeat_weight: float = -20,
 ) -> list[basis_functions.BaseBasisFunction]:
     """A simple set of rewards for area-based surveys.
@@ -253,8 +253,8 @@ def simple_rewards(
     footprints : `Footprint`
         A Footprint class, which takes a target map and adds a
         time-dependent weighting on top (such as seasonal weighting).
-    filtername : `str`
-        The filtername active for these rewards.
+    bandname : `str`
+        The bandname active for these rewards.
     nside : `int`, optional
         The nside for the rewards.
     m5_weight : `float`, optional
@@ -263,12 +263,12 @@ def simple_rewards(
         The weight to give the footprint basis function.
     slewtime_weight : `float`, optional
         The weight to give the slewtime basis function.
-    stayfilter_weight : `float`, optional
-        The weight to give the FilterChange basis function.
+    stayband_weight : `float`, optional
+        The weight to give the BandChange basis function.
     repeat_weight : `float`, optional
         The weight to give the VisitRepeat basis function.
         This is negative by default, to avoid revisiting the same part
-        of the sky within `gap_max` (3 hours) in any filter (except in the
+        of the sky within `gap_max` (3 hours) in any band (except in the
         pairs survey itself).
 
     Returns
@@ -287,15 +287,13 @@ def simple_rewards(
     """
     reward_functions = []
     # Add M5 basis function (rewards dark sky)
-    reward_functions.append(
-        (basis_functions.M5DiffBasisFunction(filtername=filtername, nside=nside), m5_weight)
-    )
+    reward_functions.append((basis_functions.M5DiffBasisFunction(bandname=bandname, nside=nside), m5_weight))
     # Add a footprint basis function
     # (rewards sky with fewer visits)
     reward_functions.append(
         (
             basis_functions.FootprintBasisFunction(
-                filtername=filtername,
+                bandname=bandname,
                 footprint=footprints,
                 out_of_bounds_val=np.nan,
                 nside=nside,
@@ -306,25 +304,23 @@ def simple_rewards(
     # Add a reward function for small slewtimes.
     reward_functions.append(
         (
-            basis_functions.SlewtimeBasisFunction(filtername=filtername, nside=nside),
+            basis_functions.SlewtimeBasisFunction(bandname=bandname, nside=nside),
             slewtime_weight,
         )
     )
-    # Add a reward to stay in the same filter as much as possible.
-    reward_functions.append(
-        (basis_functions.FilterChangeBasisFunction(filtername=filtername), stayfilter_weight)
-    )
+    # Add a reward to stay in the same band as much as possible.
+    reward_functions.append((basis_functions.BandChangeBasisFunction(bandname=bandname), stayband_weight))
     # And this is technically a mask, to avoid asking for observations
-    # which are not possible. However, it depends on the filters
-    # requested, compared to the filters available in the camera.
-    reward_functions.append((basis_functions.FilterLoadedBasisFunction(filternames=filtername), 0))
+    # which are not possible. However, it depends on the bands
+    # requested, compared to the bands available in the camera.
+    reward_functions.append((basis_functions.BandLoadedBasisFunction(bandnames=bandname), 0))
     # And add a basis function to avoid repeating the same pointing
     # (VisitRepeat can be used to either encourage or discourage repeats,
     # depending on the repeat_weight value).
     reward_functions.append(
         (
             basis_functions.VisitRepeatBasisFunction(
-                gap_min=0, gap_max=3 * 60.0, filtername=None, nside=nside, npairs=20
+                gap_min=0, gap_max=3 * 60.0, bandname=None, nside=nside, npairs=20
             ),
             repeat_weight,
         )
@@ -334,8 +330,8 @@ def simple_rewards(
 
 def simple_pairs_survey(
     nside: int = DEFAULT_NSIDE,
-    filtername: str = "g",
-    filtername2: str | None = None,
+    bandname: str = "g",
+    bandname2: str | None = None,
     mask_basis_functions: list[basis_functions.BaseBasisFunction] | None = None,
     reward_basis_functions: list[basis_functions.BaseBasisFunction] | None = None,
     reward_basis_functions_weights: list[float] | None = None,
@@ -353,11 +349,11 @@ def simple_pairs_survey(
     ----------
     nside  : `int`, optional
         Nside for the surveys.
-    filtername : `str`, optional
-        Filtername for the first visit of the pair.
-    filtername2 : `str` or None, optional
-        Filtername for the second visit of the pair. If None, the
-        first filter will be used for both visits.
+    bandname : `str`, optional
+        Bandname for the first visit of the pair.
+    bandname2 : `str` or None, optional
+        Bandname for the second visit of the pair. If None, the
+        first band will be used for both visits.
     mask_basis_functions : `list` [`BaseBasisFunction`] or None
         List of basis functions to use as masks (with implied weight 0).
         If None, `standard_masks` is used with default parameters.
@@ -373,7 +369,7 @@ def simple_pairs_survey(
         This should be the start of the survey, not the current time.
     footprints_hp : `np.ndarray` (N,) or None
         An array of healpix maps with the target survey area, with dtype
-        like [(filtername, '<f8'), (filtername2, '<f8')].
+        like [(bandname, '<f8'), (bandname2, '<f8')].
         If None, `get_current_footprint()` will be used, which will cover
         the expected LSST survey footprint.
     camera_rot_limits : `list` [`float`]
@@ -394,7 +390,7 @@ def simple_pairs_survey(
     -------
     pair_survey : `BlobSurvey`
         A blob survey configured to take pairs at spacing of pair_time,
-        in filtername + filtername2.
+        in bandname + bandname2.
     """
 
     # Use the Almanac to find the position of the sun at the start of survey.
@@ -418,18 +414,18 @@ def simple_pairs_survey(
         m5_weight = 6.0
         footprint_weight = 1.5
         slewtime_weight = 3.0
-        stayfilter_weight = 3.0
+        stayband_weight = 3.0
         repeat_weight = -20
 
-        if filtername2 is None:
+        if bandname2 is None:
             reward_functions = simple_rewards(
                 footprints=footprints,
-                filtername=filtername,
+                bandname=bandname,
                 nside=nside,
                 m5_weight=m5_weight,
                 footprint_weight=footprint_weight,
                 slewtime_weight=slewtime_weight,
-                stayfilter_weight=stayfilter_weight,
+                stayband_weight=stayband_weight,
                 repeat_weight=repeat_weight,
             )
 
@@ -438,42 +434,42 @@ def simple_pairs_survey(
             # basis functions need to be added twice, with half the weight.
             rf1 = simple_rewards(
                 footprints=footprints,
-                filtername=filtername,
+                bandname=bandname,
                 nside=nside,
                 m5_weight=m5_weight / 2.0,
                 footprint_weight=footprint_weight / 2.0,
                 slewtime_weight=slewtime_weight,
-                stayfilter_weight=stayfilter_weight,
+                stayband_weight=stayband_weight,
                 repeat_weight=repeat_weight,
             )
             rf2 = simple_rewards(
                 footprints=footprints,
-                filtername=filtername2,
+                bandname=bandname2,
                 nside=nside,
                 m5_weight=m5_weight / 2.0,
                 footprint_weight=footprint_weight / 2.0,
                 slewtime_weight=0,
-                stayfilter_weight=0,
+                stayband_weight=0,
                 repeat_weight=0,
             )
             # Now clean up and combine these - and remove the separate
-            # BasisFunction for FilterLoadedBasisFunction.
+            # BasisFunction for BandLoadedBasisFunction.
             reward_functions = [(i[0], i[1]) for i in rf1 if i[1] > 0] + [
                 (i[0], i[1]) for i in rf2 if i[1] > 0
             ]
-            # Then put back in the FilterLoadedBasisFunction with both filters.
-            filternames = [fn for fn in [filtername, filtername2] if fn is not None]
-            reward_functions.append((basis_functions.FilterLoadedBasisFunction(filternames=filternames), 0))
+            # Then put back in the BandLoadedBasisFunction with both bands.
+            bandnames = [fn for fn in [bandname, bandname2] if fn is not None]
+            reward_functions.append((basis_functions.BandLoadedBasisFunction(bandnames=bandnames), 0))
 
         # unpack the basis functions and weights
         reward_basis_functions_weights = [val[1] for val in reward_functions]
         reward_basis_functions = [val[0] for val in reward_functions]
 
     # Set up blob surveys.
-    if filtername2 is None:
-        survey_name = "simple pair %i, %s" % (pair_time, filtername)
+    if bandname2 is None:
+        survey_name = "simple pair %i, %s" % (pair_time, bandname)
     else:
-        survey_name = "simple pair %i, %s%s" % (pair_time, filtername, filtername2)
+        survey_name = "simple pair %i, %s%s" % (pair_time, bandname, bandname2)
 
     # Set up detailers for each requested observation.
     detailer_list = []
@@ -488,15 +484,15 @@ def simple_pairs_survey(
     # Sets a flush-by date to avoid running into prescheduled visits.
     detailer_list.append(detailers.FlushForSchedDetailer())
     # Add a detailer to label visits as either first or second of the pair.
-    if filtername2 is not None:
-        detailer_list.append(detailers.TakeAsPairsDetailer(filtername=filtername2))
+    if bandname2 is not None:
+        detailer_list.append(detailers.TakeAsPairsDetailer(bandname=bandname2))
 
     # Set up the survey.
     ignore_obs = ["DD"]
 
     BlobSurvey_params = {
         "slew_approx": 7.5,
-        "filter_change_approx": 140.0,
+        "band_change_approx": 140.0,
         "read_approx": 2.4,
         "flush_time": pair_time * 3,
         "smoothing_kernel": None,
@@ -509,8 +505,8 @@ def simple_pairs_survey(
     pair_survey = BlobSurvey(
         reward_basis_functions + mask_basis_functions,
         reward_basis_functions_weights + mask_basis_functions_weights,
-        filtername1=filtername,
-        filtername2=filtername2,
+        bandname1=bandname,
+        bandname2=bandname2,
         exptime=exptime,
         ideal_pair_time=pair_time,
         survey_name=survey_name,
@@ -531,7 +527,7 @@ def simple_pairs_survey(
 
 def simple_greedy_survey(
     nside: int = DEFAULT_NSIDE,
-    filtername: str = "r",
+    bandname: str = "r",
     mask_basis_functions: list[basis_functions.BaseBasisFunction] | None = None,
     reward_basis_functions: list[basis_functions.BaseBasisFunction] | None = None,
     reward_basis_functions_weights: list[float] | None = None,
@@ -548,8 +544,8 @@ def simple_greedy_survey(
     ----------
     nside  : `int`, optional
         Nside for the surveys.
-    filtername : `str`, optional
-        Filtername for the visits.
+    bandname : `str`, optional
+        Bandname for the visits.
     mask_basis_functions : `list` [`BaseBasisFunction`] or None
         List of basis functions to use as masks (with implied weight 0).
         If None, `standard_masks` is used with default parameters.
@@ -565,7 +561,7 @@ def simple_greedy_survey(
         This should be the start of the survey, not the current time.
     footprints_hp : `np.ndarray` (N,) or None
         An array of healpix maps with the target survey area, with dtype
-        like [(filtername, '<f8'), (filtername2, '<f8')].
+        like [(bandname, '<f8'), (bandname2, '<f8')].
         If None, `get_current_footprint()` will be used, which will cover
         the expected LSST survey footprint.
     camera_rot_limits : `list` [`float`]
@@ -584,7 +580,7 @@ def simple_greedy_survey(
     -------
     greedy_survey : `GreedySurvey`
         A greedy survey configured to take the next best (single) visit
-        in filtername.
+        in bandname.
     """
 
     # Use the Almanac to find the position of the sun at the start of survey.
@@ -608,17 +604,17 @@ def simple_greedy_survey(
         m5_weight = 6.0
         footprint_weight = 1.5
         slewtime_weight = 3.0
-        stayfilter_weight = 3.0
+        stayband_weight = 3.0
         repeat_weight = -5
 
         reward_functions = simple_rewards(
             footprints=footprints,
-            filtername=filtername,
+            bandname=bandname,
             nside=nside,
             m5_weight=m5_weight,
             footprint_weight=footprint_weight,
             slewtime_weight=slewtime_weight,
-            stayfilter_weight=stayfilter_weight,
+            stayband_weight=stayband_weight,
             repeat_weight=repeat_weight,
         )
 
@@ -627,7 +623,7 @@ def simple_greedy_survey(
         reward_basis_functions = [val[0] for val in reward_functions]
 
     # Set up survey name, use also for scheduler note.
-    survey_name = f"simple greedy {filtername}"
+    survey_name = f"simple greedy {bandname}"
 
     # Set up detailers for each requested observation.
     detailer_list = []
@@ -654,7 +650,7 @@ def simple_greedy_survey(
     greedy_survey = GreedySurvey(
         reward_basis_functions + mask_basis_functions,
         reward_basis_functions_weights + mask_basis_functions_weights,
-        filtername=filtername,
+        bandname=bandname,
         exptime=exptime,
         survey_name=survey_name,
         ignore_obs=ignore_obs,
@@ -697,14 +693,14 @@ def simple_rewards_field_survey(
     bfs = [
         basis_functions.NotTwilightBasisFunction(sun_alt_limit=sun_alt_limit),
         # Avoid revisits within 30 minutes - but we'll have to replace "note"
-        basis_functions.VisitGap(filter_names=None, note=scheduler_note, gap_min=30.0),
+        basis_functions.VisitGap(band_names=None, note=scheduler_note, gap_min=30.0),
         # reward fields which are rising, but don't mask out after zenith
         basis_functions.RewardRisingBasisFunction(nside=nside, slope=0.1, penalty_val=0),
         # Reward parts of the sky which are darker --
         # note that this is only for r band, so relying on skymap in r band.
         # if there isn't a strong reason to go with the darkest pointing,
         # it might be reasonable to just drop this basis function
-        basis_functions.M5DiffBasisFunction(filtername="r", nside=nside),
+        basis_functions.M5DiffBasisFunction(bandname="r", nside=nside),
     ]
     return bfs
 
@@ -748,17 +744,17 @@ def simple_field_survey(
         Detailers can add information to output observations, including
         specifying rotator or dither positions.
     sequence : `str` or `list` [`str`]
-        The filters (in order?) for the sequence of observations.
+        The bands (in order?) for the sequence of observations.
     nvisits : `dict` {`str`:`int`} | None
-        Number of visits per filter to program in the sequence.
+        Number of visits per band to program in the sequence.
         Default of None uses
         nvisits = {"u": 20, "g": 20, "r": 20, "i": 20, "z": 20, "y": 20}
     exptimes : `dict` {`str`: `float`} | None
-        Exposure times per filter to program in the sequence.
+        Exposure times per band to program in the sequence.
         Default of None uses
         exptimes = {"u": 38, "g": 30, "r": 30, "i": 30, "z": 30, "y": 30}
     nexps : `dict` {`str`: `int`} | None
-        Number of exposures per filter to program in the sequence.
+        Number of exposures per band to program in the sequence.
         Default of None uses
         nexps = {"u": 1, "g": 2, "r": 2, "i": 2, "z": 2, "y": 2}
     nside : `int`, optional
@@ -776,7 +772,7 @@ def simple_field_survey(
     -----
     The sequences for a given field survey can be set via kwargs,
     not necessarily easily accessible here. Only portions of the sequence
-    which correspond to mounted filters will be requested by the FieldSurvey.
+    which correspond to mounted bands will be requested by the FieldSurvey.
 
     field_survey.extra_features['ObsRecord'] tracks how many observations
     have been accepted by the Survey (and can be useful for diagnostics).
@@ -807,7 +803,7 @@ def simple_field_survey(
         scheduler_note=field_name,
         target_name=field_name,
         readtime=2.4,
-        filter_change_time=120.0,
+        band_change_time=120.0,
         nside=nside,
         flush_pad=30.0,
         detailers=detailers,

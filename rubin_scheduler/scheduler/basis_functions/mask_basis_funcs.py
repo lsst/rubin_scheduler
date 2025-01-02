@@ -341,7 +341,7 @@ class MoonAvoidanceBasisFunction(BaseBasisFunction):
     function simply does that at present. This includes
     times the moon is below the horizon or if the moon close to new.
     Most likely, this avoidance region should depend on lunar phase,
-    the filter used for observations, and whether the moon is above
+    the band used for observations, and whether the moon is above
     or below the horizon.
     """
 

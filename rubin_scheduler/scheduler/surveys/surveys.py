@@ -20,7 +20,7 @@ class GreedySurvey(BaseMarkovSurvey):
         self,
         basis_functions,
         basis_weights,
-        filtername="r",
+        bandname="r",
         block_size=1,
         smoothing_kernel=None,
         nside=DEFAULT_NSIDE,
@@ -39,7 +39,7 @@ class GreedySurvey(BaseMarkovSurvey):
     ):
         extra_features = {}
 
-        self.filtername = filtername
+        self.bandname = bandname
         self.block_size = block_size
         self.nexp = nexp
         self.exptime = exptime
@@ -63,7 +63,7 @@ class GreedySurvey(BaseMarkovSurvey):
         )
 
     def _generate_survey_name(self):
-        self.survey_name = f"Greedy {self.filtername}"
+        self.survey_name = f"Greedy {self.bandname}"
 
     def generate_observations_rough(self, conditions):
         """
@@ -88,7 +88,7 @@ class GreedySurvey(BaseMarkovSurvey):
         observations["RA"] = self.fields["RA"][best_fields]
         observations["dec"] = self.fields["dec"][best_fields]
         observations["rotSkyPos"] = 0.0
-        observations["filter"] = self.filtername
+        observations["band"] = self.bandname
         observations["nexp"] = self.nexp
         observations["exptime"] = self.exptime
         observations["scheduler_note"] = self.scheduler_note
@@ -104,17 +104,17 @@ class BlobSurvey(GreedySurvey):
 
     Parameters
     ----------
-    filtername1 : `str`
-        The filter to observe in.
-    filtername2 : `str`
-        The filter to pair with the first observation. If set to None,
+    bandname1 : `str`
+        The band to observe in.
+    bandname2 : `str`
+        The band to pair with the first observation. If set to None,
         no pair will be observed.
     slew_approx : `float`
         The approximate slewtime between neerby fields (seconds). Used
         to calculate how many observations can be taken in the
         desired time block.
-    filter_change_approx : `float`
-         The approximate time it takes to change filters (seconds).
+    band_change_approx : `float`
+         The approximate time it takes to change bands (seconds).
     read_approx : `float`
         The approximate time required to readout the camera (seconds).
     exptime : `float`
@@ -122,7 +122,7 @@ class BlobSurvey(GreedySurvey):
     nexp : `int`
         The number of exposures to take in a visit.
     exp_dict : `dict`
-        If set, should have keys of filtername and values of ints that
+        If set, should have keys of bandname and values of ints that
         are the nuber of exposures to take per visit. For estimating
         block time, nexp is still used.
     ideal_pair_time : `float`
@@ -166,10 +166,10 @@ class BlobSurvey(GreedySurvey):
         self,
         basis_functions,
         basis_weights,
-        filtername1="r",
-        filtername2="g",
+        bandname1="r",
+        bandname2="g",
         slew_approx=7.5,
-        filter_change_approx=140.0,
+        band_change_approx=140.0,
         read_approx=2.4,
         exptime=30.0,
         nexp=2,
@@ -206,8 +206,8 @@ class BlobSurvey(GreedySurvey):
         if az_range != -9999:
             warnings.warn("az_range unused, remove kwarg", DeprecationWarning, 2)
 
-        self.filtername1 = filtername1
-        self.filtername2 = filtername2
+        self.bandname1 = bandname1
+        self.bandname2 = bandname2
 
         self.ideal_pair_time = ideal_pair_time
 
@@ -219,7 +219,7 @@ class BlobSurvey(GreedySurvey):
         super(BlobSurvey, self).__init__(
             basis_functions=basis_functions,
             basis_weights=basis_weights,
-            filtername=None,
+            bandname=None,
             block_size=0,
             smoothing_kernel=smoothing_kernel,
             dither=dither,
@@ -252,15 +252,15 @@ class BlobSurvey(GreedySurvey):
 
         self.min_area = min_area
         self.check_scheduled = check_scheduled
-        # If we are taking pairs in same filter, no need to add filter
+        # If we are taking pairs in same band, no need to add band
         # change time.
-        if filtername1 == filtername2:
-            filter_change_approx = 0
+        if bandname1 == bandname2:
+            band_change_approx = 0
         # Compute the minimum time needed to observe a blob (or observe,
         # then repeat.)
-        if filtername2 is not None:
+        if bandname2 is not None:
             self.time_needed = (
-                (self.ideal_pair_time * 60.0 * 2.0 + self.exptime + self.read_approx + filter_change_approx)
+                (self.ideal_pair_time * 60.0 * 2.0 + self.exptime + self.read_approx + band_change_approx)
                 / 24.0
                 / 3600.0
             )  # Days
@@ -268,11 +268,11 @@ class BlobSurvey(GreedySurvey):
             self.time_needed = (
                 (self.ideal_pair_time * 60.0 + self.exptime + self.read_approx) / 24.0 / 3600.0
             )  # Days
-        self.filter_set = set(filtername1)
-        if filtername2 is None:
-            self.filter2_set = self.filter_set
+        self.band_set = set(bandname1)
+        if bandname2 is None:
+            self.band2_set = self.band_set
         else:
-            self.filter2_set = set(filtername2)
+            self.band2_set = set(bandname2)
 
         self.ra, self.dec = _hpid2_ra_dec(self.nside, self.hpids)
 
@@ -280,18 +280,18 @@ class BlobSurvey(GreedySurvey):
 
         self.pixarea = hp.nside2pixarea(self.nside, degrees=True)
 
-        # If we are only using one filter, this could be useful
-        if (self.filtername2 is None) | (self.filtername1 == self.filtername2):
-            self.filtername = self.filtername1
+        # If we are only using one band, this could be useful
+        if (self.bandname2 is None) | (self.bandname1 == self.bandname2):
+            self.bandname = self.bandname1
 
     def _generate_survey_name(self):
         self.survey_name = "Pairs"
         self.survey_name += f" {self.ideal_pair_time :.1f}"
-        self.survey_name += f" {self.filtername1}"
-        if self.filtername2 is None:
-            self.survey_name += f"_{self.filtername1}"
+        self.survey_name += f" {self.bandname1}"
+        if self.bandname2 is None:
+            self.survey_name += f"_{self.bandname1}"
         else:
-            self.survey_name += f"_{self.filtername2}"
+            self.survey_name += f"_{self.bandname2}"
 
     def _check_feasibility(self, conditions):
         """
@@ -503,11 +503,11 @@ class BlobSurvey(GreedySurvey):
         observations["RA"] = self.fields["RA"][fields]
         observations["dec"] = self.fields["dec"][fields]
         observations["rotSkyPos"] = 0.0
-        observations["filter"] = self.filtername1
+        observations["band"] = self.bandname1
         if self.nexp_dict is None:
             observations["nexp"] = self.nexp
         else:
-            observations["nexp"] = self.nexp_dict[self.filtername1]
+            observations["nexp"] = self.nexp_dict[self.bandname1]
         observations["exptime"] = self.exptime
         observations["scheduler_note"] = self.scheduler_note
         observations["flush_by_mjd"] = flush_time

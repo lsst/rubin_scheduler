@@ -22,7 +22,7 @@ class TestDetailers(unittest.TestCase):
         ra = np.arange(0, 2 * np.pi, np.pi / 4)
 
         obs_array = ObservationArray(n=ra.size)
-        obs_array["filter"] = "r"
+        obs_array["band"] = "r"
         obs_array["RA"] = ra
         obs_array["dec"] = dec
         obs_array["mjd"] = 59000.0
@@ -43,11 +43,11 @@ class TestDetailers(unittest.TestCase):
             detailers.TakeAsPairsDetailer,
             detailers.TwilightTripleDetailer,
             detailers.FlushForSchedDetailer,
-            detailers.FilterNexp,
+            detailers.BandNexp,
             detailers.FixedSkyAngleDetailer,
             detailers.ParallacticRotationDetailer,
             detailers.FlushByDetailer,
-            detailers.RandomFilterDetailer,
+            detailers.RandomBandDetailer,
             detailers.TrackingInfoDetailer,
             detailers.AltAz2RaDecDetailer,
             detailers.DitherDetailer,
@@ -71,7 +71,7 @@ class TestDetailers(unittest.TestCase):
 
         obs_to_prepend = ObservationArray(n=3)
         obs_to_prepend["RA"] = np.radians(20)
-        obs_to_prepend["filter"] = "r"
+        obs_to_prepend["band"] = "r"
         obs_to_prepend["scheduler_note"] = scheduler_note
 
         obs_reg = ObservationArray(n=1)
@@ -80,25 +80,25 @@ class TestDetailers(unittest.TestCase):
 
         assert len(obs_out) == 4
 
-    def test_random_filter(self):
+    def test_random_band(self):
         obs = ObservationArray(1)
-        obs["filter"] = "r"
+        obs["band"] = "r"
 
-        det = detailers.RandomFilterDetailer(filters="iz")
+        det = detailers.RandomBandDetailer(bands="iz")
 
         conditions = Conditions()
         conditions.night = 3
-        conditions.mounted_filters = ["i", "z"]
+        conditions.mounted_bands = ["i", "z"]
 
         out_obs = det(obs, conditions)
-        assert (out_obs["filter"] == "i") | (out_obs["filter"] == "z")
+        assert (out_obs["band"] == "i") | (out_obs["filter"] == "z")
 
         # Check that we fall back properly
-        conditions.mounted_filters = ["r", "g", "u", "y"]
-        det = detailers.RandomFilterDetailer(filters="iz", fallback_order="y")
+        conditions.mounted_bands = ["r", "g", "u", "y"]
+        det = detailers.RandomBandDetailer(bands="iz", fallback_order="y")
         out_obs = det(obs, conditions)
 
-        assert out_obs["filter"] == "y"
+        assert out_obs["band"] == "y"
 
 
 if __name__ == "__main__":
