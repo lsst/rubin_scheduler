@@ -166,13 +166,13 @@ class NObsCount(BaseSurveyFeature):
     scheduler_note : `str` or None
         Count observations that match `str` in their scheduler_note field.
         Note can be a substring of scheduler_note, and will still match.
-    filtername : `str` or None
-        Optionally also (or independently) specify a filter to match.
+    bandname : `str` or None
+        Optionally also (or independently) specify a band to match.
     note : `str` or None
         Backwards compatible shim for scheduler_note.
     """
 
-    def __init__(self, scheduler_note=None, filtername=None, note=None):
+    def __init__(self, scheduler_note=None, bandname=None, note=None):
         self.feature = 0
         if scheduler_note is None:
             self.scheduler_note = note
@@ -181,35 +181,35 @@ class NObsCount(BaseSurveyFeature):
         # In case scheduler_note got set with empty string, replace with None
         if self.scheduler_note == "":
             self.scheduler_note = None
-        self.filtername = filtername
+        self.bandname = bandname
 
     def add_observations_array(self, observations_array, observations_hpid):
-        if self.scheduler_note is None and self.filtername is None:
+        if self.scheduler_note is None and self.bandname is None:
             self.feature += observations_array.size
-        elif self.scheduler_note is None and self.filtername is not None:
-            in_filt = np.where(observations_array["filter"] == self.filtername)
+        elif self.scheduler_note is None and self.bandname is not None:
+            in_filt = np.where(observations_array["band"] == self.bandname)
             self.feature += np.size(in_filt)
-        elif self.scheduler_note is not None and self.filtername is None:
+        elif self.scheduler_note is not None and self.bandname is None:
             count = [self.scheduler_note in note for note in observations_array["scheduler_note"]]
             self.feature += np.sum(count)
         else:
-            # note and filtername are defined
-            in_filt = np.where(observations_array["filter"] == self.filtername)
+            # note and bandname are defined
+            in_filt = np.where(observations_array["band"] == self.bandname)
             count = [self.scheduler_note in note for note in observations_array["scheduler_note"][in_filt]]
             self.feature += np.sum(count)
 
     def add_observation(self, observation, indx=None):
         # Track all observations
-        if self.scheduler_note is None and self.filtername is None:
+        if self.scheduler_note is None and self.bandname is None:
             self.feature += 1
-        elif self.scheduler_note is None and self.filtername is not None:
-            if observation["filter"][0] in self.filtername:
+        elif self.scheduler_note is None and self.bandname is not None:
+            if observation["band"][0] in self.bandname:
                 self.feature += 1
-        elif self.scheduler_note is not None and self.filtername is None:
+        elif self.scheduler_note is not None and self.bandname is None:
             if self.scheduler_note in observation["scheduler_note"][0]:
                 self.feature += 1
         else:
-            if (observation["filter"][0] in self.filtername) and self.scheduler_note in observation[
+            if (observation["band"][0] in self.bandname) and self.scheduler_note in observation[
                 "scheduler_note"
             ][0]:
                 self.feature += 1
@@ -226,25 +226,25 @@ class LastObservation(BaseSurveyFeature):
         The scheduler_note to match.
         Scheduler_note values which match this OR which contain this value
         as a subset of their string will match.
-    filtername : `str` or None, optional
-        The required filter to match.
+    bandname : `str` or None, optional
+        The required band to match.
     survey_name : `str` or None, optional
         Backwards compatible shim for scheduler_note. Deprecated.
     """
 
-    def __init__(self, scheduler_note=None, filtername=None, survey_name=None):
+    def __init__(self, scheduler_note=None, bandname=None, survey_name=None):
         if scheduler_note is None and survey_name is not None:
             self.scheduler_note = survey_name
         else:
             self.scheduler_note = scheduler_note
-        self.filtername = filtername
+        self.bandname = bandname
         # Start out with an empty observation
         self.feature = utils.ObservationArray()
 
     def add_observations_array(self, observations_array, observations_hpid):
         valid_indx = np.ones(observations_array.size, dtype=bool)
-        if self.filtername is not None:
-            valid_indx[np.where(observations_array["filter"] != self.filtername)[0]] = False
+        if self.bandname is not None:
+            valid_indx[np.where(observations_array["band"] != self.bandname)[0]] = False
         if self.scheduler_note is not None:
             tmp = [self.scheduler_note in name for name in observations_array["scheduler_note"]]
             valid_indx = valid_indx * np.array(tmp)
@@ -253,7 +253,7 @@ class LastObservation(BaseSurveyFeature):
 
     def add_observation(self, observation, indx=None):
         if (self.scheduler_note is None) or (self.scheduler_note in observation["scheduler_note"][0]):
-            if (self.filtername is None) or (self.filtername == observation["filter"][0]):
+            if (self.bandname is None) or (self.bandname == observation["band"][0]):
                 self.feature = observation
 
 
@@ -263,9 +263,9 @@ class NObservations(BaseSurveyFeature):
 
     Parameters
     ----------
-    filtername : `str` or `list` [`str`] or None
-        String or list that has all the filters that can count.
-        Default None counts all filters.
+    bandname : `str` or `list` [`str`] or None
+        String or list that has all the bands that can count.
+        Default None counts all bands.
     nside : `int`
         The nside of the healpixel map to use.
         Default None uses scheduler default.
@@ -279,9 +279,9 @@ class NObservations(BaseSurveyFeature):
         compatibility. Will be removed in the future.
     """
 
-    def __init__(self, filtername=None, nside=DEFAULT_NSIDE, scheduler_note=None, survey_name=None):
+    def __init__(self, bandname=None, nside=DEFAULT_NSIDE, scheduler_note=None, survey_name=None):
         self.feature = np.zeros(hp.nside2npix(nside), dtype=float)
-        self.filtername = filtername
+        self.bandname = bandname
         if scheduler_note is None and survey_name is not None:
             self.scheduler_note = survey_name
         else:
@@ -290,8 +290,8 @@ class NObservations(BaseSurveyFeature):
 
     def add_observations_array(self, observations_array, observations_hpid):
         valid_indx = np.ones(observations_hpid.size, dtype=bool)
-        if self.filtername is not None:
-            valid_indx[np.where(observations_hpid["filter"] != self.filtername)[0]] = False
+        if self.bandname is not None:
+            valid_indx[np.where(observations_hpid["band"] != self.bandname)[0]] = False
         if self.scheduler_note is not None:
             tmp = [name in self.scheduler_note for name in observations_hpid["scheduler_note"]]
             valid_indx = valid_indx * np.array(tmp)
@@ -303,7 +303,7 @@ class NObservations(BaseSurveyFeature):
             self.feature += result
 
     def add_observation(self, observation, indx=None):
-        if self.filtername is None or observation["filter"][0] in self.filtername:
+        if self.bandname is None or observation["band"][0] in self.bandname:
             if self.scheduler_note is None or observation["scheduler_note"][0] in self.scheduler_note:
                 self.feature[indx] += 1
 
@@ -326,16 +326,16 @@ class LastNObsTimes(BaseSurveyFeature):
 
     Parameters
     ----------
-    filtername : `str` or None
-        Match visits in this filtername.
+    bandname : `str` or None
+        Match visits in this bandname.
     n_obs : `int`
         The number of prior observations to track.
     nside : `int`
         The nside of the healpix map.
     """
 
-    def __init__(self, filtername=None, n_obs=3, nside=DEFAULT_NSIDE):
-        self.filtername = filtername
+    def __init__(self, bandname=None, n_obs=3, nside=DEFAULT_NSIDE):
+        self.bandname = bandname
         self.n_obs = n_obs
         self.feature = np.zeros((n_obs, hp.nside2npix(nside)), dtype=float)
         self.bins = np.arange(hp.nside2npix(nside) + 1) - 0.5
@@ -343,8 +343,8 @@ class LastNObsTimes(BaseSurveyFeature):
     def add_observations_array(self, observations_array, observations_hpid):
         # Assumes we're already sorted on mjd
         valid_indx = np.ones(observations_hpid.size, dtype=bool)
-        if self.filtername is not None:
-            valid_indx[np.where(observations_hpid["filter"] != self.filtername)[0]] = False
+        if self.bandname is not None:
+            valid_indx[np.where(observations_hpid["band"] != self.bandname)[0]] = False
         data = observations_hpid[valid_indx]
 
         if np.size(data) > 0:
@@ -356,23 +356,23 @@ class LastNObsTimes(BaseSurveyFeature):
                 self.feature[-i, :] = result
 
     def add_observation(self, observation, indx=None):
-        if self.filtername is None or observation["filter"][0] in self.filtername:
+        if self.bandname is None or observation["band"][0] in self.bandname:
             self.feature[0:-1, indx] = self.feature[1:, indx]
             self.feature[-1, indx] = observation["mjd"]
 
 
 class NObservationsCurrentSeason(BaseSurveyFeature):
     """Count the observations at each healpix, taken in the most
-    recent season, that meet filter, seeing and m5 criteria.
+    recent season, that meet band, seeing and m5 criteria.
 
     Useful for ensuring that "good quality" observations are acquired
     in each season at each point in the survey footprint.
 
     Parameters
     ----------
-    filtername : `str`, optional
-        If None (default) count observations in any filter.
-        Otherwise, only count observations in the specified filter.
+    bandname : `str`, optional
+        If None (default) count observations in any band.
+        Otherwise, only count observations in the specified band.
     nside : `int`, optional
         If None (default), use default nside for scheduler.
         Otherwise, set nside for the map to nside.
@@ -384,7 +384,7 @@ class NObservationsCurrentSeason(BaseSurveyFeature):
         If None (default), count observations with any m5 value.
         Otherwise, only count observations within this value of the
         dark sky map at this pixel.
-        Only relevant if filtername is not None.
+        Only relevant if bandname is not None.
     mjd_start : `float`, optional
         If None, uses default survey_start_mjd for the start of the survey.
         This defines the starting year for counting seasons, so should
@@ -393,7 +393,7 @@ class NObservationsCurrentSeason(BaseSurveyFeature):
 
     def __init__(
         self,
-        filtername=None,
+        bandname=None,
         nside=DEFAULT_NSIDE,
         seeing_fwhm_max=None,
         m5_penalty_max=None,
@@ -401,16 +401,16 @@ class NObservationsCurrentSeason(BaseSurveyFeature):
     ):
         self.nside = nside
         self.seeing_fwhm_max = seeing_fwhm_max
-        self.filtername = filtername
+        self.bandname = bandname
         self.m5_penalty_max = m5_penalty_max
-        # If filtername not set, then we can't set m5_penalty_max.
-        if self.filtername is None and self.m5_penalty_max is not None:
-            warnings.warn("To use m5_penalty_max, filtername must be set. Disregarding m5_penalty_max.")
+        # If bandname not set, then we can't set m5_penalty_max.
+        if self.bandname is None and self.m5_penalty_max is not None:
+            warnings.warn("To use m5_penalty_max, bandname must be set. Disregarding m5_penalty_max.")
             self.m5_penalty_max = None
 
         # Get the dark sky map
-        if self.filtername is not None:
-            self.dark_map = dark_sky(nside)[filtername]
+        if self.bandname is not None:
+            self.dark_map = dark_sky(nside)[bandname]
         self.ones = np.ones(hp.nside2npix(self.nside))
         self.mjd_start = mjd_start
 
@@ -503,9 +503,9 @@ class NObservationsCurrentSeason(BaseSurveyFeature):
         if self.seeing_fwhm_max is not None:
             check[np.where(observations_array["FWHMeff"] > self.seeing_fwhm_max)] = False
 
-        # Rule out observations which are not in the desired filter
-        if self.filtername is not None:
-            check[np.where(observations_array["filter"] != self.filtername)] = False
+        # Rule out observations which are not in the desired band
+        if self.bandname is not None:
+            check[np.where(observations_array["band"] != self.bandname)] = False
 
         # Convert the "check" array on observations_array into a
         # "check" array on the hpids so we can evaluate healpix-level items
@@ -565,12 +565,12 @@ class NObservationsCurrentSeason(BaseSurveyFeature):
         else:
             check = True
 
-        # Check if observation is in the right filter
-        if self.filtername is not None and check:
-            if observation["filter"][0] != self.filtername:
+        # Check if observation is in the right band
+        if self.bandname is not None and check:
+            if observation["band"][0] != self.bandname:
                 check = False
             else:
-                # Check if observation in correct filter and deep enough.
+                # Check if observation in correct band and deep enough.
                 if self.m5_penalty_max is not None:
                     penalty = self.dark_map[this_season_indx] - observation["fivesigmadepth"]
                     this_season_indx = this_season_indx[np.where(penalty <= self.m5_penalty_max)]
@@ -641,24 +641,24 @@ class LastObserved(BaseSurveyFeature):
 
     Parameters
     ----------
-    filtername : `str` or None
-        Track visits in a particular filter or any filter (None).
+    bandname : `str` or None
+        Track visits in a particular band or any band (None).
     nside : `int` or None
         Nside for the healpix map, default of None uses the scheduler default.
     fill : `float`
         Fill value to use where no observations have been found.
     """
 
-    def __init__(self, filtername="r", nside=DEFAULT_NSIDE, fill=np.nan):
-        self.filtername = filtername
+    def __init__(self, bandname="r", nside=DEFAULT_NSIDE, fill=np.nan):
+        self.bandname = bandname
         self.feature = np.zeros(hp.nside2npix(nside), dtype=float) + fill
         self.bins = np.arange(hp.nside2npix(nside) + 1) - 0.5
 
     def add_observations_array(self, observations_array, observations_hpid):
         # Assumes we're already sorted on mjd
         valid_indx = np.ones(observations_hpid.size, dtype=bool)
-        if self.filtername is not None:
-            valid_indx[np.where(observations_hpid["filter"] != self.filtername)[0]] = False
+        if self.bandname is not None:
+            valid_indx[np.where(observations_hpid["band"] != self.bandname)[0]] = False
         data = observations_hpid[valid_indx]
 
         result, _be, _bn = binned_statistic(data["hpid"], data["mjd"], statistic=np.max, bins=self.bins)
@@ -666,9 +666,9 @@ class LastObserved(BaseSurveyFeature):
         self.feature[good] = result[good]
 
     def add_observation(self, observation, indx=None):
-        if self.filtername is None:
+        if self.bandname is None:
             self.feature[indx] = observation["mjd"]
-        elif observation["filter"][0] in self.filtername:
+        elif observation["band"][0] in self.bandname:
             self.feature[indx] = observation["mjd"]
 
 
@@ -683,8 +683,8 @@ class LastObservationMjd(BaseSurveyFeature):
         The scheduler_note to match.
         Scheduler_note values which match this OR which contain this value
         as a subset of their string will match.
-    filtername : `str` or None, optional
-        The required filter to match.
+    bandname : `str` or None, optional
+        The required band to match.
 
     Notes
     -----
@@ -692,17 +692,17 @@ class LastObservationMjd(BaseSurveyFeature):
     last matching visit.
     """
 
-    def __init__(self, scheduler_note=None, filtername=None, note=None):
+    def __init__(self, scheduler_note=None, bandname=None, note=None):
         self.scheduler_note = scheduler_note
         if self.scheduler_note is None and note is not None:
             self.scheduler_note = note
-        self.filtername = filtername
+        self.bandname = bandname
         self.feature = None
 
     def add_observations_array(self, observations_array, observations_hpid):
         valid_indx = np.ones(observations_array.size, dtype=bool)
-        if self.filtername is not None:
-            valid_indx[np.where(observations_array["filter"] != self.filtername)[0]] = False
+        if self.bandname is not None:
+            valid_indx[np.where(observations_array["band"] != self.bandname)[0]] = False
         if self.scheduler_note is not None:
             tmp = [self.scheduler_note in name for name in observations_array["scheduler_note"]]
             valid_indx = valid_indx * np.array(tmp)
@@ -711,7 +711,7 @@ class LastObservationMjd(BaseSurveyFeature):
 
     def add_observation(self, observation, indx=None):
         if (self.scheduler_note is None) or (self.scheduler_note in observation["scheduler_note"][0]):
-            if (self.filtername is None) or (self.filtername == observation["filter"][0]):
+            if (self.bandname is None) or (self.bandname == observation["band"][0]):
                 self.feature = observation["mjd"]
 
 
@@ -721,15 +721,15 @@ class NObsNight(BaseSurveyFeature):
 
     Parameters
     ----------
-    filtername : `str` or None
-        Filter to track. None tracks observations in any filter.
+    bandname : `str` or None
+        Filter to track. None tracks observations in any band.
     nside : `int` or None
         Scale of the healpix map. Default of None uses the scheduler
         default nside.
     """
 
-    def __init__(self, filtername="r", nside=DEFAULT_NSIDE):
-        self.filtername = filtername
+    def __init__(self, bandname="r", nside=DEFAULT_NSIDE):
+        self.bandname = bandname
         self.feature = np.zeros(hp.nside2npix(nside), dtype=float)
         self.night = None
         self.bins = np.arange(hp.nside2npix(nside) + 1) - 0.5
@@ -740,8 +740,8 @@ class NObsNight(BaseSurveyFeature):
             self.feature *= 0
             self.night = latest_night
         valid_indx = np.ones(observations_hpid.size, dtype=bool)
-        if self.filtername is not None:
-            valid_indx[np.where(observations_hpid["filter"] != self.filtername)[0]] = False
+        if self.bandname is not None:
+            valid_indx[np.where(observations_hpid["band"] != self.bandname)[0]] = False
         if self.night is not None:
             valid_indx[np.where(observations_hpid["night"] != self.night)] = False
 
@@ -756,9 +756,9 @@ class NObsNight(BaseSurveyFeature):
         if observation["night"] != self.night:
             self.feature *= 0
             self.night = observation["night"]
-        if (self.filtername == "") | (self.filtername is None):
+        if (self.bandname == "") | (self.bandname is None):
             self.feature[indx] += 1
-        elif observation["filter"][0] in self.filtername:
+        elif observation["band"][0] in self.bandname:
             self.feature[indx] += 1
 
 
@@ -774,11 +774,11 @@ class PairInNight(BaseSurveyFeature):
         The maximum time gap to consider a successful pair (minutes)
     """
 
-    def __init__(self, filtername="r", nside=DEFAULT_NSIDE, gap_min=25.0, gap_max=45.0):
-        self.filtername = filtername
+    def __init__(self, bandname="r", nside=DEFAULT_NSIDE, gap_min=25.0, gap_max=45.0):
+        self.bandname = bandname
         self.feature = np.zeros(hp.nside2npix(nside), dtype=float)
         self.indx = np.arange(self.feature.size)
-        self.last_observed = LastObserved(filtername=filtername)
+        self.last_observed = LastObserved(bandname=bandname)
         self.gap_min = IntRounded(gap_min / (24.0 * 60))  # Days
         self.gap_max = IntRounded(gap_max / (24.0 * 60))  # Days
         self.night = 0
@@ -801,10 +801,10 @@ class PairInNight(BaseSurveyFeature):
             self.add_observation(observations_hpid[good][0], observations_hpid[good]["hpid"])
 
     def add_observation(self, observation, indx=None):
-        if self.filtername is None:
+        if self.bandname is None:
             infilt = True
         else:
-            infilt = observation["filter"][0] in self.filtername
+            infilt = observation["band"][0] in self.bandname
         if infilt:
             if indx is None:
                 indx = self.indx

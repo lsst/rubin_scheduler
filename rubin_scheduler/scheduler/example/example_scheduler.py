@@ -27,7 +27,7 @@ import rubin_scheduler.scheduler.basis_functions as bf
 import rubin_scheduler.scheduler.detailers as detailers
 from rubin_scheduler.scheduler import sim_runner
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
-from rubin_scheduler.scheduler.schedulers import CoreScheduler, SimpleFilterSched
+from rubin_scheduler.scheduler.schedulers import CoreScheduler, SimpleBandSched
 from rubin_scheduler.scheduler.surveys import (
     BlobSurvey,
     GreedySurvey,
@@ -82,12 +82,12 @@ def example_scheduler(
 
 def standard_bf(
     nside,
-    filtername="g",
-    filtername2="i",
+    bandname="g",
+    bandname2="i",
     m5_weight=6.0,
     footprint_weight=1.5,
     slewtime_weight=3.0,
-    stayfilter_weight=3.0,
+    stayband_weight=3.0,
     template_weight=12.0,
     u_template_weight=50.0,
     g_template_weight=50.0,
@@ -106,13 +106,13 @@ def standard_bf(
     ----------
     nside : `int`
         The HEALpix nside to use. Defaults to DEFAULT_NSIDE
-    filtername : `str`
-        The filter name for the first observation. Default "g".
-    filtername2 : `str`
-        The filter name for the second in the pair (None if unpaired).
+    bandname : `str`
+        The band name for the first observation. Default "g".
+    bandname2 : `str`
+        The band name for the second in the pair (None if unpaired).
         Default "i".
     n_obs_template : `dict`
-        The number of observations to take every season in each filter.
+        The number of observations to take every season in each band.
         Default None.
     season : `float`
         The length of season (i.e., how long before templates expire) (days).
@@ -134,8 +134,8 @@ def standard_bf(
         Default 0.3 (unitless)
     slewtime_weight : `float`
         The weight on the slewtime basis function. Default 3 (unitless).
-    stayfilter_weight : `float`
-        The weight on basis function that tries to stay avoid filter changes.
+    stayband_weight : `float`
+        The weight on basis function that tries to stay avoid band changes.
         Default 3 (unitless).
     template_weight : `float`
         The weight to place on getting image templates every season.
@@ -169,28 +169,28 @@ def standard_bf(
 
     bfs = []
 
-    if filtername2 is not None:
+    if bandname2 is not None:
         bfs.append(
             (
-                bf.M5DiffBasisFunction(filtername=filtername, nside=nside),
+                bf.M5DiffBasisFunction(bandname=bandname, nside=nside),
                 m5_weight / 2.0,
             )
         )
         bfs.append(
             (
-                bf.M5DiffBasisFunction(filtername=filtername2, nside=nside),
+                bf.M5DiffBasisFunction(bandname=bandname2, nside=nside),
                 m5_weight / 2.0,
             )
         )
 
     else:
-        bfs.append((bf.M5DiffBasisFunction(filtername=filtername, nside=nside), m5_weight))
+        bfs.append((bf.M5DiffBasisFunction(bandname=bandname, nside=nside), m5_weight))
 
-    if filtername2 is not None:
+    if bandname2 is not None:
         bfs.append(
             (
                 bf.FootprintBasisFunction(
-                    filtername=filtername,
+                    bandname=bandname,
                     footprint=footprints,
                     out_of_bounds_val=np.nan,
                     nside=nside,
@@ -201,7 +201,7 @@ def standard_bf(
         bfs.append(
             (
                 bf.FootprintBasisFunction(
-                    filtername=filtername2,
+                    bandname=bandname2,
                     footprint=footprints,
                     out_of_bounds_val=np.nan,
                     nside=nside,
@@ -213,7 +213,7 @@ def standard_bf(
         bfs.append(
             (
                 bf.FootprintBasisFunction(
-                    filtername=filtername,
+                    bandname=bandname,
                     footprint=footprints,
                     out_of_bounds_val=np.nan,
                     nside=nside,
@@ -224,58 +224,58 @@ def standard_bf(
 
     bfs.append(
         (
-            bf.SlewtimeBasisFunction(filtername=filtername, nside=nside),
+            bf.SlewtimeBasisFunction(bandname=bandname, nside=nside),
             slewtime_weight,
         )
     )
     if strict:
-        bfs.append((bf.StrictFilterBasisFunction(filtername=filtername), stayfilter_weight))
+        bfs.append((bf.StrictBandBasisFunction(bandname=bandname), stayband_weight))
     else:
-        bfs.append((bf.FilterChangeBasisFunction(filtername=filtername), stayfilter_weight))
+        bfs.append((bf.BandChangeBasisFunction(bandname=bandname), stayband_weight))
 
     if n_obs_template is not None:
-        if filtername2 is not None:
+        if bandname2 is not None:
             bfs.append(
                 (
                     bf.NObsPerYearBasisFunction(
-                        filtername=filtername,
+                        bandname=bandname,
                         nside=nside,
-                        footprint=footprints.get_footprint(filtername),
-                        n_obs=n_obs_template[filtername],
+                        footprint=footprints.get_footprint(bandname),
+                        n_obs=n_obs_template[bandname],
                         season=season,
                         season_start_hour=season_start_hour,
                         season_end_hour=season_end_hour,
                     ),
-                    template_weights[filtername] / 2.0,
+                    template_weights[bandname] / 2.0,
                 )
             )
             bfs.append(
                 (
                     bf.NObsPerYearBasisFunction(
-                        filtername=filtername2,
+                        bandname=bandname2,
                         nside=nside,
-                        footprint=footprints.get_footprint(filtername2),
-                        n_obs=n_obs_template[filtername2],
+                        footprint=footprints.get_footprint(bandname2),
+                        n_obs=n_obs_template[bandname2],
                         season=season,
                         season_start_hour=season_start_hour,
                         season_end_hour=season_end_hour,
                     ),
-                    template_weights[filtername2] / 2.0,
+                    template_weights[bandname2] / 2.0,
                 )
             )
         else:
             bfs.append(
                 (
                     bf.NObsPerYearBasisFunction(
-                        filtername=filtername,
+                        bandname=bandname,
                         nside=nside,
-                        footprint=footprints.get_footprint(filtername),
-                        n_obs=n_obs_template[filtername],
+                        footprint=footprints.get_footprint(bandname),
+                        n_obs=n_obs_template[bandname],
                         season=season,
                         season_start_hour=season_start_hour,
                         season_end_hour=season_end_hour,
                     ),
-                    template_weights[filtername],
+                    template_weights[bandname],
                 )
             )
 
@@ -287,8 +287,8 @@ def standard_bf(
         )
     )
     bfs.append((bf.AvoidDirectWind(nside=nside, wind_speed_maximum=wind_speed_maximum), 0))
-    filternames = [fn for fn in [filtername, filtername2] if fn is not None]
-    bfs.append((bf.FilterLoadedBasisFunction(filternames=filternames), 0))
+    bandnames = [fn for fn in [bandname, bandname2] if fn is not None]
+    bfs.append((bf.BandLoadedBasisFunction(bandnames=bandnames), 0))
     bfs.append((bf.PlanetMaskBasisFunction(nside=nside), 0.0))
 
     return bfs
@@ -298,8 +298,8 @@ def blob_for_long(
     nside,
     nexp=2,
     exptime=29.2,
-    filter1s=["g"],
-    filter2s=["i"],
+    band1s=["g"],
+    band2s=["i"],
     pair_time=33.0,
     camera_rot_limits=[-80.0, 80.0],
     n_obs_template=None,
@@ -313,7 +313,7 @@ def blob_for_long(
     m5_weight=6.0,
     footprint_weight=1.5,
     slewtime_weight=3.0,
-    stayfilter_weight=3.0,
+    stayband_weight=3.0,
     template_weight=12.0,
     u_template_weight=50.0,
     g_template_weight=50.0,
@@ -339,11 +339,11 @@ def blob_for_long(
     exptime : `float`
         The exposure time to use per visit (seconds).
         Default 29.2
-    filter1s : `list` [`str`]
-        The filternames for the first filter in a pair.
+    band1s : `list` [`str`]
+        The bandnames for the first band in a pair.
         Default ["g"].
-    filter2s : `list` of `str`
-        The filter names for the second in the pair (None if unpaired).
+    band2s : `list` of `str`
+        The band names for the second in the pair (None if unpaired).
         Default ["i"].
     pair_time : `float`
         The ideal time between pairs (minutes). Default 33.
@@ -351,7 +351,7 @@ def blob_for_long(
         The limits to impose when rotationally dithering the camera (degrees).
         Default [-80., 80.].
     n_obs_template : `dict`
-        The number of observations to take every season in each filter.
+        The number of observations to take every season in each band.
         If None, sets to 3 each. Default None.
     season : float
         The length of season (i.e., how long before templates expire) (days)
@@ -382,8 +382,8 @@ def blob_for_long(
     slewtime_weight : `float`
         The weight on the slewtime basis function.
         Default 3.0 (uniteless).
-    stayfilter_weight : `float`
-        The weight on basis function that tries to stay avoid filter changes.
+    stayband_weight : `float`
+        The weight on basis function that tries to stay avoid band changes.
         Default 3.0 (uniteless).
     template_weight : `float`
         The weight to place on getting image templates every season.
@@ -401,7 +401,7 @@ def blob_for_long(
 
     BlobSurvey_params = {
         "slew_approx": 7.5,
-        "filter_change_approx": 140.0,
+        "band_change_approx": 140.0,
         "read_approx": 2.0,
         "flush_time": 30.0,
         "smoothing_kernel": None,
@@ -416,13 +416,13 @@ def blob_for_long(
         n_obs_template = {"u": 3, "g": 3, "r": 3, "i": 3, "z": 3, "y": 3}
 
     times_needed = [pair_time, pair_time * 2]
-    for filtername, filtername2 in zip(filter1s, filter2s):
+    for bandname, bandname2 in zip(band1s, band2s):
         detailer_list = []
         detailer_list.append(
             detailers.CameraRotDetailer(min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits))
         )
         detailer_list.append(detailers.CloseAltDetailer())
-        detailer_list.append(detailers.FilterNexp(filtername="u", nexp=1, exptime=u_exptime))
+        detailer_list.append(detailers.BandNexp(bandname="u", nexp=1, exptime=u_exptime))
 
         # List to hold tuples of (basis_function_object, weight)
         bfs = []
@@ -430,12 +430,12 @@ def blob_for_long(
         bfs.extend(
             standard_bf(
                 nside,
-                filtername=filtername,
-                filtername2=filtername2,
+                bandname=bandname,
+                bandname2=bandname2,
                 m5_weight=m5_weight,
                 footprint_weight=footprint_weight,
                 slewtime_weight=slewtime_weight,
-                stayfilter_weight=stayfilter_weight,
+                stayband_weight=stayband_weight,
                 template_weight=template_weight,
                 u_template_weight=u_template_weight,
                 g_template_weight=g_template_weight,
@@ -459,7 +459,7 @@ def blob_for_long(
                 0.0,
             )
         )
-        if filtername2 is None:
+        if bandname2 is None:
             time_needed = times_needed[0]
         else:
             time_needed = times_needed[1]
@@ -475,21 +475,21 @@ def blob_for_long(
         # unpack the basis functions and weights
         weights = [val[1] for val in bfs]
         basis_functions = [val[0] for val in bfs]
-        if filtername2 is None:
-            survey_name = "blob_long, %s" % filtername
+        if bandname2 is None:
+            survey_name = "blob_long, %s" % bandname
         else:
-            survey_name = "blob_long, %s%s" % (filtername, filtername2)
-        if filtername2 is not None:
-            detailer_list.append(detailers.TakeAsPairsDetailer(filtername=filtername2))
+            survey_name = "blob_long, %s%s" % (bandname, bandname2)
+        if bandname2 is not None:
+            detailer_list.append(detailers.TakeAsPairsDetailer(bandname=bandname2))
 
         if u_nexp1:
-            detailer_list.append(detailers.FilterNexp(filtername="u", nexp=1))
+            detailer_list.append(detailers.BandNexp(bandname="u", nexp=1))
         surveys.append(
             BlobSurvey(
                 basis_functions,
                 weights,
-                filtername1=filtername,
-                filtername2=filtername2,
+                bandname1=bandname,
+                bandname2=bandname2,
                 exptime=exptime,
                 ideal_pair_time=pair_time,
                 survey_name=survey_name,
@@ -561,12 +561,12 @@ def gen_long_gaps_survey(
     for fn1, fn2 in zip(f1, f2):
         for ab in ["a", "b"]:
             blob_names.append("blob_long, %s%s, %s" % (fn1, fn2, ab))
-    for filtername1, filtername2 in zip(f1, f2):
+    for bandname1, bandname2 in zip(f1, f2):
         blob = blob_for_long(
             footprints=footprints,
             nside=nside,
-            filter1s=[filtername1],
-            filter2s=[filtername2],
+            band1s=[bandname1],
+            band2s=[bandname2],
             night_pattern=night_pattern,
             time_after_twi=time_after_twi,
             HA_min=HA_min,
@@ -591,7 +591,7 @@ def gen_greedy_surveys(
     nside=DEFAULT_NSIDE,
     nexp=2,
     exptime=29.2,
-    filters=["r", "i", "z", "y"],
+    bands=["r", "i", "z", "y"],
     camera_rot_limits=[-80.0, 80.0],
     shadow_minutes=0.0,
     max_alt=76.0,
@@ -600,7 +600,7 @@ def gen_greedy_surveys(
     m5_weight=3.0,
     footprint_weight=0.75,
     slewtime_weight=3.0,
-    stayfilter_weight=100.0,
+    stayband_weight=100.0,
     repeat_weight=-1.0,
     footprints=None,
 ):
@@ -623,8 +623,8 @@ def gen_greedy_surveys(
     exptime : `float`
         The exposure time to use per visit (seconds).
         Default 29.2
-    filters : `list` of `str`
-        Which filters to generate surveys for.
+    bands : `list` of `str`
+        Which bands to generate surveys for.
         Default ['r', 'i', 'z', 'y'].
     camera_rot_limits : `list` of `float`
         The limits to impose when rotationally dithering the camera (degrees).
@@ -650,8 +650,8 @@ def gen_greedy_surveys(
     slewtime_weight : `float`
         The weight on the slewtime basis function.
         Default 3.0 (uniteless).
-    stayfilter_weight : `float`
-        The weight on basis function that tries to stay avoid filter changes.
+    stayband_weight : `float`
+        The weight on basis function that tries to stay avoid band changes.
         Default 3.0 (uniteless).
     """
     # Define the extra parameters that are used in the greedy survey. I
@@ -671,17 +671,17 @@ def gen_greedy_surveys(
     ]
     detailer_list.append(detailers.Rottep2RotspDesiredDetailer())
 
-    for filtername in filters:
+    for bandname in bands:
         bfs = []
         bfs.extend(
             standard_bf(
                 nside,
-                filtername=filtername,
-                filtername2=None,
+                bandname=bandname,
+                bandname2=None,
                 m5_weight=m5_weight,
                 footprint_weight=footprint_weight,
                 slewtime_weight=slewtime_weight,
-                stayfilter_weight=stayfilter_weight,
+                stayband_weight=stayband_weight,
                 template_weight=0,
                 u_template_weight=0,
                 g_template_weight=0,
@@ -694,7 +694,7 @@ def gen_greedy_surveys(
         bfs.append(
             (
                 bf.VisitRepeatBasisFunction(
-                    gap_min=0, gap_max=2 * 60.0, filtername=None, nside=nside, npairs=20
+                    gap_min=0, gap_max=2 * 60.0, bandname=None, nside=nside, npairs=20
                 ),
                 repeat_weight,
             )
@@ -715,7 +715,7 @@ def gen_greedy_surveys(
                 basis_functions,
                 weights,
                 exptime=exptime,
-                filtername=filtername,
+                bandname=bandname,
                 nside=nside,
                 ignore_obs=ignore_obs,
                 nexp=nexp,
@@ -731,8 +731,8 @@ def generate_blobs(
     nside,
     nexp=2,
     exptime=29.2,
-    filter1s=["u", "u", "g", "r", "i", "z", "y"],
-    filter2s=["g", "r", "r", "i", "z", "y", "y"],
+    band1s=["u", "u", "g", "r", "i", "z", "y"],
+    band2s=["g", "r", "r", "i", "z", "y", "y"],
     pair_time=33.0,
     camera_rot_limits=[-80.0, 80.0],
     n_obs_template=None,
@@ -746,7 +746,7 @@ def generate_blobs(
     m5_weight=6.0,
     footprint_weight=1.5,
     slewtime_weight=3.0,
-    stayfilter_weight=3.0,
+    stayband_weight=3.0,
     template_weight=12.0,
     u_template_weight=50.0,
     g_template_weight=50.0,
@@ -772,11 +772,11 @@ def generate_blobs(
     exptime : `float`
         The exposure time to use per visit (seconds).
         Default 29.2
-    filter1s : `list` [`str`]
-        The filternames for the first set.
+    band1s : `list` [`str`]
+        The bandnames for the first set.
         Default ["u", "u", "g", "r", "i", "z", "y"]
-    filter2s : `list` of `str`
-        The filter names for the second in the pair (None if unpaired)
+    band2s : `list` of `str`
+        The band names for the second in the pair (None if unpaired)
         Default ["g", "r", "r", "i", "z", "y", "y"].
     pair_time : `float`
         The ideal time between pairs (minutes).
@@ -785,7 +785,7 @@ def generate_blobs(
         The limits to impose when rotationally dithering the camera (degrees).
         Default [-80., 80.].
     n_obs_template : `dict`
-        The number of observations to take every season in each filter.
+        The number of observations to take every season in each band.
         If None, sets to 3 each.
     season : `float`
         The length of season (i.e., how long before templates expire) (days).
@@ -817,8 +817,8 @@ def generate_blobs(
     slewtime_weight : `float`
         The weight on the slewtime basis function.
         Default 3.0 (uniteless).
-    stayfilter_weight : `float`
-        The weight on basis function that tries to stay avoid filter changes.
+    stayband_weight : `float`
+        The weight on basis function that tries to stay avoid band changes.
         Default 3.0 (uniteless).
     template_weight : `float`
         The weight to place on getting image templates every season.
@@ -838,7 +838,7 @@ def generate_blobs(
 
     BlobSurvey_params = {
         "slew_approx": 7.5,
-        "filter_change_approx": 140.0,
+        "band_change_approx": 140.0,
         "read_approx": 2.0,
         "flush_time": 30.0,
         "smoothing_kernel": None,
@@ -854,7 +854,7 @@ def generate_blobs(
     surveys = []
 
     times_needed = [pair_time, pair_time * 2]
-    for filtername, filtername2 in zip(filter1s, filter2s):
+    for bandname, bandname2 in zip(band1s, band2s):
         detailer_list = []
         detailer_list.append(
             detailers.CameraRotDetailer(min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits))
@@ -868,12 +868,12 @@ def generate_blobs(
         bfs.extend(
             standard_bf(
                 nside,
-                filtername=filtername,
-                filtername2=filtername2,
+                bandname=bandname,
+                bandname2=bandname2,
                 m5_weight=m5_weight,
                 footprint_weight=footprint_weight,
                 slewtime_weight=slewtime_weight,
-                stayfilter_weight=stayfilter_weight,
+                stayband_weight=stayband_weight,
                 template_weight=template_weight,
                 u_template_weight=u_template_weight,
                 g_template_weight=g_template_weight,
@@ -888,50 +888,50 @@ def generate_blobs(
         bfs.append(
             (
                 bf.VisitRepeatBasisFunction(
-                    gap_min=0, gap_max=3 * 60.0, filtername=None, nside=nside, npairs=20
+                    gap_min=0, gap_max=3 * 60.0, bandname=None, nside=nside, npairs=20
                 ),
                 repeat_weight,
             )
         )
 
         # Insert things for getting good seeing templates
-        if filtername2 is not None:
-            if filtername in list(good_seeing.keys()):
+        if bandname2 is not None:
+            if bandname in list(good_seeing.keys()):
                 bfs.append(
                     (
                         bf.NGoodSeeingBasisFunction(
-                            filtername=filtername,
+                            bandname=bandname,
                             nside=nside,
                             mjd_start=mjd_start,
-                            footprint=footprints.get_footprint(filtername),
-                            n_obs_desired=good_seeing[filtername],
+                            footprint=footprints.get_footprint(bandname),
+                            n_obs_desired=good_seeing[bandname],
                         ),
                         good_seeing_weight,
                     )
                 )
-            if filtername2 in list(good_seeing.keys()):
+            if bandname2 in list(good_seeing.keys()):
                 bfs.append(
                     (
                         bf.NGoodSeeingBasisFunction(
-                            filtername=filtername2,
+                            bandname=bandname2,
                             nside=nside,
                             mjd_start=mjd_start,
-                            footprint=footprints.get_footprint(filtername2),
-                            n_obs_desired=good_seeing[filtername2],
+                            footprint=footprints.get_footprint(bandname2),
+                            n_obs_desired=good_seeing[bandname2],
                         ),
                         good_seeing_weight,
                     )
                 )
         else:
-            if filtername in list(good_seeing.keys()):
+            if bandname in list(good_seeing.keys()):
                 bfs.append(
                     (
                         bf.NGoodSeeingBasisFunction(
-                            filtername=filtername,
+                            bandname=bandname,
                             nside=nside,
                             mjd_start=mjd_start,
-                            footprint=footprints.get_footprint(filtername),
-                            n_obs_desired=good_seeing[filtername],
+                            footprint=footprints.get_footprint(bandname),
+                            n_obs_desired=good_seeing[bandname],
                         ),
                         good_seeing_weight,
                     )
@@ -947,7 +947,7 @@ def generate_blobs(
                 0.0,
             )
         )
-        if filtername2 is None:
+        if bandname2 is None:
             time_needed = times_needed[0]
         else:
             time_needed = times_needed[1]
@@ -957,21 +957,21 @@ def generate_blobs(
         # unpack the basis functions and weights
         weights = [val[1] for val in bfs]
         basis_functions = [val[0] for val in bfs]
-        if filtername2 is None:
-            survey_name = "pair_%i, %s" % (pair_time, filtername)
+        if bandname2 is None:
+            survey_name = "pair_%i, %s" % (pair_time, bandname)
         else:
-            survey_name = "pair_%i, %s%s" % (pair_time, filtername, filtername2)
-        if filtername2 is not None:
-            detailer_list.append(detailers.TakeAsPairsDetailer(filtername=filtername2))
+            survey_name = "pair_%i, %s%s" % (pair_time, bandname, bandname2)
+        if bandname2 is not None:
+            detailer_list.append(detailers.TakeAsPairsDetailer(bandname=bandname2))
 
         if u_nexp1:
-            detailer_list.append(detailers.FilterNexp(filtername="u", nexp=1, exptime=u_exptime))
+            detailer_list.append(detailers.BandNexp(bandname="u", nexp=1, exptime=u_exptime))
         surveys.append(
             BlobSurvey(
                 basis_functions,
                 weights,
-                filtername1=filtername,
-                filtername2=filtername2,
+                bandname1=bandname,
+                bandname2=bandname2,
                 exptime=exptime,
                 ideal_pair_time=pair_time,
                 survey_name=survey_name,
@@ -989,8 +989,8 @@ def generate_twi_blobs(
     nside,
     nexp=2,
     exptime=29.2,
-    filter1s=["r", "i", "z", "y"],
-    filter2s=["i", "z", "y", "y"],
+    band1s=["r", "i", "z", "y"],
+    band2s=["i", "z", "y", "y"],
     pair_time=15.0,
     camera_rot_limits=[-80.0, 80.0],
     n_obs_template=None,
@@ -1004,7 +1004,7 @@ def generate_twi_blobs(
     m5_weight=6.0,
     footprint_weight=1.5,
     slewtime_weight=3.0,
-    stayfilter_weight=3.0,
+    stayband_weight=3.0,
     template_weight=12.0,
     footprints=None,
     repeat_night_weight=None,
@@ -1025,11 +1025,11 @@ def generate_twi_blobs(
     exptime : `float`
         The exposure time to use per visit (seconds).
         Default 29.2
-    filter1s : `list` of `str`
-        The filternames for the first set.
+    band1s : `list` of `str`
+        The bandnames for the first set.
         Default ["r", "i", "z", "y"].
-    filter2s : `list` of `str`
-        The filter names for the second in the pair (None if unpaired).
+    band2s : `list` of `str`
+        The band names for the second in the pair (None if unpaired).
         Default ["i", "z", "y", "y"].
     pair_time : `float`
         The ideal time between pairs (minutes). Default 22.
@@ -1037,7 +1037,7 @@ def generate_twi_blobs(
         The limits to impose when rotationally dithering the camera (degrees).
         Default [-80., 80.].
     n_obs_template : `dict`
-        The number of observations to take every season in each filter.
+        The number of observations to take every season in each band.
         If None, sets to 3 each. Default None.
     season : `float`
         The length of season (i.e., how long before templates expire) (days).
@@ -1069,8 +1069,8 @@ def generate_twi_blobs(
     slewtime_weight : `float`
         The weight on the slewtime basis function.
         Default 3.0 (uniteless).
-    stayfilter_weight : `float`
-        The weight on basis function that tries to stay avoid filter changes.
+    stayband_weight : `float`
+        The weight on basis function that tries to stay avoid band changes.
         Default 3.0 (uniteless).
     template_weight : `float`
         The weight to place on getting image templates every season.
@@ -1084,7 +1084,7 @@ def generate_twi_blobs(
 
     BlobSurvey_params = {
         "slew_approx": 7.5,
-        "filter_change_approx": 140.0,
+        "band_change_approx": 140.0,
         "read_approx": 2.0,
         "flush_time": 30.0,
         "smoothing_kernel": None,
@@ -1101,7 +1101,7 @@ def generate_twi_blobs(
         n_obs_template = {"u": 3, "g": 3, "r": 3, "i": 3, "z": 3, "y": 3}
 
     times_needed = [pair_time, pair_time * 2]
-    for filtername, filtername2 in zip(filter1s, filter2s):
+    for bandname, bandname2 in zip(band1s, band2s):
         detailer_list = []
         detailer_list.append(
             detailers.CameraRotDetailer(min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits))
@@ -1115,12 +1115,12 @@ def generate_twi_blobs(
         bfs.extend(
             standard_bf(
                 nside,
-                filtername=filtername,
-                filtername2=filtername2,
+                bandname=bandname,
+                bandname2=bandname2,
                 m5_weight=m5_weight,
                 footprint_weight=footprint_weight,
                 slewtime_weight=slewtime_weight,
-                stayfilter_weight=stayfilter_weight,
+                stayband_weight=stayband_weight,
                 template_weight=template_weight,
                 u_template_weight=0,
                 g_template_weight=0,
@@ -1135,7 +1135,7 @@ def generate_twi_blobs(
         bfs.append(
             (
                 bf.VisitRepeatBasisFunction(
-                    gap_min=0, gap_max=2 * 60.0, filtername=None, nside=nside, npairs=20
+                    gap_min=0, gap_max=2 * 60.0, bandname=None, nside=nside, npairs=20
                 ),
                 repeat_weight,
             )
@@ -1146,7 +1146,7 @@ def generate_twi_blobs(
                 (
                     bf.AvoidLongGapsBasisFunction(
                         nside=nside,
-                        filtername=None,
+                        bandname=None,
                         min_gap=0.0,
                         max_gap=10.0 / 24.0,
                         ha_limit=3.5,
@@ -1169,7 +1169,7 @@ def generate_twi_blobs(
                 0.0,
             )
         )
-        if filtername2 is None:
+        if bandname2 is None:
             time_needed = times_needed[0]
         else:
             time_needed = times_needed[1]
@@ -1182,18 +1182,18 @@ def generate_twi_blobs(
         # unpack the basis functions and weights
         weights = [val[1] for val in bfs]
         basis_functions = [val[0] for val in bfs]
-        if filtername2 is None:
-            survey_name = "pair_%i, %s" % (pair_time, filtername)
+        if bandname2 is None:
+            survey_name = "pair_%i, %s" % (pair_time, bandname)
         else:
-            survey_name = "pair_%i, %s%s" % (pair_time, filtername, filtername2)
-        if filtername2 is not None:
-            detailer_list.append(detailers.TakeAsPairsDetailer(filtername=filtername2))
+            survey_name = "pair_%i, %s%s" % (pair_time, bandname, bandname2)
+        if bandname2 is not None:
+            detailer_list.append(detailers.TakeAsPairsDetailer(bandname=bandname2))
         surveys.append(
             BlobSurvey(
                 basis_functions,
                 weights,
-                filtername1=filtername,
-                filtername2=filtername2,
+                bandname1=bandname,
+                bandname2=bandname2,
                 exptime=exptime,
                 ideal_pair_time=pair_time,
                 survey_name=survey_name,
@@ -1293,9 +1293,9 @@ def generate_twilight_near_sun(
     footprint_mask=None,
     footprint_weight=0.1,
     slewtime_weight=3.0,
-    stayfilter_weight=3.0,
+    stayband_weight=3.0,
     min_area=None,
-    filters="riz",
+    bands="riz",
     n_repeat=4,
     sun_alt_limit=-14.8,
     slew_estimate=4.5,
@@ -1305,7 +1305,7 @@ def generate_twilight_near_sun(
     max_alt=76.0,
     max_elong=60.0,
     ignore_obs=["DD", "pair", "long", "blob", "greedy"],
-    filter_dist_weight=0.3,
+    band_dist_weight=0.3,
     time_to_12deg=25.0,
 ):
     """Generate a survey for observing NEO objects in twilight
@@ -1340,14 +1340,14 @@ def generate_twilight_near_sun(
         Weight for footprint basis function. Default 0.1 (uniteless).
     slewtime_weight : `float`
         Weight for slewtime basis function. Default 3 (unitless)
-    stayfilter_weight : `float`
-        Weight for staying in the same filter basis function.
+    stayband_weight : `float`
+        Weight for staying in the same band basis function.
         Default 3 (unitless)
     min_area : `float`
         The area that needs to be available before the survey will return
         observations (sq degrees?). Default None.
-    filters : `str`
-        The filters to use, default 'riz'
+    bands : `str`
+        The bands to use, default 'riz'
     n_repeat : `int`
         The number of times a blob should be repeated, default 4.
     sun_alt_limit : `float`
@@ -1363,11 +1363,11 @@ def generate_twilight_near_sun(
     survey_name = "twilight_near_sun"
     footprint = ecliptic_target(nside=nside, mask=footprint_mask)
     constant_fp = ConstantFootprint(nside=nside)
-    for filtername in filters:
-        constant_fp.set_footprint(filtername, footprint)
+    for bandname in bands:
+        constant_fp.set_footprint(bandname, footprint)
 
     surveys = []
-    for filtername in filters:
+    for bandname in bands:
         detailer_list = []
         detailer_list.append(
             detailers.CameraRotDetailer(min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits))
@@ -1375,13 +1375,13 @@ def generate_twilight_near_sun(
         detailer_list.append(detailers.CloseAltDetailer())
         # Should put in a detailer so things start at lowest altitude
         detailer_list.append(detailers.TwilightTripleDetailer(slew_estimate=slew_estimate, n_repeat=n_repeat))
-        detailer_list.append(detailers.RandomFilterDetailer(filters=filters))
+        detailer_list.append(detailers.RandomBandDetailer(bands=bands))
         bfs = []
 
         bfs.append(
             (
                 bf.FootprintBasisFunction(
-                    filtername=filtername,
+                    bandname=bandname,
                     footprint=constant_fp,
                     out_of_bounds_val=np.nan,
                     nside=nside,
@@ -1392,12 +1392,12 @@ def generate_twilight_near_sun(
 
         bfs.append(
             (
-                bf.SlewtimeBasisFunction(filtername=filtername, nside=nside),
+                bf.SlewtimeBasisFunction(bandname=bandname, nside=nside),
                 slewtime_weight,
             )
         )
-        bfs.append((bf.StrictFilterBasisFunction(filtername=filtername), stayfilter_weight))
-        bfs.append((bf.FilterDistBasisFunction(filtername=filtername), filter_dist_weight))
+        bfs.append((bf.StrictBandBasisFunction(bandname=bandname), stayband_weight))
+        bfs.append((bf.BandDistBasisFunction(bandname=bandname), band_dist_weight))
         # Need a toward the sun, reward high airmass, with an
         # airmass cutoff basis function.
         bfs.append(
@@ -1419,7 +1419,7 @@ def generate_twilight_near_sun(
             )
         )
         bfs.append((bf.MoonAvoidanceBasisFunction(nside=nside, moon_distance=moon_distance), 0))
-        bfs.append((bf.FilterLoadedBasisFunction(filternames=filtername), 0))
+        bfs.append((bf.BandLoadedBasisFunction(bandnames=bandname), 0))
         bfs.append((bf.PlanetMaskBasisFunction(nside=nside), 0))
         bfs.append(
             (
@@ -1451,8 +1451,8 @@ def generate_twilight_near_sun(
             BlobSurvey(
                 basis_functions,
                 weights,
-                filtername1=filtername,
-                filtername2=None,
+                bandname1=bandname,
+                bandname2=None,
                 ideal_pair_time=ideal_pair_time,
                 nside=nside,
                 exptime=exptime,
@@ -1512,7 +1512,7 @@ def run_sched(
 ):
     """Run survey"""
     n_visit_limit = None
-    fs = SimpleFilterSched(illum_limit=illum_limit)
+    fs = SimpleBandSched(illum_limit=illum_limit)
     observatory = ModelObservatory(nside=nside, mjd_start=mjd_start, sim_to_o=sim_to_o)
     observatory, scheduler, observations = sim_runner(
         observatory,
@@ -1523,7 +1523,7 @@ def run_sched(
         n_visit_limit=n_visit_limit,
         verbose=verbose,
         extra_info=extra_info,
-        filter_scheduler=fs,
+        band_scheduler=fs,
         event_table=event_table,
         snapshot_dir=snapshot_dir,
     )
@@ -1547,14 +1547,14 @@ def gen_scheduler(args):
     # arguments.
     max_dither = 0.2  # Degrees. For DDFs
     ddf_season_frac = 0.2  # Amount of season to use for DDFs
-    illum_limit = 40.0  # Percent. Lunar illumination used for filter loading
+    illum_limit = 40.0  # Percent. Lunar illumination used for band loading
     u_exptime = 38.0  # Deconds
     nslice = 2  # N slices for rolling
     rolling_scale = 0.9  # Strength of rolling
     rolling_uniform = True  # Should we use the uniform rolling flag
     nights_off = 3  # For long gaps
     ei_night_pattern = 4  # select doing earth interior observation every 4 nights
-    ei_filters = "riz"  # Filters to use for earth interior observations.
+    ei_bands = "riz"  # Bands to use for earth interior observations.
     ei_repeat = 4  # Number of times to repeat earth interior observations
     ei_am = 2.5  # Earth interior airmass limit
     ei_elong_req = 45.0  # Solar elongation required for inner solar system
@@ -1627,7 +1627,7 @@ def gen_scheduler(args):
     )
 
     # Set up the DDF surveys to dither
-    u_detailer = detailers.FilterNexp(filtername="u", nexp=1, exptime=u_exptime)
+    u_detailer = detailers.BandNexp(bandname="u", nexp=1, exptime=u_exptime)
     dither_detailer = detailers.DitherDetailer(per_night=per_night, max_dither=max_dither)
     details = [
         detailers.CameraRotDetailer(min_rot=-camera_ddf_rot_limit, max_rot=camera_ddf_rot_limit),
@@ -1653,7 +1653,7 @@ def gen_scheduler(args):
     neo = generate_twilight_near_sun(
         nside,
         night_pattern=ei_night_pattern,
-        filters=ei_filters,
+        bands=ei_bands,
         n_repeat=ei_repeat,
         footprint_mask=footprint_mask,
         max_airmass=ei_am,

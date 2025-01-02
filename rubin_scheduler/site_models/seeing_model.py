@@ -20,8 +20,8 @@ class SeeingModel:
 
     Parameters
     ----------
-    filter_list : `list` [`str`], opt
-        List of the filter bandpasses for which to calculate delivered
+    band_list : `list` [`str`], opt
+        List of the band bandpasses for which to calculate delivered
         FWHM_effective and FWHM_geometric
         Default ['u', 'g', 'r', 'i', 'z', 'y']
     eff_wavelens : `list` [`float`] or None, opt
@@ -46,7 +46,7 @@ class SeeingModel:
 
     def __init__(
         self,
-        filter_list=["u", "g", "r", "i", "z", "y"],
+        band_list=["u", "g", "r", "i", "z", "y"],
         eff_wavelens=None,
         telescope_seeing=0.25,
         optical_design_seeing=0.08,
@@ -54,10 +54,10 @@ class SeeingModel:
         raw_seeing_wavelength=500,
         efd_seeing="FWHM_500",
     ):
-        self.filter_list = filter_list
+        self.band_list = band_list
         if eff_wavelens is None:
             sev = SysEngVals()
-            eff_wavelens = [sev.eff_wavelengths[f] for f in filter_list]
+            eff_wavelens = [sev.eff_wavelengths[f] for f in band_list]
         self.eff_wavelens = np.array(eff_wavelens)
         self.telescope_seeing = telescope_seeing
         self.optical_design_seeing = optical_design_seeing
@@ -119,7 +119,7 @@ class SeeingModel:
             arrays, with the same order as eff_wavelen (i.e.
             eff_wavelen[0] = u, then FWHMeff[0] = u). If airmass is a
             numpy array, FWHMeff and FWHMgeom are 2-d arrays, in the
-            order of <filter><airmass> (i.e. eff_wavelen[0] = u, 1-d
+            order of <band><airmass> (i.e. eff_wavelen[0] = u, 1-d
             array over airmass range).
         """
         if isinstance(fwhm_z, dict):

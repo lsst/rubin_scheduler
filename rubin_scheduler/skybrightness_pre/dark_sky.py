@@ -12,7 +12,7 @@ from rubin_scheduler.utils import DEFAULT_NSIDE, m5_flat_sed
 
 def dark_sky(nside=DEFAULT_NSIDE):
     """Load an array of HEALpix maps that have the darkest expected sky
-    backgrounds per filter.
+    backgrounds per band.
 
     Parameters
     ----------
@@ -39,15 +39,15 @@ def dark_sky(nside=DEFAULT_NSIDE):
     return dark_sky_data
 
 
-def dark_m5(decs, filtername, latitude_rad, fiducial_FWHMEff, exptime=30.0, nexp=1):
+def dark_m5(decs, bandname, latitude_rad, fiducial_FWHMEff, exptime=30.0, nexp=1):
     """Return a nominal best-depth map of the sky
 
     Parameters
     ----------
     decs : `float`
         The declinations for the desired points. Float or adday-like. (radians)
-    filtername : `str`
-        Name of filter, one of ugrizy.
+    bandname : `str`
+        Name of band, one of ugrizy.
     latitude_rad : `float`
         Latitude of the observatory (radians)
     fiducial_FWHMEff : `float`
@@ -60,14 +60,14 @@ def dark_m5(decs, filtername, latitude_rad, fiducial_FWHMEff, exptime=30.0, nexp
 
     """
     nside = hp.npix2nside(np.size(decs))
-    ds = dark_sky(nside)[filtername]
+    ds = dark_sky(nside)[bandname]
     min_z = np.abs(decs - latitude_rad)
     airmass_min = 1 / np.cos(min_z)
     airmass_min = np.where(airmass_min < 0, np.nan, airmass_min)
-    sm = SeeingModel(filter_list=[filtername])
+    sm = SeeingModel(band_list=[bandname])
     fwhm_eff = sm(fiducial_FWHMEff, airmass_min)["fwhmEff"][0]
     dark_m5_map = m5_flat_sed(
-        filtername,
+        bandname,
         musky=ds,
         fwhm_eff=fwhm_eff,
         exp_time=exptime,

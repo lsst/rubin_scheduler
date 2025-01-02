@@ -28,8 +28,8 @@ class ObservationArray(np.ndarray):
        (time shutter opens)
     exptime : `float`
        Total exposure time of the visit (seconds)
-    filter : `str`
-        The filter used. Should be one of u, g, r, i, z, y.
+    band : `str`
+        The band used. Should be one of u, g, r, i, z, y.
     rotSkyPos : `float`
         The rotation angle of the camera relative to the sky E of N
         (Radians). Will be ignored if rotTelPos is finite.
@@ -98,6 +98,7 @@ class ObservationArray(np.ndarray):
             ("mjd", float),
             ("flush_by_mjd", float),
             ("exptime", float),
+            ("band", "U40"),
             ("filter", "U40"),
             ("rotSkyPos", float),
             ("rotSkyPos_desired", float),
@@ -229,7 +230,7 @@ class ScheduledObservationArray(ObservationArray):
             ("mjd", float),
             ("flush_by_mjd", float),
             ("exptime", float),
-            ("filter", "U1"),
+            ("band", "U1"),
             ("rotSkyPos", float),
             ("rotTelPos", float),
             ("rotTelPos_backup", float),

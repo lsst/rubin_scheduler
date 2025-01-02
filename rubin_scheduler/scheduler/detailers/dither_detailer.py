@@ -302,7 +302,7 @@ class CameraSmallRotPerObservationListDetailer(BaseDetailer):
     Randomly set the camera rotation for each observation list.
 
     Generates a small sequential offset for sequential visits
-    in the same filter; adds a random offset for each filter change.
+    in the same band; adds a random offset for each band change.
 
     Parameters
     ----------
@@ -333,41 +333,41 @@ class CameraSmallRotPerObservationListDetailer(BaseDetailer):
         self.offset = None
         self.rc = rotation_converter(telescope=telescope)
 
-    def _generate_offsets_filter_change(self, filter_list, mjd, initial_offset):
-        """Generate a random camera rotation for each filter change
+    def _generate_offsets_band_change(self, band_list, mjd, initial_offset):
+        """Generate a random camera rotation for each band change
         or add a small offset for each sequential observation.
         """
         mjd_hash = round(100 * (np.asarray(mjd).item() % 100))
         rng = np.random.default_rng(mjd_hash * self.seed)
 
-        offsets = np.zeros(len(filter_list))
+        offsets = np.zeros(len(band_list))
 
-        # Find the locations of the filter changes
-        filter_changes = np.where(np.array(filter_list[:-1]) != np.array(filter_list[1:]))[0]
-        filter_changes = np.concatenate([np.array([-1]), filter_changes])
+        # Find the locations of the band changes
+        band_changes = np.where(np.array(band_list[:-1]) != np.array(band_list[1:]))[0]
+        band_changes = np.concatenate([np.array([-1]), band_changes])
         # But add one because of counting and offsets above.
-        filter_changes += 1
-        # Count visits per filter in the sequence.
-        nvis_per_filter = np.concatenate(
-            [np.diff(filter_changes), np.array([len(filter_list) - 1 - filter_changes[-1]])]
+        band_changes += 1
+        # Count visits per band in the sequence.
+        nvis_per_band = np.concatenate(
+            [np.diff(band_changes), np.array([len(band_list) - 1 - band_changes[-1]])]
         )
-        # Set up the random rotator offsets for each filter change
+        # Set up the random rotator offsets for each band change
         # This includes first rotation .. maybe not needed?
-        for fchange_idx, nvis_f in zip(filter_changes, nvis_per_filter):
+        for fchange_idx, nvis_f in zip(band_changes, nvis_per_band):
             rot_range = self.rot_range - self.per_visit_rot * nvis_f
-            # At the filter change spot, update to random offset
+            # At the band change spot, update to random offset
             offsets[fchange_idx:] = rng.random() * rot_range + self.min_rot
-            # After the filter change point, add incremental rotation
+            # After the band change point, add incremental rotation
             # (we'll wipe this when we get to next fchange_idx)
-            offsets[fchange_idx:] += self.per_visit_rot * np.arange(len(filter_list) - fchange_idx)
+            offsets[fchange_idx:] += self.per_visit_rot * np.arange(len(band_list) - fchange_idx)
 
         offsets = np.where(offsets > self.max_rot, self.max_rot, offsets)
         return offsets
 
     def __call__(self, observation_list, conditions):
         # Generate offsets in camera rotator
-        filter_list = [np.asarray(obs["filter"]).item() for obs in observation_list]
-        offsets = self._generate_offsets_filter_change(filter_list, conditions.mjd, conditions.rot_tel_pos)
+        band_list = [np.asarray(obs["band"]).item() for obs in observation_list]
+        offsets = self._generate_offsets_band_change(band_list, conditions.mjd, conditions.rot_tel_pos)
 
         for i, obs in enumerate(observation_list):
             alt, az = _approx_ra_dec2_alt_az(
@@ -414,7 +414,7 @@ class ComCamGridDitherDetailer(BaseDetailer):
         y_rot = x * np.sin(angle) + y * np.cos(angle)
         return x_rot, y_rot
 
-    def _generate_offsets(self, n_offsets, filter_list, rotSkyPos):
+    def _generate_offsets(self, n_offsets, band_list, rotSkyPos):
         # 2 x 2 pointing grid
         x_grid = np.array([-1.0 * self.scale, -1.0 * self.scale, self.scale, self.scale])
         y_grid = np.array([-1.0 * self.scale, self.scale, self.scale, -1.0 * self.scale])
@@ -444,22 +444,22 @@ class ComCamGridDitherDetailer(BaseDetailer):
         x_dither_rot, y_dither_rot = self._rotate(x_dither, y_dither, -1.0 * rotSkyPos)
         offsets_dither_rot = np.array([x_dither_rot, y_dither_rot]).T
 
-        # Find the indices of the filter changes
-        filter_changes = np.where(np.array(filter_list[:-1]) != np.array(filter_list[1:]))[0]
-        filter_changes = np.concatenate([np.array([-1]), filter_changes])
-        filter_changes += 1
+        # Find the indices of the band changes
+        band_changes = np.where(np.array(band_list[:-1]) != np.array(band_list[1:]))[0]
+        band_changes = np.concatenate([np.array([-1]), band_changes])
+        band_changes += 1
 
         offsets = []
-        index_filter = 0
+        index_band = 0
         for ii in range(0, n_offsets):
-            if ii in filter_changes:
-                # Reset the count after each filter change
-                index_filter = 0
+            if ii in band_changes:
+                # Reset the count after each band change
+                index_band = 0
 
-            index_grid = index_filter % 4
-            index_dither = np.floor(index_filter / 4).astype(int) % 5
+            index_grid = index_band % 4
+            index_dither = np.floor(index_band / 4).astype(int) % 5
             offsets.append(offsets_grid_rot[index_grid] + offsets_dither_rot[index_dither])
-            index_filter += 1
+            index_band += 1
 
         return np.vstack(offsets)
 
@@ -467,7 +467,7 @@ class ComCamGridDitherDetailer(BaseDetailer):
         if len(observation_list) == 0:
             return observation_list
 
-        filter_list = [np.asarray(obs["filter"]).item() for obs in observation_list]
+        band_list = [np.asarray(obs["band"]).item() for obs in observation_list]
 
         # Initial estimate of rotSkyPos corresponding to desired rotTelPos
         alt, az, pa = _approx_ra_dec2_alt_az(
@@ -481,7 +481,7 @@ class ComCamGridDitherDetailer(BaseDetailer):
         rotSkyPos = self.rc._rottelpos2rotskypos(self.rotTelPosDesired, pa)
 
         # Generate offsets in RA and Dec
-        offsets = self._generate_offsets(len(observation_list), filter_list, rotSkyPos)
+        offsets = self._generate_offsets(len(observation_list), band_list, rotSkyPos)
 
         # Project offsets onto sky
         obs_array = np.concatenate(observation_list)

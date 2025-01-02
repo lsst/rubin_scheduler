@@ -33,14 +33,14 @@ class TestNside(unittest.TestCase):
         # Add an avoidance of twilight+ for the pairs surveys -
         # this ensures greedy survey will have some time to operate
         pairs_surveys = [
-            simple_pairs_survey(filtername="g", filtername2="r", nside=nside),
-            simple_pairs_survey(filtername="i", filtername2="z", nside=nside),
+            simple_pairs_survey(bandname="g", bandname2="r", nside=nside),
+            simple_pairs_survey(bandname="i", bandname2="z", nside=nside),
         ]
         for survey in pairs_surveys:
             survey.basis_functions.append(SunAltLimitBasisFunction(alt_limit=-22))
             survey.basis_weights.append(0)
         greedy_surveys = [
-            simple_greedy_survey(filtername="z", nside=nside),
+            simple_greedy_survey(bandname="z", nside=nside),
         ]
 
         scheduler = CoreScheduler([pairs_surveys, greedy_surveys], nside=nside)

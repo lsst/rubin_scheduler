@@ -13,8 +13,8 @@ from rubin_scheduler.scheduler.utils import ObservationArray
 class TestCoreSched(unittest.TestCase):
     def testsched(self):
 
-        # Just set up a very simple survey, one filter
-        survey = simple_greedy_survey(filtername="r")
+        # Just set up a very simple survey, one band
+        survey = simple_greedy_survey(bandname="r")
 
         scheduler = CoreScheduler([survey])
 

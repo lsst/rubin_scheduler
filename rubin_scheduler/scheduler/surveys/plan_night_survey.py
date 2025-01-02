@@ -23,8 +23,8 @@ class PlanAheadSurvey(BlobSurvey):
     minimum_sky_area : float
         The minimum sky area to demand before making a scheduled
         observation (square degrees)
-    track_filters : str
-        The filter name we want to prevent long gaps on
+    track_bands : str
+        The band name we want to prevent long gaps on
     in_season : float
         The distance in RA from the meridian at midnight to consider
         (hours). This is the half-width
@@ -38,7 +38,7 @@ class PlanAheadSurvey(BlobSurvey):
         basis_weights,
         delta_mjd_tol=0.3 / 24.0,
         minimum_sky_area=200.0,
-        track_filters="g",
+        track_bands="g",
         in_season=2.5,
         cadence=9,
         **kwargs,
@@ -52,10 +52,10 @@ class PlanAheadSurvey(BlobSurvey):
         self.delta_mjd_tol = delta_mjd_tol
         self.minimum_sky_area = minimum_sky_area  # sq degrees
         self.extra_features = {}
-        self.extra_features["last_observed"] = features.Last_observed(filtername=track_filters)
+        self.extra_features["last_observed"] = features.Last_observed(bandname=track_bands)
         self.extra_basis_functions = {}
         self.extra_basis_functions["moon_mask"] = bfs.Moon_avoidance_basis_function()
-        self.track_filters = track_filters
+        self.track_bands = track_bands
         self.in_season = in_season / 12.0 * np.pi  # to radians
 
         self.pix_area = hp.nside2pixarea(self.nside, degrees=True)

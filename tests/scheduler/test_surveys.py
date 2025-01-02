@@ -20,7 +20,7 @@ def make_observations_list(nobs=1):
         observation["mjd"] = SURVEY_START_MJD + i * 30 / 60 / 60 / 24
         observation["RA"] = np.radians(30)
         observation["dec"] = np.radians(-20)
-        observation["filter"] = "r"
+        observation["band"] = "r"
         observation["scheduler_note"] = "test"
         observations_list.append(observation)
     return observations_list
@@ -94,10 +94,10 @@ class TestSurveys(unittest.TestCase):
             obs["mjd"] = SURVEY_START_MJD + i
             obs["rotSkyPos"] = 0
             if i < 5:
-                obs["filter"] = "r"
+                obs["band"] = "r"
                 obs["scheduler_note"] = "r band"
             else:
-                obs["filter"] = "g"
+                obs["band"] = "g"
                 obs["scheduler_note"] = "g band"
             obs["RA"] = np.radians(90)
             obs["dec"] = np.radians(-30)
@@ -178,7 +178,7 @@ class TestSurveys(unittest.TestCase):
         survey = surveys.ScriptedSurvey([])
 
         observations = ScheduledObservationArray(n=5)
-        observations["filter"] = "r"
+        observations["band"] = "r"
         observations["scheduler_note"] = ["a", "a", "c", "d", "a"]
         observations["mjd_tol"] = 1
         observations["mjd"] = 1
@@ -188,7 +188,7 @@ class TestSurveys(unittest.TestCase):
 
         # Make a completed list that has the first 3 observations
         completed_observations = ObservationArray(n=3)
-        completed_observations["filter"] = survey.obs_wanted["filter"][0:3]
+        completed_observations["band"] = survey.obs_wanted["band"][0:3]
         completed_observations["scheduler_note"] = survey.obs_wanted["scheduler_note"][0:3]
 
         # Add one at a time
@@ -227,7 +227,7 @@ class TestSurveys(unittest.TestCase):
         fields["RA"] = np.arange(0, fields.size) / fields.size * 2.0 * np.pi
         fields["dec"] = -0.01
         fields["scheduler_note"] = ["test%i" % ind for ind in range(fields.size)]
-        fields["filter"] = "r"
+        fields["band"] = "r"
         survey = surveys.PointingsSurvey(fields)
 
         reward = survey.calc_reward_function(conditions)

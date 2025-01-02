@@ -281,8 +281,8 @@ class PointingsSurvey(BaseSurvey):
             lonlat=True,
         )
 
-        # Could do a filter check here and add a penalty for changing
-        # filters
+        # Could do a band check here and add a penalty for changing
+        # bands
 
         return result
 
@@ -298,14 +298,14 @@ class PointingsSurvey(BaseSurvey):
         """Generate the dark map if needed
 
         Constructs self.dark_map which is a dict with
-        keys of filtername and values of HEALpix arrays
+        keys of bandname and values of HEALpix arrays
         that are the darkest expected 5-sigma limiting depth
         expected for that region of sky
         """
         self.dark_map = {}
-        for filtername in np.unique(self.observations["filter"]):
-            self.dark_map[filtername] = dark_m5(
-                conditions.dec, filtername, conditions.site.latitude_rad, self.fiducial_FWHMEff
+        for bandname in np.unique(self.observations["band"]):
+            self.dark_map[bandname] = dark_m5(
+                conditions.dec, bandname, conditions.site.latitude_rad, self.fiducial_FWHMEff
             )
 
     def m5diff(self, conditions):
@@ -315,9 +315,9 @@ class PointingsSurvey(BaseSurvey):
         if self.dark_map is None:
             self._dark_map(conditions)
         result = np.zeros(self.observations.size)
-        for filtername in np.unique(self.observations["filter"]):
-            indx = np.where(self.observations["filter"] == filtername)[0]
-            diff_map = conditions.m5_depth[filtername] - self.dark_map[filtername]
+        for bandname in np.unique(self.observations["band"]):
+            indx = np.where(self.observations["band"] == bandname)[0]
+            diff_map = conditions.m5_depth[bandname] - self.dark_map[bandname]
             result[indx] = hp.get_interp_val(
                 diff_map,
                 np.degrees(self.observations["RA"][indx]),

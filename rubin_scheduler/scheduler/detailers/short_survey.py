@@ -32,7 +32,7 @@ class ShortExptDetailer(BaseDetailer):
     def __init__(
         self,
         exp_time=1.0,
-        filtername="r",
+        bandname="r",
         nside=DEFAULT_NSIDE,
         footprint=None,
         nobs=2,
@@ -45,7 +45,7 @@ class ShortExptDetailer(BaseDetailer):
     ):
         self.read_approx = read_approx
         self.exp_time = exp_time
-        self.filtername = filtername
+        self.bandname = bandname
         self.nside = nside
         self.footprint = footprint
         self.nobs = nobs
@@ -56,9 +56,9 @@ class ShortExptDetailer(BaseDetailer):
         self.time_scale = time_scale
 
         self.survey_features = {}
-        # XXX--need a feature that tracks short exposures in the filter
+        # XXX--need a feature that tracks short exposures in the band
         self.survey_features["nobs"] = features.N_observations(
-            filtername=filtername, nside=nside, survey_name=self.survey_name
+            bandname=bandname, nside=nside, survey_name=self.survey_name
         )
         # Need to be able to look up hpids for each observation
         self.obs2hpid = HpInLsstFov(nside=nside)
@@ -80,7 +80,7 @@ class ShortExptDetailer(BaseDetailer):
         time_to_add = 0.0
         for observation in observation_list:
             out_observations.append(observation)
-            if observation["filter"] == self.filtername:
+            if observation["band"] == self.bandname:
                 hpids = self.obs2hpid(observation["RA"], observation["dec"])
                 # Crop off anything outside the target footprint
                 hpids = hpids[np.where(self.footprint[hpids] > 0)]

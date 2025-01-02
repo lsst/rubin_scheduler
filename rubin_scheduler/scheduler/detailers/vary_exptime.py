@@ -24,7 +24,7 @@ def calc_target_m5s(alt=65.0, fiducial_seeing=0.9, exptime=20.0):
     Returns
     -------
     goal_m5 : `dict` of `float`
-        dictionary of expected m5 values keyed by filtername
+        dictionary of expected m5 values keyed by bandname
     """
 
     nside = DEFAULT_NSIDE
@@ -39,17 +39,17 @@ def calc_target_m5s(alt=65.0, fiducial_seeing=0.9, exptime=20.0):
     alts_mid = (alt_bins[0:-1] + alt_bins[1:]) / 2
     sky_mags = {}
     high_alts = np.where(alts > 0)[0]
-    for filtername in dark.dtype.names:
-        sky_mags[filtername], _be, _binn = binned_statistic(
-            alts[high_alts], dark[filtername][high_alts], bins=alt_bins, statistic="mean"
+    for bandname in dark.dtype.names:
+        sky_mags[bandname], _be, _binn = binned_statistic(
+            alts[high_alts], dark[bandname][high_alts], bins=alt_bins, statistic="mean"
         )
-        sky_mags[filtername] = np.interp(alt, alts_mid, sky_mags[filtername])
+        sky_mags[bandname] = np.interp(alt, alts_mid, sky_mags[bandname])
 
     airmass = 1.0 / np.cos(np.pi / 2.0 - np.radians(alt))
 
     goal_m5 = {}
-    for filtername in sky_mags:
-        goal_m5[filtername] = m5_flat_sed(filtername, sky_mags[filtername], fiducial_seeing, exptime, airmass)
+    for bandname in sky_mags:
+        goal_m5[bandname] = m5_flat_sed(bandname, sky_mags[bandname], fiducial_seeing, exptime, airmass)
 
     return goal_m5
 
@@ -65,7 +65,7 @@ class VaryExptDetailer(BaseDetailer):
     max_expt : `float` (100.)
         The maximum exposure time to use
     target_m5 : `dict` (None)
-        Dictionary with keys of filternames as str and target 5-sigma
+        Dictionary with keys of bandnames as str and target 5-sigma
         depth values as floats. If none, the target_m5s are set to a
         min_expt exposure at X=1.1 in dark time.
 
@@ -104,9 +104,9 @@ class VaryExptDetailer(BaseDetailer):
         """
         hpids = _ra_dec2_hpid(self.nside, obs_array["RA"], obs_array["dec"])
         new_expts = np.zeros(obs_array.size, dtype=float)
-        for filtername in np.unique(obs_array["filter"]):
-            in_filt = np.where(obs_array["filter"] == filtername)
-            delta_m5 = self.target_m5[filtername] - conditions.m5_depth[filtername][hpids[in_filt]]
+        for bandname in np.unique(obs_array["band"]):
+            in_filt = np.where(obs_array["band"] == bandname)
+            delta_m5 = self.target_m5[bandname] - conditions.m5_depth[bandname][hpids[in_filt]]
             # We can get NaNs because dithering pushes the center of the
             # pointing into masked regions.
             nan_indices = np.argwhere(np.isnan(delta_m5)).ravel()
@@ -115,10 +115,10 @@ class VaryExptDetailer(BaseDetailer):
                 # Note this might fail if we run at higher resolution,
                 # then we'd need to look farther for pixels to interpolate.
                 near_pix = hp.get_all_neighbours(conditions.nside, bad_hp)
-                vals = conditions.m5_depth[filtername][near_pix]
+                vals = conditions.m5_depth[bandname][near_pix]
                 if True in np.isfinite(vals):
                     estimate_m5 = np.mean(vals[np.isfinite(vals)])
-                    delta_m5[indx] = self.target_m5[filtername] - estimate_m5
+                    delta_m5[indx] = self.target_m5[bandname] - estimate_m5
                 else:
                     raise ValueError("Failed to find a nearby unmasked sky value.")
 

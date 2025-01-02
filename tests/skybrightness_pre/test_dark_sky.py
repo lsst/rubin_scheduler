@@ -47,3 +47,7 @@ class TestDarkSky(unittest.TestCase):
     @property
     def expected_bands(self):
         return ("u", "g", "r", "i", "z", "y")
+
+
+if __name__ == "__main__":
+    unittest.main()
