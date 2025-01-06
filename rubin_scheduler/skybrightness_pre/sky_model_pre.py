@@ -327,7 +327,6 @@ class SkyModelPreBase(abc.ABC):
 
         # Check if we are between sunrise/set
         if baseline > self.timestep_max + 1e-6:
-
             # Check if sun is really high:
             obstime = Time(mjd, format="mjd")
             sun = get_sun(obstime)

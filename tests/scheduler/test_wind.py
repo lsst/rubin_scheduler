@@ -34,7 +34,6 @@ class ModelObservatoryWindy(ModelObservatory):
 
 
 class TestWind(unittest.TestCase):
-
     @unittest.skipUnless(os.path.isfile(SAMPLE_BIG_DATA_FILE), "Test data not available.")
     def test_wind(self):
         """

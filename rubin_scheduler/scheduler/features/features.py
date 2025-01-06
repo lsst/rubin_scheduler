@@ -596,7 +596,6 @@ class LastObservedMatching(BaseSurveyFeature):
             self.ang_distance_match = None
 
     def add_observations_array(self, observations_array, observations_hpid):
-
         if self.science_program is not None:
             good = np.where(observations_array["science_program"] == self.science_program)[0]
             observations_array = observations_array[good]

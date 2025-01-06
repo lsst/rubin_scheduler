@@ -142,7 +142,7 @@ class ModelObservatory:
     telescope : `str`
         Telescope name for rotation computations. Default "rubin".
     band2filter : `dict`
-        Dictionary for converting band names to filter names. 
+        Dictionary for converting band names to filter names.
         Default of none will use band names for filter names.
     """
 

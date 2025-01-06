@@ -204,7 +204,6 @@ def generate_nights(mjd_start, duration=3653.0, rough_step=2, verbose=False):
 
 
 def gen_altitudes(mjd_start=59853.5, duration=365.25 * 24 + 80, rough_step=2, filename="night_info.npz"):
-
     rough_times, refined_mjds = generate_nights(
         mjd_start - 365.25 * 2 - 40.0, duration=duration, rough_step=rough_step
     )
@@ -213,5 +212,4 @@ def gen_altitudes(mjd_start=59853.5, duration=365.25 * 24 + 80, rough_step=2, fi
 
 
 if __name__ == "__main__":
-
     gen_altitudes()

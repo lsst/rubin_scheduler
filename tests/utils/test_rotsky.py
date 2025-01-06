@@ -13,7 +13,6 @@ from rubin_scheduler.utils import (
 
 
 class TestRotSkyConvert(unittest.TestCase):
-
     def test_rotation_converter(self):
         pa_vals = np.linspace(0, 360, 15)
         for tn in ["rubin", "auxtel", "comcam"]:

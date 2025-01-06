@@ -338,7 +338,6 @@ class FieldAltAzSurvey(FieldSurvey):
         flush_pad=30.0,
         detailers=None,
     ):
-
         if detailers is None:
             detailers = [AltAz2RaDecDetailer()]
 

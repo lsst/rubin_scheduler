@@ -101,7 +101,6 @@ class TrackingInfoDetailer(BaseDetailer):
         self.keys = ["science_program", "target_name", "observation_reason"]
 
     def __call__(self, observation_array, conditions):
-
         for key in self.keys:
             indx = np.where((observation_array[key] == "") | (observation_array[key] is None))[0]
             observation_array[key][indx] = getattr(self, key)
@@ -133,7 +132,6 @@ class AltAz2RaDecDetailer(BaseDetailer):
     """Set RA,dec for an observation that only has alt,az"""
 
     def __call__(self, observation_array, conditions):
-
         ra, dec = _approx_alt_az2_ra_dec(
             observation_array["alt"],
             observation_array["az"],
@@ -177,7 +175,6 @@ class RandomBandDetailer(BaseDetailer):
             self.band_dict[i] = bandname
 
     def __call__(self, observation_array, conditions):
-
         band_to_use = self.band_dict[self.night2band_int[conditions.night]]
         # Band not available
         if band_to_use not in conditions.mounted_bands:
@@ -237,7 +234,6 @@ class Rottep2RotspDesiredDetailer(BaseDetailer):
         self.survey_features = {}
 
     def __call__(self, obs_array, conditions):
-
         alt, az = _approx_ra_dec2_alt_az(
             obs_array["RA"],
             obs_array["dec"],
@@ -496,7 +492,6 @@ class BandNexp(BaseDetailer):
         self.exptime = exptime
 
     def __call__(self, observation_array, conditions):
-
         indx = np.where(observation_array["band"] == self.bandname)[0]
         observation_array["nexp"][indx] = self.nexp
         if self.exptime is not None:
@@ -542,7 +537,6 @@ class TwilightTripleDetailer(BaseDetailer):
         self.update_note = update_note
 
     def __call__(self, obs_array, conditions):
-
         # Estimate how much time is left in the twilgiht block
         potential_times = np.array(
             [
