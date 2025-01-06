@@ -322,7 +322,6 @@ def _parse_dayobs_to_mjd(dayobs: str | float) -> float:
 
 
 def prenight_sim_cli(cli_args: list = []) -> None:
-
     parser = argparse.ArgumentParser(description="Run prenight simulations")
     default_time = Time(int(_mjd_now() - 0.5), format="mjd")
     parser.add_argument(

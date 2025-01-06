@@ -322,7 +322,6 @@ class BasePixelEvolution:
 
 
 class StepLine(BasePixelEvolution):
-
     def __call__(self, mjd_in, phase):
         t = mjd_in + phase - self.t_start
         n_periods = np.floor(t / (self.period))

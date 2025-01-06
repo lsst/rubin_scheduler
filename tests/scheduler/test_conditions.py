@@ -8,7 +8,6 @@ from rubin_scheduler.scheduler.model_observatory import ModelObservatory
 
 
 class TestConditions(unittest.TestCase):
-
     def test_conditions(self):
         # Generate a Conditions object with things filled out
         mo = ModelObservatory()

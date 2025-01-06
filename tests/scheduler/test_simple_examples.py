@@ -16,7 +16,6 @@ from rubin_scheduler.utils import SURVEY_START_MJD
 
 
 class TestSurveyConveniences(unittest.TestCase):
-
     def setUp(self) -> None:
         self.survey_start = np.floor(SURVEY_START_MJD) + 0.5
         self.day_obs_start = Time(self.survey_start, format="mjd", scale="utc").iso[:10]

@@ -15,7 +15,6 @@ from rubin_scheduler.utils import SURVEY_START_MJD
 
 
 class TestSnapshots(unittest.TestCase):
-
     @unittest.skip("Test too slow to run routinely.")
     @unittest.skipUnless(
         os.path.isfile(os.path.join(get_data_dir(), "scheduler/dust_maps/dust_nside_32.npz")),

@@ -165,7 +165,6 @@ class UnscheduledDowntimeData:
 
 
 class UnscheduledDowntimeMoreY1Data(UnscheduledDowntimeData):
-
     def calc_sunrise_sets(self):
         """ """
         almanac = Almanac(mjd_start=self.start_time.mjd)

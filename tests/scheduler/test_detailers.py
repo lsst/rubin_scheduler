@@ -11,7 +11,6 @@ from rubin_scheduler.utils import DEFAULT_NSIDE, _ra_dec2_hpid
 
 
 class TestDetailers(unittest.TestCase):
-
     def test_basics(self):
         """Test basic detailer functionality"""
 
@@ -63,7 +62,6 @@ class TestDetailers(unittest.TestCase):
             assert len(result) > 0
 
     def test_start_field(self):
-
         observatory = ModelObservatory()
         conditions = observatory.return_conditions()
 

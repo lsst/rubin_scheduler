@@ -57,7 +57,6 @@ def make_observations_arrays(observations_list, nside=32):
 
 
 class TestFeatures(unittest.TestCase):
-
     def test_features_add_observation_methods(self):
         # Generic test that add_observations_array equals add_observations
         # Under the default conditions.
@@ -174,7 +173,6 @@ class TestFeatures(unittest.TestCase):
         _ = conditions_naked.__str__()
 
     def test_note_last_observed(self):
-
         observations_list = make_observations_list(5)
         for i, obs in enumerate(observations_list):
             if i == 1:

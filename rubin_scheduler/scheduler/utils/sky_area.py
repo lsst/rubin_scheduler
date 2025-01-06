@@ -1086,7 +1086,6 @@ class EuclidOverlapFootprint(SkyAreaGeneratorGalplane):
 
 
 class Phase3AreaMap(EuclidOverlapFootprint):
-
     def __init__(
         self,
         nside=DEFAULT_NSIDE,
@@ -1235,7 +1234,6 @@ class Phase3AreaMap(EuclidOverlapFootprint):
         virgo_ratios={"u": 0.35, "g": 0.4, "r": 1.0, "i": 1.0, "z": 0.9, "y": 0.9},
         euclid_ratios={"u": 0.35, "g": 0.4, "r": 1.0, "i": 1.0, "z": 0.9, "y": 0.9},
     ):
-
         # Array to hold the labels for each pixel
         self.pix_labels = np.zeros(hp.nside2npix(self.nside), dtype="U20")
         self.healmaps = np.zeros(

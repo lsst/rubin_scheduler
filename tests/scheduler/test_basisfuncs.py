@@ -10,7 +10,6 @@ from rubin_scheduler.scheduler.utils import ObservationArray
 
 
 class TestBasis(unittest.TestCase):
-
     def test_basics(self):
         """Test the basics of each basis function"""
 

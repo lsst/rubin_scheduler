@@ -100,7 +100,6 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         split_long_max=30.0,
         split_long_div=60.0,
     ):
-
         # Make sure lists all match
         check = np.unique([len(bands_at_times), len(times), len(nvis), len(exptimes)])
         if np.size(check) > 1:

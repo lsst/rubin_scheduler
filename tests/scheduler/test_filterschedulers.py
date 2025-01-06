@@ -8,7 +8,6 @@ from rubin_scheduler.utils import SURVEY_START_MJD
 
 
 class TestBandSchedulers(unittest.TestCase):
-
     def test_ComCamBandSched(self):
         illum_bins = np.arange(0, 100 + 1, 50)
         band_groups = (("g", "r", "i"), ("i", "z", "y"))
