@@ -53,6 +53,7 @@ class TestDetailers(unittest.TestCase):
             detailers.EuclidDitherDetailer,
             detailers.CameraRotDetailer,
             detailers.CameraSmallRotPerObservationListDetailer,
+            detailers.BandToFilterDetailer,
         ]
 
         for det in det_list:

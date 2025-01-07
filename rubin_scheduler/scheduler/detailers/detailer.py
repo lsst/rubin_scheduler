@@ -15,6 +15,7 @@ __all__ = (
     "TrackingInfoDetailer",
     "AltAz2RaDecDetailer",
     "StartFieldSequenceDetailer",
+    "BandToFilterDetailer",
 )
 
 import copy
@@ -125,6 +126,41 @@ class FlushByDetailer(BaseDetailer):
 
     def __call__(self, observation_array, conditions):
         observation_array["flush_by_mjd"] = conditions.mjd + self.flush_time
+        return observation_array
+
+
+class BandToFilterDetailer(BaseDetailer):
+    """If we want to fill in the physical filter to request rather
+    than just the band.
+
+    Parameters
+    ----------
+    band_to_filter_dict : `dict`
+        A dict that maps band name (usually ugrizy) to
+        specific filter names. Default value of None
+        will set the filter name to the same as the band name.
+    """
+
+    def __init__(self, band_to_filter_dict=None):
+        self.survey_features = {}
+        if band_to_filter_dict is None:
+            self.band_to_filter_dict = {}
+            for bandname in "ugrizy":
+                self.band_to_filter_dict[bandname] = bandname
+        else:
+            self.band_to_filter_dict = band_to_filter_dict
+
+    def __call__(self, observation_array, conditions):
+        u_bands = np.unique(observation_array["band"])
+        for band in u_bands:
+            indx = np.where(observation_array["band"] == band)[0]
+            if band not in self.band_to_filter_dict.keys():
+                warnings.warn(
+                    "No mapping of band %s to a filter name. Using %s as filter name" % (band, band)
+                )
+                observation_array[indx]["filter"] = band
+            observation_array[indx]["filter"] = self.band_to_filter_dict[band]
+
         return observation_array
 
 
