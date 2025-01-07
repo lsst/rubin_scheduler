@@ -3,6 +3,7 @@ __all__ = ("SkyModelPre", "interp_angle")
 import abc
 import glob
 import os
+import gc
 import urllib
 import warnings
 from pathlib import Path
@@ -223,20 +224,15 @@ class SkyModelPreBase(abc.ABC):
 
         # Use three separate try/excepet blocks so that if any of
         # them throw exceptions, we still get the others.
-        try:
-            del self.sb
-        except AttributeError:
-            pass
+        for attr in ["sb", "band_names", "timestep_max"]:
+            try:
+                delattr(self, attr)
+            except AttributeError:
+                pass
 
-        try:
-            del self.band_names
-        except AttributeError:
-            pass
-
-        try:
-            del self.timestep_max
-        except AttributeError:
-            pass
+        # Force garbage collection to try and keep
+        # memory footprint down
+        _num = gc.collect()
 
         if self.verbose:
             print("Loading file %s" % filename)
