@@ -34,8 +34,8 @@ class ScriptedSurvey(BaseSurvey):
     before_twi_check : `bool`
         Check if the returned observations have enough time to complete
         before twilight starts. (default True)
-    filter_change_time : `float`
-        The time needed to change filters. Default 120 seconds. Only
+    band_change_time : `float`
+        The time needed to change bands. Default 120 seconds. Only
         used if before_twi_check is True.
     """
 
@@ -51,7 +51,7 @@ class ScriptedSurvey(BaseSurvey):
         return_n_limit=10,
         survey_name=None,
         before_twi_check=True,
-        filter_change_time=120,
+        band_change_time=120,
     ):
         """"""
         self.extra_features = {}
@@ -60,7 +60,7 @@ class ScriptedSurvey(BaseSurvey):
         self.reward = -np.inf
         self.id_start = id_start
         self.return_n_limit = return_n_limit
-        self.filter_change_time = filter_change_time / 3600 / 24.0  # to days
+        self.band_change_time = band_change_time / 3600 / 24.0  # to days
         if basis_weights is None:
             self.basis_weights = np.zeros(len(basis_functions))
         else:
@@ -107,9 +107,9 @@ class ScriptedSurvey(BaseSurvey):
 
             if (self.obs_wanted is not None) & (np.size(self.obs_wanted) > 0):
                 full_note_in = np.char.add(
-                    observations_array_in["scheduler_note"], observations_array_in["filter"]
+                    observations_array_in["scheduler_note"], observations_array_in["band"]
                 )
-                full_note_queue = np.char.add(self.obs_wanted["scheduler_note"], self.obs_wanted["filter"])
+                full_note_queue = np.char.add(self.obs_wanted["scheduler_note"], self.obs_wanted["band"])
 
                 indx = np.in1d(full_note_queue, full_note_in)
 
@@ -130,11 +130,11 @@ class ScriptedSurvey(BaseSurvey):
                     detailer.add_observation(observation, **kwargs)
                 self.reward_checked = False
 
-                key = observation["scheduler_note"][0] + observation["filter"][0]
+                key = observation["scheduler_note"][0] + observation["band"][0]
                 try:
                     # Could add an additional check here for if the observation
                     # is in the desired mjd window.
-                    self.obs_wanted["observed"][self.note_filter_dict[key]] = True
+                    self.obs_wanted["observed"][self.note_band_dict[key]] = True
                 # If the key does not exist, nothing to do
                 except KeyError:
                     return
@@ -217,8 +217,8 @@ class ScriptedSurvey(BaseSurvey):
             ir = np.where((az[in_range] - conditions.tel_az_limits[0]) % (2 * np.pi) <= az_range)[0]
             in_range = in_range[ir]
 
-        # Check that filter needed is mounted
-        good = np.isin(observation["filter"][in_range], conditions.mounted_filters)
+        # Check that band needed is mounted
+        good = np.isin(observation["band"][in_range], conditions.mounted_bands)
         in_range = in_range[good]
 
         return in_range
@@ -239,8 +239,8 @@ class ScriptedSurvey(BaseSurvey):
                 pass_checks = self._check_alts_ha(self.obs_wanted[in_time_window], conditions)
                 matches = in_time_window[pass_checks]
 
-                # Also check that the filters are mounted
-                match2 = np.isin(self.obs_wanted["filter"][matches], conditions.mounted_filters)
+                # Also check that the bands are mounted
+                match2 = np.isin(self.obs_wanted["band"][matches], conditions.mounted_bands)
                 matches = matches[match2]
 
             else:
@@ -277,7 +277,7 @@ class ScriptedSurvey(BaseSurvey):
         self.obs_wanted = ScheduledObservationArray(n=0)
         self.mjd_start = None
         self.scheduled_obs = None
-        self.note_filter_dict = {}
+        self.note_band_dict = {}
 
     def set_script(self, obs_wanted, append=True, add_index=True):
         """
@@ -301,7 +301,7 @@ class ScriptedSurvey(BaseSurvey):
             index value. Default True.
         """
 
-        obs_wanted.sort(order=["mjd", "filter"])
+        obs_wanted.sort(order=["mjd", "band"])
 
         if add_index:
             sep = [", "] * obs_wanted.size
@@ -319,16 +319,16 @@ class ScriptedSurvey(BaseSurvey):
 
         if append & (self.obs_wanted is not None):
             self.obs_wanted = np.concatenate([self.obs_wanted, obs_wanted])
-            self.obs_wanted.sort(order=["mjd", "filter"])
+            self.obs_wanted.sort(order=["mjd", "band"])
         else:
             self.obs_wanted = obs_wanted
 
         # check that we have valid unique keys for observations
-        potential_keys = np.char.add(self.obs_wanted["scheduler_note"], self.obs_wanted["filter"])
+        potential_keys = np.char.add(self.obs_wanted["scheduler_note"], self.obs_wanted["band"])
         if np.size(np.unique(potential_keys)) < np.size(self.obs_wanted):
             msg = (
                 "Scripted observations do not have unique scheduler_note "
-                "+ filter values. Consider setting add_index=True"
+                "+ band values. Consider setting add_index=True"
             )
             raise ValueError(msg)
 
@@ -338,10 +338,10 @@ class ScriptedSurvey(BaseSurvey):
         self.scheduled_obs = self.obs_wanted["mjd"]
 
         # Generate a dict so it can be fast to check if an observation matches
-        # the combination of scheduler_note and filter
-        self.note_filter_dict = {}
+        # the combination of scheduler_note and band
+        self.note_band_dict = {}
         for i, obs in enumerate(self.obs_wanted):
-            self.note_filter_dict[obs["scheduler_note"] + obs["filter"]] = i
+            self.note_band_dict[obs["scheduler_note"] + obs["band"]] = i
 
     def generate_observations_rough(self, conditions):
         # if we have already called for this mjd, no need to repeat.
@@ -354,7 +354,7 @@ class ScriptedSurvey(BaseSurvey):
             self.last_mjd = conditions.mjd
             return self.observations
 
-        n_filter_changes = np.sum(observations[1:]["filter"] == observations[:-1]["filter"])
+        n_band_changes = np.sum(observations[1:]["band"] == observations[:-1]["band"])
 
         # If we want to ensure the observations can be completed
         # before twilight starts
@@ -363,8 +363,8 @@ class ScriptedSurvey(BaseSurvey):
             # calculation has the potential to not be right at all.
             # Also assumes slew time is negligible.
             exptime_needed = np.sum(observations["exptime"]) / 3600.0 / 24.0  # to days
-            filter_change_needed = n_filter_changes * self.filter_change_time
-            tot_time_needed = exptime_needed + filter_change_needed
+            band_change_needed = n_band_changes * self.band_change_time
+            tot_time_needed = exptime_needed + band_change_needed
             time_before_twi = conditions.sun_n18_rising - conditions.mjd
             # Not enough time, wipe out the observations
             if tot_time_needed > time_before_twi:

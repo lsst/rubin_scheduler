@@ -34,7 +34,6 @@ class ModelObservatoryWindy(ModelObservatory):
 
 
 class TestWind(unittest.TestCase):
-
     @unittest.skipUnless(os.path.isfile(SAMPLE_BIG_DATA_FILE), "Test data not available.")
     def test_wind(self):
         """
@@ -45,7 +44,7 @@ class TestWind(unittest.TestCase):
         nside = 32
         survey_length = 1.0  # days
 
-        surveys = [simple_greedy_survey(filtername=f) for f in "gri"]
+        surveys = [simple_greedy_survey(bandname=f) for f in "gri"]
 
         scheduler = CoreScheduler(surveys, nside=nside)
         observatory = ModelObservatoryWindy(

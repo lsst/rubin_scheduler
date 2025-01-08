@@ -38,11 +38,11 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
     times : list of floats
         The times after the detection that observations
         should be attempted (hours). Default [1, 2, 4, 24, 48]
-    filters_at_times : list of str
-        The filters that should be observed at each time in `times`.
+    bands_at_times : list of str
+        The bands that should be observed at each time in `times`.
         Default ["gz", "gz", "gz", "gz", "gz", "gz"]
     nvis : list of int
-        The number of visits per filter at each time in `times`.
+        The number of visits per band at each time in `times`.
         Default [1, 1, 1, 1, 6, 6]
     exptimes : list of floats
         The exposure times to use for each time in `times`.
@@ -50,7 +50,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
     alt_min : float
         Do not attempt observations below this limit (degrees).
         Note the telescope alt limit is 20 degrees, however, slew
-        and filter change time means alt_min here should be set higher
+        and band change time means alt_min here should be set higher
         (otherwise, target will pass altitude check, but then fail
         to observe by the time the telescope gets there).
     target_name_base : `str`
@@ -74,7 +74,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         nside=DEFAULT_NSIDE,
         reward_val=1e6,
         times=[1, 2, 4, 24, 48],
-        filters_at_times=["gz", "gz", "gz", "gz", "gz", "gz"],
+        bands_at_times=["gz", "gz", "gz", "gz", "gz", "gz"],
         nvis=[1, 1, 1, 1, 6, 6],
         exptimes=[DEFAULT_EXP_TIME] * 6,
         camera="LSST",
@@ -100,11 +100,10 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         split_long_max=30.0,
         split_long_div=60.0,
     ):
-
         # Make sure lists all match
-        check = np.unique([len(filters_at_times), len(times), len(nvis), len(exptimes)])
+        check = np.unique([len(bands_at_times), len(times), len(nvis), len(exptimes)])
         if np.size(check) > 1:
-            raise ValueError("lengths of times, filters_at_times, nvis, and exptimes must match.")
+            raise ValueError("lengths of times, bands_at_times, nvis, and exptimes must match.")
 
         # Figure out what else I need to super here
 
@@ -118,7 +117,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         self.night = -1
         self.reward_val = reward_val
         self.times = np.array(times) / 24.0  # to days
-        self.filters_at_times = filters_at_times
+        self.bands_at_times = bands_at_times
         self.exptimes = exptimes
         self.nvis = nvis
         self.n_snaps = n_snaps
@@ -315,9 +314,9 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
                     mjd0 = conditions.mjd + 0.0
 
                 obs_list = []
-                for time, filternames, nv, exptime, index in zip(
+                for time, bandnames, nv, exptime, index in zip(
                     self.times,
-                    self.filters_at_times,
+                    self.bands_at_times,
                     self.nvis,
                     self.exptimes,
                     np.arange(np.size(self.times)),
@@ -327,13 +326,13 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
                         if (i != 0) & (hpid_to_observe.size > 0):
                             ras, decs = self._tesselate(hpid_to_observe)
 
-                        for filtername in filternames:
+                        for bandname in bandnames:
                             # Subsitute y for z if needed on first observation
                             if i == 0:
-                                if (filtername == "z") & (filtername not in conditions.mounted_filters):
-                                    filtername = "y"
+                                if (bandname == "z") & (bandname not in conditions.mounted_bands):
+                                    bandname = "y"
 
-                            if filtername == "u":
+                            if bandname == "u":
                                 nexp = self.n_usnaps
                             else:
                                 nexp = self.n_snaps
@@ -356,7 +355,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
                             obs["flush_by_mjd"] = mjd0 + time + self.flushtime
                             obs["exptime"] = exptime
                             obs["nexp"] = nexp
-                            obs["filter"] = filtername
+                            obs["band"] = bandname
                             obs["rotSkyPos"] = 0  # XXX--maybe throw a rotation detailer in here
                             obs["mjd_tol"] = self.mjd_tol
                             obs["dist_tol"] = self.dist_tol
@@ -440,7 +439,7 @@ def gen_too_surveys(
     # Just leaving off for now
 
     times = [0, 24, 48]
-    filters_at_times = ["ugrizy", "ugrizy", "ugrizy"]
+    bands_at_times = ["ugrizy", "ugrizy", "ugrizy"]
     nvis = [3, 1, 1]
     exptimes = [120.0, 120.0, 120.0]
     result.append(
@@ -449,7 +448,7 @@ def gen_too_surveys(
             nside=nside,
             followup_footprint=too_footprint,
             times=times,
-            filters_at_times=filters_at_times,
+            bands_at_times=bands_at_times,
             nvis=nvis,
             exptimes=exptimes,
             detailers=detailer_list,
@@ -463,7 +462,7 @@ def gen_too_surveys(
     )
 
     times = [0, 24, 48, 72]
-    filters_at_times = ["gri", "ri", "ri", "ri"]
+    bands_at_times = ["gri", "ri", "ri", "ri"]
     nvis = [3, 1, 1, 1]
     exptimes = [120.0, 180.0, 180.0, 180.0]
     result.append(
@@ -472,7 +471,7 @@ def gen_too_surveys(
             nside=nside,
             followup_footprint=too_footprint,
             times=times,
-            filters_at_times=filters_at_times,
+            bands_at_times=bands_at_times,
             nvis=nvis,
             exptimes=exptimes,
             detailers=detailer_list,
@@ -486,7 +485,7 @@ def gen_too_surveys(
     )
 
     times = [0, 24, 48, 72]
-    filters_at_times = ["gr", "gr", "gr", "gr"]
+    bands_at_times = ["gr", "gr", "gr", "gr"]
     nvis = [1, 1, 1, 1]
     exptimes = [120.0, 120.0, 120.0, 120.0]
     result.append(
@@ -495,7 +494,7 @@ def gen_too_surveys(
             nside=nside,
             followup_footprint=too_footprint,
             times=times,
-            filters_at_times=filters_at_times,
+            bands_at_times=bands_at_times,
             nvis=nvis,
             exptimes=exptimes,
             detailers=detailer_list,
@@ -515,7 +514,7 @@ def gen_too_surveys(
     # XXX--only considering bright objects now.
 
     times = np.array([0, 2, 7, 9, 39]) * 24
-    filters_at_times = ["ugri"] * 5
+    bands_at_times = ["ugri"] * 5
     nvis = [1] * 5
     exptimes = [DEFAULT_EXP_TIME] * 5
 
@@ -525,7 +524,7 @@ def gen_too_surveys(
             nside=nside,
             followup_footprint=too_footprint,
             times=times,
-            filters_at_times=filters_at_times,
+            bands_at_times=bands_at_times,
             nvis=nvis,
             exptimes=exptimes,
             detailers=detailer_list,
@@ -543,7 +542,7 @@ def gen_too_surveys(
     ############
 
     times = [1.0, 1.0]
-    filters_at_times = ["g", "r"]
+    bands_at_times = ["g", "r"]
     nvis = [1, 1]
     exptimes = [DEFAULT_EXP_TIME, 90.0]
 
@@ -553,7 +552,7 @@ def gen_too_surveys(
             nside=nside,
             followup_footprint=too_footprint,
             times=times,
-            filters_at_times=filters_at_times,
+            bands_at_times=bands_at_times,
             nvis=nvis,
             exptimes=exptimes,
             detailers=detailer_list,
@@ -567,7 +566,7 @@ def gen_too_surveys(
     )
 
     times = [1.0]
-    filters_at_times = [
+    bands_at_times = [
         "gr",
     ]
     nvis = [10]
@@ -579,7 +578,7 @@ def gen_too_surveys(
             nside=nside,
             followup_footprint=too_footprint,
             times=times,
-            filters_at_times=filters_at_times,
+            bands_at_times=bands_at_times,
             nvis=nvis,
             exptimes=exptimes,
             detailers=detailer_list,
@@ -599,7 +598,7 @@ def gen_too_surveys(
     # XXX--need to update footprint to cut out galactic latitude
 
     times = [0, 0, 15 / 60.0, 0.5, 24, 24.5, 144]
-    filters_at_times = ["g", "r", "z", "g", "r", "z", "grz"]
+    bands_at_times = ["g", "r", "z", "g", "r", "z", "grz"]
     exptimes = [
         120,
         DEFAULT_EXP_TIME,
@@ -617,7 +616,7 @@ def gen_too_surveys(
             nside=nside,
             followup_footprint=too_footprint,
             times=times,
-            filters_at_times=filters_at_times,
+            bands_at_times=bands_at_times,
             nvis=nvis,
             exptimes=exptimes,
             detailers=detailer_list,
@@ -631,7 +630,7 @@ def gen_too_surveys(
     )
 
     times = [0]
-    filters_at_times = ["u"]
+    bands_at_times = ["u"]
     exptimes = [DEFAULT_EXP_TIME]
     nvis = [1]
 
@@ -643,7 +642,7 @@ def gen_too_surveys(
             nside=nside,
             followup_footprint=too_footprint,
             times=times,
-            filters_at_times=filters_at_times,
+            bands_at_times=bands_at_times,
             nvis=nvis,
             exptimes=exptimes,
             detailers=detailer_list,
@@ -664,7 +663,7 @@ def gen_too_surveys(
     # position.
 
     times = [0, 33 / 60.0, 66 / 60.0]
-    filters_at_times = ["r"] * 3
+    bands_at_times = ["r"] * 3
     nvis = [1] * 3
     exptimes = [DEFAULT_EXP_TIME] * 3
 
@@ -674,7 +673,7 @@ def gen_too_surveys(
             nside=nside,
             followup_footprint=too_footprint,
             times=times,
-            filters_at_times=filters_at_times,
+            bands_at_times=bands_at_times,
             nvis=nvis,
             exptimes=exptimes,
             detailers=detailer_list,
@@ -688,7 +687,7 @@ def gen_too_surveys(
     )
 
     times = [0, 10 / 60.0, 20 / 60.0]
-    filters_at_times = ["z"] * 3
+    bands_at_times = ["z"] * 3
     nvis = [2] * 3
     exptimes = [15.0] * 3
 
@@ -698,7 +697,7 @@ def gen_too_surveys(
             nside=nside,
             followup_footprint=too_footprint,
             times=times,
-            filters_at_times=filters_at_times,
+            bands_at_times=bands_at_times,
             nvis=nvis,
             exptimes=exptimes,
             detailers=detailer_list,

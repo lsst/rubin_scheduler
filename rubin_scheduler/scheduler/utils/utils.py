@@ -192,7 +192,7 @@ class IntRounded:
         return result
 
 
-def restore_scheduler(observation_id, scheduler, observatory, in_obs, filter_sched=None, fast=True):
+def restore_scheduler(observation_id, scheduler, observatory, in_obs, band_sched=None, fast=True):
     """Put the scheduler and observatory in the state they were in.
     Handy for checking reward fucnction
 
@@ -208,10 +208,10 @@ def restore_scheduler(observation_id, scheduler, observatory, in_obs, filter_sch
         Array of observations (formated like
         rubin_scheduler.scheduler.ObservationArray). If a string,
         assumed to be a file and SchemaConverter is used to load it.
-    filter_sched : rubin_scheduler.scheduler.scheduler object
-        The filter scheduler. Note that we don't look up the official
+    band_sched : rubin_scheduler.scheduler.scheduler object
+        The band scheduler. Note that we don't look up the official
         end of the previous night, so there is potential for the
-        loaded filters to not match.
+        loaded bands to not match.
     fast : bool (True)
         If True, loads observations and passes them as an array to
         the `add_observations_array` method. If False,
@@ -233,20 +233,20 @@ def restore_scheduler(observation_id, scheduler, observatory, in_obs, filter_sch
         for obs in observations:
             scheduler.add_observation(obs)
 
-    if filter_sched is not None:
-        # We've assumed the filter scheduler doesn't have any filters
+    if band_sched is not None:
+        # We've assumed the band scheduler doesn't have any bands
         # May need to call the add_observation method on it if that
         # changes.
 
-        # Make sure we have mounted the right filters for the night
+        # Make sure we have mounted the right bands for the night
         # XXX--note, this might not be exact, but should work most
         # of the time.
         mjd_start_night = np.min(observations["mjd"][np.where(observations["night"] == obs["night"])])
         observatory.mjd = mjd_start_night
         conditions = observatory.return_conditions()
-        filters_needed = filter_sched(conditions)
+        bands_needed = band_sched(conditions)
     else:
-        filters_needed = ["u", "g", "r", "i", "y"]
+        bands_needed = ["u", "g", "r", "i", "y"]
 
     # update the observatory
     observatory.mjd = obs["mjd"] + observatory.observatory.visit_time(obs) / 3600.0 / 24.0
@@ -256,8 +256,8 @@ def restore_scheduler(observation_id, scheduler, observatory, in_obs, filter_sch
     observatory.observatory.current_dec_rad = obs["dec"]
     observatory.observatory.current_rot_sky_pos_rad = obs["rotSkyPos"]
     observatory.observatory.cumulative_azimuth_rad = obs["cummTelAz"]
-    observatory.observatory.current_filter = obs["filter"]
-    observatory.observatory.mounted_filters = filters_needed
+    observatory.observatory.current_band = obs["band"]
+    observatory.observatory.mounted_bands = bands_needed
     # Note that we haven't updated last_az_rad, etc, but those
     # values should be ignored.
 
@@ -400,6 +400,7 @@ class SchemaConverter:
             "fieldDec": "dec",
             "altitude": "alt",
             "azimuth": "az",
+            "band": "band",
             "filter": "filter",
             "airmass": "airmass",
             "skyBrightness": "skybrightness",

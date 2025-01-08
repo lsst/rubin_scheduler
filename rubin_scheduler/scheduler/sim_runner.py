@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 from astropy.time import Time
 
-from rubin_scheduler.scheduler.schedulers import SimpleFilterSched
+from rubin_scheduler.scheduler.schedulers import SimpleBandSched
 from rubin_scheduler.scheduler.utils import ObservationArray, SchemaConverter, run_info_table
 from rubin_scheduler.utils import Site, _approx_altaz2pa, pseudo_parallactic_angle, rotation_converter
 
@@ -21,7 +21,7 @@ from rubin_scheduler.utils import Site, _approx_altaz2pa, pseudo_parallactic_ang
 def sim_runner(
     observatory,
     scheduler,
-    filter_scheduler=None,
+    band_scheduler=None,
     sim_start_mjd=None,
     sim_duration=3.0,
     filename=None,
@@ -79,8 +79,8 @@ def sim_runner(
 
     t0 = time.time()
 
-    if filter_scheduler is None:
-        filter_scheduler = SimpleFilterSched()
+    if band_scheduler is None:
+        band_scheduler = SimpleBandSched()
 
     if sim_start_mjd is None:
         mjd = observatory.mjd + 0
@@ -105,10 +105,10 @@ def sim_runner(
 
     rc = rotation_converter(telescope=telescope)
 
-    # Make sure correct filters are mounted
+    # Make sure correct bands are mounted
     conditions = observatory.return_conditions()
-    filters_needed = filter_scheduler(conditions)
-    observatory.observatory.mount_filters(filters_needed)
+    bands_needed = band_scheduler(conditions)
+    observatory.observatory.mount_bands(bands_needed)
 
     counter = 0
     while mjd < sim_end_mjd:
@@ -162,7 +162,6 @@ def sim_runner(
         completed_obs, new_night = observatory.observe(desired_obs)
 
         if completed_obs is not None:
-
             if anomalous_overhead_func is not None:
                 observatory.mjd += (
                     anomalous_overhead_func(completed_obs["visittime"], completed_obs["slewtime"]) / 86400
@@ -170,7 +169,7 @@ def sim_runner(
 
             scheduler.add_observation(completed_obs)
             observations[counter] = completed_obs[0]
-            filter_scheduler.add_observation(completed_obs)
+            band_scheduler.add_observation(completed_obs)
             counter += 1
             if counter == observations.size:
                 add_observations = ObservationArray(n=append_result_size)
@@ -192,10 +191,10 @@ def sim_runner(
             mjd_last_flush = copy.deepcopy(observatory.mjd)
 
         if new_night:
-            # find out what filters we want mounted
+            # find out what bands we want mounted
             conditions = observatory.return_conditions()
-            filters_needed = filter_scheduler(conditions)
-            observatory.observatory.mount_filters(filters_needed)
+            bands_needed = band_scheduler(conditions)
+            observatory.observatory.mount_bands(bands_needed)
 
         mjd = observatory.mjd + 0
         if verbose:

@@ -141,6 +141,9 @@ class ModelObservatory:
         will allow altitudes anywhere between 20-86 degrees.
     telescope : `str`
         Telescope name for rotation computations. Default "rubin".
+    band2filter : `dict`
+        Dictionary for converting band names to filter names.
+        Default of none will use band names for filter names.
     """
 
     def __init__(
@@ -168,6 +171,7 @@ class ModelObservatory:
         sky_alt_limits=None,
         sky_az_limits=None,
         telescope="rubin",
+        band2filter=None,
     ):
         self.nside = nside
 
@@ -178,7 +182,13 @@ class ModelObservatory:
         if mjd is None:
             mjd = mjd_start
 
-        self.filterlist = ["u", "g", "r", "i", "z", "y"]
+        self.bandlist = ["u", "g", "r", "i", "z", "y"]
+        if band2filter is None:
+            self.band2filter = {}
+            for bandname in self.bandlist:
+                self.band2filter[bandname] = bandname
+        else:
+            self.band2filter = band2filter
 
         self.cloud_limit = cloud_limit
         self.no_sky = no_sky
@@ -268,11 +278,11 @@ class ModelObservatory:
             self.seeing_data = SeeingData(mjd_start_time, seeing_db=seeing_db)
         self.seeing_model = SeeingModel()
         self.seeing_indx_dict = {}
-        for i, filtername in enumerate(self.seeing_model.filter_list):
-            self.seeing_indx_dict[filtername] = i
+        for i, bandname in enumerate(self.seeing_model.band_list):
+            self.seeing_indx_dict[bandname] = i
 
         self.seeing_fwhm_eff = {}
-        for key in self.filterlist:
+        for key in self.bandlist:
             self.seeing_fwhm_eff[key] = np.zeros(hp.nside2npix(self.nside), dtype=float)
 
         # Set up the cloud data
@@ -391,7 +401,7 @@ class ModelObservatory:
         self.fwhm_500 = fwhm_500
         seeing_dict = self.seeing_model(fwhm_500, self.conditions.airmass[good])
         fwhm_eff = seeing_dict["fwhmEff"]
-        for i, key in enumerate(self.seeing_model.filter_list):
+        for i, key in enumerate(self.seeing_model.band_list):
             self.seeing_fwhm_eff[key][good] = fwhm_eff[i, :]
         self.conditions.fwhm_eff = self.seeing_fwhm_eff
 
@@ -399,8 +409,8 @@ class ModelObservatory:
         if self.sky_model is not None:
             self.conditions.skybrightness = self.sky_model.return_mags(self.mjd)
 
-        self.conditions.mounted_filters = self.observatory.mounted_filters
-        self.conditions.current_filter = self.observatory.current_filter[0]
+        self.conditions.mounted_bands = self.observatory.mounted_bands
+        self.conditions.current_band = self.observatory.current_band[0]
 
         # Compute the slewtimes
         slewtimes = np.empty(alts.size, dtype=float)
@@ -415,7 +425,7 @@ class ModelObservatory:
             self.mjd,
             alt_rad=alts[good],
             az_rad=azs[good],
-            filtername=self.observatory.current_filter,
+            bandname=self.observatory.current_band,
             lax_dome=self.lax_dome,
             update_tracking=False,
         )
@@ -502,10 +512,8 @@ class ModelObservatory:
         # Seeing
         fwhm_500 = self.seeing_data(current_time)
         seeing_dict = self.seeing_model(fwhm_500, observation["airmass"])
-        observation["FWHMeff"] = seeing_dict["fwhmEff"][self.seeing_indx_dict[observation["filter"][0]]]
-        observation["FWHM_geometric"] = seeing_dict["fwhmGeom"][
-            self.seeing_indx_dict[observation["filter"][0]]
-        ]
+        observation["FWHMeff"] = seeing_dict["fwhmEff"][self.seeing_indx_dict[observation["band"][0]]]
+        observation["FWHM_geometric"] = seeing_dict["fwhmGeom"][self.seeing_indx_dict[observation["band"][0]]]
         observation["FWHM_500"] = fwhm_500
 
         observation["night"] = self.night
@@ -515,10 +523,10 @@ class ModelObservatory:
             hpid = _ra_dec2_hpid(self.sky_model.nside, observation["RA"], observation["dec"])
             observation["skybrightness"] = self.sky_model.return_mags(
                 self.mjd, indx=[hpid], extrapolate=True
-            )[observation["filter"][0]]
+            )[observation["band"][0]]
 
         observation["fivesigmadepth"] = m5_flat_sed(
-            observation["filter"][0],
+            observation["band"][0],
             observation["skybrightness"],
             observation["FWHMeff"],
             observation["exptime"] / observation["nexp"],
@@ -551,6 +559,8 @@ class ModelObservatory:
             observation["sunDec"],
         )
         observation["moonPhase"] = sun_moon_info["moon_phase"]
+
+        observation["filter"] = self.band2filter[observation["band"][0]]
 
         observation["ID"] = self.obs_id_counter
         self.obs_id_counter += 1

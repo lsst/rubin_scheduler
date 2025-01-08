@@ -11,12 +11,11 @@ from rubin_scheduler.scheduler.example import (
     simple_pairs_survey,
     update_model_observatory_sunset,
 )
-from rubin_scheduler.scheduler.schedulers import ComCamFilterSched, CoreScheduler
+from rubin_scheduler.scheduler.schedulers import ComCamBandSched, CoreScheduler
 from rubin_scheduler.utils import SURVEY_START_MJD
 
 
 class TestSurveyConveniences(unittest.TestCase):
-
     def setUp(self) -> None:
         self.survey_start = np.floor(SURVEY_START_MJD) + 0.5
         self.day_obs_start = Time(self.survey_start, format="mjd", scale="utc").iso[:10]
@@ -39,20 +38,20 @@ class TestSurveyConveniences(unittest.TestCase):
         conditions = observatory.return_conditions()
         assert (conditions.mjd - newday) < 1
 
-        # And update observatory to sunset, using a filter scheduler
+        # And update observatory to sunset, using a band scheduler
         # that only has 'g' available
-        filter_sched = ComCamFilterSched(illum_bins=np.arange(0, 101, 100), loaded_filter_groups=(("g",)))
-        observatory = update_model_observatory_sunset(observatory, filter_sched, twilight=-18)
-        assert observatory.observatory.current_filter == "g"
+        band_sched = ComCamBandSched(illum_bins=np.arange(0, 101, 100), loaded_band_groups=(("g",)))
+        observatory = update_model_observatory_sunset(observatory, band_sched, twilight=-18)
+        assert observatory.observatory.current_band == "g"
         assert observatory.conditions.sun_alt < np.radians(18)
 
     def test_simple_greedy_survey(self):
         # Just test that it still instantiates and provides observations.
         observatory = get_ideal_model_observatory(dayobs=self.day_obs_start, survey_start=self.survey_start)
-        greedy = [simple_greedy_survey(filtername="r")]
+        greedy = [simple_greedy_survey(bandname="r")]
         scheduler = CoreScheduler(greedy)
         observatory, scheduler, observations = sim_runner(
-            observatory, scheduler, filter_scheduler=None, sim_duration=0.7
+            observatory, scheduler, band_scheduler=None, sim_duration=0.7
         )
         # Current survey_start_mjd should produce ~1000 visits
         # but changing this to a short night could reduce the total number
@@ -75,10 +74,10 @@ class TestSurveyConveniences(unittest.TestCase):
     def test_simple_pairs_survey(self):
         # Just test that it still instantiates and provides observations.
         observatory = get_ideal_model_observatory(dayobs=self.day_obs_start, survey_start=self.survey_start)
-        pairs = [simple_pairs_survey(filtername="r", filtername2="i")]
+        pairs = [simple_pairs_survey(bandname="r", bandname2="i")]
         scheduler = CoreScheduler(pairs)
         observatory, scheduler, observations = sim_runner(
-            observatory, scheduler, filter_scheduler=None, sim_duration=0.7
+            observatory, scheduler, band_scheduler=None, sim_duration=0.7
         )
         # Current survey_start_mjd should produce over ~950 visits
         # but changing this to a short night could reduce the total number
@@ -112,10 +111,10 @@ class TestSurveyConveniences(unittest.TestCase):
         ]
         # Add a greedy survey backup because of the visit gap requirement in
         # the default field survey
-        greedy = [simple_greedy_survey(filtername="r")]
+        greedy = [simple_greedy_survey(bandname="r")]
         scheduler = CoreScheduler([field, greedy])
         observatory, scheduler, observations = sim_runner(
-            observatory, scheduler, filter_scheduler=None, sim_duration=0.7
+            observatory, scheduler, band_scheduler=None, sim_duration=0.7
         )
         # Current survey_start_mjd should produce over ~950 visits
         # but changing this to a short night could reduce the total number

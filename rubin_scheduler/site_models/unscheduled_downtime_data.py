@@ -94,7 +94,7 @@ class UnscheduledDowntimeData:
 
         minor event : remainder of night and next day = 5/365 days
         e.g. power supply failure
-        intermediate : 3 nights = 2/365 days e.g. repair filter
+        intermediate : 3 nights = 2/365 days e.g. repair band
         mechanism, rotator, hexapod, or shutter
         major event : 7 nights = 1/2*365 days
         catastrophic event : 14 nights = 1/3650 days e.g. replace a raft
@@ -165,7 +165,6 @@ class UnscheduledDowntimeData:
 
 
 class UnscheduledDowntimeMoreY1Data(UnscheduledDowntimeData):
-
     def calc_sunrise_sets(self):
         """ """
         almanac = Almanac(mjd_start=self.start_time.mjd)
@@ -186,7 +185,7 @@ class UnscheduledDowntimeMoreY1Data(UnscheduledDowntimeData):
 
         minor event : remainder of night and next day = 5/365 days
         e.g. power supply failure
-        intermediate : 3 nights = 2/365 days e.g. repair filter
+        intermediate : 3 nights = 2/365 days e.g. repair band
         mechanism, rotator, hexapod, or shutter
         major event : 7 nights = 1/2*365 days
         catastrophic event : 14 nights = 1/3650 days e.g. replace a raft

@@ -27,19 +27,19 @@ class FieldSurvey(BaseSurvey):
     dec : `float`
         The dec of the field to observe (degrees)
     sequence : `list` [`str`]
-        The sequence of observations to take. (specify which filters to use).
+        The sequence of observations to take. (specify which bands to use).
     nvisits : `dict` {`str`: `int`}
-        Dictionary of the number of visits in each filter.
-        Default of None will use a backup sequence of 20 visits per filter.
-        Must contain all filters in sequence.
+        Dictionary of the number of visits in each band.
+        Default of None will use a backup sequence of 20 visits per band.
+        Must contain all bands in sequence.
     exptimes : `dict` {`str`: `float`}
-        Dictionary of the exposure time for visits in each filter.
+        Dictionary of the exposure time for visits in each band.
         Default of None will use a backup sequence of 38s in u, and
-        29.2s in all other bands. Must contain all filters in sequence.
+        29.2s in all other bands. Must contain all bands in sequence.
     nexps : dict` {`str`: `int`}
-        Dictionary of the number of exposures per visit in each filter.
+        Dictionary of the number of exposures per visit in each band.
         Default of None will use a backup sequence of 1 exposure per visit
-        in u band, 2 in all other bands. Must contain all filters in sequence.
+        in u band, 2 in all other bands. Must contain all bands in sequence.
     ignore_obs : `list` [`str`] or None
         Ignore observations with this string in the `scheduler_note`.
         Will ignore observations which match subsets of the string, as well as
@@ -56,8 +56,8 @@ class FieldSurvey(BaseSurvey):
     readtime : `float`
         Readout time for computing approximate time of observing
         the sequence. (seconds)
-    filter_change_time : `float`
-        Filter change time, on average. Used for computing approximate
+    band_change_time : `float`
+        Band change time, on average. Used for computing approximate
         time for the observing sequence. (seconds)
     nside : `float` or None
         Nside for computing survey basis functions and maps.
@@ -83,7 +83,7 @@ class FieldSurvey(BaseSurvey):
         observation_reason=None,
         scheduler_note=None,
         readtime=2.4,
-        filter_change_time=120.0,
+        band_change_time=120.0,
         nside=DEFAULT_NSIDE,
         flush_pad=30.0,
         detailers=None,
@@ -125,7 +125,7 @@ class FieldSurvey(BaseSurvey):
         self.basis_weights = np.ones(len(basis_functions)) / len(basis_functions)
 
         self.flush_pad = flush_pad / 60.0 / 24.0  # To days
-        self.filter_sequence = []
+        self.band_sequence = []
 
         self.scheduler_note = scheduler_note
         if self.scheduler_note is None:
@@ -133,7 +133,7 @@ class FieldSurvey(BaseSurvey):
 
         # This sets up what a requested "observation" looks like.
         # For sequences, each 'observation' is more than one exposure.
-        # When generating actual observations, filters which are not available
+        # When generating actual observations, bands which are not available
         # are not included in the requested sequence.
         if nvisits is None:
             nvisits = default_nvisits
@@ -145,41 +145,41 @@ class FieldSurvey(BaseSurvey):
         # Do a little shuffling if this was not configured quite as expected
         if isinstance(sequence, str):
             if isinstance(nvisits, (float, int)):
-                nvisits = dict([(filtername, nvisits) for filtername in sequence])
+                nvisits = dict([(bandname, nvisits) for bandname in sequence])
             if isinstance(exptimes, (float, int)):
-                exptimes = dict([(filtername, exptimes) for filtername in sequence])
+                exptimes = dict([(bandname, exptimes) for bandname in sequence])
             if isinstance(nexps, (float, int)):
-                nexps = dict([(filtername, nexps) for filtername in sequence])
+                nexps = dict([(bandname, nexps) for bandname in sequence])
 
         if isinstance(sequence, ObservationArray) | isinstance(sequence[0], ObservationArray):
             self.observations = sequence
         else:
             self.observations = []
-            for filtername in sequence:
-                for j in range(nvisits[filtername]):
+            for bandname in sequence:
+                for j in range(nvisits[bandname]):
                     obs = ObservationArray()
-                    obs["filter"] = filtername
-                    obs["exptime"] = exptimes[filtername]
+                    obs["band"] = bandname
+                    obs["exptime"] = exptimes[bandname]
                     obs["RA"] = self.ra
                     obs["dec"] = self.dec
-                    obs["nexp"] = nexps[filtername]
+                    obs["nexp"] = nexps[bandname]
                     obs["scheduler_note"] = self.scheduler_note
                     self.observations.append(obs)
 
         # Let's just make this an array for ease of use
         self.observations = np.concatenate(self.observations)
-        order = np.argsort(self.observations["filter"])
+        order = np.argsort(self.observations["band"])
         self.observations = self.observations[order]
 
-        n_filter_change = np.size(np.unique(self.observations["filter"]))
+        n_band_change = np.size(np.unique(self.observations["band"]))
 
         # Make an estimate of how long a sequence will take.
         # Assumes no major rotational or spatial
         # dithering slowing things down.
-        # Does not account for unavailable filters.
+        # Does not account for unavailable bands.
         self.approx_time = (
             np.sum(self.observations["exptime"] + readtime * self.observations["nexp"])
-            + filter_change_time * n_filter_change
+            + band_change_time * n_band_change
         )
         # convert to days, for internal approximation in timestep sizes
         self.approx_time /= 3600.0 / 24.0
@@ -247,12 +247,12 @@ class FieldSurvey(BaseSurvey):
             # Set the flush_by
             result["flush_by_mjd"] = conditions.mjd + self.approx_time + self.flush_pad
 
-            # remove filters that are not mounted
-            mask = np.isin(result["filter"], conditions.mounted_filters)
+            # remove bands that are not mounted
+            mask = np.isin(result["band"], conditions.mounted_bands)
             result = result[mask]
-            # Put current loaded filter first
-            ind1 = np.where(result["filter"] == conditions.current_filter)[0]
-            ind2 = np.where(result["filter"] != conditions.current_filter)[0]
+            # Put current loaded band first
+            ind1 = np.where(result["band"] == conditions.current_band)[0]
+            ind2 = np.where(result["band"] != conditions.current_band)[0]
             result = result[ind1.tolist() + (ind2.tolist())]
 
         return result
@@ -278,19 +278,19 @@ class FieldAltAzSurvey(FieldSurvey):
     alt : `float`
         The altitude of the field to observe (degrees)
     sequence : `list` [`str`]
-        The sequence of observations to take. (specify which filters to use).
+        The sequence of observations to take. (specify which bands to use).
     nvisits : `dict` {`str`: `int`}
-        Dictionary of the number of visits in each filter.
-        Default of None will use a backup sequence of 20 visits per filter.
-        Must contain all filters in sequence.
+        Dictionary of the number of visits in each band.
+        Default of None will use a backup sequence of 20 visits per band.
+        Must contain all bands in sequence.
     exptimes : `dict` {`str`: `float`}
-        Dictionary of the exposure time for visits in each filter.
+        Dictionary of the exposure time for visits in each band.
         Default of None will use a backup sequence of 38s in u, and
-        29.2s in all other bands. Must contain all filters in sequence.
+        29.2s in all other bands. Must contain all bands in sequence.
     nexps : dict` {`str`: `int`}
-        Dictionary of the number of exposures per visit in each filter.
+        Dictionary of the number of exposures per visit in each band.
         Default of None will use a backup sequence of 1 exposure per visit
-        in u band, 2 in all other bands. Must contain all filters in sequence.
+        in u band, 2 in all other bands. Must contain all bands in sequence.
     ignore_obs : `list` [`str`] or None
         Ignore observations with this string in the `scheduler_note`.
         Will ignore observations which match subsets of the string, as well as
@@ -307,8 +307,8 @@ class FieldAltAzSurvey(FieldSurvey):
     readtime : `float`
         Readout time for computing approximate time of observing
         the sequence. (seconds)
-    filter_change_time : `float`
-        Filter change time, on average. Used for computing approximate
+    band_change_time : `float`
+        Band change time, on average. Used for computing approximate
         time for the observing sequence. (seconds)
     nside : `float` or None
         Nside for computing survey basis functions and maps.
@@ -333,12 +333,11 @@ class FieldAltAzSurvey(FieldSurvey):
         observation_reason=None,
         scheduler_note=None,
         readtime=2.4,
-        filter_change_time=120.0,
+        band_change_time=120.0,
         nside=DEFAULT_NSIDE,
         flush_pad=30.0,
         detailers=None,
     ):
-
         if detailers is None:
             detailers = [AltAz2RaDecDetailer()]
 
@@ -369,7 +368,7 @@ class FieldAltAzSurvey(FieldSurvey):
             observation_reason=observation_reason,
             scheduler_note=scheduler_note,
             readtime=readtime,
-            filter_change_time=filter_change_time,
+            band_change_time=band_change_time,
             nside=nside,
             flush_pad=flush_pad,
             detailers=detailers,

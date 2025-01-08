@@ -10,7 +10,6 @@ from rubin_scheduler.scheduler.utils import ObservationArray
 
 
 class TestBasis(unittest.TestCase):
-
     def test_basics(self):
         """Test the basics of each basis function"""
 
@@ -22,8 +21,8 @@ class TestBasis(unittest.TestCase):
             basis_functions.AvoidFastRevisitsBasisFunction,
             basis_functions.VisitRepeatBasisFunction,
             basis_functions.M5DiffBasisFunction,
-            basis_functions.StrictFilterBasisFunction,
-            basis_functions.FilterChangeBasisFunction,
+            basis_functions.StrictBandBasisFunction,
+            basis_functions.BandChangeBasisFunction,
             basis_functions.SlewtimeBasisFunction,
             basis_functions.AzModuloBasisFunction,
             basis_functions.DecModuloBasisFunction,
@@ -31,9 +30,9 @@ class TestBasis(unittest.TestCase):
             basis_functions.EclipticBasisFunction,
             basis_functions.NGoodSeeingBasisFunction,
             basis_functions.AvoidDirectWind,
-            basis_functions.FilterDistBasisFunction,
+            basis_functions.BandDistBasisFunction,
             basis_functions.RewardRisingBasisFunction,
-            basis_functions.FilterLoadedBasisFunction,
+            basis_functions.BandLoadedBasisFunction,
             basis_functions.OnceInNightBasisFunction,
             basis_functions.SunAltHighLimitBasisFunction,
             basis_functions.TimeToTwilightBasisFunction,
@@ -59,7 +58,7 @@ class TestBasis(unittest.TestCase):
         ]
 
         obs = ObservationArray()
-        obs["filter"] = "r"
+        obs["band"] = "r"
         obs["mjd"] = 59000.0
         observatory = ModelObservatory()
         conditions = observatory.return_conditions()
@@ -83,7 +82,7 @@ class TestBasis(unittest.TestCase):
 
         # Add 1st observation, should still be zero
         obs = ObservationArray()
-        obs["filter"] = "r"
+        obs["band"] = "r"
         obs["mjd"] = 59000.0
         conditions = Conditions()
         conditions.mjd = np.max(obs["mjd"])
@@ -132,7 +131,7 @@ class TestBasis(unittest.TestCase):
         assert visit_gap.check_feasibility(conditions=conditions)
 
         observation = ObservationArray()
-        observation["filter"] = "r"
+        observation["band"] = "r"
         observation["scheduler_note"] = "foo"
         observation["mjd"] = 59000.0
 
@@ -152,8 +151,8 @@ class TestBasis(unittest.TestCase):
 
         assert visit_gap.check_feasibility(conditions=conditions)
 
-    def test_visit_gap_with_filter(self):
-        visit_gap = basis_functions.VisitGap(note="test", filter_names=["g"])
+    def test_visit_gap_with_band(self):
+        visit_gap = basis_functions.VisitGap(note="test", band_names=["g"])
 
         conditions = Conditions()
         conditions.mjd = 59000.0
@@ -162,7 +161,7 @@ class TestBasis(unittest.TestCase):
         assert visit_gap.check_feasibility(conditions=conditions)
 
         observation = ObservationArray()
-        observation["filter"] = "r"
+        observation["band"] = "r"
         observation["scheduler_note"] = "foo"
         observation["mjd"] = 59000.0
 
@@ -174,13 +173,13 @@ class TestBasis(unittest.TestCase):
         observation["scheduler_note"] = "test"
         visit_gap.add_observation(observation=observation)
 
-        # observation with the wrong filter
+        # observation with the wrong band
         assert visit_gap.check_feasibility(conditions=conditions)
 
-        observation["filter"] = "g"
+        observation["band"] = "g"
         visit_gap.add_observation(observation=observation)
 
-        # observation with the correct note and filter
+        # observation with the correct note and band
         assert not visit_gap.check_feasibility(conditions=conditions)
 
         # check it becomes feasible again once enough time has passed
@@ -188,8 +187,8 @@ class TestBasis(unittest.TestCase):
 
         assert visit_gap.check_feasibility(conditions=conditions)
 
-    def test_visit_gap_with_multiple_filters(self):
-        visit_gap = basis_functions.VisitGap(note="test", filter_names=["g", "i"])
+    def test_visit_gap_with_multiple_bands(self):
+        visit_gap = basis_functions.VisitGap(note="test", band_names=["g", "i"])
 
         conditions = Conditions()
         conditions.mjd = 59000.0
@@ -198,7 +197,7 @@ class TestBasis(unittest.TestCase):
         assert visit_gap.check_feasibility(conditions=conditions)
 
         observation = ObservationArray()
-        observation["filter"] = "r"
+        observation["band"] = "r"
         observation["scheduler_note"] = "foo"
         observation["mjd"] = 59000.0
 
@@ -210,28 +209,28 @@ class TestBasis(unittest.TestCase):
         observation["scheduler_note"] = "test"
         visit_gap.add_observation(observation=observation)
 
-        # observation with the wrong filter
+        # observation with the wrong band
         assert visit_gap.check_feasibility(conditions=conditions)
 
-        observation["filter"] = "g"
+        observation["band"] = "g"
         observation["mjd"] += 1e-3
         visit_gap.add_observation(observation=observation)
 
-        # observation with the correct note but only one filter
+        # observation with the correct note but only one band
         assert visit_gap.check_feasibility(conditions=conditions)
 
-        observation["filter"] = "i"
+        observation["band"] = "i"
         observation["mjd"] += 1e-3
         visit_gap.add_observation(observation=observation)
 
-        # observation with the correct note and both filters
+        # observation with the correct note and both bands
         assert not visit_gap.check_feasibility(conditions=conditions)
 
         # make sure it is still not feasible after only the g observation gap
         # has passed
         conditions.mjd += visit_gap.gap + 1.1e-3
 
-        # observation with the correct note and both filters
+        # observation with the correct note and both bands
         assert not visit_gap.check_feasibility(conditions=conditions)
 
         # make sure it is feasible after both gaps have passed

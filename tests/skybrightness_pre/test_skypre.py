@@ -44,14 +44,14 @@ class TestSkyPre(unittest.TestCase):
             mjds.append(sms[0].mjds[between + 1] + timestep_max)
 
             indxes = [None, [100, 101]]
-            filters = [["u", "g", "r", "i", "z", "y"], ["r"]]
+            bands = [["u", "g", "r", "i", "z", "y"], ["r"]]
 
             for sm in sms:
                 for mjd in mjds:
                     for indx in indxes:
-                        for filt in filters:
-                            mags = sm.return_mags(mjd, indx=indx, filters=filt)
-                            # Check the filters returned are correct
+                        for filt in bands:
+                            mags = sm.return_mags(mjd, indx=indx, bands=filt)
+                            # Check the bands returned are correct
                             self.assertEqual(len(filt), len(list(mags.keys())))
                             self.assertEqual(set(filt), set(mags.keys()))
                             # Check the magnitudes are correct

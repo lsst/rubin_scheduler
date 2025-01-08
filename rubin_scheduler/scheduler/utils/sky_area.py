@@ -1,7 +1,7 @@
 __all__ = (
     "get_current_footprint",
     "generate_all_sky",
-    "filter_count_ratios",
+    "band_count_ratios",
     "SkyAreaGenerator",
     "SkyAreaGeneratorGalplane",
     "EuclidOverlapFootprint",
@@ -104,14 +104,14 @@ def generate_all_sky(nside=DEFAULT_NSIDE, elevation_limit=20, mask=hp.UNSEEN):
     }
 
 
-def filter_count_ratios(target_maps):
-    """Compute the desired ratio of observations per filter.
+def band_count_ratios(target_maps):
+    """Compute the desired ratio of observations per band.
 
-    Given a goal map that includes multiple filters, sum the number of
-    pixels in each map and return this per-filter, normalized so the sum
-    across all filters is 1.
+    Given a goal map that includes multiple bands, sum the number of
+    pixels in each map and return this per-band, normalized so the sum
+    across all bands is 1.
     If the map is constant over all healpixels, this is the
-    ratio of filters at the max/constant value.
+    ratio of bands at the max/constant value.
     """
     results = {}
     all_norm = 0.0
@@ -126,7 +126,7 @@ def filter_count_ratios(target_maps):
 
 class SkyAreaGenerator:
     """
-    Generate survey footprint maps in each filter.
+    Generate survey footprint maps in each band.
 
     Parameters
     ----------
@@ -135,11 +135,11 @@ class SkyAreaGenerator:
     dust_limit : `float`
         E(B-V) limit for dust extinction. Default of 0.199.
     smoothing_cutoff : `float`
-       We apply a smoothing filter to the defined dust-free region to
+       We apply a smoothing band to the defined dust-free region to
        avoid sharp edges. Larger values = less area, but guaranteed
        less dust extinction. Reflects the value to cut at, after smoothing.
     smoothing_beam : `float`
-        The size of the smoothing filter, in degrees.
+        The size of the smoothing band, in degrees.
     lmc_ra, lmc_dec : `float`, `float`
         RA and Dec locations of the LMC, in degrees.
     lmc_radius : `float`
@@ -365,14 +365,14 @@ class SkyAreaGenerator:
             bulge = np.where(((self.gal_lon - gal_long1) % 360) < gp_length, bulge, 0)
         return bulge
 
-    def add_virgo_cluster(self, filter_ratios, label="virgo"):
+    def add_virgo_cluster(self, band_ratios, label="virgo"):
         """Define a circular region around the Virgo Cluster.
         Updates self.healmaps and self.pix_labels
 
         Parameters
         ----------
-        filter_ratios : `dict` {`str`: `float`}
-            Dictionary of weights per filter for the footprint.
+        band_ratios : `dict` {`str`: `float`}
+            Dictionary of weights per band for the footprint.
         label : `str`, optional
             Label to apply to the resulting footprint
         """
@@ -381,12 +381,12 @@ class SkyAreaGenerator:
         # Don't overide any pixels that have already been designated
         indx = np.where((temp_map > 0) & (self.pix_labels == ""))
         self.pix_labels[indx] = label
-        for filtername in filter_ratios:
-            self.healmaps[filtername][indx] = filter_ratios[filtername]
+        for bandname in band_ratios:
+            self.healmaps[bandname][indx] = band_ratios[bandname]
 
     def add_magellanic_clouds(
         self,
-        filter_ratios,
+        band_ratios,
         label="LMC_SMC",
     ):
         """Define circular regions around the Magellanic Clouds.
@@ -394,8 +394,8 @@ class SkyAreaGenerator:
 
         Parameters
         -----------
-        filter_ratios : `dict` {`str`: `float`}
-            Dictionary of weights per filter for the footprint.
+        band_ratios : `dict` {`str`: `float`}
+            Dictionary of weights per band for the footprint.
         label : `str`, optional
             Label to apply to the resulting footprint
         """
@@ -418,35 +418,35 @@ class SkyAreaGenerator:
         indx = np.where((temp_map > 0) & (self.pix_labels == ""))
 
         self.pix_labels[indx] = label
-        for filtername in filter_ratios:
-            self.healmaps[filtername][indx] = filter_ratios[filtername]
+        for bandname in band_ratios:
+            self.healmaps[bandname][indx] = band_ratios[bandname]
 
-    def add_scp(self, filter_ratios, label="scp"):
+    def add_scp(self, band_ratios, label="scp"):
         """Define a south celestial pole cap region.
         Updates self.healmaps and self.pix_labels.
 
         Parameters
         ----------
-        filter_ratios : `dict` {`str`: `float`}
-            Dictionary of weights per filter for the footprint.
+        band_ratios : `dict` {`str`: `float`}
+            Dictionary of weights per band for the footprint.
         label : `str`, optional
             Label to apply to the resulting footprint
         """
         indx = np.where((self.dec < self.scp_dec_max) & (self.pix_labels == ""))
 
         self.pix_labels[indx] = label
-        for filtername in filter_ratios:
-            self.healmaps[filtername][indx] = filter_ratios[filtername]
+        for bandname in band_ratios:
+            self.healmaps[bandname][indx] = band_ratios[bandname]
 
-    def add_bulge(self, filter_ratios, label="bulge"):
+    def add_bulge(self, band_ratios, label="bulge"):
         """Define a bulge region, where the 'bulge' is a large "diamond"
         centered on the galactic center.
         Updates self.healmaps and self.pix_labels.
 
         Parameters
         ----------
-        filter_ratios : `dict` {`str`: `float`}
-            Dictionary of weights per filter for the footprint.
+        band_ratios : `dict` {`str`: `float`}
+            Dictionary of weights per band for the footprint.
         label : `str`, optional
             Label to apply to the resulting footprint
         """
@@ -464,17 +464,17 @@ class SkyAreaGenerator:
         bulge[np.where(np.abs(self.gal_lat) > self.gal_lat_width_max)] = 0
         indx = np.where((bulge > 0) & (self.pix_labels == ""))
         self.pix_labels[indx] = label
-        for filtername in filter_ratios:
-            self.healmaps[filtername][indx] = filter_ratios[filtername]
+        for bandname in band_ratios:
+            self.healmaps[bandname][indx] = band_ratios[bandname]
 
-    def add_lowdust_wfd(self, filter_ratios, label="lowdust"):
+    def add_lowdust_wfd(self, band_ratios, label="lowdust"):
         """Define a low-dust WFD region.
         Updates self.healmaps and self.pix_labels.
 
         Parameters
         ----------
-        filter_ratios : `dict` {`str`: `float`}
-            Dictionary of weights per filter for the footprint.
+        band_ratios : `dict` {`str`: `float`}
+            Dictionary of weights per band for the footprint.
         label : `str`, optional
             Label to apply to the resulting footprint
         """
@@ -495,17 +495,17 @@ class SkyAreaGenerator:
 
         indx = np.where((dustfree > 0) & (self.pix_labels == ""))
         self.pix_labels[indx] = label
-        for filtername in filter_ratios:
-            self.healmaps[filtername][indx] = filter_ratios[filtername]
+        for bandname in band_ratios:
+            self.healmaps[bandname][indx] = band_ratios[bandname]
 
-    def add_dusty_plane(self, filter_ratios, label="dusty_plane"):
+    def add_dusty_plane(self, band_ratios, label="dusty_plane"):
         """Define high-dust region of the map.
         Updates self.healmaps and self.pix_labels.
 
         Parameters
         ----------
-        filter_ratios : `dict` {`str`: `float`}
-            Dictionary of weights per filter for the footprint.
+        band_ratios : `dict` {`str`: `float`}
+            Dictionary of weights per band for the footprint.
         label : `str`, optional
             Label to apply to the resulting footprint
         """
@@ -517,17 +517,17 @@ class SkyAreaGenerator:
 
         indx = np.where((dusty > 0) & (self.pix_labels == ""))
         self.pix_labels[indx] = label
-        for filtername in filter_ratios:
-            self.healmaps[filtername][indx] = filter_ratios[filtername]
+        for bandname in band_ratios:
+            self.healmaps[bandname][indx] = band_ratios[bandname]
 
-    def add_nes(self, filter_ratios, label="nes"):
+    def add_nes(self, band_ratios, label="nes"):
         """Define a North Ecliptic Plane region.
         Updates self.healmaps and self.pix_labels.
 
         Parameters
         ----------
-        filter_ratios : `dict` {`str`: `float`}
-            Dictionary of weights per filter for the footprint.
+        band_ratios : `dict` {`str`: `float`}
+            Dictionary of weights per band for the footprint.
         label : `str`, optional
             Label to apply to the resulting footprint
         """
@@ -543,8 +543,8 @@ class SkyAreaGenerator:
 
         indx = np.where((nes > 0) & (self.pix_labels == ""))
         self.pix_labels[indx] = label
-        for filtername in filter_ratios:
-            self.healmaps[filtername][indx] = filter_ratios[filtername]
+        for bandname in band_ratios:
+            self.healmaps[bandname][indx] = band_ratios[bandname]
 
     def return_maps(
         self,
@@ -576,19 +576,19 @@ class SkyAreaGenerator:
         Parameters
         ----------
         magellanic_clouds_ratios :  `dict` {`str`: `float`}
-            Magellanic clouds filter ratios.
+            Magellanic clouds band ratios.
         scp_ratios :  `dict` {`str`: `float`}
-            SCP filter ratios.
+            SCP band ratios.
         nes_ratios :  `dict` {`str`: `float`}
-            NES filter ratios
+            NES band ratios
         dusty_plane-ratios :  `dict` {`str`: `float`}
-            dusty plane filter ratios
+            dusty plane band ratios
         low_dust_ratios :  `dict` {`str`: `float`}
-            Low Dust WFD filter ratios.
+            Low Dust WFD band ratios.
         bulge_ratios :  `dict` {`str`: `float`}
-            Bulge region filter ratios.
+            Bulge region band ratios.
         virgo_ratios :  `dict` {`str`: `float`}
-            Virgo cluster coverage filter ratios.
+            Virgo cluster coverage band ratios.
 
         Returns
         --------
@@ -601,11 +601,11 @@ class SkyAreaGenerator:
         -----
         Each healpix point can only belong to one region. Which region it is
         assigned to first will be used for its definition, thus order
-        matters within this method. The region defines the filter ratios.
+        matters within this method. The region defines the band ratios.
 
-        The filter ratios contain information about the *ratio* of visits
+        The band ratios contain information about the *ratio* of visits
         in that region (compared to some reference point in the entire map)
-        in each particular filter. By convention, the low_dust_wfd ratio
+        in each particular band. By convention, the low_dust_wfd ratio
         in r band is set to "1" and all other values are then in reference
         to that.
 
@@ -650,10 +650,10 @@ class SkyAreaGenerator:
         Returns
         -------
         result : `np.array`, (N,)
-            array with filtername dtypes that have HEALpix arrays with the
+            array with bandname dtypes that have HEALpix arrays with the
             number of expected visits of each HEALpix center
         sum_map : `np.array`, (N,)
-            The number of visits summed over all the filters
+            The number of visits summed over all the bands
         labels : `np.ndarray`, (N,)
             Array string labels for each HEALpix
         """
@@ -711,7 +711,7 @@ class SkyAreaGenerator:
 
 class SkyAreaGeneratorGalplane(SkyAreaGenerator):
     """
-    Generate survey footprint maps in each filter.
+    Generate survey footprint maps in each band.
     Adds a 'bulgy' galactic plane coverage map.
 
     Parameters
@@ -721,11 +721,11 @@ class SkyAreaGeneratorGalplane(SkyAreaGenerator):
     dust_limit : `float`
         E(B-V) limit for dust extinction. Default of 0.199.
     smoothing_cutoff : `float`
-       We apply a smoothing filter to the defined dust-free region to
+       We apply a smoothing band to the defined dust-free region to
        avoid sharp edges. Larger values = less area, but guaranteed
        less dust extinction. Reflects the value to cut at, after smoothing.
     smoothing_beam : `float`
-        The size of the smoothing filter, in degrees.
+        The size of the smoothing band, in degrees.
     lmc_ra, lmc_dec : `float`, `float`
         RA and Dec locations of the LMC, in degrees.
     lmc_radius : `float`
@@ -770,7 +770,7 @@ class SkyAreaGeneratorGalplane(SkyAreaGenerator):
     def __init__(self, lmc_ra=89.0, lmc_dec=-70, **kwargs):
         super().__init__(lmc_ra=lmc_ra, lmc_dec=lmc_dec, **kwargs)
 
-    def add_bulgy(self, filter_ratios, label="bulgy"):
+    def add_bulgy(self, band_ratios, label="bulgy"):
         """Define a bulge region, where the 'bulge' is a series of
         circles set by points defined to match as best as possible the
         map requested by the SMWLV working group on galactic plane coverage.
@@ -779,8 +779,8 @@ class SkyAreaGeneratorGalplane(SkyAreaGenerator):
 
         Parameters
         ----------
-        filter_ratios : `dict` {`str`: `float`}
-            Dictionary of weights per filter for the footprint.
+        band_ratios : `dict` {`str`: `float`}
+            Dictionary of weights per band for the footprint.
         label : `str`, optional
             Label to apply to the resulting footprint
         """
@@ -805,8 +805,8 @@ class SkyAreaGeneratorGalplane(SkyAreaGenerator):
             # Only change pixels where the label isn't already set.
             indx = np.where((dist < point[2]) & (self.pix_labels == ""))
             self.pix_labels[indx] = label
-            for filtername in filter_ratios:
-                self.healmaps[filtername][indx] = filter_ratios[filtername]
+            for bandname in band_ratios:
+                self.healmaps[bandname][indx] = band_ratios[bandname]
 
     def return_maps(
         self,
@@ -838,19 +838,19 @@ class SkyAreaGeneratorGalplane(SkyAreaGenerator):
         Parameters
         ----------
         magellanic_clouds_ratios :  `dict` {`str`: `float`}
-            Magellanic clouds filter ratios.
+            Magellanic clouds band ratios.
         scp_ratios :  `dict` {`str`: `float`}
-            SCP filter ratios.
+            SCP band ratios.
         nes_ratios :  `dict` {`str`: `float`}
-            NES filter ratios
+            NES band ratios
         dusty_plane-ratios :  `dict` {`str`: `float`}
-            dusty plane filter ratios
+            dusty plane band ratios
         low_dust_ratios :  `dict` {`str`: `float`}
-            Low Dust WFD filter ratios.
+            Low Dust WFD band ratios.
         bulge_ratios :  `dict` {`str`: `float`}
-            Bulge region filter ratios (note this is the 'bulgy' bulge).
+            Bulge region band ratios (note this is the 'bulgy' bulge).
         virgo_ratios :  `dict` {`str`: `float`}
-            Virgo cluster coverage filter ratios.
+            Virgo cluster coverage band ratios.
 
         Returns
         --------
@@ -863,11 +863,11 @@ class SkyAreaGeneratorGalplane(SkyAreaGenerator):
         -----
         Each healpix point can only belong to one region. Which region it is
         assigned to first will be used for its definition, thus order
-        matters within this method. The region defines the filter ratios.
+        matters within this method. The region defines the band ratios.
 
-        The filter ratios contain information about the *ratio* of visits
+        The band ratios contain information about the *ratio* of visits
         in that region (compared to some reference point in the entire map)
-        in each particular filter. By convention, the low_dust_wfd ratio
+        in each particular band. By convention, the low_dust_wfd ratio
         in r band is set to "1" and all other values are then in reference
         to that.
 
@@ -892,7 +892,7 @@ class SkyAreaGeneratorGalplane(SkyAreaGenerator):
 
 class EuclidOverlapFootprint(SkyAreaGeneratorGalplane):
     """
-    Generate survey footprint maps in each filter.
+    Generate survey footprint maps in each band.
     This uses a bulgy coverage in the galactic plane, plus small
     Euclid footprint extension to the low-dust WFD.
 
@@ -903,11 +903,11 @@ class EuclidOverlapFootprint(SkyAreaGeneratorGalplane):
     dust_limit : `float`
         E(B-V) limit for dust extinction. Default of 0.199.
     smoothing_cutoff : `float`
-       We apply a smoothing filter to the defined dust-free region to
+       We apply a smoothing band to the defined dust-free region to
        avoid sharp edges. Larger values = less area, but guaranteed
        less dust extinction. Reflects the value to cut at, after smoothing.
     smoothing_beam : `float`
-        The size of the smoothing filter, in degrees.
+        The size of the smoothing band, in degrees.
     lmc_ra, lmc_dec : `float`, `float`
         RA and Dec locations of the LMC, in degrees.
     lmc_radius : `float`
@@ -958,7 +958,7 @@ class EuclidOverlapFootprint(SkyAreaGeneratorGalplane):
 
     def add_euclid_overlap(
         self,
-        filter_ratios,
+        band_ratios,
         label="euclid_overlap",
     ):
         """Define a small extension (few degrees) to the low-dust WFD
@@ -967,8 +967,8 @@ class EuclidOverlapFootprint(SkyAreaGeneratorGalplane):
 
         Parameters
         ----------
-        filter_ratios : `dict` {`str`: `float`}
-            Dictionary of weights per filter for the footprint.
+        band_ratios : `dict` {`str`: `float`}
+            Dictionary of weights per band for the footprint.
         label : `str`, optional
             Label to apply to the resulting footprint
         """
@@ -989,8 +989,8 @@ class EuclidOverlapFootprint(SkyAreaGeneratorGalplane):
         # find which map points are inside the contour
         indx = np.where((np.array(in_poly) == True) & (self.pix_labels == ""))[0]
         self.pix_labels[indx] = label
-        for filtername in filter_ratios:
-            self.healmaps[filtername][indx] = filter_ratios[filtername]
+        for bandname in band_ratios:
+            self.healmaps[bandname][indx] = band_ratios[bandname]
 
     def return_maps(
         self,
@@ -1023,19 +1023,19 @@ class EuclidOverlapFootprint(SkyAreaGeneratorGalplane):
         Parameters
         ----------
         magellanic_clouds_ratios :  `dict` {`str`: `float`}
-            Magellanic clouds filter ratios.
+            Magellanic clouds band ratios.
         scp_ratios :  `dict` {`str`: `float`}
-            SCP filter ratios.
+            SCP band ratios.
         nes_ratios :  `dict` {`str`: `float`}
-            NES filter ratios
+            NES band ratios
         dusty_plane-ratios :  `dict` {`str`: `float`}
-            dusty plane filter ratios
+            dusty plane band ratios
         low_dust_ratios :  `dict` {`str`: `float`}
-            Low Dust WFD filter ratios.
+            Low Dust WFD band ratios.
         bulge_ratios :  `dict` {`str`: `float`}
-            Bulge region filter ratios (note this is the 'bulgy' bulge).
+            Bulge region band ratios (note this is the 'bulgy' bulge).
         virgo_ratios :  `dict` {`str`: `float`}
-            Virgo cluster coverage filter ratios.
+            Virgo cluster coverage band ratios.
         euclid_ratios : `dict` {`str`: `float`}
             Euclid footprint overlap ratios.
 
@@ -1050,11 +1050,11 @@ class EuclidOverlapFootprint(SkyAreaGeneratorGalplane):
         -----
         Each healpix point can only belong to one region. Which region it is
         assigned to first will be used for its definition, thus order
-        matters within this method. The region defines the filter ratios.
+        matters within this method. The region defines the band ratios.
 
-        The filter ratios contain information about the *ratio* of visits
+        The band ratios contain information about the *ratio* of visits
         in that region (compared to some reference point in the entire map)
-        in each particular filter. By convention, the low_dust_wfd ratio
+        in each particular band. By convention, the low_dust_wfd ratio
         in r band is set to "1" and all other values are then in reference
         to that.
 
@@ -1086,7 +1086,6 @@ class EuclidOverlapFootprint(SkyAreaGeneratorGalplane):
 
 
 class Phase3AreaMap(EuclidOverlapFootprint):
-
     def __init__(
         self,
         nside=DEFAULT_NSIDE,
@@ -1173,7 +1172,7 @@ class Phase3AreaMap(EuclidOverlapFootprint):
 
         self.euclid_contour_file = euclid_contour_file
 
-    def add_bulgy(self, filter_ratios, label="bulgy"):
+    def add_bulgy(self, band_ratios, label="bulgy"):
         """Define a bulge region, where the 'bulge' is a series of
         circles set by points defined to match as best as possible the
         map requested by the SMWLV working group on galactic plane coverage.
@@ -1182,8 +1181,8 @@ class Phase3AreaMap(EuclidOverlapFootprint):
 
         Parameters
         ----------
-        filter_ratios : `dict` {`str`: `float`}
-            Dictionary of weights per filter for the footprint.
+        band_ratios : `dict` {`str`: `float`}
+            Dictionary of weights per band for the footprint.
         label : `str`, optional
             Label to apply to the resulting footprint
         """
@@ -1207,8 +1206,8 @@ class Phase3AreaMap(EuclidOverlapFootprint):
             # Only change pixels where the label isn't already set.
             indx = np.where((dist < point[2]) & (self.pix_labels == ""))
             self.pix_labels[indx] = label
-            for filtername in filter_ratios:
-                self.healmaps[filtername][indx] = filter_ratios[filtername]
+            for bandname in band_ratios:
+                self.healmaps[bandname][indx] = band_ratios[bandname]
 
     def return_maps(
         self,
@@ -1235,7 +1234,6 @@ class Phase3AreaMap(EuclidOverlapFootprint):
         virgo_ratios={"u": 0.35, "g": 0.4, "r": 1.0, "i": 1.0, "z": 0.9, "y": 0.9},
         euclid_ratios={"u": 0.35, "g": 0.4, "r": 1.0, "i": 1.0, "z": 0.9, "y": 0.9},
     ):
-
         # Array to hold the labels for each pixel
         self.pix_labels = np.zeros(hp.nside2npix(self.nside), dtype="U20")
         self.healmaps = np.zeros(

@@ -76,7 +76,7 @@ def interp_angle(x_out, xp, anglep, degrees=False):
     return result
 
 
-def simple_daytime(sky_alt, sky_az, sun_alt, sun_az, filter_name="r", bright_val=2.0, sky_alt_min=20.0):
+def simple_daytime(sky_alt, sky_az, sun_alt, sun_az, band_name="r", bright_val=2.0, sky_alt_min=20.0):
     """A simple function to return a sky brightness map when the sun is up
 
     Parameters
@@ -89,8 +89,8 @@ def simple_daytime(sky_alt, sky_az, sun_alt, sun_az, filter_name="r", bright_val
         Altitude of the sun. Degrees.
     sun_az : `float`
         Azimuth of the sun. Degrees.
-    filter_name : `str`
-        Name of the filter, default "r". Currently unused, but
+    band_name : `str`
+        Name of the band, default "r". Currently unused, but
         could be useful in the future if a more complicated function
         gets subbed in.
     bright_val : `float`
@@ -143,7 +143,7 @@ class SkyModelPreBase(abc.ABC):
         self.info = None
         self.sb = None
         self.header = None
-        self.filter_names = None
+        self.band_names = None
         self.verbose = verbose
         self.sun_alt_limit = np.radians(sun_alt_limit)
 
@@ -229,7 +229,7 @@ class SkyModelPreBase(abc.ABC):
             pass
 
         try:
-            del self.filter_names
+            del self.band_names
         except AttributeError:
             pass
 
@@ -253,20 +253,20 @@ class SkyModelPreBase(abc.ABC):
         self.timestep_max = np.max(_timestep_max)
 
         self.sb = h5["sky_mags"][indxs[0] : indxs[1]]
-        self.filter_names = self.sb.dtype.names
+        self.band_names = self.sb.dtype.names
         h5.close()
 
         if self.verbose:
             print("%s loaded" % os.path.split(filename)[1])
 
-        self.nside = hp.npix2nside(self.sb[self.filter_names[0]][0, :].size)
+        self.nside = hp.npix2nside(self.sb[self.band_names[0]][0, :].size)
 
     def return_mags(
         self,
         mjd,
         indx=None,
         badval=hp.UNSEEN,
-        filters=["u", "g", "r", "i", "z", "y"],
+        bands=["u", "g", "r", "i", "z", "y"],
         extrapolate=False,
     ):
         """Return a full sky map or individual pixels for the input mjd.
@@ -289,8 +289,8 @@ class SkyModelPreBase(abc.ABC):
             Set sky maps at high altitude (>86.5) to badval.
         badval : `float` (-1.6375e30)
             Mask value. Defaults to the healpy mask value.
-        filters : `list`, opt
-            List of strings for the filters that should be returned.
+        bands : `list`, opt
+            List of strings for the bands that should be returned.
             Default returns ugrizy.
         extrapolate : `bool` (False)
             In indx is set, extrapolate any masked pixels to be the
@@ -299,7 +299,7 @@ class SkyModelPreBase(abc.ABC):
         Returns
         -------
         sbs : `dict`
-            A dictionary with filter names as keys and np.arrays as
+            A dictionary with band names as keys and np.arrays as
             values which hold the sky brightness maps in mag/sq arcsec.
         """
         if mjd < self.loaded_range.min() or (mjd > self.loaded_range.max()):
@@ -327,7 +327,6 @@ class SkyModelPreBase(abc.ABC):
 
         # Check if we are between sunrise/set
         if baseline > self.timestep_max + 1e-6:
-
             # Check if sun is really high:
             obstime = Time(mjd, format="mjd")
             sun = get_sun(obstime)
@@ -339,13 +338,13 @@ class SkyModelPreBase(abc.ABC):
                 hp_aa = self.skycoord.transform_to(aa)
 
                 sbs = {}
-                for filter_name in filters:
-                    sbs[filter_name] = simple_daytime(
+                for band_name in bands:
+                    sbs[band_name] = simple_daytime(
                         hp_aa.alt.deg,
                         hp_aa.az.deg,
                         sun_alt_az.alt.deg,
                         sun_alt_az.az.deg,
-                        filter_name=filter_name,
+                        band_name=band_name,
                     )
 
             else:
@@ -353,41 +352,37 @@ class SkyModelPreBase(abc.ABC):
                 diff = np.abs(self.mjds[left.max() : right.max() + 1] - mjd)
                 closest_indx = np.array([left, right])[np.where(diff == np.min(diff))].min()
                 sbs = {}
-                for filter_name in filters:
-                    sbs[filter_name] = self.sb[filter_name][closest_indx, indx]
-                    sbs[filter_name][np.isinf(sbs[filter_name])] = badval
-                    sbs[filter_name][np.where(sbs[filter_name] == hp.UNSEEN)] = badval
+                for band_name in bands:
+                    sbs[band_name] = self.sb[band_name][closest_indx, indx]
+                    sbs[band_name][np.isinf(sbs[band_name])] = badval
+                    sbs[band_name][np.where(sbs[band_name] == hp.UNSEEN)] = badval
         else:
             wterm = (mjd - self.mjds[left]) / baseline
             w1 = 1.0 - wterm
             w2 = wterm
             sbs = {}
-            for filter_name in filters:
-                sbs[filter_name] = (
-                    self.sb[filter_name][left, indx] * w1 + self.sb[filter_name][right, indx] * w2
-                )
+            for band_name in bands:
+                sbs[band_name] = self.sb[band_name][left, indx] * w1 + self.sb[band_name][right, indx] * w2
         # If requested a certain pixel(s), and want to extrapolate.
         if (not full_sky) & extrapolate:
             masked_pix = False
-            for filter_name in filters:
-                if (badval in sbs[filter_name]) | (True in np.isnan(sbs[filter_name])):
+            for band_name in bands:
+                if (badval in sbs[band_name]) | (True in np.isnan(sbs[band_name])):
                     masked_pix = True
             if masked_pix:
                 # We have pixels that are masked that we want
                 # reasonable values for
                 full_sky_sb = self.return_mags(
                     mjd,
-                    filters=filters,
+                    bands=bands,
                 )
-                good = np.where((full_sky_sb[filters[0]] != badval) & ~np.isnan(full_sky_sb[filters[0]]))[0]
+                good = np.where((full_sky_sb[bands[0]] != badval) & ~np.isnan(full_sky_sb[bands[0]]))[0]
                 ra_full = self.ra[good]
                 dec_full = self.dec[good]
-                for filtername in filters:
-                    full_sky_sb[filtername] = full_sky_sb[filtername][good]
-                # Going to assume the masked pixels are the same in all filters
-                masked_indx = np.where(
-                    (sbs[filters[0]].ravel() == badval) | np.isnan(sbs[filters[0]].ravel())
-                )[0]
+                for bandname in bands:
+                    full_sky_sb[bandname] = full_sky_sb[bandname][good]
+                # Going to assume the masked pixels are the same in all bands
+                masked_indx = np.where((sbs[bands[0]].ravel() == badval) | np.isnan(sbs[bands[0]].ravel()))[0]
                 for i, mi in enumerate(masked_indx):
                     # Note, this is going to be really slow for many
                     # pixels, should use a kdtree
@@ -398,8 +393,8 @@ class SkyModelPreBase(abc.ABC):
                         dec_full,
                     )
                     closest = np.where(dist == dist.min())[0]
-                    for filtername in filters:
-                        sbs[filtername].ravel()[mi] = np.min(full_sky_sb[filtername][closest])
+                    for bandname in bands:
+                        sbs[bandname].ravel()[mi] = np.min(full_sky_sb[bandname][closest])
 
         return sbs
 

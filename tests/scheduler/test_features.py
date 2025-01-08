@@ -17,7 +17,7 @@ def make_observations_list(nobs=1):
         observation["mjd"] = SURVEY_START_MJD + i * 30 / 60 / 60 / 24
         observation["RA"] = np.radians(30)
         observation["dec"] = np.radians(-20)
-        observation["filter"] = "r"
+        observation["band"] = "r"
         observation["scheduler_note"] = "test"
         observations_list.append(observation)
     return observations_list
@@ -57,7 +57,6 @@ def make_observations_arrays(observations_list, nside=32):
 
 
 class TestFeatures(unittest.TestCase):
-
     def test_features_add_observation_methods(self):
         # Generic test that add_observations_array equals add_observations
         # Under the default conditions.
@@ -71,7 +70,7 @@ class TestFeatures(unittest.TestCase):
             if (i - 1) % 3 == 0:
                 observations_list[i]["scheduler_note"] = "b"
             if i > 10:
-                observations_list[i]["filter"] = "g"
+                observations_list[i]["band"] = "g"
         observations_array, observations_hpid, list_of_hpids = make_observations_arrays(observations_list)
         features_to_test = features.BaseSurveyFeature.__subclasses__()
         for ff in features_to_test:
@@ -108,7 +107,7 @@ class TestFeatures(unittest.TestCase):
 
         # Add 1st observation, feature should still be zero
         obs = ObservationArray()
-        obs["filter"] = "r"
+        obs["band"] = "r"
         obs["mjd"] = 59000.0
         pin.add_observation(obs, indx=indx)
         self.assertEqual(np.max(pin.feature), 0.0)
@@ -174,13 +173,12 @@ class TestFeatures(unittest.TestCase):
         _ = conditions_naked.__str__()
 
     def test_note_last_observed(self):
-
         observations_list = make_observations_list(5)
         for i, obs in enumerate(observations_list):
             if i == 1:
                 obs["scheduler_note"] = "test 2"
             if i > 3:
-                obs["filter"] = "g"
+                obs["band"] = "g"
         observations_array, observations_hpid, list_of_hpids = make_observations_arrays(observations_list)
 
         # Test with no note - match all
@@ -213,10 +211,10 @@ class TestFeatures(unittest.TestCase):
         note_last_observed.add_observations_array(observations_array, observations_hpid)
         self.assertTrue(note_last_observed.feature == observations_list[-1]["mjd"])
 
-        # Add a filter requirement
+        # Add a band requirement
         note_last_observed = features.LastObservationMjd(
             note="test",
-            filtername="g",
+            bandname="g",
         )
         for obs in observations_list:
             note_last_observed.add_observation(observation=obs)
@@ -224,15 +222,15 @@ class TestFeatures(unittest.TestCase):
 
         note_last_observed = features.LastObservationMjd(
             note="test",
-            filtername="g",
+            bandname="g",
         )
         note_last_observed.add_observations_array(observations_array, observations_hpid)
         self.assertTrue(note_last_observed.feature == observations_list[-1]["mjd"])
 
-        # Add a different filter requirement
+        # Add a different band requirement
         note_last_observed = features.LastObservationMjd(
             note="test",
-            filtername="r",
+            bandname="r",
         )
         for obs in observations_list:
             note_last_observed.add_observation(observation=obs)
@@ -240,7 +238,7 @@ class TestFeatures(unittest.TestCase):
 
         note_last_observed = features.LastObservationMjd(
             note="test",
-            filtername="r",
+            bandname="r",
         )
         note_last_observed.add_observations_array(observations_array, observations_hpid)
         self.assertTrue(note_last_observed.feature == observations_list[3]["mjd"])
@@ -368,21 +366,21 @@ class TestFeatures(unittest.TestCase):
         observation["FWHMeff"] = 0.5
         season_feature.add_observation(observation, indxs)
         self.assertTrue(np.all(season_feature.feature[indxs] == 1))
-        # Add filter requirement.
+        # Add band requirement.
         season_feature = features.NObservationsCurrentSeason(
-            nside=nside, mjd_start=mjd_start, seeing_fwhm_max=1.0, filtername="r"
+            nside=nside, mjd_start=mjd_start, seeing_fwhm_max=1.0, bandname="r"
         )
-        observation["filter"] = "g"
-        # Don't add if in the wrong filter
+        observation["band"] = "g"
+        # Don't add if in the wrong band
         season_feature.add_observation(observation, indxs)
         self.assertTrue(np.all(season_feature.feature == 0))
-        # Do add if correct filter and good seeing.
-        observation["filter"] = "r"
+        # Do add if correct band and good seeing.
+        observation["band"] = "r"
         season_feature.add_observation(observation, indxs)
         self.assertTrue(np.all(season_feature.feature[indxs] == 1))
         # Add m5 requirement.
         season_feature = features.NObservationsCurrentSeason(
-            nside=nside, mjd_start=mjd_start, seeing_fwhm_max=1.0, filtername="r", m5_penalty_max=0
+            nside=nside, mjd_start=mjd_start, seeing_fwhm_max=1.0, bandname="r", m5_penalty_max=0
         )
         dark_map = dark_sky(nside)["r"]
         # Don't add if too bright
@@ -406,19 +404,19 @@ class TestFeatures(unittest.TestCase):
             observations_list[i]["scheduler_note"] = "survey b"
         observations_list[4]["scheduler_note"] = "survey"
         for i in [0, 1]:
-            observations_list[i]["filter"] = "r"
+            observations_list[i]["band"] = "r"
         for i in [2, 3, 4]:
-            observations_list[i]["filter"] = "g"
+            observations_list[i]["band"] = "g"
         observations_array, observations_hpid_array, list_of_hpids = make_observations_arrays(
             observations_list
         )
         # Count the observations matching any note
-        count_feature = features.NObsCount(scheduler_note=None, filtername=None)
+        count_feature = features.NObsCount(scheduler_note=None, bandname=None)
         for obs in observations_list:
             count_feature.add_observation(obs)
         self.assertTrue(count_feature.feature == 5)
         # and count again using add_observations_array
-        count_feature = features.NObsCount(scheduler_note=None, filtername=None)
+        count_feature = features.NObsCount(scheduler_note=None, bandname=None)
         count_feature.add_observations_array(observations_array, observations_hpid=observations_hpid_array)
         self.assertTrue(count_feature.feature == 5)
         # Count using a note to match
@@ -440,27 +438,27 @@ class TestFeatures(unittest.TestCase):
         count_feature = features.NObsCount(scheduler_note="survey")
         count_feature.add_observations_array(observations_array, observations_hpid=observations_hpid_array)
         self.assertTrue(count_feature.feature == 5)
-        # Count the observations matching filter
-        count_feature = features.NObsCount(scheduler_note=None, filtername="r")
+        # Count the observations matching band
+        count_feature = features.NObsCount(scheduler_note=None, bandname="r")
         for obs in observations_list:
             count_feature.add_observation(obs)
         self.assertTrue(count_feature.feature == 2)
         # and count again using add_observations_array
-        count_feature = features.NObsCount(scheduler_note=None, filtername="r")
+        count_feature = features.NObsCount(scheduler_note=None, bandname="r")
         count_feature.add_observations_array(observations_array, observations_hpid=observations_hpid_array)
         self.assertTrue(count_feature.feature == 2)
-        # Count the observations matching filter and surveyname
-        count_feature = features.NObsCount(scheduler_note="survey b", filtername="r")
+        # Count the observations matching band and surveyname
+        count_feature = features.NObsCount(scheduler_note="survey b", bandname="r")
         for obs in observations_list:
             count_feature.add_observation(obs)
         self.assertTrue(count_feature.feature == 1)
         # and count again using add_observations_array
-        count_feature = features.NObsCount(scheduler_note="survey b", filtername="r")
+        count_feature = features.NObsCount(scheduler_note="survey b", bandname="r")
         count_feature.add_observations_array(observations_array, observations_hpid=observations_hpid_array)
         self.assertTrue(count_feature.feature == 1)
 
         # Test backward compatibilty shim
-        count_feature = features.NObsCount(note="survey b", filtername="r")
+        count_feature = features.NObsCount(note="survey b", bandname="r")
         count_feature.add_observations_array(observations_array, observations_hpid=observations_hpid_array)
         self.assertTrue(count_feature.feature == 1)
 
@@ -567,9 +565,9 @@ class TestFeatures(unittest.TestCase):
             obs["mjd"] = SURVEY_START_MJD + i
             obs["rotSkyPos"] = 0
             if i < 6:
-                obs["filter"] = "r"
+                obs["band"] = "r"
             else:
-                obs["filter"] = "g"
+                obs["band"] = "g"
             if i % 2 == 0:
                 obs["RA"] = np.radians(30)
             else:
@@ -584,13 +582,13 @@ class TestFeatures(unittest.TestCase):
         observations_array, observations_hpid_array, list_of_hpids = make_observations_arrays(
             observations_list
         )
-        # Observations matching any note or filter
-        count_feature = features.NObservations(filtername=None, scheduler_note=None)
+        # Observations matching any note or band
+        count_feature = features.NObservations(bandname=None, scheduler_note=None)
         for obs, indx in zip(observations_list, indexes):
             count_feature.add_observation(obs, indx)
         self.assertTrue(count_feature.feature.max() == 6)
         # and count again using add_observations_array
-        count_feature = features.NObservations(filtername=None, scheduler_note=None)
+        count_feature = features.NObservations(bandname=None, scheduler_note=None)
         count_feature.add_observations_array(observations_array, observations_hpid=observations_hpid_array)
         self.assertTrue(count_feature.feature.max() == 6)
         # Observations matching a specific note - or are partial matches.
@@ -614,22 +612,22 @@ class TestFeatures(unittest.TestCase):
         count_feature = features.NObservations(scheduler_note="survey")
         count_feature.add_observations_array(observations_array, observations_hpid=observations_hpid_array)
         self.assertTrue(count_feature.feature.max() == 2)
-        # Observations matching any note but specified filter.
-        count_feature = features.NObservations(filtername="r", scheduler_note=None)
+        # Observations matching any note but specified band.
+        count_feature = features.NObservations(bandname="r", scheduler_note=None)
         for obs, indx in zip(observations_list, indexes):
             count_feature.add_observation(obs, indx)
         self.assertTrue(count_feature.feature.max() == 3)
         # and count again using add_observations_array
-        count_feature = features.NObservations(filtername="r", scheduler_note=None)
+        count_feature = features.NObservations(bandname="r", scheduler_note=None)
         count_feature.add_observations_array(observations_array, observations_hpid=observations_hpid_array)
         self.assertTrue(count_feature.feature.max() == 3)
-        # Observations matching specific note and  specified filter.
-        count_feature = features.NObservations(filtername="r", scheduler_note="survey")
+        # Observations matching specific note and  specified band.
+        count_feature = features.NObservations(bandname="r", scheduler_note="survey")
         for obs, indx in zip(observations_list, indexes):
             count_feature.add_observation(obs, indx)
         self.assertTrue(count_feature.feature.max() == 1)
         # and count again using add_observations_array
-        count_feature = features.NObservations(filtername="r", scheduler_note="survey")
+        count_feature = features.NObservations(bandname="r", scheduler_note="survey")
         count_feature.add_observations_array(observations_array, observations_hpid=observations_hpid_array)
         self.assertTrue(count_feature.feature.max() == 1)
 

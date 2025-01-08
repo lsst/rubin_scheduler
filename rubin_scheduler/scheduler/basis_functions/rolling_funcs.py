@@ -24,8 +24,8 @@ class FootprintBasisFunction(BaseBasisFunction):
 
     Parameters
     ----------
-    filtername : `str`, optional
-        The filter for this footprint. Default r.
+    bandname : `str`, optional
+        The band for this footprint. Default r.
     nside : `int`, optional
         The nside for the basis function and features.
         Default None uses `~utils.set_default_nside()`
@@ -43,12 +43,12 @@ class FootprintBasisFunction(BaseBasisFunction):
 
     def __init__(
         self,
-        filtername="r",
+        bandname="r",
         nside=None,
         footprint=None,
         out_of_bounds_val=-10.0,
     ):
-        super().__init__(nside=nside, filtername=filtername)
+        super().__init__(nside=nside, bandname=bandname)
         if footprint is None:
             # This is useful as a backup, but really footprint SHOULD
             # be specified when basis function is set up.
@@ -61,18 +61,18 @@ class FootprintBasisFunction(BaseBasisFunction):
         self.footprint = footprint
 
         self.survey_features = {}
-        # All the observations in all filters
-        self.survey_features["N_obs_all"] = features.NObservations(nside=self.nside, filtername=None)
-        self.survey_features["N_obs"] = features.NObservations(nside=self.nside, filtername=filtername)
+        # All the observations in all bands
+        self.survey_features["N_obs_all"] = features.NObservations(nside=self.nside, bandname=None)
+        self.survey_features["N_obs"] = features.NObservations(nside=self.nside, bandname=bandname)
 
         # should probably actually loop over all the target maps?
-        self.out_of_bounds_area = np.where(footprint.get_footprint(self.filtername) <= 0)[0]
+        self.out_of_bounds_area = np.where(footprint.get_footprint(self.bandname) <= 0)[0]
         self.out_of_bounds_val = out_of_bounds_val
 
     def _calc_value(self, conditions, indx=None):
         # Find out what the footprint object thinks we should have been
         # observed
-        desired_footprint_normed = self.footprint(conditions.mjd)[self.filtername]
+        desired_footprint_normed = self.footprint(conditions.mjd)[self.bandname]
 
         # Compute how many observations we should have on the sky
         desired = desired_footprint_normed * np.sum(self.survey_features["N_obs_all"].feature)

@@ -1,5 +1,5 @@
 __all__ = (
-    "FilterLoadedBasisFunction",
+    "BandLoadedBasisFunction",
     "OnceInNightBasisFunction",
     "SunAltHighLimitBasisFunction",
     "TimeToTwilightBasisFunction",
@@ -44,26 +44,26 @@ def send_unused_deprecation_warning(name):
     warnings.warn(message, FutureWarning)
 
 
-class FilterLoadedBasisFunction(BaseBasisFunction):
-    """Check that the filter(s) needed are loaded.
+class BandLoadedBasisFunction(BaseBasisFunction):
+    """Check that the band(s) needed are loaded.
 
-    Are the filters in `filternames` loaded and available?
+    Are the bands in `bandnames` loaded and available?
 
     Parameters
     ----------
-    filternames : `str` or `list` [ `str` ]
-        The filternames that need to be mounted to execute.
+    bandnames : `str` or `list` [ `str` ]
+        The bandnames that need to be mounted to execute.
     """
 
-    def __init__(self, filternames="r"):
-        super(FilterLoadedBasisFunction, self).__init__()
-        if not isinstance(filternames, list):
-            filternames = [filternames]
-        self.filternames = filternames
+    def __init__(self, bandnames="r"):
+        super(BandLoadedBasisFunction, self).__init__()
+        if not isinstance(bandnames, list):
+            bandnames = [bandnames]
+        self.bandnames = bandnames
 
     def check_feasibility(self, conditions):
-        for filtername in self.filternames:
-            result = filtername in conditions.mounted_filters
+        for bandname in self.bandnames:
+            result = bandname in conditions.mounted_bands
             if result is False:
                 return result
         return result

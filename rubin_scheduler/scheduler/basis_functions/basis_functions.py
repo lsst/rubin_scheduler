@@ -8,8 +8,8 @@ __all__ = (
     "VisitRepeatBasisFunction",
     "M5DiffBasisFunction",
     "M5DiffAtHpixBasisFunction",
-    "StrictFilterBasisFunction",
-    "FilterChangeBasisFunction",
+    "StrictBandBasisFunction",
+    "BandChangeBasisFunction",
     "SlewtimeBasisFunction",
     "CadenceEnhanceBasisFunction",
     "CadenceEnhanceTrapezoidBasisFunction",
@@ -29,7 +29,7 @@ __all__ = (
     "AvoidDirectWind",
     "BalanceVisits",
     "RewardNObsSequence",
-    "FilterDistBasisFunction",
+    "BandDistBasisFunction",
     "RewardRisingBasisFunction",
     "send_unused_deprecation_warning",
 )
@@ -61,7 +61,7 @@ class BaseBasisFunction:
     """Class that takes features and computes a reward function when
     called."""
 
-    def __init__(self, nside=DEFAULT_NSIDE, filtername=None, **kwargs):
+    def __init__(self, nside=DEFAULT_NSIDE, bandname=None, **kwargs):
         # Set if basis function needs to be recalculated if there is a new
         # observation
         self.update_on_newobs = True
@@ -86,7 +86,7 @@ class BaseBasisFunction:
         else:
             self.nside = nside
 
-        self.filtername = filtername
+        self.bandname = bandname
 
     def add_observations_array(self, observations_array, observations_hpid):
         """Similar to add_observation, but for loading a whole
@@ -177,8 +177,8 @@ class BaseBasisFunction:
         """
         label = self.__class__.__name__.replace("BasisFunction", "")
 
-        if self.filtername is not None:
-            label += f" {self.filtername}"
+        if self.bandname is not None:
+            label += f" {self.bandname}"
 
         label += f" @{id(self)}"
 
@@ -270,19 +270,19 @@ class DelayStartBasisFunction(BaseBasisFunction):
         return result
 
 
-class FilterDistBasisFunction(BaseBasisFunction):
-    """Track filter distribution, increase reward as fraction of observations
-    in specified filter drops.
+class BandDistBasisFunction(BaseBasisFunction):
+    """Track band distribution, increase reward as fraction of observations
+    in specified band drops.
     """
 
-    def __init__(self, filtername="r"):
-        super(FilterDistBasisFunction, self).__init__(filtername=filtername)
+    def __init__(self, bandname="r"):
+        super(BandDistBasisFunction, self).__init__(bandname=bandname)
 
         self.survey_features = {}
         # Count of all the observations
-        self.survey_features["n_obs_count_all"] = features.NObsCount(filtername=None)
-        # Count in filter
-        self.survey_features["n_obs_count_in_filt"] = features.NObsCount(filtername=filtername)
+        self.survey_features["n_obs_count_all"] = features.NObsCount(bandname=None)
+        # Count in band
+        self.survey_features["n_obs_count_in_filt"] = features.NObsCount(bandname=bandname)
 
     def _calc_value(self, conditions, indx=None):
         result = self.survey_features["n_obs_count_all"].feature / (
@@ -296,8 +296,8 @@ class NObsPerYearBasisFunction(BaseBasisFunction):
 
     Parameters
     ----------
-    filtername : `str` ('r')
-        The filter to track
+    bandname : `str` ('r')
+        The band to track
     footprint : `np.array`
         Should be a HEALpix map. Values of 0 or np.nan will be ignored.
     n_obs : `int` (3)
@@ -317,7 +317,7 @@ class NObsPerYearBasisFunction(BaseBasisFunction):
 
     def __init__(
         self,
-        filtername="r",
+        bandname="r",
         nside=DEFAULT_NSIDE,
         footprint=None,
         n_obs=3,
@@ -326,7 +326,7 @@ class NObsPerYearBasisFunction(BaseBasisFunction):
         season_end_hour=2.0,
         night_max=365,
     ):
-        super(NObsPerYearBasisFunction, self).__init__(nside=nside, filtername=filtername)
+        super(NObsPerYearBasisFunction, self).__init__(nside=nside, bandname=bandname)
         self.footprint = footprint
         self.n_obs = n_obs
         self.season = season
@@ -334,7 +334,7 @@ class NObsPerYearBasisFunction(BaseBasisFunction):
         self.season_end_hour = season_end_hour * np.pi / 12.0  # To radians
 
         self.survey_features["last_n_mjds"] = features.LastNObsTimes(
-            nside=nside, filtername=filtername, n_obs=n_obs
+            nside=nside, bandname=bandname, n_obs=n_obs
         )
         self.result = np.zeros(hp.nside2npix(self.nside), dtype=float)
         self.out_footprint = np.where((footprint == 0) | np.isnan(footprint))
@@ -373,7 +373,7 @@ class NGoodSeeingBasisFunction(BaseBasisFunction):
 
     Parameters
     ----------
-    filtername : `str`
+    bandname : `str`
         Bandpass in which to count images. Default r.
     nside : `int`
         The nside of the map for the basis function. Should match
@@ -384,7 +384,7 @@ class NGoodSeeingBasisFunction(BaseBasisFunction):
         Default of 0.8 arcseconds.
     m5_penalty_max : `float`
         The maximum depth loss that is considered acceptable (magnitudes),
-        compared to the dark-sky map in this filter.
+        compared to the dark-sky map in this band.
         Default 0.5 magnitudes.
     n_obs_desired : `int`
         Number of good seeing observations to collect per season.
@@ -399,7 +399,7 @@ class NGoodSeeingBasisFunction(BaseBasisFunction):
 
     def __init__(
         self,
-        filtername="r",
+        bandname="r",
         nside=DEFAULT_NSIDE,
         seeing_fwhm_max=0.8,
         m5_penalty_max=0.5,
@@ -407,7 +407,7 @@ class NGoodSeeingBasisFunction(BaseBasisFunction):
         mjd_start=None,
         footprint=None,
     ):
-        super().__init__(nside=nside, filtername=filtername)
+        super().__init__(nside=nside, bandname=bandname)
         self.seeing_fwhm_max = seeing_fwhm_max
         self.m5_penalty_max = m5_penalty_max
         self.n_obs_desired = n_obs_desired
@@ -415,7 +415,7 @@ class NGoodSeeingBasisFunction(BaseBasisFunction):
             mjd_start = SURVEY_START_MJD
         self.mjd_start = mjd_start
         self.survey_features["N_good_seeing"] = features.NObservationsCurrentSeason(
-            filtername=self.filtername,
+            bandname=self.bandname,
             mjd_start=self.mjd_start,
             seeing_fwhm_max=self.seeing_fwhm_max,
             m5_penalty_max=self.m5_penalty_max,
@@ -424,16 +424,16 @@ class NGoodSeeingBasisFunction(BaseBasisFunction):
         # Set footprint to current survey footprint class if undefined.
         if footprint is None:
             footprints, labels = get_current_footprint(self.nside)
-            footprint = footprints[self.filtername]
+            footprint = footprints[self.bandname]
         self.footprint = footprint
         self.result = np.zeros(hp.nside2npix(self.nside))
         self.dark_map = None
 
     def _calc_value(self, conditions, indx=None):
-        if self.filtername is not None:
+        if self.bandname is not None:
             if self.dark_map is None:
                 self.dark_map = dark_m5(
-                    conditions.dec, self.filtername, conditions.site.latitude_rad, fiducial_FWHMEff=0.7
+                    conditions.dec, self.bandname, conditions.site.latitude_rad, fiducial_FWHMEff=0.7
                 )
         # Return the same kind of array (not float) regardless
         # of result
@@ -441,10 +441,10 @@ class NGoodSeeingBasisFunction(BaseBasisFunction):
         # Update the feature to the current time.
         self.survey_features["N_good_seeing"].season_update(conditions=conditions)
 
-        m5_penalty = self.dark_map - conditions.m5_depth[self.filtername]
+        m5_penalty = self.dark_map - conditions.m5_depth[self.bandname]
         potential_pixels = np.where(
             (m5_penalty <= self.m5_penalty_max)
-            & (conditions.fwhm_eff[self.filtername] <= self.seeing_fwhm_max)
+            & (conditions.fwhm_eff[self.bandname] <= self.seeing_fwhm_max)
             & (self.survey_features["N_good_seeing"].feature < self.n_obs_desired)
             & (self.footprint > 0)
         )[0]
@@ -470,7 +470,7 @@ class NObsHighAmBasisFunction(BaseBasisFunction):
     def __init__(
         self,
         nside=DEFAULT_NSIDE,
-        filtername="r",
+        bandname="r",
         footprint=None,
         n_obs=3,
         season=300.0,
@@ -479,16 +479,16 @@ class NObsHighAmBasisFunction(BaseBasisFunction):
     ):
         send_unused_deprecation_warning("NObsHighAmBasisFunction")
         return
-        super(NObsHighAmBasisFunction, self).__init__(nside=nside, filtername=filtername)
+        super(NObsHighAmBasisFunction, self).__init__(nside=nside, bandname=bandname)
         if footprint is None:
             footprints, labels = get_current_footprint(self.nside)
-            footprint = footprints[self.filtername]
+            footprint = footprints[self.bandname]
         self.footprint = footprint
         self.out_footprint = np.where((footprint == 0) | np.isnan(footprint))
         self.am_limits = am_limits
         self.season = season
         self.survey_features["last_n_mjds"] = features.Last_n_obs_times(
-            nside=nside, filtername=filtername, n_obs=n_obs
+            nside=nside, bandname=bandname, n_obs=n_obs
         )
 
         self.result = np.zeros(hp.nside2npix(self.nside), dtype=float) + out_of_bounds_val
@@ -558,20 +558,20 @@ class CadenceInSeasonBasisFunction(BaseBasisFunction):
     ----------
     drive_map : `np.ndarray`, (N,)
         A HEALpix map with values of 1 where the cadence should be driven.
-    filtername : `str`
-        The filters that can count.
+    bandname : `str`
+        The bands that can count.
     season_span : `float`
         How long to consider a spot "in_season" (hours).
     cadence : `float`
         How long to wait before activating the basis function (days).
     """
 
-    def __init__(self, drive_map, filtername="griz", season_span=2.5, cadence=2.5, nside=DEFAULT_NSIDE):
-        super(CadenceInSeasonBasisFunction, self).__init__(nside=nside, filtername=filtername)
+    def __init__(self, drive_map, bandname="griz", season_span=2.5, cadence=2.5, nside=DEFAULT_NSIDE):
+        super(CadenceInSeasonBasisFunction, self).__init__(nside=nside, bandname=bandname)
         self.drive_map = drive_map
         self.season_span = season_span / 12.0 * np.pi  # To radians
         self.cadence = cadence
-        self.survey_features["last_observed"] = features.LastObserved(nside=nside, filtername=filtername)
+        self.survey_features["last_observed"] = features.LastObserved(nside=nside, bandname=bandname)
         self.result = np.zeros(hp.nside2npix(self.nside), dtype=float)
 
     def _calc_value(self, conditions, indx=None):
@@ -599,8 +599,8 @@ class SeasonCoverageBasisFunction(BaseBasisFunction):
 
     Parameters
     ----------
-    filtername : `str`, optional
-        Count observations in this filter. Default 'r'.
+    bandname : `str`, optional
+        Count observations in this band. Default 'r'.
     nside : `int`, optional
         Nside for the healpix map to use for the feature.
         This should match the nside of the survey and scheduler.
@@ -624,7 +624,7 @@ class SeasonCoverageBasisFunction(BaseBasisFunction):
 
     def __init__(
         self,
-        filtername="r",
+        bandname="r",
         nside=DEFAULT_NSIDE,
         footprint=None,
         n_per_season=3,
@@ -632,11 +632,11 @@ class SeasonCoverageBasisFunction(BaseBasisFunction):
         season_frac_start=0.5,
     ):
         send_unused_deprecation_warning("SeasonCoverageBasisFunction")
-        super().__init__(nside=nside, filtername=filtername)
+        super().__init__(nside=nside, bandname=bandname)
 
         if footprint is None:
             footprints, labels = get_current_footprint(self.nside)
-            footprint = footprints[self.filtername]
+            footprint = footprints[self.bandname]
         self.footprint = footprint
         # Calculate the RA values for each spot on the footprint
         ra, dec = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(nside)))
@@ -650,7 +650,7 @@ class SeasonCoverageBasisFunction(BaseBasisFunction):
         # Track how many observations have been taken at each RA/Dec
         # in the current observing season (for that point on the sky).
         self.survey_features["n_obs_season"] = features.NObservationsCurrentSeason(
-            filtername=filtername, nside=nside, mjd_start=mjd_start
+            bandname=bandname, nside=nside, mjd_start=mjd_start
         )
         self.result = np.zeros(hp.nside2npix(self.nside), dtype=float)
 
@@ -681,9 +681,9 @@ class AvoidFastRevisitsBasisFunction(BaseBasisFunction):
 
     Parameters
     ----------
-    filtername : `str` or None
-        The name of the filter for this target map.
-        Using None will match visits in any filter.
+    bandname : `str` or None
+        The name of the band for this target map.
+        Using None will match visits in any band.
     gap_min : `float`
         Minimum time for the gap (minutes).
     nside: `int` or None
@@ -693,19 +693,17 @@ class AvoidFastRevisitsBasisFunction(BaseBasisFunction):
         Will be masked if set to np.nan (default).
     """
 
-    def __init__(self, filtername="r", nside=DEFAULT_NSIDE, gap_min=25.0, penalty_val=np.nan):
-        super().__init__(nside=nside, filtername=filtername)
+    def __init__(self, bandname="r", nside=DEFAULT_NSIDE, gap_min=25.0, penalty_val=np.nan):
+        super().__init__(nside=nside, bandname=bandname)
 
-        self.filtername = filtername
+        self.bandname = bandname
         self.penalty_val = penalty_val
 
         self.gap_min = IntRounded(gap_min / 60.0 / 24.0)
         self.nside = nside
 
         self.survey_features = dict()
-        self.survey_features["Last_observed"] = features.LastObserved(
-            filtername=filtername, nside=nside, fill=0
-        )
+        self.survey_features["Last_observed"] = features.LastObserved(bandname=bandname, nside=nside, fill=0)
 
     def _calc_value(self, conditions, indx=None):
         result = np.ones(hp.nside2npix(self.nside), dtype=float)
@@ -763,14 +761,14 @@ class VisitRepeatBasisFunction(BaseBasisFunction):
         Minimum time for the gap (minutes)
     gap_max : `float` (45.)
         Maximum time for a gap
-    filtername : `str` ('r')
-        The filter(s) to count with pairs
+    bandname : `str` ('r')
+        The band(s) to count with pairs
     npairs : `int` (1)
         The number of pairs of observations to attempt to gather
     """
 
-    def __init__(self, gap_min=25.0, gap_max=45.0, filtername="r", nside=DEFAULT_NSIDE, npairs=1):
-        super(VisitRepeatBasisFunction, self).__init__(nside=nside, filtername=filtername)
+    def __init__(self, gap_min=25.0, gap_max=45.0, bandname="r", nside=DEFAULT_NSIDE, npairs=1):
+        super(VisitRepeatBasisFunction, self).__init__(nside=nside, bandname=bandname)
 
         self.gap_min = IntRounded(gap_min / 60.0 / 24.0)
         self.gap_max = IntRounded(gap_max / 60.0 / 24.0)
@@ -778,13 +776,13 @@ class VisitRepeatBasisFunction(BaseBasisFunction):
         self.survey_features = {}
         # Track the number of pairs that have been taken in a night
         self.survey_features["Pair_in_night"] = features.PairInNight(
-            filtername=filtername, gap_min=gap_min, gap_max=gap_max, nside=nside
+            bandname=bandname, gap_min=gap_min, gap_max=gap_max, nside=nside
         )
 
         # When was it last observed
         # XXX--since this feature is also in Pair_in_night, I should just
         # access that one!
-        self.survey_features["Last_observed"] = features.LastObserved(filtername=filtername, nside=nside)
+        self.survey_features["Last_observed"] = features.LastObserved(bandname=bandname, nside=nside)
 
     def _calc_value(self, conditions, indx=None):
         result = np.zeros(hp.nside2npix(self.nside), dtype=float)
@@ -813,8 +811,8 @@ class M5DiffBasisFunction(BaseBasisFunction):
 
     Parameters
     ----------
-    filtername : `str`, optional
-        The filter to consider for visits.
+    bandname : `str`, optional
+        The band to consider for visits.
     fiducial_FWHMEff : `float`, optional
         The zenith seeing to assume for "good" conditions.
         While the dark sky depth map simply scales with this value,
@@ -826,20 +824,20 @@ class M5DiffBasisFunction(BaseBasisFunction):
         Default None uses `set_default_nside()`.
     """
 
-    def __init__(self, filtername="r", fiducial_FWHMEff=0.7, nside=DEFAULT_NSIDE):
-        super().__init__(nside=nside, filtername=filtername)
+    def __init__(self, bandname="r", fiducial_FWHMEff=0.7, nside=DEFAULT_NSIDE):
+        super().__init__(nside=nside, bandname=bandname)
         # The dark sky surface brightness values
         self.dark_map = None
         self.fiducial_FWHMEff = fiducial_FWHMEff
-        self.filtername = filtername
+        self.bandname = bandname
 
     def _calc_value(self, conditions, indx=None):
         if self.dark_map is None:
             self.dark_map = dark_m5(
-                conditions.dec, self.filtername, conditions.site.latitude_rad, self.fiducial_FWHMEff
+                conditions.dec, self.bandname, conditions.site.latitude_rad, self.fiducial_FWHMEff
             )
         # No way to get the sign on this right the first time.
-        result = conditions.m5_depth[self.filtername] - self.dark_map
+        result = conditions.m5_depth[self.bandname] - self.dark_map
         return result
 
 
@@ -847,30 +845,30 @@ class M5DiffAtHpixBasisFunction(HealpixLimitedBasisFunctionMixin, M5DiffBasisFun
     pass
 
 
-class StrictFilterBasisFunction(BaseBasisFunction):
-    """Remove the bonus for staying in the same filter
+class StrictBandBasisFunction(BaseBasisFunction):
+    """Remove the bonus for staying in the same band
     if certain conditions are met.
 
     If the moon rises/sets or twilight starts/ends, it makes a lot of sense
-    to consider a filter change. This basis function rewards if it matches
-    the current filter, the moon rises or sets, twilight starts or stops,
+    to consider a band change. This basis function rewards if it matches
+    the current band, the moon rises or sets, twilight starts or stops,
     or there has been a large gap since the last observation.
 
     Parameters
     ----------
     time_lag : `float` (10.)
         If there is a gap between observations longer than this,
-        let the filter change (minutes)
+        let the band change (minutes)
     twi_change : `float` (-18.)
         The sun altitude to consider twilight starting/ending (degrees)
     note_free : `str` ('DD')
-        No penalty for changing filters if the last observation note field
+        No penalty for changing bands if the last observation note field
         includes `note_free` string.
-        Useful for giving a free filter change after deep drilling sequence
+        Useful for giving a free band change after deep drilling sequence
     """
 
-    def __init__(self, time_lag=10.0, filtername="r", twi_change=-18.0, note_free="DD"):
-        super(StrictFilterBasisFunction, self).__init__(filtername=filtername)
+    def __init__(self, time_lag=10.0, bandname="r", twi_change=-18.0, note_free="DD"):
+        super(StrictBandBasisFunction, self).__init__(bandname=bandname)
 
         self.time_lag = time_lag / 60.0 / 24.0  # Convert to days
         self.twi_change = np.radians(twi_change)
@@ -883,8 +881,8 @@ class StrictFilterBasisFunction(BaseBasisFunction):
         # Did the moon set or rise since last observation?
         moon_changed = conditions.moon_alt * self.survey_features["Last_observation"].feature["moonAlt"] < 0
 
-        # Are we already in the filter (or at start of night)?
-        in_filter = (conditions.current_filter == self.filtername) | (conditions.current_filter is None)
+        # Are we already in the band (or at start of night)?
+        in_band = (conditions.current_band == self.bandname) | (conditions.current_band is None)
 
         # Has enough time past?
         time_past = IntRounded(
@@ -899,10 +897,10 @@ class StrictFilterBasisFunction(BaseBasisFunction):
         # Did we just finish a DD sequence
         was_dd = self.note_free in self.survey_features["Last_observation"].feature["scheduler_note"]
 
-        # Is the filter mounted?
-        mounted = self.filtername in conditions.mounted_filters
+        # Is the band mounted?
+        mounted = self.bandname in conditions.mounted_bands
 
-        if (moon_changed | in_filter | time_past | twi_changed | was_dd) & mounted:
+        if (moon_changed | in_band | time_past | twi_changed | was_dd) & mounted:
             result = 1.0
         else:
             result = 0.0
@@ -910,14 +908,14 @@ class StrictFilterBasisFunction(BaseBasisFunction):
         return result
 
 
-class FilterChangeBasisFunction(BaseBasisFunction):
-    """Reward staying in the current filter."""
+class BandChangeBasisFunction(BaseBasisFunction):
+    """Reward staying in the current band."""
 
-    def __init__(self, filtername="r"):
-        super(FilterChangeBasisFunction, self).__init__(filtername=filtername)
+    def __init__(self, bandname="r"):
+        super(BandChangeBasisFunction, self).__init__(bandname=bandname)
 
     def _calc_value(self, conditions, **kwargs):
-        if (conditions.current_filter == self.filtername) | (conditions.current_filter is None):
+        if (conditions.current_band == self.bandname) | (conditions.current_band is None):
             result = 1.0
         else:
             result = 0.0
@@ -933,29 +931,29 @@ class SlewtimeBasisFunction(BaseBasisFunction):
          The estimated maximum slewtime (seconds).
          Used to normalize so the basis function spans ~ -1-0
          in reward units. Default 135 seconds corresponds to just
-         slightly less than a filter change.
-    filtername : `str`, optional
-        The filter to check for pre-post slewtime estimates.
-        If a slew includes a filter change, other basis functions will
+         slightly less than a band change.
+    bandname : `str`, optional
+        The band to check for pre-post slewtime estimates.
+        If a slew includes a band change, other basis functions will
         decide on the reward, so the result here can be 0.
     nside : `int`, optional
         Nside for the basis function.
         Default None will use `set_default_nside()`.
     """
 
-    def __init__(self, max_time=135.0, filtername="r", nside=DEFAULT_NSIDE):
-        super(SlewtimeBasisFunction, self).__init__(nside=nside, filtername=filtername)
+    def __init__(self, max_time=135.0, bandname="r", nside=DEFAULT_NSIDE):
+        super(SlewtimeBasisFunction, self).__init__(nside=nside, bandname=bandname)
 
         self.maxtime = max_time
         self.nside = nside
-        self.filtername = filtername
+        self.bandname = bandname
 
     def _calc_value(self, conditions, indx=None):
-        # If we are in a different filter, the
-        # FilterChangeBasisFunction will take it
+        # If we are in a different band, the
+        # BandChangeBasisFunction will take it
         # But we can still use the MASK returned by
         # the slewtime map to remove inaccessible parts of the sky
-        if conditions.current_filter != self.filtername:
+        if conditions.current_band != self.bandname:
             if np.size(conditions.slewtime) > 1:
                 result = np.where(np.isfinite(conditions.slewtime), 0, np.nan)
             else:
@@ -980,8 +978,8 @@ class CadenceEnhanceBasisFunction(BaseBasisFunction):
 
     Parameters
     ----------
-    filtername : `str` ('gri')
-        The filter(s) that should be grouped together
+    bandname : `str` ('gri')
+        The band(s) that should be grouped together
     supress_window : `list` of `float`
         The start and stop window for when observations should be repressed
         (days)
@@ -993,7 +991,7 @@ class CadenceEnhanceBasisFunction(BaseBasisFunction):
 
     def __init__(
         self,
-        filtername="gri",
+        bandname="gri",
         nside=DEFAULT_NSIDE,
         supress_window=[0, 1.8],
         supress_val=-0.5,
@@ -1001,7 +999,7 @@ class CadenceEnhanceBasisFunction(BaseBasisFunction):
         enhance_val=1.0,
         apply_area=None,
     ):
-        super(CadenceEnhanceBasisFunction, self).__init__(nside=nside, filtername=filtername)
+        super(CadenceEnhanceBasisFunction, self).__init__(nside=nside, bandname=bandname)
 
         self.supress_window = np.sort(supress_window)
         self.supress_val = supress_val
@@ -1009,7 +1007,7 @@ class CadenceEnhanceBasisFunction(BaseBasisFunction):
         self.enhance_val = enhance_val
 
         self.survey_features = {}
-        self.survey_features["last_observed"] = features.LastObserved(filtername=filtername)
+        self.survey_features["last_observed"] = features.LastObserved(bandname=bandname)
 
         self.empty = np.zeros(hp.nside2npix(self.nside), dtype=float)
         # No map, try to drive the whole area
@@ -1073,15 +1071,15 @@ class CadenceEnhanceTrapezoidBasisFunction(BaseBasisFunction):
 
     Parameters
     ----------
-    filtername : `str` ('gri')
-        The filter(s) that should be grouped together
+    bandname : `str` ('gri')
+        The band(s) that should be grouped together
 
     XXX--fill out doc string!
     """
 
     def __init__(
         self,
-        filtername="gri",
+        bandname="gri",
         nside=DEFAULT_NSIDE,
         delay_width=2,
         delay_slope=2.0,
@@ -1094,7 +1092,7 @@ class CadenceEnhanceTrapezoidBasisFunction(BaseBasisFunction):
         apply_area=None,
         season_limit=None,
     ):
-        super(CadenceEnhanceTrapezoidBasisFunction, self).__init__(nside=nside, filtername=filtername)
+        super(CadenceEnhanceTrapezoidBasisFunction, self).__init__(nside=nside, bandname=bandname)
 
         self.delay_width = delay_width
         self.delay_slope = delay_slope
@@ -1108,7 +1106,7 @@ class CadenceEnhanceTrapezoidBasisFunction(BaseBasisFunction):
         self.season_limit = season_limit / 12 * np.pi  # To radians
 
         self.survey_features = {}
-        self.survey_features["last_observed"] = features.LastObserved(filtername=filtername)
+        self.survey_features["last_observed"] = features.LastObserved(bandname=bandname)
 
         self.empty = np.zeros(hp.nside2npix(self.nside), dtype=float)
         # No map, try to drive the whole area
@@ -1288,7 +1286,7 @@ class GoodSeeingBasisFunction(BaseBasisFunction):
     def __init__(
         self,
         nside=DEFAULT_NSIDE,
-        filtername="r",
+        bandname="r",
         footprint=None,
         fwhm_eff_limit=0.8,
         mag_diff=0.75,
@@ -1297,11 +1295,11 @@ class GoodSeeingBasisFunction(BaseBasisFunction):
         return
         super(GoodSeeingBasisFunction, self).__init__(nside=nside)
 
-        self.filtername = filtername
+        self.bandname = bandname
         self.fwhm_eff_limit = IntRounded(fwhm_eff_limit)
         if footprint is None:
             footprints, labels = get_current_footprint(nside=self.nside)
-            fp = footprints[self.filtername]
+            fp = footprints[self.bandname]
         else:
             fp = footprint
         self.out_of_bounds = np.where(fp == 0)[0]
@@ -1310,15 +1308,15 @@ class GoodSeeingBasisFunction(BaseBasisFunction):
         self.mag_diff = IntRounded(mag_diff)
         self.survey_features = {}
         self.survey_features["coadd_depth_all"] = features.CoaddedDepth(
-            filtername=self.filtername, nside=self.nside
+            bandname=self.bandname, nside=self.nside
         )
         self.survey_features["coadd_depth_good"] = features.CoaddedDepth(
-            filtername=self.filtername, nside=self.nside, fwhm_eff_limit=fwhm_eff_limit
+            bandname=self.bandname, nside=self.nside, fwhm_eff_limit=fwhm_eff_limit
         )
 
     def _calc_value(self, conditions, **kwargs):
         # Seeing is "bad"
-        if IntRounded(conditions.FWHMeff[self.filtername].min()) > self.fwhm_eff_limit:
+        if IntRounded(conditions.FWHMeff[self.bandname].min()) > self.fwhm_eff_limit:
             return 0
         result = self.result.copy()
 
@@ -1328,7 +1326,7 @@ class GoodSeeingBasisFunction(BaseBasisFunction):
         # Where are there things we want to observe?
         good_pix = np.where(
             (IntRounded(diff) > self.mag_diff)
-            & (IntRounded(conditions.FWHMeff[self.filtername]) <= self.fwhm_eff_limit)
+            & (IntRounded(conditions.FWHMeff[self.bandname]) <= self.fwhm_eff_limit)
         )
         # Hm, should this scale by the mag differences? Probably.
         result[good_pix] = diff[good_pix]
@@ -1344,8 +1342,8 @@ class VisitGap(BaseBasisFunction):
     ----------
     note : `str`
         Value of the observation "scheduler_note" field to be masked.
-    filter_names : list [str], optional
-        List of filter names that will be considered when evaluating
+    band_names : list [str], optional
+        List of band names that will be considered when evaluating
         if the gap has passed.
     gap_min : float (optional)
         Time gap (default=25, in minutes).
@@ -1354,24 +1352,24 @@ class VisitGap(BaseBasisFunction):
 
     Notes
     -----
-    When a list of filters is provided, all filters must be observed before
+    When a list of bands is provided, all bands must be observed before
     the gap requirement will be activated, and once activated, only
-    observations in these filters will be evaluated in context of whether
+    observations in these bands will be evaluated in context of whether
     the last observation was at least gap in the past.
     """
 
-    def __init__(self, note, filter_names=None, gap_min=25.0, penalty_val=np.nan):
+    def __init__(self, note, band_names=None, gap_min=25.0, penalty_val=np.nan):
         super().__init__()
         self.penalty_val = penalty_val
 
         self.gap = gap_min / 60.0 / 24.0
-        self.filter_names = filter_names
+        self.band_names = band_names
 
         self.survey_features = dict()
-        if self.filter_names is not None:
-            for filtername in self.filter_names:
-                self.survey_features[f"LastObservationMjd::{filtername}"] = features.LastObservationMjd(
-                    note=note, filtername=filtername
+        if self.band_names is not None:
+            for bandname in self.band_names:
+                self.survey_features[f"LastObservationMjd::{bandname}"] = features.LastObservationMjd(
+                    note=note, bandname=bandname
                 )
         else:
             self.survey_features["LastObservationMjd"] = features.LastObservationMjd(scheduler_note=note)
@@ -1484,7 +1482,7 @@ class RewardNObsSequence(BaseBasisFunction):
     Notes
     -----
     This basis function is useful when a survey is composed of more than
-    one observation (e.g. in different filters) and one wants to make sure
+    one observation (e.g. in different bands) and one wants to make sure
     they are all taken together.
     """
 

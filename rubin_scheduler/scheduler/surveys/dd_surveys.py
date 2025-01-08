@@ -31,7 +31,7 @@ class DeepDrillingSurvey(BaseSurvey):
         The sequence of observations to take. Can be a string of
         list of obs objects.
     nvis : list of ints
-        The number of visits in each filter. Should be same length
+        The number of visits in each band. Should be same length
         as sequence.
     survey_name : str (DD)
         The name to give this survey so it can be tracked
@@ -59,7 +59,7 @@ class DeepDrillingSurvey(BaseSurvey):
         survey_name="DD",
         reward_value=None,
         readtime=2.0,
-        filter_change_time=120.0,
+        band_change_time=120.0,
         nside=DEFAULT_NSIDE,
         flush_pad=30.0,
         seed=42,
@@ -79,14 +79,14 @@ class DeepDrillingSurvey(BaseSurvey):
         self.survey_name = survey_name
         self.reward_value = reward_value
         self.flush_pad = flush_pad / 60.0 / 24.0  # To days
-        self.filter_sequence = []
+        self.band_sequence = []
         if isinstance(sequence, str):
             self.observations = []
-            for num, filtername in zip(nvis, sequence):
+            for num, bandname in zip(nvis, sequence):
                 for j in range(num):
                     obs = ObservationArray()
-                    obs["filter"] = filtername
-                    if filtername == "u":
+                    obs["band"] = bandname
+                    if bandname == "u":
                         obs["exptime"] = u_exptime
                     else:
                         obs["exptime"] = exptime
@@ -100,17 +100,17 @@ class DeepDrillingSurvey(BaseSurvey):
 
         # Let's just make this an array for ease of use
         self.observations = np.concatenate(self.observations)
-        order = np.argsort(self.observations["filter"])
+        order = np.argsort(self.observations["band"])
         self.observations = self.observations[order]
 
-        n_filter_change = np.size(np.unique(self.observations["filter"]))
+        n_band_change = np.size(np.unique(self.observations["band"]))
 
         # Make an estimate of how long a seqeunce will take.
         # Assumes no major rotational or spatial
         # dithering slowing things down.
         self.approx_time = (
             np.sum(self.observations["exptime"] + readtime * self.observations["nexp"]) / 3600.0 / 24.0
-            + filter_change_time * n_filter_change / 3600.0 / 24.0
+            + band_change_time * n_band_change / 3600.0 / 24.0
         )  # to days
 
         if self.reward_value is None:
@@ -160,12 +160,12 @@ class DeepDrillingSurvey(BaseSurvey):
             # Set the flush_by
             result["flush_by_mjd"] = conditions.mjd + self.approx_time + self.flush_pad
 
-            # remove filters that are not mounted
-            mask = np.isin(result["filter"], conditions.mounted_filters)
+            # remove bands that are not mounted
+            mask = np.isin(result["band"], conditions.mounted_bands)
             result = result[mask]
-            # Put current loaded filter first
-            ind1 = np.where(result["filter"] == conditions.current_filter)[0]
-            ind2 = np.where(result["filter"] != conditions.current_filter)[0]
+            # Put current loaded band first
+            ind1 = np.where(result["band"] == conditions.current_band)[0]
+            ind2 = np.where(result["band"] != conditions.current_band)[0]
             result = result[ind1.tolist() + (ind2.tolist())]
 
         return result
@@ -377,7 +377,7 @@ def generate_dd_surveys(
 
     # Euclid Fields
     # I can use the sequence kwarg to do two positions per sequence
-    filters = "urgizy"
+    bands = "urgizy"
     nviss = nvis_master
     survey_name = "DD:EDFS"
     # Note the sequences need to be in radians since they are using
@@ -388,12 +388,12 @@ def generate_dd_surveys(
     suffixes = [", a", ", b"]
     sequence = []
 
-    for filtername, nvis in zip(filters, nviss):
+    for bandname, nvis in zip(bands, nviss):
         for ra, dec, suffix in zip(r_as, decs, suffixes):
             for num in range(nvis):
                 obs = ObservationArray()
-                obs["filter"] = filtername
-                if filtername == "u":
+                obs["band"] = bandname
+                if bandname == "u":
                     obs["exptime"] = u_exptime
                 else:
                     obs["exptime"] = exptime

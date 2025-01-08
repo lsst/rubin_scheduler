@@ -38,9 +38,12 @@ All values are for the center of the field of view (e.g., airmass, altitude, etc
    * - visitExposureTime
      - seconds
      - Total on-sky exposure time.
+   * - band
+     - string
+     - The name of the bandpass in use for the observation, typically one of ugrizy.
    * - filter
      - string
-     - The name of the bandpass in use for the observation.
+     - The name of the physical filter in use for the observation.
    * - rotSkyPos
      - degrees
      - The orientation of the sky in the focal plane measured as the angle between ICRF North on the sky and the "up" direction in the focal plane. Corresponds to 'skyAngle'.
