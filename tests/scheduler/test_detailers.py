@@ -79,6 +79,62 @@ class TestDetailers(unittest.TestCase):
 
         assert len(obs_out) == 4
 
+    def test_delta_dither(self):
+        obs = ObservationArray(2)
+        obs["RA"] = np.radians(0)
+        obs["dec"] = np.radians(20)
+
+        det = detailers.DeltaCoordDitherDetailer(np.array([0.0, 0.0]), np.array([-10.0, 10.0]))
+
+        output = det(obs, [])
+
+        assert np.size(output) == 4
+        assert np.unique(output["RA"]) == np.unique(obs["RA"])
+
+        obs["RA"] = np.radians(90)
+        det = detailers.DeltaCoordDitherDetailer(np.array([0.0, 0.0]), np.array([-10.0, 10.0]))
+        output = det(obs, [])
+        assert np.size(output) == 4
+        assert np.unique(output["RA"]) == np.unique(obs["RA"])
+
+        ra_step = 5.0
+        det = detailers.DeltaCoordDitherDetailer(np.array([-ra_step, ra_step]), np.array([0.0, 0.0]))
+        output = det(obs, [])
+
+        # Make sure ra diff is larger
+        assert np.all(np.abs(output["RA"] - obs["RA"][0]) > np.radians(ra_step))
+
+        # Try having rotation as well
+        det = detailers.DeltaCoordDitherDetailer(
+            np.array([-ra_step, ra_step]), np.array([0.0, 0.0]), delta_rotskypos=np.array([5.0, 10.0])
+        )
+        output = det(obs, [])
+
+        assert np.size(output) == 4
+        assert np.size(np.unique(output["rotSkyPos_desired"])) == 2
+
+        # Make sure one-element works
+        obs = ObservationArray(1)
+        obs["RA"] = np.radians(0)
+        obs["dec"] = np.radians(20)
+        det = detailers.DeltaCoordDitherDetailer(np.array([0.0, 0.0]), np.array([-10.0, 10.0]))
+        output = det(obs, [])
+
+        assert np.size(output) == 2
+        assert np.unique(output["RA"]) == np.unique(obs["RA"])
+
+        # Test going to the pole
+        obs = ObservationArray(2)
+        obs["RA"] = np.radians(0)
+        obs["dec"] = np.radians(-90)
+
+        det = detailers.DeltaCoordDitherDetailer(np.array([-1.0, 1.0, -1, 1]), np.array([1.0, 1.0, -1, -1]))
+        output = det(obs, [])
+
+        # This should make a grid all at the same dec
+        assert np.size(np.unique(output["dec"])) == 1
+        assert output["dec"][0] > obs["dec"][0]
+
     def test_random_band(self):
         obs = ObservationArray(1)
         obs["band"] = "r"
