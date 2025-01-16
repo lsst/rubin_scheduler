@@ -582,7 +582,13 @@ class TakeAsPairsDetailer(BaseDetailer):
         observation_array["scheduler_note"] = np.char.add(
             observation_array["scheduler_note"], ", %s" % tags[1]
         )
-        result = np.concatenate([paired, observation_array])
+
+        # Try to avoid extra filter changes and have "a" tag
+        # come first.
+        if conditions.current_band == self.bandname:
+            result = np.concatenate([paired, observation_array])
+        else:
+            result = np.concatenate([observation_array, paired])
 
         return result
 
