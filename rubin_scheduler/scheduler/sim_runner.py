@@ -158,7 +158,11 @@ def sim_runner(
             observatory.mjd = observatory.mjd + step_none
             scheduler.update_conditions(observatory.return_conditions())
             nskip += 1
-            continue
+            # Check we didn't skip so far we should end
+            if observatory.mjd > sim_end_mjd:
+                break
+            else:
+                continue
         completed_obs, new_night = observatory.observe(desired_obs)
 
         if completed_obs is not None:
@@ -218,23 +222,26 @@ def sim_runner(
     # Only warn if it's a low-accuracy astropy conversion
     lsst = Site("LSST")
 
-    # Using pseudo_parallactic_angle, see https://smtn-019.lsst.io/v/DM-44258/index.html
-    pa, alt, az = pseudo_parallactic_angle(
-        np.degrees(observations["RA"]),
-        np.degrees(observations["dec"]),
-        observations["mjd"],
-        lon=lsst.longitude,
-        lat=lsst.latitude,
-        height=lsst.height,
-    )
-    observations["alt"] = np.radians(alt)
-    observations["az"] = np.radians(az)
-    observations["pseudo_pa"] = np.radians(pa)
-    observations["rotTelPos"] = rc._rotskypos2rottelpos(observations["rotSkyPos"], observations["pseudo_pa"])
+    if len(observations) > 0:
+        # Using pseudo_parallactic_angle, see https://smtn-019.lsst.io/v/DM-44258/index.html
+        pa, alt, az = pseudo_parallactic_angle(
+            np.degrees(observations["RA"]),
+            np.degrees(observations["dec"]),
+            observations["mjd"],
+            lon=lsst.longitude,
+            lat=lsst.latitude,
+            height=lsst.height,
+        )
+        observations["alt"] = np.radians(alt)
+        observations["az"] = np.radians(az)
+        observations["pseudo_pa"] = np.radians(pa)
+        observations["rotTelPos"] = rc._rotskypos2rottelpos(
+            observations["rotSkyPos"], observations["pseudo_pa"]
+        )
 
-    # Also include traditional parallactic angle
-    pa = _approx_altaz2pa(observations["alt"], observations["az"], lsst.latitude_rad)
-    observations["pa"] = pa
+        # Also include traditional parallactic angle
+        pa = _approx_altaz2pa(observations["alt"], observations["az"], lsst.latitude_rad)
+        observations["pa"] = pa
 
     runtime = time.time() - t0
     print("Skipped %i observations" % nskip)
