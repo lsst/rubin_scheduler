@@ -97,6 +97,10 @@ class CoreScheduler:
         # Counter for observations added to the queue
         self.target_id_counter = target_id_counter
 
+        # Set to something so it doesn't fail if never set later
+        self.queue_fill_mjd_ns = -1
+        self.queue_reward_df = None
+
     def flush_queue(self):
         """Like it sounds, clear any currently queued desired observations."""
         self.queue = []
