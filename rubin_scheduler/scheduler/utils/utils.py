@@ -22,6 +22,7 @@ __all__ = (
     "xyz2thetaphi",
     "mean_azimuth",
     "wrap_ra_dec",
+    "rotx",
 )
 
 import datetime
@@ -63,6 +64,15 @@ def smallest_signed_angle(a1, a2):
 
 
 def thetaphi2xyz(theta, phi):
+    """Convert theta,phi to x,y,z position on the unit sphere
+
+    Parameters
+    ----------
+    theta : `float`
+        Theta coordinate in radians (should be 0-2pi).
+    phi : `float`
+        Phi coordinate in radians (should run from 0-pi).
+    """
     x = np.sin(phi) * np.cos(theta)
     y = np.sin(phi) * np.sin(theta)
     z = np.cos(phi)
@@ -70,9 +80,20 @@ def thetaphi2xyz(theta, phi):
 
 
 def xyz2thetaphi(x, y, z):
+    """x,y,z position on unit sphere to theta,phi coords."""
     phi = np.arccos(z)
     theta = np.arctan2(y, x)
     return theta, phi
+
+
+def rotx(theta, x, y, z):
+    """rotate the x,y,z points theta radians about x axis"""
+    sin_t = np.sin(theta)
+    cos_t = np.cos(theta)
+    xp = x
+    yp = y * cos_t + z * sin_t
+    zp = -y * sin_t + z * cos_t
+    return xp, yp, zp
 
 
 def wrap_ra_dec(ra, dec):
