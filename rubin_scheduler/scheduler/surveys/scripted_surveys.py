@@ -1,6 +1,7 @@
 __all__ = ("ScriptedSurvey",)
 
 import logging
+import warnings
 
 import healpy as hp
 import numpy as np
@@ -52,8 +53,12 @@ class ScriptedSurvey(BaseSurvey):
         survey_name=None,
         before_twi_check=True,
         band_change_time=120,
+        filter_change_time=None,
     ):
-        """"""
+        if filter_change_time is not None:
+            warnings.warn("filter_change_time deprecated in favor of band_change_time", FutureWarning)
+            band_change_time = filter_change_time
+
         self.extra_features = {}
         self.nside = nside
         self.reward_val = reward

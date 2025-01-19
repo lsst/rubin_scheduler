@@ -182,6 +182,8 @@ class NObsCount(BaseSurveyFeature):
         if self.scheduler_note == "":
             self.scheduler_note = None
         self.bandname = bandname
+        # Will not add filtername backup here; users should not reach
+        # down as far as the features in configurations.
 
     def add_observations_array(self, observations_array, observations_hpid):
         if self.scheduler_note is None and self.bandname is None:

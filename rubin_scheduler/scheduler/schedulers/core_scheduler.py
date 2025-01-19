@@ -113,6 +113,11 @@ class CoreScheduler:
         the observation array and constructed observations + healpix id
         to each survey.
         """
+        # Need to add "band" here if it wasn't populated
+        missing_band = np.where(obs["band"] == "")
+        band = np.char.rstrip(obs["filter"][missing_band], chars="_0123456789")
+        obs["band"][missing_band] = band
+
         obs.sort(order="mjd")
         # Generate list-of-lists for HEALPix IDs for each pointing
         lol_hpids = self.pointing2hpindx(obs["RA"], obs["dec"])
@@ -153,13 +158,17 @@ class CoreScheduler:
             completed observation
             (e.g., mjd, ra, dec, filter, rotation angle, etc)
         """
-
         # Catch if someone passed in a slice of an observation
         # rather than a full observation array
         if len(observation.shape) == 0:
             full_obs = ObservationArray()
             full_obs[0] = observation
             observation = full_obs
+
+        # Need to add "band" here if it wasn't populated
+        missing_band = np.where(observation["band"] == "")
+        band = np.char.rstrip(observation["filter"][missing_band], chars="_0123456789")
+        observation["band"][missing_band] = band
 
         # Find the healpixel centers that are included in an observation
         indx = self.pointing2hpindx(

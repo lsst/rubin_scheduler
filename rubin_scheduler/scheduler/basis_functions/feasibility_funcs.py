@@ -1,4 +1,5 @@
 __all__ = (
+    "FilterLoadedBasisFunction",
     "BandLoadedBasisFunction",
     "OnceInNightBasisFunction",
     "SunAltHighLimitBasisFunction",
@@ -67,6 +68,12 @@ class BandLoadedBasisFunction(BaseBasisFunction):
             if result is False:
                 return result
         return result
+
+
+class FilterLoadedBasisFunction(BandLoadedBasisFunction):
+    def __init__(self, filternames="r"):
+        warnings.warn("Deprecated in favor of BandLoadedBasisFunction", FutureWarning)
+        super().__init__(bandnames=filternames)
 
 
 class InTimeWindowBasisFunction(BaseBasisFunction):
@@ -395,6 +402,7 @@ class ForceDelayBasisFunction(BaseBasisFunction):
         super(ForceDelayBasisFunction, self).__init__()
         self.days_delay = days_delay
         if scheduler_note is None and survey_name is not None:
+            warnings.warn("survey_name deprecated in favor of scheduler_note", FutureWarning)
             self.scheduler_note = survey_name
         else:
             self.scheduler_note = scheduler_note
@@ -431,6 +439,7 @@ class SoftDelayBasisFunction(BaseBasisFunction):
         super(SoftDelayBasisFunction, self).__init__()
         self.delays = delays
         if scheduler_note is None and survey_name is not None:
+            warnings.warn("survey_name deprecated in favor of scheduler_note", FutureWarning)
             self.scheduler_note = survey_name
         else:
             self.scheduler_note = scheduler_note
@@ -512,6 +521,7 @@ class FractionOfObsBasisFunction(BaseBasisFunction):
     def __init__(self, frac_total, scheduler_note=None, survey_name=None):
         super(FractionOfObsBasisFunction, self).__init__()
         if scheduler_note is None and survey_name is not None:
+            warnings.warn("survey_name deprecated in favor of scheduler_note", FutureWarning)
             self.scheduler_note = survey_name
         else:
             self.scheduler_note = scheduler_note
@@ -577,6 +587,7 @@ class LookAheadDdfBasisFunction(BaseBasisFunction):
         if aggressive_fraction > frac_total:
             raise ValueError("aggressive_fraction should be less than frac_total")
         if scheduler_note is None and survey_name is not None:
+            warnings.warn("survey_name deprecated in favor of scheduler_note", FutureWarning)
             self.scheduler_note = survey_name
         else:
             self.scheduler_note = scheduler_note
