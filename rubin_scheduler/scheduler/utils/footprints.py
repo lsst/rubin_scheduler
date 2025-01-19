@@ -18,6 +18,8 @@ __all__ = (
     "make_rolling_footprints",
 )
 
+import warnings
+
 import healpy as hp
 import numpy as np
 from astropy import units as u
@@ -362,6 +364,8 @@ class Footprint:
         The RA of the sun at the start of the survey (radians).
     bands : `list` of `str`
         The band names to include in the footprint.
+    filters : `list` of `str`
+        Deprecated version of bands.
     period : `float`
         Used for setting the phase of step_func (days). Default 365.25.
     step_func : `BasePixelEvolution`
@@ -375,9 +379,13 @@ class Footprint:
         sun_ra_start=0,
         nside=DEFAULT_NSIDE,
         bands=["u", "g", "r", "i", "z", "y"],
+        filters=None,
         period=365.25,
         step_func=None,
     ):
+        if filters is not None:
+            warnings.warn("Use of `filters` will be deprecated in favor of `bands` at v4", FutureWarning)
+            bands = filters
         # Dict to map band name to array index.
         if not isinstance(bands, dict):
             bands_dict = {}
@@ -393,6 +401,8 @@ class Footprint:
         self.sun_ra_start = sun_ra_start
         self.npix = hp.nside2npix(nside)
         self.bands = bands
+        if filters is not None:
+            self.filters = filters
         self.ra, self.dec = _hpid2_ra_dec(self.nside, np.arange(self.npix))
         # Set the phase of each healpixel.
         # If RA to sun is zero, we are at phase np.pi/2.
@@ -467,7 +477,10 @@ class Footprint:
 
 
 class ConstantFootprint(Footprint):
-    def __init__(self, nside=DEFAULT_NSIDE, bands=["u", "g", "r", "i", "z", "y"]):
+    def __init__(self, nside=DEFAULT_NSIDE, bands=["u", "g", "r", "i", "z", "y"], filters=None):
+        if filters is not None:
+            warnings.warn("Use of `filters` will be deprecated in favor of `bands` at v4", FutureWarning)
+            bands = filters
         if not isinstance(bands, dict):
             bands_dict = {}
             for i, bandname in enumerate(bands):
@@ -475,6 +488,8 @@ class ConstantFootprint(Footprint):
             bands = bands_dict
         self.nside = nside
         self.bands = bands
+        if filters is not None:
+            self.filters = filters
         self.npix = hp.nside2npix(nside)
         self.footprints = np.zeros((len(bands), self.npix), dtype=float)
         self.out_dtype = list(zip(bands, [float] * len(bands)))

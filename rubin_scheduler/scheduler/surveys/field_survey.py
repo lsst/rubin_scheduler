@@ -1,6 +1,7 @@
 __all__ = ("FieldSurvey", "FieldAltAzSurvey")
 
 import copy
+import warnings
 from functools import cached_property
 
 import numpy as np
@@ -87,10 +88,15 @@ class FieldSurvey(BaseSurvey):
         nside=DEFAULT_NSIDE,
         flush_pad=30.0,
         detailers=None,
+        filter_change_time=None,
     ):
         default_nvisits = {"u": 20, "g": 20, "r": 20, "i": 20, "z": 20, "y": 20}
         default_exptimes = {"u": 38, "g": 29.2, "r": 29.2, "i": 29.2, "z": 29.2, "y": 29.2}
         default_nexps = {"u": 1, "g": 2, "r": 2, "i": 2, "z": 2, "y": 2}
+
+        if filter_change_time is not None:
+            warnings.warn("filter_change_time deprecated in favor of band_change_time", FutureWarning)
+            band_change_time = filter_change_time
 
         self.ra = np.radians(RA)
         self.ra_hours = RA / 360.0 * 24.0
@@ -337,7 +343,12 @@ class FieldAltAzSurvey(FieldSurvey):
         nside=DEFAULT_NSIDE,
         flush_pad=30.0,
         detailers=None,
+        filter_change_time=None,
     ):
+        if filter_change_time is not None:
+            warnings.warn("filter_change_time deprecated in favor of band_change_time", FutureWarning)
+            band_change_time = filter_change_time
+
         if detailers is None:
             detailers = [AltAz2RaDecDetailer()]
 

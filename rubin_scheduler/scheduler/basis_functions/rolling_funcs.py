@@ -47,7 +47,11 @@ class FootprintBasisFunction(BaseBasisFunction):
         nside=None,
         footprint=None,
         out_of_bounds_val=-10.0,
+        filtername=None,
     ):
+        if filtername is not None:
+            warnings.warn("filtername deprecated in favor of bandname", FutureWarning)
+            bandname = filtername
         super().__init__(nside=nside, bandname=bandname)
         if footprint is None:
             # This is useful as a backup, but really footprint SHOULD
