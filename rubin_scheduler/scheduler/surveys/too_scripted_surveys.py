@@ -1,5 +1,6 @@
 __all__ = ("ToOScriptedSurvey", "gen_too_surveys")
 
+import warnings
 from copy import copy
 
 import numpy as np
@@ -99,7 +100,11 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         split_long=False,
         split_long_max=30.0,
         split_long_div=60.0,
+        filters_at_times=None,
     ):
+        if filters_at_times is not None:
+            warnings.warn("filters_at_times deprecated in favor of bands_at_times", FutureWarning)
+            bands_at_times = filters_at_times
         # Make sure lists all match
         check = np.unique([len(bands_at_times), len(times), len(nvis), len(exptimes)])
         if np.size(check) > 1:

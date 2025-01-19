@@ -409,6 +409,12 @@ class ModelObservatory:
         if self.sky_model is not None:
             self.conditions.skybrightness = self.sky_model.return_mags(self.mjd)
 
+        # Model observatory can continue to only refer to band and not filter
+        # However, just to ensure set_auxtel_info and set_maintel_info
+        # have something to pass in for filters (if those calls being used):
+        self.conditions.mounted_filters = self.observatory.mounted_bands
+        self.conditions.current_filter = self.observatory.current_band[0]
+        # And technically, these next lines are unnecessary
         self.conditions.mounted_bands = self.observatory.mounted_bands
         self.conditions.current_band = self.observatory.current_band[0]
 

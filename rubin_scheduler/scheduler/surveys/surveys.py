@@ -35,10 +35,15 @@ class GreedySurvey(BaseMarkovSurvey):
         camera="LSST",
         area_required=None,
         fields=None,
+        filtername=None,
         **kwargs,
     ):
         extra_features = {}
 
+        if filtername is not None:
+            warnings.warn("filtername deprecated in favor of bandname", FutureWarning)
+            bandname = filtername
+            self.filtername = filtername
         self.bandname = bandname
         self.block_size = block_size
         self.nexp = nexp
@@ -198,7 +203,20 @@ class BlobSurvey(GreedySurvey):
         target_name=None,
         observation_reason=None,
         science_program=None,
+        filtername1=None,
+        filtername2=None,
+        filter_change_approx=None,
     ):
+        if filtername1 is not None:
+            warnings.warn("filtername1 deprecated in favor of bandname1", FutureWarning)
+            bandname1 = filtername1
+        if filtername2 is not None:
+            warnings.warn("filtername2 deprecated in favor of bandname2", FutureWarning)
+            bandname2 = filtername2
+        if filter_change_approx is not None:
+            warnings.warn("filter_change_approx deprecated in favor of band_change_approx", FutureWarning)
+            band_change_approx = filter_change_approx
+
         if search_radius is not None:
             warnings.warn("search_radius unused, remove kwarg", DeprecationWarning, 2)
         if alt_max != -9999:

@@ -1,6 +1,7 @@
 __all__ = ("TooMaster", "TooSurvey")
 
 import copy
+import warnings
 
 import numpy as np
 
@@ -119,7 +120,20 @@ class TooSurvey(BlobSurvey):
         camera="LSST",
         too_id=None,
         survey_name=None,
+        filtername1=None,
+        filtername2=None,
+        filter_change_approx=None,
     ):
+        if filtername1 is not None:
+            warnings.warn("filtername1 deprecated in favor of bandname1", FutureWarning)
+            bandname1 = filtername1
+        if filtername2 is not None:
+            warnings.warn("filtername2 deprecated in favor of bandname2", FutureWarning)
+            bandname2 = filtername2
+        if filter_change_approx is not None:
+            warnings.warn("filter_change_approx deprecated in favor of band_change_approx", FutureWarning)
+            band_change_approx = filter_change_approx
+
         super(TooSurvey, self).__init__(
             basis_functions=basis_functions,
             basis_weights=basis_weights,
