@@ -1,5 +1,7 @@
 __all__ = ("ShortExptDetailer",)
 
+import warnings
+
 import numpy as np
 
 import rubin_scheduler.scheduler.features as features
@@ -42,7 +44,11 @@ class ShortExptDetailer(BaseDetailer):
         night_max=None,
         n_repeat=1,
         time_scale=False,
+        filtername=None,
     ):
+        if filtername is not None:
+            warnings.warn("filtername deprecated in favor of bandname", FutureWarning)
+            bandname = filtername
         self.read_approx = read_approx
         self.exp_time = exp_time
         self.bandname = bandname

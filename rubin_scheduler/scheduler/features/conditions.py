@@ -91,9 +91,13 @@ class Conditions:
             Healpix showing the slewtime to each healpixel center (seconds)
         current_band : `str`
             The name of the current band. (expect one of u, g, r, i, z, y).
+        current_filter : `str`
+            Deprecated version of current_band.
         mounted_bands : `list` [`str`]
             The bands that are currently mounted and thus available
             (expect 5 of u, g, r, i, z, y for LSSTCam).
+        mounted_filters : `list` [`str`]
+            Deprecated version of mounted_bands.
         night : `int`
             The current night number (days). Probably starts at 1.
         skybrightness : `dict` {`str: `np.ndarray`, (N,)}
@@ -260,7 +264,9 @@ class Conditions:
         self.clouds = None
         self._slewtime = None
         self.current_band = None
+        self._current_filter = None
         self.mounted_bands = None
+        self._mounted_filters = None
         self.night = None
         self._lmst = None
         # Should be a dict with bandname keys
@@ -334,6 +340,28 @@ class Conditions:
         self._solar_elongation = None
         self._az_to_sun = None
         self._az_to_antisun = None
+
+    # We can get away with only using current_filter and mounted_filter
+    # with getter/setter because we don't have to shim back to these
+    # values *from* band, only from filter toward band.
+    # Also use of Conditions within FBS should use *band* not filter.
+    @property
+    def current_filter(self):
+        return self._current_filter
+
+    @current_filter.setter
+    def current_filter(self, value):
+        self._current_filter = value
+        self.current_band = value.split("_")[0]
+
+    @property
+    def mounted_filters(self):
+        return self._mounted_filters
+
+    @mounted_filters.setter
+    def mounted_filters(self, value):
+        self._mounted_filters = value
+        self.mounted_bands = [v.split("_")[0] for v in value]
 
     @property
     def lmst(self):
@@ -594,8 +622,8 @@ class Conditions:
         self,
         mjd,
         slewtime,
-        current_band,
-        mounted_bands,
+        current_filter,  # to become current_band
+        mounted_filters,  # to become mounted_bands
         night,
         skybrightness,
         fwhm_eff,
@@ -634,9 +662,9 @@ class Conditions:
             Modified Julian Date (days).
         slewtime : `np.ndarray`, (N,)
             Healpix showing the slewtime to each healpixel center (seconds)
-        current_band : `str`
+        current_filter : `str`
             The name of the current band. (expect one of u, g, r, i, z, y).
-        mounted_bands : `list` [`str`]
+        mounted_filters : `list` [`str`]
             The bands that are currently mounted and thus available
             (expect 5 of u, g, r, i, z, y for LSSTCam).
         night : `int`
@@ -733,7 +761,7 @@ class Conditions:
             setattr(self, key, kwargs[key])
 
     def set_attrs(self, **kwargs):
-        """Convience function for setting lots of attributes at once.
+        """Convenience function for setting lots of attributes at once.
         See __init__ docstring for full list of potential attributes."""
         potential_attrs = dir(self)
         for key in kwargs:

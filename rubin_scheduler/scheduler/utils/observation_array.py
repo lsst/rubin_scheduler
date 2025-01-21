@@ -30,6 +30,8 @@ class ObservationArray(np.ndarray):
        Total exposure time of the visit (seconds)
     band : `str`
         The band used. Should be one of u, g, r, i, z, y.
+    filter : `str`
+        The physical filter name.
     rotSkyPos : `float`
         The rotation angle of the camera relative to the sky E of N
         (Radians). Will be ignored if rotTelPos is finite.

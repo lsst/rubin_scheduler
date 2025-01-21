@@ -7,10 +7,12 @@ __all__ = (
     "TakeAsPairsDetailer",
     "TwilightTripleDetailer",
     "FlushForSchedDetailer",
+    "FilterNexp",
     "BandNexp",
     "FixedSkyAngleDetailer",
     "ParallacticRotationDetailer",
     "FlushByDetailer",
+    "RandomFilterDetailer",
     "RandomBandDetailer",
     "TrackingInfoDetailer",
     "AltAz2RaDecDetailer",
@@ -179,6 +181,16 @@ class AltAz2RaDecDetailer(BaseDetailer):
         observation_array["dec"] = dec
 
         return observation_array
+
+
+class RandomFilterDetailer(BaseDetailer):
+    """Deprecated in favor of RandomBandDetailer"""
+
+    def __init__(self, filters="riz", nights_to_prep=10000, seed=42, fallback_order="rizgyu"):
+        warnings.warn("Deprecated in favor of RandomBandDetailer", FutureWarning)
+        super().__init__(
+            bands=filters, nights_to_prep=nights_to_prep, seed=seed, fallback_order=fallback_order
+        )
 
 
 class RandomBandDetailer(BaseDetailer):
@@ -536,9 +548,19 @@ class BandNexp(BaseDetailer):
         return observation_array
 
 
+class FilterNexp(BandNexp):
+    """Deprecated in favor of BandNexp"""
+
+    def __init__(self, filtername="u", nexp=1, exptime=None):
+        warnings.warn("Deprecated in favor of BandNexp", FutureWarning)
+        super().__init__(bandname=filtername, nexp=nexp, exptime=exptime)
+
+
 class TakeAsPairsDetailer(BaseDetailer):
-    def __init__(self, bandname="r", exptime=None, nexp_dict=None):
-        """"""
+    def __init__(self, bandname="r", exptime=None, nexp_dict=None, filtername=None):
+        if filtername is not None:
+            warnings.warn("filtername deprecated in favor of bandname", FutureWarning)
+            bandname = filtername
         super(TakeAsPairsDetailer, self).__init__()
         self.bandname = bandname
         self.exptime = exptime

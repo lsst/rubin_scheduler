@@ -420,9 +420,11 @@ class TestBasis(unittest.TestCase):
             basis_functions.SolarElongMaskBasisFunction,
             basis_functions.AzimuthBasisFunction,
             basis_functions.SeasonCoverageBasisFunction,
-            basis_functions.GoodSeeingBasisFunction,
-            basis_functions.NObsHighAmBasisFunction,
             basis_functions.TimeInTwilightBasisFunction,
+            basis_functions.FilterLoadedBasisFunction,
+            basis_functions.StrictFilterBasisFunction,
+            basis_functions.FilterChangeBasisFunction,
+            basis_functions.FilterDistBasisFunction,
         ]
         for dep_bf in deprecated_basis_functions:
             print(dep_bf)
