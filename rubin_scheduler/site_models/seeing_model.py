@@ -42,6 +42,8 @@ class SeeingModel:
     efd_seeing : `str`, opt
         The name of the DIMM FWHM measurements in the efd /
         conditions object. Default `FWHM_500`
+    filter_list : `list` [`str`], opt
+        Deprecated version of band_list
     """
 
     def __init__(
@@ -53,7 +55,12 @@ class SeeingModel:
         camera_seeing=0.30,
         raw_seeing_wavelength=500,
         efd_seeing="FWHM_500",
+        filter_list=None,
     ):
+        if filter_list is not None:
+            warnings.warn("filter_list deprecated in favor of band_list", FutureWarning)
+            self.filter_list = filter_list
+            band_list = filter_list
         self.band_list = band_list
         if eff_wavelens is None:
             sev = SysEngVals()
