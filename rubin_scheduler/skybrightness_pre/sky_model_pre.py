@@ -77,7 +77,9 @@ def interp_angle(x_out, xp, anglep, degrees=False):
 
 
 def simple_daytime(sky_alt, sky_az, sun_alt, sun_az, band_name="r", bright_val=2.0, sky_alt_min=20.0):
-    """A simple function to return a sky brightness map when the sun is up
+    """A simple function to return a sky brightness map when the sun is up.
+
+    The map returned is simply "bright_val" regardless of band or altitude.
 
     Parameters
     ----------
@@ -268,6 +270,7 @@ class SkyModelPreBase(abc.ABC):
         badval=hp.UNSEEN,
         bands=["u", "g", "r", "i", "z", "y"],
         extrapolate=False,
+        filters=None,
     ):
         """Return a full sky map or individual pixels for the input mjd.
 
@@ -295,6 +298,8 @@ class SkyModelPreBase(abc.ABC):
         extrapolate : `bool` (False)
             In indx is set, extrapolate any masked pixels to be the
             same as the nearest non-masked value from the full sky map.
+        filters : `list`, opt
+            Deprecated version of bands.
 
         Returns
         -------
@@ -302,6 +307,9 @@ class SkyModelPreBase(abc.ABC):
             A dictionary with band names as keys and np.arrays as
             values which hold the sky brightness maps in mag/sq arcsec.
         """
+        if filters is not None:
+            warnings.warn("filters deprecated in favor of bands", FutureWarning)
+            bands = filters
         if mjd < self.loaded_range.min() or (mjd > self.loaded_range.max()):
             self._load_data(mjd)
 
