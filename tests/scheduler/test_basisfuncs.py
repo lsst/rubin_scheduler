@@ -24,6 +24,7 @@ class TestBasis(unittest.TestCase):
             basis_functions.StrictBandBasisFunction,
             basis_functions.BandChangeBasisFunction,
             basis_functions.SlewtimeBasisFunction,
+            basis_functions.SlewtimeNoBandBasisFunction,
             basis_functions.AzModuloBasisFunction,
             basis_functions.DecModuloBasisFunction,
             basis_functions.NearSunHighAirmassBasisFunction,
