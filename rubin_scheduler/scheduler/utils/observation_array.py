@@ -233,6 +233,7 @@ class ScheduledObservationArray(ObservationArray):
             ("flush_by_mjd", float),
             ("exptime", float),
             ("band", "U1"),
+            ("filter", "U40"),
             ("rotSkyPos", float),
             ("rotTelPos", float),
             ("rotTelPos_backup", float),
