@@ -293,7 +293,7 @@ class ScriptedSurvey(BaseSurvey):
             columns with dtype names:
             Should be from lsst.sim.scheduler.utils.scheduled_observation
         mjds : np.array
-            The MJDs for the observaitons, should be same length as
+            The MJDs for the observations, should be same length as
             obs_list
         mjd_tol : float (15.)
             The tolerance to consider an observation as still good to
@@ -305,6 +305,10 @@ class ScriptedSurvey(BaseSurvey):
             Should the scheduler_note be modified to include a unique
             index value. Default True.
         """
+        # Backfill band if filter was set instead
+        missing_band = np.where(obs_wanted["band"] == "")
+        band = np.char.rstrip(obs_wanted["filter"][missing_band], chars="_0123456789")
+        obs_wanted["band"][missing_band] = band
 
         obs_wanted.sort(order=["mjd", "band"])
 
