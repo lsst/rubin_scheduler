@@ -1209,7 +1209,7 @@ def generate_twi_blobs(
 
 def ddf_surveys(
     detailers=None,
-    season_unobs_frac=0.2,
+    offseason_length=73.05,
     euclid_detailers=None,
     nside=None,
     expt=29.2,
@@ -1233,7 +1233,7 @@ def ddf_surveys(
     nsnaps = [1, 2, 2, 2, 2, 2]
     if nexp == 1:
         nsnaps = [1, 1, 1, 1, 1, 1]
-    obs_array = generate_ddf_scheduled_obs(season_unobs_frac=season_unobs_frac, expt=expt, nsnaps=nsnaps)
+    obs_array = generate_ddf_scheduled_obs(offseason_length=offseason_length, expt=expt, nsnaps=nsnaps)
     euclid_obs = np.where(
         (obs_array["scheduler_note"] == "DD:EDFS_b") | (obs_array["scheduler_note"] == "DD:EDFS_a")
     )[0]
@@ -1546,7 +1546,7 @@ def gen_scheduler(args):
     # Parameters that were previously command-line
     # arguments.
     max_dither = 0.2  # Degrees. For DDFs
-    ddf_season_frac = 0.2  # Amount of season to use for DDFs
+    ddf_offseason_length = 365.25 * 0.2  # Amount of season to use for DDFs
     illum_limit = 40.0  # Percent. Lunar illumination used for band loading
     u_exptime = 38.0  # Deconds
     nslice = 2  # N slices for rolling
@@ -1643,7 +1643,7 @@ def gen_scheduler(args):
     ]
     ddfs = ddf_surveys(
         detailers=details,
-        season_unobs_frac=ddf_season_frac,
+        offseason_length=ddf_offseason_length,
         euclid_detailers=euclid_detailers,
         nside=nside,
         nexp=nexp,
