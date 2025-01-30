@@ -307,8 +307,8 @@ class CoreScheduler:
             self.queue_fill_mjd_ns = np.int64(self.mjd_perf_counter_offset + time.perf_counter_ns())
             self.queue_reward_df = self.make_reward_df(accum=False)
             self.queue_reward_df = self.queue_reward_df.assign(
-                queue_start_mjd=float(self.conditions.mjd),
-                queue_fill_mjd_ns=np.int64(self.queue_fill_mjd_ns),
+                queue_start_mjd=np.max(self.conditions.mjd),
+                queue_fill_mjd_ns=self.queue_fill_mjd_ns,
             )
 
         rewards = None
