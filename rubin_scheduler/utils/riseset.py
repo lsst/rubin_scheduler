@@ -1,5 +1,4 @@
-"""Second generation hourglass plotting classes.
-"""
+"""Second generation hourglass plotting classes."""
 
 __all__ = ("riseset_times",)
 

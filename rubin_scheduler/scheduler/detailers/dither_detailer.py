@@ -86,14 +86,15 @@ class DitherDetailer(BaseDetailer):
 
 
 class DeltaCoordDitherDetailer(BaseDetailer):
-    """Dither pattern set by user
+    """Dither pattern set by user. Each input observation is
+    expanded to have an observation at each dither position.
 
     Parameters
     ----------
     delta_ra : `np.array`
-        Angular distances to move in the RA-direction (degrees).
+        Angular distances to move on sky in the RA-direction (degrees).
     delta_dec : `np.array`
-        Angular distances to move in the dec-direction (degree).
+        Angular distances to move on sky in the dec-direction (degree).
     delta_rotskypos : `np.array`
         Angular shifts to make in the rotskypos values (degrees). Default None
         applies no rotational shift
@@ -128,18 +129,22 @@ class DeltaCoordDitherDetailer(BaseDetailer):
             dithered_observations = ObservationArray(self.delta_ra.size)
             for key in obs.dtype.names:
                 dithered_observations[key] = obs[key]
-            new_decs = self.delta_dec + 0
-            new_ras = self.delta_ra + np.pi / 2  # Adding 90 deg here for later rotation
-            # Rotate new positions to be centered on correct RA,dec.
-            # This way positions on poles should work fine.
 
-            #  Rotate ra and dec about the x-axis
+            # Generate grid on the equator (so RA offsets are not small)
+            new_decs = self.delta_dec.copy()
+            # Adding 90 deg here for later rotation about x-axis
+            new_ras = self.delta_ra + np.pi / 2
+
+            # Rotate ra and dec about the x-axis
+            # pi/2 term to convert dec to phi
             x, y, z = thetaphi2xyz(new_ras, new_decs + np.pi / 2.0)
+            # rotate so offsets are now centered on proper dec
             xp, yp, zp = rotx(obs["dec"], x, y, z)
             theta, phi = xyz2thetaphi(xp, yp, zp)
 
             new_decs = phi - np.pi / 2
-            new_ras = theta - np.pi / 2 + obs["RA"]  # Need to remove rotation from earlier
+            # Remove 90 degree rot from earlier and center on proper RA
+            new_ras = theta - np.pi / 2 + obs["RA"]
 
             # Make sure coords are in proper range
             new_ras, new_decs = wrap_ra_dec(new_ras, new_decs)
