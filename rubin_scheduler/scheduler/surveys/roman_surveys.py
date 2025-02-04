@@ -46,7 +46,7 @@ def gen_roman_on_season(
     RA = field_info["RA"]
     dec = field_info["dec"]
 
-    survey_name = "DD: RGES_onseason"
+    scheduler_note = "DD: RGES_onseason"
 
     # Add some feasability basis functions. Maybe just give it a set
     # of nights where it can execute for now.
@@ -57,7 +57,7 @@ def gen_roman_on_season(
     basis_functions.append(bf.HourAngleLimitBasisFunction(RA=RA, ha_limits=[[20, 24], [0, 4]]))
     basis_functions.append(bf.NotTwilightBasisFunction())
     # Force it to delay about a day
-    basis_functions.append(bf.ForceDelayBasisFunction(days_delay=0.8, survey_name=survey_name))
+    basis_functions.append(bf.ForceDelayBasisFunction(days_delay=0.8, scheduler_note=scheduler_note))
     # Force it to be in a given observing season
     basis_functions.append(bf.InTimeWindowBasisFunction(mjd_windows=field_info["seasons_on"]))
     basis_functions.append(bf.MoonDistPointRangeBasisFunction(RA, dec))
@@ -77,7 +77,7 @@ def gen_roman_on_season(
         nvis=[1, 1, 1, 1, 1],
         exptime=exptime,
         nexp=nexp,
-        survey_name=survey_name,
+        survey_name=scheduler_note,
         detailers=details,
     )
     return survey
@@ -98,7 +98,7 @@ def gen_roman_off_season(
     RA = field_info["RA"]
     dec = field_info["dec"]
 
-    survey_name = "DD: RGES_offseason"
+    scheduler_note = "DD: RGES_offseason"
 
     # Add some feasability basis functions. Maybe just give it a
     # set of nights where it can execute for now.
@@ -109,7 +109,7 @@ def gen_roman_off_season(
     basis_functions.append(bf.HourAngleLimitBasisFunction(RA=RA, ha_limits=[[20, 24], [0, 4]]))
     basis_functions.append(bf.NotTwilightBasisFunction())
     # Force it to not go every day
-    basis_functions.append(bf.ForceDelayBasisFunction(days_delay=3.0, survey_name=survey_name))
+    basis_functions.append(bf.ForceDelayBasisFunction(days_delay=3.0, scheduler_note=scheduler_note))
     # Force it to be in a given observing season
     basis_functions.append(bf.InTimeWindowBasisFunction(mjd_windows=field_info["seasons_off"]))
     basis_functions.append(bf.MoonDistPointRangeBasisFunction(RA, dec))
@@ -129,7 +129,7 @@ def gen_roman_off_season(
         nvis=[1, 1, 1, 1],
         exptime=exptime,
         nexp=nexp,
-        survey_name=survey_name,
+        survey_name=scheduler_note,
         detailers=details,
     )
     return survey

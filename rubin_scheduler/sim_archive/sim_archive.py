@@ -120,9 +120,9 @@ def make_sim_archive_dir(
         files["rewards"] = {"name": "rewards.h5"}
         rewards_fname = data_path.joinpath(files["rewards"]["name"])
         if reward_df is not None:
-            reward_df.to_hdf(rewards_fname, "reward_df")
+            reward_df.to_hdf(rewards_fname, key="reward_df")
         if obs_rewards is not None:
-            obs_rewards.to_hdf(rewards_fname, "obs_rewards")
+            obs_rewards.to_hdf(rewards_fname, key="obs_rewards")
 
     # Save basic statistics
     files["statistics"] = {"name": "obs_stats.txt"}

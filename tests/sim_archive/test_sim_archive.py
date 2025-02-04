@@ -133,3 +133,7 @@ class TestSimArchive(unittest.TestCase):
                 "--archive_base_uri",
                 test_archive_uri,
             )
+
+
+if __name__ == "__main__":
+    unittest.main()
