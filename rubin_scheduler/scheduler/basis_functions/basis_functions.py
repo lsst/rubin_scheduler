@@ -13,6 +13,7 @@ __all__ = (
     "BandChangeBasisFunction",
     "FilterChangeBasisFunction",
     "SlewtimeBasisFunction",
+    "SlewtimeNoBandBasisFunction",
     "CadenceEnhanceBasisFunction",
     "CadenceEnhanceTrapezoidBasisFunction",
     "AzimuthBasisFunction",
@@ -970,6 +971,47 @@ class SlewtimeBasisFunction(BaseBasisFunction):
         return result
 
 
+class SlewtimeNoBandBasisFunction(BaseBasisFunction):
+    """Reward slews that take little time - but do not consider bandpass.
+
+    This is appropriate for some surveys, within some scheduler
+    environments - but note that the predicted slewtime will be
+    incorrect if a filter change was required.
+
+    Parameters
+    ----------
+    max_time : `float`
+         The estimated maximum slewtime (seconds).
+         Used to normalize so the basis function spans ~ -1-0
+         in reward units. Default 135 seconds corresponds to just
+         slightly less than a band change.
+    nside : `int`, optional
+        Nside for the basis function.
+        Default None will use `set_default_nside()`.
+    """
+
+    def __init__(self, max_time=135.0, nside=DEFAULT_NSIDE):
+        super().__init__(nside=nside)
+
+        self.maxtime = max_time
+        self.nside = nside
+
+    def _calc_value(self, conditions, indx=None):
+        # Just calculate slewtime ignoring bandpass change requirement.
+        # Need to make sure smaller slewtime is larger reward.
+        if np.size(conditions.slewtime) > 1:
+            # Slewtime map can contain nans and/or
+            # infs - mask these with nans
+            result = np.where(
+                np.isfinite(conditions.slewtime),
+                -conditions.slewtime / self.maxtime,
+                np.nan,
+            )
+        else:
+            result = -conditions.slewtime / self.maxtime
+        return result
+
+
 class CadenceEnhanceBasisFunction(BaseBasisFunction):
     """Drive a certain cadence
 
@@ -1437,6 +1479,7 @@ class RewardNObsSequence(BaseBasisFunction):
     This basis function is useful when a survey is composed of more than
     one observation (e.g. in different bands) and one wants to make sure
     they are all taken together.
+    If the sequence is programmed into the FieldSurvey, this isn't necessary.
     """
 
     def __init__(self, n_obs_survey, note_survey, nside=DEFAULT_NSIDE):
