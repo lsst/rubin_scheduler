@@ -224,6 +224,10 @@ class BlobSurvey(GreedySurvey):
         if az_range != -9999:
             warnings.warn("az_range unused, remove kwarg", DeprecationWarning, 2)
 
+        if min_area is not None:
+            warnings.warn("kwarg min_area replaced with area_required", FutureWarning)
+            area_required = min_area
+
         self.bandname1 = bandname1
         self.bandname2 = bandname2
 
@@ -311,35 +315,6 @@ class BlobSurvey(GreedySurvey):
         else:
             self.survey_name += f"_{self.bandname2}"
 
-    def _check_feasibility(self, conditions):
-        """
-        Check if the survey is feasable in the current conditions.
-        """
-        for bf in self.basis_functions:
-            result = bf.check_feasibility(conditions)
-            if not result:
-                return result
-
-        # If we need to check that the reward function has enough
-        # area available
-        if self.min_area is not None:
-            reward = 0
-            for bf, weight in zip(self.basis_functions, self.basis_weights):
-                basis_value = bf(conditions)
-                reward += basis_value * weight
-            # Are there any valid reward pixels remaining
-            if np.sum(np.isfinite(reward)) > 0:
-                max_reward_indx = np.min(np.where(reward == np.nanmax(reward)))
-                distances = _angular_separation(
-                    self.ra, self.dec, self.ra[max_reward_indx], self.dec[max_reward_indx]
-                )
-                valid_pix = np.where((np.isnan(reward) == False) & (distances < self.max_radius_peak))[0]
-                if np.size(valid_pix) * self.pixarea < self.min_area:
-                    result = False
-            else:
-                result = False
-        return result
-
     def _set_block_size(self, conditions):
         """
         Update the block size if it's getting near a break point.
@@ -409,11 +384,7 @@ class BlobSurvey(GreedySurvey):
         self._set_block_size(conditions)
         #  Computing reward like usual with basis functions and weights
         if self._check_feasibility(conditions):
-            self.reward = 0
-            indx = np.arange(hp.nside2npix(self.nside))
-            for bf, weight in zip(self.basis_functions, self.basis_weights):
-                basis_value = bf(conditions, indx=indx)
-                self.reward += basis_value * weight
+            self.reward = self.calc_reward_basic(conditions)
             if self.smoothing_kernel is not None:
                 self.smooth_reward()
         else:

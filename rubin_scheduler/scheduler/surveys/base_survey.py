@@ -17,7 +17,13 @@ from rubin_scheduler.scheduler.utils import (
     xyz2thetaphi,
 )
 from rubin_scheduler.site_models import _read_fields
-from rubin_scheduler.utils import DEFAULT_NSIDE, _build_tree, _hpid2_ra_dec, _xyz_from_ra_dec
+from rubin_scheduler.utils import (
+    DEFAULT_NSIDE,
+    _angular_separation,
+    _build_tree,
+    _hpid2_ra_dec,
+    _xyz_from_ra_dec,
+)
 
 
 class BaseSurvey:
@@ -550,12 +556,21 @@ class BaseMarkovSurvey(BaseSurvey):
             result = bf.check_feasibility(conditions)
             if not result:
                 return result
+        # If we need to check that the reward function has enough
+        # area available
         if self.area_required is not None:
-            reward = self.calc_reward_function(conditions)
-            good_pix = np.where(np.isfinite(reward) == True)[0]
-            area = hp.nside2pixarea(self.nside) * np.size(good_pix)
-            if area < self.area_required:
-                return False
+            reward = self.calc_reward_basic(conditions)
+            # Are there any valid reward pixels remaining
+            if np.sum(np.isfinite(reward)) > 0:
+                max_reward_indx = np.min(np.where(reward == np.nanmax(reward)))
+                distances = _angular_separation(
+                    self.ra, self.dec, self.ra[max_reward_indx], self.dec[max_reward_indx]
+                )
+                valid_pix = np.where((np.isnan(reward) == False) & (distances < self.max_radius_peak))[0]
+                if np.size(valid_pix) * self.pixarea < self.area_required:
+                    result = False
+            else:
+                result = False
         return result
 
     def _hp2fieldsetup(self, ra, dec):
@@ -640,14 +655,18 @@ class BaseMarkovSurvey(BaseSurvey):
             self.reward_smooth[mask] = np.nan
             self.reward = self.reward_smooth
 
+    def calc_reward_basic(self, conditions):
+        reward = 0
+        indx = np.arange(hp.nside2npix(self.nside))
+        for bf, weight in zip(self.basis_functions, self.basis_weights):
+            basis_value = bf(conditions, indx=indx)
+            reward += basis_value * weight
+        return reward
+
     def calc_reward_function(self, conditions):
         self.reward_checked = True
         if self._check_feasibility(conditions):
-            self.reward = 0
-            indx = np.arange(hp.nside2npix(self.nside))
-            for bf, weight in zip(self.basis_functions, self.basis_weights):
-                basis_value = bf(conditions, indx=indx)
-                self.reward += basis_value * weight
+            self.reward = self.calc_reward_basic(conditions)
         else:
             # If not feasable, negative infinity reward
             self.reward = -np.inf
