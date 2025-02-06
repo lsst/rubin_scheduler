@@ -1,5 +1,4 @@
-"""Tools for maintaining an archive of opsim output and metadata.
-"""
+"""Tools for maintaining an archive of opsim output and metadata."""
 
 __all__ = [
     "make_sim_archive_dir",

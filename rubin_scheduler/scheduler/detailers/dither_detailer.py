@@ -4,12 +4,13 @@ __all__ = (
     "CameraRotDetailer",
     "CameraSmallRotPerObservationListDetailer",
     "ComCamGridDitherDetailer",
+    "DeltaCoordDitherDetailer",
 )
 
 import numpy as np
 
 from rubin_scheduler.scheduler.detailers import BaseDetailer
-from rubin_scheduler.scheduler.utils import wrap_ra_dec
+from rubin_scheduler.scheduler.utils import ObservationArray, rotx, thetaphi2xyz, wrap_ra_dec, xyz2thetaphi
 from rubin_scheduler.utils import (
     _approx_altaz2pa,
     _approx_ra_dec2_alt_az,
@@ -82,6 +83,80 @@ class DitherDetailer(BaseDetailer):
         obs_array["dec"] = new_dec
 
         return obs_array
+
+
+class DeltaCoordDitherDetailer(BaseDetailer):
+    """Dither pattern set by user. Each input observation is
+    expanded to have an observation at each dither position.
+
+    Parameters
+    ----------
+    delta_ra : `np.array`
+        Angular distances to move on sky in the RA-direction (degrees).
+    delta_dec : `np.array`
+        Angular distances to move on sky in the dec-direction (degree).
+    delta_rotskypos : `np.array`
+        Angular shifts to make in the rotskypos values (degrees). Default None
+        applies no rotational shift
+    """
+
+    def __init__(self, delta_ra, delta_dec, delta_rotskypos=None):
+
+        if delta_rotskypos is not None:
+            if np.size(delta_ra) != np.size(delta_rotskypos):
+                raise ValueError(
+                    "size of delta_ra (%i) is not equal to size of delta_rotskypos (%i)"
+                    % (np.size(delta_ra), np.size(delta_rotskypos))
+                )
+        if np.size(delta_ra) != np.size(delta_dec):
+            raise ValueError(
+                "Sizes of delta_ra (%i) and delta_dec (%i) do not match."
+                % (np.size(delta_ra), np.size(delta_dec))
+            )
+
+        self.survey_features = {}
+        self.delta_ra = np.radians(delta_ra)
+        self.delta_dec = np.radians(delta_dec)
+        if delta_rotskypos is None:
+            self.delta_rotskypos = delta_rotskypos
+        else:
+            self.delta_rotskypos = np.radians(delta_rotskypos)
+
+    def __call__(self, obs_array, conditions):
+
+        output_array_list = []
+        for obs in obs_array:
+            dithered_observations = ObservationArray(self.delta_ra.size)
+            for key in obs.dtype.names:
+                dithered_observations[key] = obs[key]
+
+            # Generate grid on the equator (so RA offsets are not small)
+            new_decs = self.delta_dec.copy()
+            # Adding 90 deg here for later rotation about x-axis
+            new_ras = self.delta_ra + np.pi / 2
+
+            # Rotate ra and dec about the x-axis
+            # pi/2 term to convert dec to phi
+            x, y, z = thetaphi2xyz(new_ras, new_decs + np.pi / 2.0)
+            # rotate so offsets are now centered on proper dec
+            xp, yp, zp = rotx(obs["dec"], x, y, z)
+            theta, phi = xyz2thetaphi(xp, yp, zp)
+
+            new_decs = phi - np.pi / 2
+            # Remove 90 degree rot from earlier and center on proper RA
+            new_ras = theta - np.pi / 2 + obs["RA"]
+
+            # Make sure coords are in proper range
+            new_ras, new_decs = wrap_ra_dec(new_ras, new_decs)
+
+            dithered_observations["RA"] = new_ras
+            dithered_observations["dec"] = new_decs
+            if self.delta_rotskypos is not None:
+                dithered_observations["rotSkyPos_desired"] += self.delta_rotskypos
+            output_array_list.append(dithered_observations)
+
+        result = np.concatenate(output_array_list)
+        return result
 
 
 class EuclidDitherDetailer(BaseDetailer):

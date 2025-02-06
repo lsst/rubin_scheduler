@@ -12,6 +12,7 @@ from rubin_scheduler.scheduler.utils import (
     HpInLsstFov,
     ObservationArray,
     comcam_tessellate,
+    rotx,
     thetaphi2xyz,
     xyz2thetaphi,
 )
@@ -428,16 +429,6 @@ class BaseSurvey:
         label_map = dict(zip(long_labels, short_labels))
 
         return label_map
-
-
-def rotx(theta, x, y, z):
-    """rotate the x,y,z points theta radians about x axis"""
-    sin_t = np.sin(theta)
-    cos_t = np.cos(theta)
-    xp = x
-    yp = y * cos_t + z * sin_t
-    zp = -y * sin_t + z * cos_t
-    return xp, yp, zp
 
 
 class BaseMarkovSurvey(BaseSurvey):
