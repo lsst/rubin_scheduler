@@ -93,7 +93,7 @@ def standard_bf(
     g_template_weight=50.0,
     footprints=None,
     n_obs_template=None,
-    season=300.0,
+    season=365.25,
     season_start_hour=-4.0,
     season_end_hour=2.0,
     moon_distance=30.0,
@@ -116,7 +116,7 @@ def standard_bf(
         Default None.
     season : `float`
         The length of season (i.e., how long before templates expire) (days).
-        Default 300.
+        Default 365.25.
     season_start_hour : `float`
         Hour angle limits to use when gathering templates.
         Default -4 (hours)
@@ -303,7 +303,7 @@ def blob_for_long(
     pair_time=33.0,
     camera_rot_limits=[-80.0, 80.0],
     n_obs_template=None,
-    season=300.0,
+    season=365.25,
     season_start_hour=-4.0,
     season_end_hour=2.0,
     shadow_minutes=60.0,
@@ -355,7 +355,7 @@ def blob_for_long(
         If None, sets to 3 each. Default None.
     season : float
         The length of season (i.e., how long before templates expire) (days)
-        Default 300.
+        Default 365.25.
     season_start_hour : `float`
         Hour angle limits to use when gathering templates.
         Default -4 (hours)
@@ -736,7 +736,7 @@ def generate_blobs(
     pair_time=33.0,
     camera_rot_limits=[-80.0, 80.0],
     n_obs_template=None,
-    season=300.0,
+    season=365.25,
     season_start_hour=-4.0,
     season_end_hour=2.0,
     shadow_minutes=60.0,
@@ -789,7 +789,7 @@ def generate_blobs(
         If None, sets to 3 each.
     season : `float`
         The length of season (i.e., how long before templates expire) (days).
-        Default 300.
+        Default 365.25.
     season_start_hour : `float`
         Hour angle limits to use when gathering templates.
         Default -4 (hours)
@@ -994,7 +994,7 @@ def generate_twi_blobs(
     pair_time=15.0,
     camera_rot_limits=[-80.0, 80.0],
     n_obs_template=None,
-    season=300.0,
+    season=365.25,
     season_start_hour=-4.0,
     season_end_hour=2.0,
     shadow_minutes=60.0,
@@ -1041,7 +1041,7 @@ def generate_twi_blobs(
         If None, sets to 3 each. Default None.
     season : `float`
         The length of season (i.e., how long before templates expire) (days).
-        Default 300.
+        Default 365.25.
     season_start_hour : `float`
         Hour angle limits to use when gathering templates.
         Default -4 (hours)
@@ -1546,9 +1546,9 @@ def gen_scheduler(args):
     # Parameters that were previously command-line
     # arguments.
     max_dither = 0.2  # Degrees. For DDFs
-    ddf_offseason_length = 365.25 * 0.2  # Amount of season to use for DDFs
+    ddf_offseason_length = 365.25 * 0.2  # Amount of season not to use for DDFs
     illum_limit = 40.0  # Percent. Lunar illumination used for band loading
-    u_exptime = 38.0  # Deconds
+    u_exptime = 38.0  # Seconds
     nslice = 2  # N slices for rolling
     rolling_scale = 0.9  # Strength of rolling
     rolling_uniform = True  # Should we use the uniform rolling flag
@@ -1566,7 +1566,7 @@ def gen_scheduler(args):
     # if changing mjd_start
     mjd_start = SURVEY_START_MJD + mjd_plus
 
-    fileroot, extra_info = set_run_info(dbroot=dbroot, file_end="v4.0_", out_dir=out_dir)
+    fileroot, extra_info = set_run_info(dbroot=dbroot, file_end="v4.2_", out_dir=out_dir)
 
     pattern_dict = {
         1: [True],
