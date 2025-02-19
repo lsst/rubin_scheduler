@@ -1,11 +1,43 @@
 __all__ = (
     "ObservationArray",
     "ScheduledObservationArray",
+    "backfill_filter_from_band",
 )
 
 import numpy as np
 
 HANDLED_FUNCTIONS = {}
+
+
+def backfill_filter_from_band(observation_array):
+    """Simple utility to backfill the `band` values in an ObservationArray
+    if not otherwise present.
+
+    Parameters
+    ----------
+    observation_array : ObservationArray
+        The observation array to ensure that 'band' is present in, if
+        only physical filtername was present.
+
+    Returns
+    -------
+    observation_array : ObservationArray
+        The same observation_array, but with `band` added where it was missing.
+
+    Notes
+    -----
+    This is primarily a utility to provide backwards compatibility for
+    scheduler configurations where ObservationArrays are input (such as
+    for FieldSurvey), but only have `filter` present, instead of also `band`.
+    For the current setup for comcam and lsstcam, the stripping of
+    "_0123456789" is sufficient, in case the configuration used physical
+    filtername --
+    physical filtername <> band includes "r_03" <> "r", for example.
+    """
+    missing_band = np.where(observation_array["band"] == "")
+    band = np.char.rstrip(observation_array["filter"][missing_band], chars="_0123456789")
+    observation_array["band"][missing_band] = band
+    return observation_array
 
 
 class ObservationArray(np.ndarray):

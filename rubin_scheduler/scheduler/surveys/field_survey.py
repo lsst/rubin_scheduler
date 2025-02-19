@@ -10,7 +10,7 @@ from rubin_scheduler.utils import DEFAULT_NSIDE, _approx_alt_az2_ra_dec, _ra_dec
 
 from ..detailers import AltAz2RaDecDetailer
 from ..features import LastObservation, NObsCount
-from ..utils import ObservationArray
+from ..utils import ObservationArray, backfill_filter_from_band
 from . import BaseSurvey
 
 
@@ -178,10 +178,7 @@ class FieldSurvey(BaseSurvey):
         if not isinstance(self.observations, ObservationArray):
             self.observations = np.concatenate(self.observations)
         # and backfill "band" if it was set by the user in "filter"
-        # Need to add "band" here if it wasn't populated
-        missing_band = np.where(self.observations["band"] == "")
-        band = np.char.rstrip(self.observations["filter"][missing_band], chars="_0123456789")
-        self.observations["band"][missing_band] = band
+        self.observations = backfill_filter_from_band(self.observations)
 
         order = np.argsort(self.observations["band"])
         self.observations = self.observations[order]
