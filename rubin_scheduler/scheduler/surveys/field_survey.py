@@ -10,7 +10,7 @@ from rubin_scheduler.utils import DEFAULT_NSIDE, _approx_alt_az2_ra_dec, _ra_dec
 
 from ..detailers import AltAz2RaDecDetailer
 from ..features import LastObservation, NObsCount
-from ..utils import ObservationArray
+from ..utils import ObservationArray, backfill_filter_from_band
 from . import BaseSurvey
 
 
@@ -20,7 +20,7 @@ class FieldSurvey(BaseSurvey):
     Parameters
     ----------
     basis_functions : `list` [`rubin_scheduler.scheduler.basis_function`]
-        List of basis_function objects
+        List of basis_function objects.
     detailers : `list` [`rubin_scheduler.scheduler.detailer`] objects
         The detailers to apply to the list of observations.
     RA : `float`
@@ -148,8 +148,13 @@ class FieldSurvey(BaseSurvey):
         if nexps is None:
             nexps = default_nexps
 
-        # Do a little shuffling if this was not configured quite as expected
-        if isinstance(sequence, str):
+        # Were we passed something like an ObservationArray or list[ObsArray]
+        if isinstance(sequence, ObservationArray) | isinstance(sequence[0], ObservationArray):
+            self.observations = sequence
+
+        # Or was the sequence specified by filters, nvisits, exptimes, nexps
+        else:
+            # Do a little shuffling if we had the simplest config
             if isinstance(nvisits, (float, int)):
                 nvisits = dict([(bandname, nvisits) for bandname in sequence])
             if isinstance(exptimes, (float, int)):
@@ -157,9 +162,6 @@ class FieldSurvey(BaseSurvey):
             if isinstance(nexps, (float, int)):
                 nexps = dict([(bandname, nexps) for bandname in sequence])
 
-        if isinstance(sequence, ObservationArray) | isinstance(sequence[0], ObservationArray):
-            self.observations = sequence
-        else:
             self.observations = []
             for bandname in sequence:
                 for j in range(nvisits[bandname]):
@@ -172,8 +174,12 @@ class FieldSurvey(BaseSurvey):
                     obs["scheduler_note"] = self.scheduler_note
                     self.observations.append(obs)
 
-        # Let's just make this an array for ease of use
-        self.observations = np.concatenate(self.observations)
+        # Let's just make this an array for ease of use if not already
+        if not isinstance(self.observations, ObservationArray):
+            self.observations = np.concatenate(self.observations)
+        # and backfill "band" if it was set by the user in "filter"
+        self.observations = backfill_filter_from_band(self.observations)
+
         order = np.argsort(self.observations["band"])
         self.observations = self.observations[order]
 

@@ -926,8 +926,10 @@ class SlewtimeBasisFunction(BaseBasisFunction):
          Used to normalize so the basis function spans ~ -1-0
          in reward units. Default 135 seconds corresponds to just
          slightly less than a band change.
-    bandname : `str`, optional
+    bandname : `str` or None, optional
         The band to check for pre-post slewtime estimates.
+        If the band is None, then bandpasses changes are NOT considered
+        when calculating slewtime.
         If a slew includes a band change, other basis functions will
         decide on the reward, so the result here can be 0.
     nside : `int`, optional
@@ -950,7 +952,7 @@ class SlewtimeBasisFunction(BaseBasisFunction):
         # BandChangeBasisFunction will take it
         # But we can still use the MASK returned by
         # the slewtime map to remove inaccessible parts of the sky
-        if conditions.current_band != self.bandname:
+        if conditions.current_band != self.bandname and self.bandname is not None:
             if np.size(conditions.slewtime) > 1:
                 result = np.where(np.isfinite(conditions.slewtime), 0, np.nan)
             else:
@@ -1437,6 +1439,7 @@ class RewardNObsSequence(BaseBasisFunction):
     This basis function is useful when a survey is composed of more than
     one observation (e.g. in different bands) and one wants to make sure
     they are all taken together.
+    If the sequence is programmed into the FieldSurvey, this isn't necessary.
     """
 
     def __init__(self, n_obs_survey, note_survey, nside=DEFAULT_NSIDE):

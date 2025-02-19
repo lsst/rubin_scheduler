@@ -10,6 +10,10 @@ from rubin_scheduler.scheduler.utils import ObservationArray
 
 
 class TestBasis(unittest.TestCase):
+    def setUp(self) -> None:
+        self.observatory = ModelObservatory()
+        self.conditions = self.observatory.return_conditions()
+
     def test_basics(self):
         """Test the basics of each basis function"""
 
@@ -60,17 +64,34 @@ class TestBasis(unittest.TestCase):
         obs = ObservationArray()
         obs["band"] = "r"
         obs["mjd"] = 59000.0
-        observatory = ModelObservatory()
-        conditions = observatory.return_conditions()
         indx = np.array([1000])
 
         for bf in bfs:
             awake_bf = bf()
             awake_bf.add_observation(obs, indx=indx)
-            feas = awake_bf.check_feasibility(conditions=conditions)
-            reward = awake_bf(conditions)
+            feas = awake_bf.check_feasibility(conditions=self.conditions)
+            reward = awake_bf(self.conditions)
             assert feas is not None
             assert reward is not None
+
+    def test_slewtime_basis_function(self):
+        current_band = self.conditions.current_filter
+        # Test value with matching bandpass
+        bf = basis_functions.SlewtimeBasisFunction(bandname=current_band)
+        reward = bf(self.conditions)
+        # Slewtime reward is always < 0 ..
+        self.assertTrue(np.nanmax(reward) < 0)
+        # Test value with different bandpass
+        bands = "ugrizy"
+        different_band = (bands.index(current_band) + 2) % 5
+        different_band = bands[different_band]
+        bf = basis_functions.SlewtimeBasisFunction(bandname=different_band)
+        reward = bf(self.conditions)
+        self.assertTrue(np.nanmax(reward) == 0)
+        # Test value with bandpass = None
+        bf = basis_functions.SlewtimeBasisFunction(bandname=None)
+        reward = bf(self.conditions)
+        self.assertTrue(np.nanmax(reward) < 0)
 
     def test_visit_repeat_basis_function(self):
         bf = basis_functions.VisitRepeatBasisFunction()
