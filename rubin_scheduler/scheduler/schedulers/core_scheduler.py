@@ -285,6 +285,9 @@ class CoreScheduler:
             else:
                 result = self.queue.pop(0)
 
+            # TODO : Remove this hack which is for use with ts_scheduler
+            # version <=v2.3 .. remove ts_scheduler actually drops "note".
+            result["note"] = result["scheduler_note"]
             return result
 
     def _fill_queue(self):

@@ -172,6 +172,9 @@ class ObservationArray(np.ndarray):
             ("cummTelAz", float),
             ("observation_reason", "U40"),
             ("science_program", "U40"),
+            # TODO : Remove this hack which is for use with ts_scheduler
+            # version <=v2.3 .. remove ts_scheduler actually drops "note".
+            ("note", "U40"),
         ]
         obj = np.zeros(n, dtype=dtypes).view(cls)
         return obj
