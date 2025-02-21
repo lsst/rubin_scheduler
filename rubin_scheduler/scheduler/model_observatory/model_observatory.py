@@ -141,9 +141,6 @@ class ModelObservatory:
         will allow altitudes anywhere between 20-86 degrees.
     telescope : `str`
         Telescope name for rotation computations. Default "rubin".
-    band2filter : `dict`
-        Dictionary for converting band names to filter names.
-        Default of none will use band names for filter names.
     """
 
     def __init__(
@@ -171,7 +168,6 @@ class ModelObservatory:
         sky_alt_limits=None,
         sky_az_limits=None,
         telescope="rubin",
-        band2filter=None,
     ):
         self.nside = nside
 
@@ -183,12 +179,6 @@ class ModelObservatory:
             mjd = mjd_start
 
         self.bandlist = ["u", "g", "r", "i", "z", "y"]
-        if band2filter is None:
-            self.band2filter = {}
-            for bandname in self.bandlist:
-                self.band2filter[bandname] = bandname
-        else:
-            self.band2filter = band2filter
 
         self.cloud_limit = cloud_limit
         self.no_sky = no_sky
@@ -565,8 +555,6 @@ class ModelObservatory:
             observation["sunDec"],
         )
         observation["moonPhase"] = sun_moon_info["moon_phase"]
-
-        observation["filter"] = self.band2filter[observation["band"][0]]
 
         observation["ID"] = self.obs_id_counter
         self.obs_id_counter += 1

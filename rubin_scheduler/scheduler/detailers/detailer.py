@@ -157,11 +157,12 @@ class BandToFilterDetailer(BaseDetailer):
         for band in u_bands:
             indx = np.where(observation_array["band"] == band)[0]
             if band not in self.band_to_filter_dict.keys():
-                warnings.warn(
-                    "No mapping of band %s to a filter name. Using %s as filter name" % (band, band)
-                )
+                # If the BandToFilterDetailer was set up with an
+                # empty dictionary (not None), then just copy the configured
+                # (possibly physical filtername) into band.
                 observation_array[indx]["filter"] = band
-            observation_array[indx]["filter"] = self.band_to_filter_dict[band]
+            else:
+                observation_array[indx]["filter"] = self.band_to_filter_dict[band]
 
         return observation_array
 
