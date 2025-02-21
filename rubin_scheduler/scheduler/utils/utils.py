@@ -516,6 +516,9 @@ class SchemaConverter:
                 pass
 
         df = pd.DataFrame(obs_array)
+        # TODO : Remove this hack which is for use with ts_scheduler
+        # version <=v2.3 .. remove ts_scheduler actually drops "note".
+        df.drop("note", axis=1, inplace=True)
         df = df.rename(index=str, columns=self.inv_map)
         for colname in self.angles_rad2deg:
             df[colname] = np.degrees(df[colname])

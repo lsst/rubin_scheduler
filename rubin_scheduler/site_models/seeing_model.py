@@ -59,9 +59,10 @@ class SeeingModel:
     ):
         if filter_list is not None:
             warnings.warn("filter_list deprecated in favor of band_list", FutureWarning)
-            self.filter_list = filter_list
             band_list = filter_list
         self.band_list = band_list
+        # Setting self.filter_list for backward compatibility with ts_scheduler
+        self.filter_list = band_list
         if eff_wavelens is None:
             sev = SysEngVals()
             eff_wavelens = [sev.eff_wavelengths[f] for f in band_list]

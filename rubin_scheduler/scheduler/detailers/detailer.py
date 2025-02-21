@@ -155,13 +155,10 @@ class BandToFilterDetailer(BaseDetailer):
     def __call__(self, observation_array, conditions):
         u_bands = np.unique(observation_array["band"])
         for band in u_bands:
-            indx = np.where(observation_array["band"] == band)[0]
-            if band not in self.band_to_filter_dict.keys():
-                warnings.warn(
-                    "No mapping of band %s to a filter name. Using %s as filter name" % (band, band)
-                )
-                observation_array[indx]["filter"] = band
-            observation_array[indx]["filter"] = self.band_to_filter_dict[band]
+            indx = np.where(observation_array["band"] == band)
+            # Fetch the dictionary value or just continue to use band
+            filtername = self.band_to_filter_dict.get(band, band)
+            observation_array["filter"][indx] = filtername
 
         return observation_array
 

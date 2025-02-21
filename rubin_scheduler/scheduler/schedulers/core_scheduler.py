@@ -285,6 +285,10 @@ class CoreScheduler:
             else:
                 result = self.queue.pop(0)
 
+            # TODO : Remove this hack which is for use with ts_scheduler
+            # version <=v2.3 .. remove ts_scheduler actually drops "note".
+            for obs in result:
+                obs["note"] = obs["scheduler_note"]
             return result
 
     def _fill_queue(self):
