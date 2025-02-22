@@ -22,7 +22,7 @@ class ModelObservatoryWindy(ModelObservatory):
         -------
         rubin_scheduler.scheduler.features.conditions object
         """
-        _conditions = super().return_conditions()
+        self.conditions = super().return_conditions()
 
         # Always have a strong wind from the north
         wind_speed = 40.0

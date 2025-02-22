@@ -267,7 +267,7 @@ def optimize_ddf_times(
     sky_mask = np.ones(ngrid, dtype=int)
     if sky_limit is not None:
         sky_mask[np.where(ddf_grid["%s_sky_g" % ddf_name] <= sky_limit)] = 0
-        sky_mask[np.where(np.isnan(ddf_grid["%s_sky_g" % ddf_name]) == True)] = 0
+        sky_mask[np.where(np.isnan(ddf_grid["%s_sky_g" % ddf_name]))] = 0
 
     # Set the m5 / g_depth_limit mask if provided.
     m5_mask = np.zeros(ngrid, dtype=bool)
