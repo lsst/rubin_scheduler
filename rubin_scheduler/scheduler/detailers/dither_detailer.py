@@ -286,7 +286,7 @@ class EuclidDitherDetailer(BaseDetailer):
                     self.shifted_ra_b,
                 )
         else:
-            ValueError("not implamented")
+            raise ValueError("not implamented")
 
         return (
             self.shifted_ra_a,
@@ -300,14 +300,14 @@ class EuclidDitherDetailer(BaseDetailer):
         ra_a, dec_a, ra_b, dec_b = self._generate_offsets(len(obs_array), conditions.night)
 
         for i, obs in enumerate(obs_array):
-            if obs["scheduler_note"][-1] == "a":
+            if "EDFS_a" in obs["scheduler_note"]:
                 obs_array[i]["RA"] = ra_a
                 obs_array[i]["dec"] = dec_a
-            elif obs["scheduler_note"][-1] == "b":
+            elif "EDFS_b" in obs["scheduler_note"]:
                 obs_array[i]["RA"] = ra_b
                 obs_array[i]["dec"] = dec_b
             else:
-                ValueError("observation note does not end in a or b.")
+                raise ValueError("scheduler_note does not contain EDFS_a or EDFS_b.")
         return obs_array
 
 
