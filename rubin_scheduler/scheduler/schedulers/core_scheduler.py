@@ -41,10 +41,14 @@ class CoreScheduler:
     telescope : `str`
         Which telescope model to use for rotTelPos/rotSkyPos conversions.
         Default "rubin".
-    target_id_counter : int
+    target_id_counter : `int`
         Starting value for the target_id. If restarting observations, could
         be useful to set to whatever value the scheduler was at previously.
         Default 0.
+    band2filter : `dict`
+        Dict for mapping band name to filter name if filter has not been
+        specified. Default of None maps 'ugrizy' to the same. Empty dict
+        will do no mapping for missing "filter" values.
     """
 
     def __init__(
@@ -56,6 +60,7 @@ class CoreScheduler:
         keep_rewards=False,
         telescope="rubin",
         target_id_counter=0,
+        band_to_filter=None,
     ):
         self.keep_rewards = keep_rewards
         # Use integer ns just to be sure there are no rounding issues.
@@ -100,6 +105,14 @@ class CoreScheduler:
         # Set to something so it doesn't fail if never set later
         self.queue_fill_mjd_ns = -1
         self.queue_reward_df = None
+
+        # Set mapping of band to filter if filter is missing
+        if band_to_filter is None:
+            self.band_to_filter_dict = {}
+            for bandname in "ugrizy":
+                self.band_to_filter_dict[bandname] = bandname
+        else:
+            self.band_to_filter_dict = band_to_filter
 
     def flush_queue(self):
         """Like it sounds, clear any currently queued desired observations."""
@@ -340,6 +353,12 @@ class CoreScheduler:
             # Tag with a unique target_id
             result["target_id"] = np.arange(self.target_id_counter, self.target_id_counter + result.size)
             self.target_id_counter += result.size
+
+            # Check that filter has been set
+            need_filtername_indx = np.where((result["filter"] == "") | (result["filter"] is None))[0]
+            if len(self.band_to_filter_dict) > 0:
+                for indx in need_filtername_indx:
+                    result[indx]["filter"] = self.band_to_filter_dict[result[indx]["band"]]
 
             # Convert to a list for the queue
             self.queue = result.tolist()
