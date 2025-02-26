@@ -50,7 +50,6 @@ class TestDetailers(unittest.TestCase):
             detailers.TrackingInfoDetailer,
             detailers.AltAz2RaDecDetailer,
             detailers.DitherDetailer,
-            detailers.EuclidDitherDetailer,
             detailers.CameraRotDetailer,
             detailers.CameraSmallRotPerObservationListDetailer,
             detailers.BandToFilterDetailer,
@@ -61,6 +60,19 @@ class TestDetailers(unittest.TestCase):
             live_det = det()
             result = live_det(obs, conditions)
             assert len(result) > 0
+
+        # test the Euclid detailer
+        live_det = detailers.EuclidDitherDetailer()
+        # No "EDFS" should raise an error
+        with self.assertRaises(ValueError):
+            obs = copy.deepcopy(obs_array)
+            live_det(obs, conditions)
+
+        # Update so detailer should run
+        obs = copy.deepcopy(obs_array)
+        obs["scheduler_note"] = "DD:EDFS_a, 1212, 12, abc"
+        result = live_det(obs, conditions)
+        assert len(result) > 0
 
     def test_start_field(self):
         observatory = ModelObservatory()
