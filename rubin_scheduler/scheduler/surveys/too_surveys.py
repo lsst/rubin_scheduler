@@ -21,6 +21,8 @@ class TooMaster(BaseSurvey):
     """
 
     def __init__(self, example__to_o_survey):
+        message = "TooMaster unused and planned to be deprecated."
+        warnings.warn(message, FutureWarning)
         self.example__to_o_survey = example__to_o_survey
         self.surveys = []
         self.highest_reward = -np.inf
@@ -124,6 +126,8 @@ class TooSurvey(BlobSurvey):
         filtername2=None,
         filter_change_approx=None,
     ):
+        message = "TooSurvey unused and planned to be deprecated."
+        warnings.warn(message, FutureWarning)
         if filtername1 is not None:
             warnings.warn("filtername1 deprecated in favor of bandname1", FutureWarning)
             bandname1 = filtername1

@@ -7,7 +7,7 @@ import healpy as hp
 import numpy as np
 import pandas as pd
 
-from rubin_scheduler.scheduler.detailers import BandToFilterDetailer, TrackingInfoDetailer, ZeroRotDetailer
+from rubin_scheduler.scheduler.detailers import TrackingInfoDetailer, ZeroRotDetailer
 from rubin_scheduler.scheduler.utils import (
     HpInLsstFov,
     ObservationArray,
@@ -130,19 +130,6 @@ class BaseSurvey:
                     science_program=science_program,
                     observation_reason=observation_reason,
                 )
-            )
-        # There always needs to be a BandToFilterDetailer, to fill in
-        # 'filter' information for ts_scheduler.
-        # Check if one exists, add a default if it doesn't.
-        existing_band_to_filter = False
-        for detailer in self.detailers:
-            if isinstance(detailer, BandToFilterDetailer):
-                existing_band_to_filter = True
-        if not existing_band_to_filter:
-            self.detailers.append(
-                # Set up a detailer that just uses the survey configuration
-                # band information (which could be band or physical filtername)
-                BandToFilterDetailer(band_to_filter_dict={})
             )
 
     @cached_property
