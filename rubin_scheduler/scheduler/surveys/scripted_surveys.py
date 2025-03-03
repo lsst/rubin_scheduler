@@ -95,10 +95,10 @@ class ScriptedSurvey(BaseSurvey):
     def add_observations_array(self, observations_array_in, observations_hpid_in):
         if self.obs_wanted is not None:
             # toss out things that should be ignored
-            to_ignore = np.in1d(observations_array_in["scheduler_note"], self.ignore_obs)
+            to_ignore = np.isin(observations_array_in["scheduler_note"], self.ignore_obs)
             observations_array = observations_array_in[~to_ignore]
 
-            good = np.in1d(observations_hpid_in["ID"], observations_array["ID"])
+            good = np.isin(observations_hpid_in["ID"], observations_array["ID"])
             observations_hpid = observations_hpid_in[good]
 
             for feature in self.extra_features:
@@ -116,7 +116,7 @@ class ScriptedSurvey(BaseSurvey):
                 )
                 full_note_queue = np.char.add(self.obs_wanted["scheduler_note"], self.obs_wanted["band"])
 
-                indx = np.in1d(full_note_queue, full_note_in)
+                indx = np.isin(full_note_queue, full_note_in)
 
                 self.obs_wanted["observed"][indx] = True
                 self.scheduled_obs = self.obs_wanted["mjd"][~self.obs_wanted["observed"]]

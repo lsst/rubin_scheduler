@@ -753,7 +753,7 @@ class HpInComcamFov:
         # Healpixels withing the outer circle
         indices_all = np.array(self.tree.query_ball_point((x, y, z), self.outter_radius))
         # Only need to check pixel if it is outside inner circle
-        indices_to_check = indices_all[np.in1d(indices_all, indices, invert=True)]
+        indices_to_check = indices_all[np.isin(indices_all, indices, invert=True)]
 
         if np.size(indices_to_check) == 0:
             ValueError("No HEALpix in pointing. Maybe need to increase nside.")
