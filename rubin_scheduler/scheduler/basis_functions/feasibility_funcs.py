@@ -200,6 +200,8 @@ class CloseToTwilightBasisFunction(BaseBasisFunction):
         # If the sun is high, it's ok to execute
         if conditions.sun_alt > self.sun_alt_limit:
             result = True
+        else:
+            return False
         time_left = conditions.sun_n12_rising - conditions.mjd
         if time_left < self.time_to_12deg:
             result = True
