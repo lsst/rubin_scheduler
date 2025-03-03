@@ -43,7 +43,7 @@ class TestModelObservatory(unittest.TestCase):
 
         mjd_down = mo_default.downtimes["start"][0] + 0.01
 
-        assert ~mo_default.check_up(mjd_down)[0]
+        assert not mo_default.check_up(mjd_down)[0]
         assert mo_ideal.check_up(mjd_down)[0]
 
     def test_time_jumps(self):
@@ -67,20 +67,20 @@ class TestModelObservatory(unittest.TestCase):
         )
 
         in_up_time, new_time = mo.check_up(mo.mjd + length / 2)
-        assert ~in_up_time
+        assert not in_up_time
         assert new_time == down_ends[0]
 
         # Check that check_mjd advances the mjd to the correct time
         in_valid_time, new_time = mo.check_mjd(mo.mjd + length / 2)
 
-        assert ~in_valid_time
+        assert not in_valid_time
         assert new_time == down_ends[0]
 
         # Check that we advance properly if in daytime.
         # 2 hours before sunset
         mo.mjd = conditions.sun_n12_setting - 2.0 / 24.0
         in_valid_time, new_time = mo.check_mjd(mo.mjd)
-        assert ~in_valid_time
+        assert not in_valid_time
         assert new_time == conditions.sun_n12_setting
 
         # Check no time jump if in valid time
@@ -118,7 +118,7 @@ class TestModelObservatory(unittest.TestCase):
         cond_new = mo_new.return_conditions()
 
         # Make sure the internal downtimes are different
-        assert ~np.array_equal(mo_default.downtimes, mo_new.downtimes)
+        assert not np.array_equal(mo_default.downtimes, mo_new.downtimes)
 
         # Make sure seeing is not the same
         diff = cond_default.fwhm_eff["r"] - cond_new.fwhm_eff["r"]
