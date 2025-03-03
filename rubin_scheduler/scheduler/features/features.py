@@ -511,7 +511,7 @@ class NObservationsCurrentSeason(BaseSurveyFeature):
 
         # Convert the "check" array on observations_array into a
         # "check" array on the hpids so we can evaluate healpix-level items
-        check_hpid_indxs = np.in1d(observations_hpid["ID"], observations_array["ID"][check])
+        check_hpid_indxs = np.isin(observations_hpid["ID"], observations_array["ID"][check])
         # Set up a new valid/not valid flag, now on observations_hpid
         check_hp = np.zeros(len(observations_hpid), dtype=bool)
         # Set all observations which passed simpler tests above to True
@@ -826,7 +826,7 @@ class PairInNight(BaseSurveyFeature):
             if in_range_indx.size > 0:
                 left = in_range_indx.min()
                 right = in_range_indx.max() + 1
-                matches = np.in1d(indx, self.hpid_log[left:right])
+                matches = np.isin(indx, self.hpid_log[left:right])
                 self.feature[np.array(indx)[matches]] += 1
 
             # record the mjds and healpixels that were observed

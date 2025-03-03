@@ -168,6 +168,13 @@ class IntRounded:
         if np.any(~np.isfinite(inval)):
             raise ValueError("IntRounded can only take finite values.")
         self.initial = inval
+        if np.size(inval) == 1:
+            if (inval != 0) & (np.abs(inval) < 1.0 / scale):
+                warnings.warn("IntRounded being used with a potentially too-small scale factor.")
+        else:
+            badval = np.where((inval != 0) & (np.abs(inval) < 1.0 / scale))[0]
+            if len(badval) > 0:
+                warnings.warn("IntRounded being used with a potentially too-small scale factor.")
         self.value = np.round(inval * scale).astype(int)
         self.scale = scale
 
