@@ -39,7 +39,11 @@ from rubin_scheduler.scheduler.surveys import (
     generate_ddf_scheduled_obs,
 )
 from rubin_scheduler.scheduler.targetofo import gen_all_events
-from rubin_scheduler.scheduler.utils import ConstantFootprint, CurrentAreaMap, make_rolling_footprints
+from rubin_scheduler.scheduler.utils import (
+    ConstantFootprint,
+    CurrentAreaMap,
+    make_rolling_footprints,
+)
 from rubin_scheduler.site_models import Almanac
 from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD, _hpid2_ra_dec
 
@@ -50,7 +54,9 @@ iers.conf.auto_max_age = None
 
 
 def example_scheduler(
-    nside: int = DEFAULT_NSIDE, mjd_start: float = SURVEY_START_MJD, no_too: bool = False
+    nside: int = DEFAULT_NSIDE,
+    mjd_start: float = SURVEY_START_MJD,
+    no_too: bool = False,
 ) -> CoreScheduler:
     """Provide an example baseline survey-strategy scheduler.
 
@@ -286,7 +292,9 @@ def standard_bf(
             0.0,
         )
     )
-    bfs.append((bf.AvoidDirectWind(nside=nside, wind_speed_maximum=wind_speed_maximum), 0))
+    bfs.append(
+        (bf.AvoidDirectWind(nside=nside, wind_speed_maximum=wind_speed_maximum), 0)
+    )
     bandnames = [fn for fn in [bandname, bandname2] if fn is not None]
     bfs.append((bf.BandLoadedBasisFunction(bandnames=bandnames), 0))
     bfs.append((bf.PlanetMaskBasisFunction(nside=nside), 0.0))
@@ -339,7 +347,7 @@ def blob_for_long(
     exptime : `float`
         The exposure time to use per visit (seconds).
         Default 29.2
-    band1s : `list` [`str`]
+    band1s : `list` of `str`
         The bandnames for the first band in a pair.
         Default ["g"].
     band2s : `list` of `str`
@@ -419,10 +427,14 @@ def blob_for_long(
     for bandname, bandname2 in zip(band1s, band2s):
         detailer_list = []
         detailer_list.append(
-            detailers.CameraRotDetailer(min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits))
+            detailers.CameraRotDetailer(
+                min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits)
+            )
         )
         detailer_list.append(detailers.CloseAltDetailer())
-        detailer_list.append(detailers.BandNexp(bandname="u", nexp=1, exptime=u_exptime))
+        detailer_list.append(
+            detailers.BandNexp(bandname="u", nexp=1, exptime=u_exptime)
+        )
 
         # List to hold tuples of (basis_function_object, weight)
         bfs = []
@@ -466,7 +478,9 @@ def blob_for_long(
         bfs.append((bf.TimeToTwilightBasisFunction(time_needed=time_needed), 0.0))
         bfs.append((bf.NotTwilightBasisFunction(), 0.0))
         bfs.append((bf.AfterEveningTwiBasisFunction(time_after=time_after_twi), 0.0))
-        bfs.append((bf.HaMaskBasisFunction(ha_min=HA_min, ha_max=HA_max, nside=nside), 0.0))
+        bfs.append(
+            (bf.HaMaskBasisFunction(ha_min=HA_min, ha_max=HA_max, nside=nside), 0.0)
+        )
         # don't execute every night
         bfs.append((bf.NightModuloBasisFunction(night_pattern), 0.0))
         # only execute one blob per night
@@ -521,7 +535,7 @@ def gen_long_gaps_survey(
     -----------
     footprints : `rubin_scheduler.scheduler.utils.footprints.Footprints`
         The footprints to be used.
-    night_pattern : `list` [`bool`]
+    night_pattern : `list` of `bool`
         Which nights to let the survey execute. Default of [True, True]
         executes every night.
     gap_range : `list` of `float`
@@ -582,7 +596,9 @@ def gen_long_gaps_survey(
             nside=nside,
             ignore_obs=["blob", "DDF", "twi", "pair"],
         )
-        surveys.append(LongGapSurvey(blob[0], scripted, gap_range=gap_range, avoid_zenith=True))
+        surveys.append(
+            LongGapSurvey(blob[0], scripted, gap_range=gap_range, avoid_zenith=True)
+        )
 
     return surveys
 
@@ -667,7 +683,9 @@ def gen_greedy_surveys(
 
     surveys = []
     detailer_list = [
-        detailers.CameraRotDetailer(min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits))
+        detailers.CameraRotDetailer(
+            min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits)
+        )
     ]
     detailer_list.append(detailers.Rottep2RotspDesiredDetailer())
 
@@ -772,7 +790,7 @@ def generate_blobs(
     exptime : `float`
         The exposure time to use per visit (seconds).
         Default 29.2
-    band1s : `list` [`str`]
+    band1s : `list` of `str`
         The bandnames for the first set.
         Default ["u", "u", "g", "r", "i", "z", "y"]
     band2s : `list` of `str`
@@ -857,7 +875,9 @@ def generate_blobs(
     for bandname, bandname2 in zip(band1s, band2s):
         detailer_list = []
         detailer_list.append(
-            detailers.CameraRotDetailer(min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits))
+            detailers.CameraRotDetailer(
+                min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits)
+            )
         )
         detailer_list.append(detailers.Rottep2RotspDesiredDetailer())
         detailer_list.append(detailers.CloseAltDetailer())
@@ -965,7 +985,9 @@ def generate_blobs(
             detailer_list.append(detailers.TakeAsPairsDetailer(bandname=bandname2))
 
         if u_nexp1:
-            detailer_list.append(detailers.BandNexp(bandname="u", nexp=1, exptime=u_exptime))
+            detailer_list.append(
+                detailers.BandNexp(bandname="u", nexp=1, exptime=u_exptime)
+            )
         surveys.append(
             BlobSurvey(
                 basis_functions,
@@ -1104,7 +1126,9 @@ def generate_twi_blobs(
     for bandname, bandname2 in zip(band1s, band2s):
         detailer_list = []
         detailer_list.append(
-            detailers.CameraRotDetailer(min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits))
+            detailers.CameraRotDetailer(
+                min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits)
+            )
         )
         detailer_list.append(detailers.Rottep2RotspDesiredDetailer())
         detailer_list.append(detailers.CloseAltDetailer())
@@ -1173,7 +1197,9 @@ def generate_twi_blobs(
             time_needed = times_needed[0]
         else:
             time_needed = times_needed[1]
-        bfs.append((bf.TimeToTwilightBasisFunction(time_needed=time_needed, alt_limit=12), 0.0))
+        bfs.append(
+            (bf.TimeToTwilightBasisFunction(time_needed=time_needed, alt_limit=12), 0.0)
+        )
 
         # Let's turn off twilight blobs on nights where we are
         # doing NEO hunts
@@ -1233,18 +1259,26 @@ def ddf_surveys(
     nsnaps = [1, 2, 2, 2, 2, 2]
     if nexp == 1:
         nsnaps = [1, 1, 1, 1, 1, 1]
-    obs_array = generate_ddf_scheduled_obs(offseason_length=offseason_length, expt=expt, nsnaps=nsnaps)
+    obs_array = generate_ddf_scheduled_obs(
+        offseason_length=offseason_length, expt=expt, nsnaps=nsnaps
+    )
     euclid_obs = np.where(
-        (obs_array["scheduler_note"] == "DD:EDFS_b") | (obs_array["scheduler_note"] == "DD:EDFS_a")
+        (obs_array["scheduler_note"] == "DD:EDFS_b")
+        | (obs_array["scheduler_note"] == "DD:EDFS_a")
     )[0]
     all_other = np.where(
-        (obs_array["scheduler_note"] != "DD:EDFS_b") & (obs_array["scheduler_note"] != "DD:EDFS_a")
+        (obs_array["scheduler_note"] != "DD:EDFS_b")
+        & (obs_array["scheduler_note"] != "DD:EDFS_a")
     )[0]
 
-    survey1 = ScriptedSurvey([bf.AvoidDirectWind(nside=nside)], nside=nside, detailers=detailers)
+    survey1 = ScriptedSurvey(
+        [bf.AvoidDirectWind(nside=nside)], nside=nside, detailers=detailers
+    )
     survey1.set_script(obs_array[all_other])
 
-    survey2 = ScriptedSurvey([bf.AvoidDirectWind(nside=nside)], nside=nside, detailers=euclid_detailers)
+    survey2 = ScriptedSurvey(
+        [bf.AvoidDirectWind(nside=nside)], nside=nside, detailers=euclid_detailers
+    )
     survey2.set_script(obs_array[euclid_obs])
 
     return [survey1, survey2]
@@ -1272,7 +1306,9 @@ def ecliptic_target(nside=DEFAULT_NSIDE, dist_to_eclip=40.0, dec_max=30.0, mask=
     result = np.zeros(ra.size)
     coord = SkyCoord(ra=ra * u.rad, dec=dec * u.rad)
     eclip_lat = coord.barycentrictrueecliptic.lat.radian
-    good = np.where((np.abs(eclip_lat) < np.radians(dist_to_eclip)) & (dec < np.radians(dec_max)))
+    good = np.where(
+        (np.abs(eclip_lat) < np.radians(dist_to_eclip)) & (dec < np.radians(dec_max))
+    )
     result[good] += 1
 
     if mask is not None:
@@ -1370,11 +1406,17 @@ def generate_twilight_near_sun(
     for bandname in bands:
         detailer_list = []
         detailer_list.append(
-            detailers.CameraRotDetailer(min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits))
+            detailers.CameraRotDetailer(
+                min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits)
+            )
         )
         detailer_list.append(detailers.CloseAltDetailer())
         # Should put in a detailer so things start at lowest altitude
-        detailer_list.append(detailers.TwilightTripleDetailer(slew_estimate=slew_estimate, n_repeat=n_repeat))
+        detailer_list.append(
+            detailers.TwilightTripleDetailer(
+                slew_estimate=slew_estimate, n_repeat=n_repeat
+            )
+        )
         detailer_list.append(detailers.RandomBandDetailer(bands=bands))
         bfs = []
 
@@ -1402,7 +1444,9 @@ def generate_twilight_near_sun(
         # airmass cutoff basis function.
         bfs.append(
             (
-                bf.NearSunHighAirmassBasisFunction(nside=nside, max_airmass=max_airmass),
+                bf.NearSunHighAirmassBasisFunction(
+                    nside=nside, max_airmass=max_airmass
+                ),
                 0,
             )
         )
@@ -1418,12 +1462,16 @@ def generate_twilight_near_sun(
                 0,
             )
         )
-        bfs.append((bf.MoonAvoidanceBasisFunction(nside=nside, moon_distance=moon_distance), 0))
+        bfs.append(
+            (bf.MoonAvoidanceBasisFunction(nside=nside, moon_distance=moon_distance), 0)
+        )
         bfs.append((bf.BandLoadedBasisFunction(bandnames=bandname), 0))
         bfs.append((bf.PlanetMaskBasisFunction(nside=nside), 0))
         bfs.append(
             (
-                bf.SolarElongationMaskBasisFunction(min_elong=0.0, max_elong=max_elong, nside=nside),
+                bf.SolarElongationMaskBasisFunction(
+                    min_elong=0.0, max_elong=max_elong, nside=nside
+                ),
                 0,
             )
         )
@@ -1462,7 +1510,7 @@ def generate_twilight_near_sun(
                 nexp=nexp,
                 detailers=detailer_list,
                 twilight_scale=False,
-                min_area=min_area,
+                area_required=min_area,
             )
         )
     return surveys
@@ -1484,7 +1532,9 @@ def set_run_info(dbroot=None, file_end="v3.4_", out_dir="."):
     try:
         rs_path = rubin_scheduler.__path__[0]
         hash_file = os.path.join(rs_path, "../", ".git/refs/heads/main")
-        extra_info["rubin_scheduler git hash"] = subprocess.check_output(["cat", hash_file])
+        extra_info["rubin_scheduler git hash"] = subprocess.check_output(
+            ["cat", hash_file]
+        )
     except subprocess.CalledProcessError:
         pass
 
@@ -1508,7 +1558,6 @@ def run_sched(
     mjd_start=60796.0,
     event_table=None,
     sim_to_o=None,
-    snapshot_dir=None,
 ):
     """Run survey"""
     n_visit_limit = None
@@ -1525,7 +1574,6 @@ def run_sched(
         extra_info=extra_info,
         band_scheduler=fs,
         event_table=event_table,
-        snapshot_dir=snapshot_dir,
     )
 
     return observatory, scheduler, observations
@@ -1540,15 +1588,14 @@ def gen_scheduler(args):
     nside = args.nside
     mjd_plus = args.mjd_plus
     split_long = args.split_long
-    too = ~args.no_too
-    snapshot_dir = args.snapshot_dir
+    too = not args.no_too
 
     # Parameters that were previously command-line
     # arguments.
     max_dither = 0.2  # Degrees. For DDFs
-    ddf_offseason_length = 365.25 * 0.2  # Amount of season not to use for DDFs
+    ddf_offseason_length = 365.25 * 0.2  # Amount of season to use for DDFs
     illum_limit = 40.0  # Percent. Lunar illumination used for band loading
-    u_exptime = 38.0  # Seconds
+    u_exptime = 38.0  # Deconds
     nslice = 2  # N slices for rolling
     rolling_scale = 0.9  # Strength of rolling
     rolling_uniform = True  # Should we use the uniform rolling flag
@@ -1566,7 +1613,9 @@ def gen_scheduler(args):
     # if changing mjd_start
     mjd_start = SURVEY_START_MJD + mjd_plus
 
-    fileroot, extra_info = set_run_info(dbroot=dbroot, file_end="v4.2_", out_dir=out_dir)
+    fileroot, extra_info = set_run_info(
+        dbroot=dbroot, file_end="v4.3.1_", out_dir=out_dir
+    )
 
     pattern_dict = {
         1: [True],
@@ -1628,15 +1677,21 @@ def gen_scheduler(args):
 
     # Set up the DDF surveys to dither
     u_detailer = detailers.BandNexp(bandname="u", nexp=1, exptime=u_exptime)
-    dither_detailer = detailers.DitherDetailer(per_night=per_night, max_dither=max_dither)
+    dither_detailer = detailers.DitherDetailer(
+        per_night=per_night, max_dither=max_dither
+    )
     details = [
-        detailers.CameraRotDetailer(min_rot=-camera_ddf_rot_limit, max_rot=camera_ddf_rot_limit),
+        detailers.CameraRotDetailer(
+            min_rot=-camera_ddf_rot_limit, max_rot=camera_ddf_rot_limit
+        ),
         dither_detailer,
         u_detailer,
         detailers.Rottep2RotspDesiredDetailer(),
     ]
     euclid_detailers = [
-        detailers.CameraRotDetailer(min_rot=-camera_ddf_rot_limit, max_rot=camera_ddf_rot_limit),
+        detailers.CameraRotDetailer(
+            min_rot=-camera_ddf_rot_limit, max_rot=camera_ddf_rot_limit
+        ),
         detailers.EuclidDitherDetailer(),
         u_detailer,
         detailers.Rottep2RotspDesiredDetailer(),
@@ -1680,13 +1735,16 @@ def gen_scheduler(args):
         gen_roman_on_season(nexp=nexp, exptime=29.2),
         gen_roman_off_season(nexp=nexp, exptime=29.2),
     ]
+
     if too:
         too_scale = 1.0
         sim_ToOs, event_table = gen_all_events(scale=too_scale, nside=nside)
         camera_rot_limits = [-80.0, 80.0]
         detailer_list = []
         detailer_list.append(
-            detailers.CameraRotDetailer(min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits))
+            detailers.CameraRotDetailer(
+                min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits)
+            )
         )
         # Let's make a footprint to follow up ToO events
         too_footprint = footprints_hp["r"] * 0 + np.nan
@@ -1726,18 +1784,23 @@ def gen_scheduler(args):
             mjd_start=mjd_start,
             event_table=event_table,
             sim_to_o=sim_ToOs,
-            snapshot_dir=snapshot_dir,
         )
         return observatory, scheduler, observations
 
 
 def sched_argparser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--verbose", dest="verbose", action="store_true", help="Print more output")
+    parser.add_argument(
+        "--verbose", dest="verbose", action="store_true", help="Print more output"
+    )
     parser.set_defaults(verbose=False)
-    parser.add_argument("--survey_length", type=float, default=365.25 * 10, help="Survey length in days")
+    parser.add_argument(
+        "--survey_length", type=float, default=365.25 * 10, help="Survey length in days"
+    )
     parser.add_argument("--out_dir", type=str, default="", help="Output directory")
-    parser.add_argument("--nexp", type=int, default=2, help="Number of exposures per visit")
+    parser.add_argument(
+        "--nexp", type=int, default=2, help="Number of exposures per visit"
+    )
     parser.add_argument("--dbroot", type=str, help="Database root")
     parser.add_argument(
         "--setup_only",
@@ -1764,7 +1827,6 @@ def sched_argparser():
         action="store_true",
         help="Split long ToO exposures into standard visit lengths",
     )
-    parser.add_argument("--snapshot_dir", type=str, default="", help="Directory for scheduler snapshots.")
     parser.set_defaults(split_long=False)
     parser.add_argument("--no_too", dest="no_too", action="store_true")
     parser.set_defaults(no_too=False)
