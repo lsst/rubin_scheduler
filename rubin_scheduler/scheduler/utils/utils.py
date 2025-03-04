@@ -168,6 +168,13 @@ class IntRounded:
         if np.any(~np.isfinite(inval)):
             raise ValueError("IntRounded can only take finite values.")
         self.initial = inval
+        if np.size(inval) == 1:
+            if (inval != 0) & (np.abs(inval) < 1.0 / scale):
+                warnings.warn("IntRounded being used with a potentially too-small scale factor.")
+        else:
+            badval = np.where((inval != 0) & (np.abs(inval) < 1.0 / scale))[0]
+            if len(badval) > 0:
+                warnings.warn("IntRounded being used with a potentially too-small scale factor.")
         self.value = np.round(inval * scale).astype(int)
         self.scale = scale
 
@@ -746,7 +753,7 @@ class HpInComcamFov:
         # Healpixels withing the outer circle
         indices_all = np.array(self.tree.query_ball_point((x, y, z), self.outter_radius))
         # Only need to check pixel if it is outside inner circle
-        indices_to_check = indices_all[np.in1d(indices_all, indices, invert=True)]
+        indices_to_check = indices_all[np.isin(indices_all, indices, invert=True)]
 
         if np.size(indices_to_check) == 0:
             ValueError("No HEALpix in pointing. Maybe need to increase nside.")

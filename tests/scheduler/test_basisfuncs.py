@@ -133,7 +133,7 @@ class TestBasis(unittest.TestCase):
         obs["scheduler_note"] = "survey"
         bf.add_observation(obs)
 
-        assert ~bf.check_feasibility(conditions)
+        assert not bf.check_feasibility(conditions)
 
     def test_label(self):
         bf = basis_functions.VisitRepeatBasisFunction()
@@ -263,7 +263,7 @@ class TestBasis(unittest.TestCase):
         sunaltbf = basis_functions.SunAltHighLimitBasisFunction(alt_limit=-15)
         conditions = Conditions()
         conditions.sun_alt = np.radians(-20)
-        assert ~sunaltbf.check_feasibility(conditions)
+        assert not sunaltbf.check_feasibility(conditions)
         conditions.sun_alt = np.radians(-10)
         assert sunaltbf.check_feasibility(conditions)
 
@@ -273,15 +273,15 @@ class TestBasis(unittest.TestCase):
         )
         conditions = Conditions()
         conditions.mjd = 520900.00
-        conditions.sun_alt = -14
+        conditions.sun_alt = np.radians(-14)
         conditions.sun_n12_rising = conditions.mjd + 16.0 / 60 / 24
         assert bf.check_feasibility(conditions)
         conditions.sun_n12_rising = conditions.mjd + 14.0 / 60 / 24
-        assert ~bf.check_feasibility(conditions)
+        assert not bf.check_feasibility(conditions)
         conditions.mjd = 520900.00
         conditions.sun_n12_rising = conditions.mjd + 16.0 / 60 / 24
-        conditions.sun_alt = -20
-        assert ~bf.check_feasibility(conditions)
+        conditions.sun_alt = np.radians(-20)
+        assert bf.check_feasibility(conditions)
 
     def test_AltAzShadowMask(self):
         nside = 32
@@ -448,7 +448,6 @@ class TestBasis(unittest.TestCase):
             basis_functions.FilterDistBasisFunction,
         ]
         for dep_bf in deprecated_basis_functions:
-            print(dep_bf)
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
                 dep_bf()
