@@ -27,7 +27,8 @@ if __name__ == "__main__":
     location = EarthLocation(lat=site.latitude, lon=site.longitude, height=site.height)
     t_sparse = Time(mjds, format="mjd", location=location)
 
-    # Should get dowloaded and chached if needed. https://docs.astropy.org/en/stable/coordinates/solarsystem.html
+    # Should get dowloaded and chached if needed.
+    # https://docs.astropy.org/en/stable/coordinates/solarsystem.html
     # might need to `pip install jplephem`
     solar_system_ephemeris.set("de432s")
 

@@ -704,7 +704,7 @@ class NearSunHighAirmassBasisFunction(BaseBasisFunction):
 
     def _calc_value(self, conditions, indx=None):
         result = self.result.copy()
-        valid_airmass = np.where(np.isfinite(conditions.airmass) == True)[0]
+        valid_airmass = np.where(np.isfinite(conditions.airmass))[0]
         good_pix = np.where(
             (conditions.airmass[valid_airmass] >= 1.0)
             & (IntRounded(conditions.airmass[valid_airmass]) < self.max_airmass)

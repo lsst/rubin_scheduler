@@ -566,7 +566,7 @@ class BaseMarkovSurvey(BaseSurvey):
                 distances = _angular_separation(
                     self.ra, self.dec, self.ra[max_reward_indx], self.dec[max_reward_indx]
                 )
-                valid_pix = np.where((np.isnan(reward) == False) & (distances < self.max_radius_peak))[0]
+                valid_pix = np.where(np.logical_not(np.isnan(reward)) & (distances < self.max_radius_peak))[0]
                 if np.size(valid_pix) * self.pixarea < self.area_required:
                     result = False
             else:

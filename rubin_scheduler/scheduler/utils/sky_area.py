@@ -987,7 +987,7 @@ class EuclidOverlapFootprint(SkyAreaGeneratorGalplane):
         in_poly = [polygon.contains(Point(x, y)) for x, y in zip(wrap_ra, self.dec)]
 
         # find which map points are inside the contour
-        indx = np.where((np.array(in_poly) == True) & (self.pix_labels == ""))[0]
+        indx = np.where((np.array(in_poly)) & (self.pix_labels == ""))[0]
         self.pix_labels[indx] = label
         for bandname in band_ratios:
             self.healmaps[bandname][indx] = band_ratios[bandname]

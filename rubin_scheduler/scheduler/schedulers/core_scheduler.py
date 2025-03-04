@@ -341,7 +341,7 @@ class CoreScheduler:
         if (np.nanmax(rewards) == -np.inf) | (np.isnan(np.nanmax(rewards))):
             self.flush_queue()
         else:
-            to_fix = np.where(np.isnan(rewards) == True)
+            to_fix = np.where(np.isnan(rewards))
             rewards[to_fix] = -np.inf
             # Take a min here, so the surveys will be executed in the order
             # they are entered if there is a tie.

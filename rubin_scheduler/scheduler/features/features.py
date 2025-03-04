@@ -791,7 +791,7 @@ class PairInNight(BaseSurveyFeature):
     def add_observations_array(self, observations_array, observations_hpid):
         # ok, let's just find the largest night and toss all those in one
         # at a time
-        ## THIS IGNORES FILTER??
+        # THIS IGNORES FILTER??
         most_recent_night = np.where(observations_hpid["night"] == np.max(observations_hpid["night"]))[0]
         obs_hpid = observations_hpid[most_recent_night]
         uid = np.unique(obs_hpid["ID"])
