@@ -39,7 +39,11 @@ from rubin_scheduler.scheduler.surveys import (
     generate_ddf_scheduled_obs,
 )
 from rubin_scheduler.scheduler.targetofo import gen_all_events
-from rubin_scheduler.scheduler.utils import ConstantFootprint, CurrentAreaMap, make_rolling_footprints
+from rubin_scheduler.scheduler.utils import (
+    ConstantFootprint,
+    CurrentAreaMap,
+    make_rolling_footprints,
+)
 from rubin_scheduler.site_models import Almanac
 from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD, _hpid2_ra_dec
 
@@ -50,7 +54,9 @@ iers.conf.auto_max_age = None
 
 
 def example_scheduler(
-    nside: int = DEFAULT_NSIDE, mjd_start: float = SURVEY_START_MJD, no_too: bool = False
+    nside: int = DEFAULT_NSIDE,
+    mjd_start: float = SURVEY_START_MJD,
+    no_too: bool = False,
 ) -> CoreScheduler:
     """Provide an example baseline survey-strategy scheduler.
 
@@ -1462,7 +1468,7 @@ def generate_twilight_near_sun(
                 nexp=nexp,
                 detailers=detailer_list,
                 twilight_scale=False,
-                min_area=min_area,
+                area_required=min_area,
             )
         )
     return surveys
@@ -1540,8 +1546,8 @@ def gen_scheduler(args):
     nside = args.nside
     mjd_plus = args.mjd_plus
     split_long = args.split_long
-    too = ~args.no_too
     snapshot_dir = args.snapshot_dir
+    too = not args.no_too
 
     # Parameters that were previously command-line
     # arguments.
@@ -1566,7 +1572,7 @@ def gen_scheduler(args):
     # if changing mjd_start
     mjd_start = SURVEY_START_MJD + mjd_plus
 
-    fileroot, extra_info = set_run_info(dbroot=dbroot, file_end="v4.2_", out_dir=out_dir)
+    fileroot, extra_info = set_run_info(dbroot=dbroot, file_end="v4.3.1_", out_dir=out_dir)
 
     pattern_dict = {
         1: [True],
@@ -1680,6 +1686,7 @@ def gen_scheduler(args):
         gen_roman_on_season(nexp=nexp, exptime=29.2),
         gen_roman_off_season(nexp=nexp, exptime=29.2),
     ]
+
     if too:
         too_scale = 1.0
         sim_ToOs, event_table = gen_all_events(scale=too_scale, nside=nside)

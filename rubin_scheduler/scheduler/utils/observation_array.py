@@ -219,6 +219,13 @@ def concatenate(arrays):
     return np.concatenate([np.asarray(a) for a in arrays], out=result)
 
 
+@implements(np.in1d)
+def in1d(ar1, ar2, **kwargs):
+    # Just here to get rid of DeprecationWarning. Can probably
+    # be removed after a future numpy update.
+    return np.isin(ar1, ar2, **kwargs)
+
+
 class ScheduledObservationArray(ObservationArray):
     """Make an array to hold pre-scheduling observations
 
