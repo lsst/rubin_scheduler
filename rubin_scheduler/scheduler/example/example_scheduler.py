@@ -39,11 +39,7 @@ from rubin_scheduler.scheduler.surveys import (
     generate_ddf_scheduled_obs,
 )
 from rubin_scheduler.scheduler.targetofo import gen_all_events
-from rubin_scheduler.scheduler.utils import (
-    ConstantFootprint,
-    CurrentAreaMap,
-    make_rolling_footprints,
-)
+from rubin_scheduler.scheduler.utils import ConstantFootprint, CurrentAreaMap, make_rolling_footprints
 from rubin_scheduler.site_models import Almanac
 from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD, _hpid2_ra_dec
 

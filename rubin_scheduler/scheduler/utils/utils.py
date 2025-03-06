@@ -36,7 +36,7 @@ import matplotlib.path as mplPath
 import numpy as np
 import pandas as pd
 
-import rubin_scheduler.version as rsVersion
+from rubin_scheduler import __version__
 from rubin_scheduler.scheduler.utils.observation_array import ObservationArray
 from rubin_scheduler.utils import (
     DEFAULT_NSIDE,
@@ -45,6 +45,8 @@ from rubin_scheduler.utils import (
     _xyz_from_ra_dec,
     xyz_angular_radius,
 )
+
+rsVersion = __version__
 
 
 def smallest_signed_angle(a1, a2):
@@ -817,7 +819,7 @@ def run_info_table(observatory, extra_info=None):
     result[1]["Value"] = socket.gethostname()
 
     result[2]["Parameter"] = "rubin_scheduler.__version__"
-    result[2]["Value"] = rsVersion.__version__
+    result[2]["Value"] = rsVersion
 
     result[3:]["Parameter"] = observatory_info[:, 0]
     result[3:]["Value"] = observatory_info[:, 1]
