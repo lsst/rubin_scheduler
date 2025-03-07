@@ -30,11 +30,11 @@ from rubin_scheduler.utils import (
 )
 
 GAUSSIAN_FWHM_OVER_SIGMA: float = 2.0 * sqrt(2.0 * log(2.0))
-KNOWN_INSTRUMENTS = ["lsstcomcam", "lsstcomcamsim"]
+KNOWN_INSTRUMENTS = ["lsstcam", "lsstcomcam", "lsstcomcamsim", "latiss"]
 
 
 def query_consdb(query: str, url: str = "postgresql://usdf@usdf-summitdb.slac.stanford.edu:5432/exposurelog"):
-    """_summary_
+    """Query the consdb
 
     Parameters
     ----------
@@ -122,6 +122,24 @@ class ConsDBVisits(ABC):
     url: str = "postgresql://usdf@usdf-summitdb.slac.stanford.edu:5432/exposurelog"
     num_nights: int = 1
 
+    def _have_numeric_values(self, column) -> bool:
+        if column not in self.consdb_visits.columns:
+            warn(f"Consdb does not have column {column}, guessing values instead")
+            return False
+
+        # Called to see if we need to guess values because the
+        # consdb doesn't yet fill in what we need
+        value_dtype = self.consdb_visits[column].dtype
+
+        # Needed to make mypy happy
+        assert isinstance(value_dtype, np.dtype)
+
+        have_values = np.issubdtype(value_dtype, np.number)
+        if not have_values:
+            warn(f"Consdb does not have values for {column}, guessing values instead")
+
+        return np.issubdtype(value_dtype, np.number)
+
     @property
     @abstractmethod
     def instrument(self) -> str:
@@ -173,7 +191,7 @@ class ConsDBVisits(ABC):
     @property
     @abstractmethod
     def gain(self) -> pd.Series:
-        """The gain.
+        """The gain in electrons per ADU.
 
         Returns
         -------
@@ -187,40 +205,15 @@ class ConsDBVisits(ABC):
         raise NotImplementedError
 
     @property
-    @abstractmethod
     def pixel_scale(self) -> pd.Series:
-        """The pixel scale.
+        """The pixel scale in asec/pixel.
 
         Returns
         -------
         pixel_scale : `pd.Series`
             The pixel scale.
         """
-        # Subclasses should return a constant specifying the relevant
-        # instrument.
-        # Specified as an property rather than an attribute so it can be
-        # abstract.
-        raise NotImplementedError
-
-    @abstractmethod
-    def instrumental_zeropoint_for_band(self, band: str) -> float:
-        """The zero point.
-
-        Parameters
-        ----------
-        band : `str`
-            The band for which to return the zero point.
-
-        Returns
-        -------
-        zero_point : `float`
-            The photometric zero point.
-        """
-        # Subclasses should return a constant specifying the relevant
-        # instrument.
-        # Specified as an property rather than an attribute so it can be
-        # abstract.
-        raise NotImplementedError
+        return self.consdb_visits["pixel_scale"]
 
     @property
     @abstractmethod
@@ -432,7 +425,14 @@ class ConsDBVisits(ABC):
             Midpoint time for exposure at the fiducial center of the focal
             plane. array in MJD.
         """
-        return self.consdb_visits["obs_midpt_mjd"]
+        if self._have_numeric_values("obs_midpt_mjd"):
+            mjd = self.consdb_visits["obs_midpt_mjd"]
+        elif self._have_numeric_values("obs_end_mjd"):
+            mjd = (self.obs_start_mjd + self.consdb_visits["obs_end_mjd"]) / 2
+        else:
+            mjd = self.obs_start_mjd + (0.5 * self.shut_time) / 86400
+
+        return mjd
 
     @cached_property
     def sky_rotation(self) -> pd.Series:
@@ -790,6 +790,11 @@ class ConsDBVisits(ABC):
         return pd.Series(np.degrees(solar_elong_rad), index=self.consdb_visits.index)
 
     @cached_property
+    @abstractmethod
+    def _zero_point_column(self) -> str:
+        raise NotImplementedError
+
+    @cached_property
     def zeropoint_e(self) -> pd.Series:
         """Photometric zero point for each visit, with "counts" in electons.
 
@@ -798,9 +803,10 @@ class ConsDBVisits(ABC):
         zp : `pd.Series`
             Photometric zero point for each visit, with "counts" in electons.
         """
-        return self.consdb_visits["zero_point_median"] + 2.5 * np.log10(self.gain)
+        return self.consdb_visits[self._zero_point_column] + 2.5 * np.log10(self.gain)
 
     @cached_property
+    @abstractmethod
     def instrumental_zeropoint_e(self) -> pd.Series:
         """Instrumental zero point for each visit, with "counts" in electons.
 
@@ -809,7 +815,12 @@ class ConsDBVisits(ABC):
         zp : `pd.Series`
             Instrumental zero point for each visit, with "counts" in electons.
         """
-        return self.band.apply(self.instrumental_zeropoint_for_band) + 2.5 * np.log10(self.shut_time)
+        raise NotImplementedError
+
+    @cached_property
+    @abstractmethod
+    def _sky_bg_column(self) -> str:
+        raise NotImplementedError
 
     @cached_property
     def sky_e_per_pixel(self) -> pd.Series:
@@ -820,7 +831,11 @@ class ConsDBVisits(ABC):
         sky : `pd.Series`
             Median sky background of each visit (in electons).
         """
-        return self.consdb_visits["sky_bg_median"] * self.gain
+        if self._have_numeric_values(self._sky_bg_column):
+            sky = self.consdb_visits[self._sky_bg_column] * self.gain
+        else:
+            sky = pd.Series(np.nan, index=self.consdb_visits.index)
+        return sky
 
     @cached_property
     def sky_mag_per_asec(self) -> pd.Series:
@@ -850,6 +865,11 @@ class ConsDBVisits(ABC):
         return pd.Series(hp.ang2pix(nside, self.ra, self.decl, lonlat=True), index=self.consdb_visits.index)
 
     @cached_property
+    @abstractmethod
+    def _psf_sigma_column(self) -> str:
+        raise NotImplementedError
+
+    @cached_property
     def fwhm_eff(self) -> pd.Series:
         """Effective PSF FWHM (arcseconds).
 
@@ -858,7 +878,7 @@ class ConsDBVisits(ABC):
         fwhm : `pd.Series`
             Effective PSF FWHM (arcseconds).
         """
-        return self.consdb_visits["psf_sigma_median"] * GAUSSIAN_FWHM_OVER_SIGMA * self.pixel_scale
+        return self.consdb_visits[self._psf_sigma_column] * GAUSSIAN_FWHM_OVER_SIGMA * self.pixel_scale
 
     @cached_property
     def fwhm_geom(self) -> pd.Series:
@@ -872,6 +892,11 @@ class ConsDBVisits(ABC):
         return SeeingModel.fwhm_eff_to_fwhm_geom(self.fwhm_eff)
 
     @cached_property
+    @abstractmethod
+    def _seeing_zenith_500nm_column(self) -> str:
+        raise NotImplementedError
+
+    @cached_property
     def fwhm_500(self) -> pd.Series:
         """FWHM at zenith and 500nm, in arcseconds, at the time of each visit.
 
@@ -880,12 +905,14 @@ class ConsDBVisits(ABC):
         fwhm : `pd.Series`
             FWHM at zenith and 500nm, in arcseconds, at the time of each visit.
         """
-        return self.consdb_visits["seeing_zenith_500nm_median"] * GAUSSIAN_FWHM_OVER_SIGMA * self.pixel_scale
+        return (
+            self.consdb_visits[self._seeing_zenith_500nm_column] * GAUSSIAN_FWHM_OVER_SIGMA * self.pixel_scale
+        )
 
     @cached_property
     def eff_time_m5(self) -> pd.Series:
         """Effective exposure time, in seconds.
-        This is the time to reach the m5 depeth in each visit, under
+        This is the time to reach the m5 depth in each visit, under
         a reference set of conditions.
 
         Returns
@@ -979,24 +1006,21 @@ class ConsDBVisits(ABC):
         return merged_visits
 
 
-class ComcamConsDBVisits(ConsDBVisits):
+class PachonConsDBVisits(ConsDBVisits):
 
-    def _have_numeric_values(self, column) -> bool:
-        if column not in self.consdb_visits.columns:
-            return False
+    @property
+    def site(self):
+        return Site("LSST")
 
-        # Called to see if we need to guess values because the
-        # consdb doesn't yet fill in what we need
-        value_dtype = self.consdb_visits[column].dtype
 
-        # Needed to make mypy happy
-        assert isinstance(value_dtype, np.dtype)
+class SimonyiConsDBVisits(PachonConsDBVisits):
 
-        have_values = np.issubdtype(value_dtype, np.number)
-        if not have_values:
-            warn(f"Consdb does not have values for {column}, guessing values instead")
+    @property
+    def telescope(self) -> str:
+        return "rubin"
 
-        return np.issubdtype(value_dtype, np.number)
+
+class LSSTCamConsDBVisits(SimonyiConsDBVisits):
 
     # Set "constant" properties using cached_property rather
     # than actual attributes, because abstract "members" can only be declared
@@ -1005,15 +1029,11 @@ class ComcamConsDBVisits(ConsDBVisits):
 
     @property
     def instrument(self) -> str:
-        return "lsstcomcam"
+        return "lsstcam"
 
     @property
     def num_exposures(self) -> int:
         return 1
-
-    @property
-    def telescope(self) -> str:
-        return "rubin"
 
     @property
     def gain(self) -> pd.Series:
@@ -1021,15 +1041,15 @@ class ComcamConsDBVisits(ConsDBVisits):
 
     @property
     def pixel_scale(self) -> pd.Series:
-        return pd.Series(0.2, index=self.consdb_visits.index)
+        if self._have_numeric_values("pixel_scale"):
+            pixel_scale = super().pixel_scale
+        else:
+            pixel_scale = pd.Series(0.2, index=self.consdb_visits.index)
+        return pixel_scale
 
-    def instrumental_zeropoint_for_band(self, band: str) -> float:
-        zp_t = defaultdict(np.array(np.nan).item, SysEngVals().zp_t.items())
-        return zp_t[band]
-
-    @property
-    def site(self):
-        return Site("LSST")
+    @cached_property
+    def _zero_point_column(self) -> str:
+        return "zero_point_median"
 
     @cached_property
     def observation_id(self) -> pd.Series:
@@ -1107,17 +1127,6 @@ class ComcamConsDBVisits(ConsDBVisits):
         return shut_time
 
     @cached_property
-    def obs_midpt_mjd(self) -> pd.Series:
-        if self._have_numeric_values("obs_midpt_mjd"):
-            mjd = super().obs_midpt_mjd
-        elif self._have_numeric_values("obs_end_mjd"):
-            mjd = (self.obs_start_mjd + self.consdb_visits["obs_end_mjd"]) / 2
-        else:
-            mjd = self.obs_start_mjd + (0.5 * self.shut_time) / 86400
-
-        return mjd
-
-    @cached_property
     def eff_time_m5(self):
         if self._have_numeric_values("eff_time_m5"):
             eff_time = super().eff_time_m5
@@ -1141,19 +1150,40 @@ class ComcamConsDBVisits(ConsDBVisits):
         return band
 
     @cached_property
-    def sky_e_per_pixel(self) -> pd.Series:
-        """Median sky background of each visit (in electons).
+    def instrumental_zeropoint_e(self) -> pd.Series:
+        """Instrumental zero point for each visit, with "counts" in electons.
 
         Returns
         -------
-        sky : `pd.Series`
-            Median sky background of each visit (in electons).
+        zp : `pd.Series`
+            Instrumental zero point for each visit, with "counts" in electons.
         """
-        if self._have_numeric_values("sky_bg_median"):
-            sky = self.consdb_visits["sky_bg_median"] * self.gain
-        else:
-            sky = pd.Series(np.nan, index=self.consdb_visits.index)
-        return sky
+        band_zp_t = defaultdict(np.array(np.nan).item, SysEngVals().zp_t.items())
+        return self.band.map(band_zp_t) + 2.5 * np.log10(self.shut_time)
+
+    @cached_property
+    def _sky_bg_column(self) -> str:
+        return "sky_bg_median"
+
+    @cached_property
+    def _seeing_zenith_500nm_column(self) -> str:
+        return "seeing_zenith_500nm_median"
+
+    @cached_property
+    def _psf_sigma_column(self) -> str:
+        return "psf_sigma_median"
+
+
+class ComcamConsDBVisits(LSSTCamConsDBVisits):
+
+    # Set "constant" properties using cached_property rather
+    # than actual attributes, because abstract "members" can only be declared
+    # as such using properties, and overriding a property with an actual
+    # attribute confuses type checkers.
+
+    @property
+    def instrument(self) -> str:
+        return "lsstcomcam"
 
 
 class ComcamSimConsDBVisits(ComcamConsDBVisits):
@@ -1161,6 +1191,100 @@ class ComcamSimConsDBVisits(ComcamConsDBVisits):
     @property
     def instrument(self) -> str:
         return "lsstcomcamsim"
+
+
+class AuxTelConsDBVisits(PachonConsDBVisits):
+
+    @property
+    def telescope(self) -> str:
+        return "auxtel"
+
+
+class LATISSConsDBVisits(AuxTelConsDBVisits):
+
+    @property
+    def instrument(self) -> str:
+        return "latiss"
+
+    @property
+    def num_exposures(self) -> int:
+        return 1
+
+    @property
+    def pixel_scale(self) -> pd.Series:
+        """The pixel scale in asec/pixel.
+
+        Returns
+        -------
+        pixel_scale : `pd.Series`
+            The pixel scale.
+        """
+        if self._have_numeric_values("pixel_scale"):
+            pixel_scale = super().pixel_scale
+        else:
+            # From TSTN-006
+            pixel_scale = pd.Series(1.0, index=self.consdb_visits.index)
+        return pixel_scale
+
+    @property
+    def gain(self) -> pd.Series:
+        """The gain in electrons per ADU.
+
+        Returns
+        -------
+        gain : `pd.Series`
+            The gain.
+        """
+        return pd.Series(np.nan, index=self.consdb_visits.index)
+
+    @cached_property
+    def instrumental_zeropoint_e(self) -> pd.Series:
+        """Instrumental zero point for each visit, with "counts" in electons.
+
+        Returns
+        -------
+        zp : `pd.Series`
+            Instrumental zero point for each visit, with "counts" in electons.
+        """
+        return pd.Series(np.nan, index=self.consdb_visits.index)
+
+    @cached_property
+    def _sky_bg_column(self) -> str:
+        return "sky_bg"
+
+    @cached_property
+    def _seeing_zenith_500nm_column(self) -> str:
+        return "seeing_zenith_500nm"
+
+    @cached_property
+    def _psf_sigma_column(self) -> str:
+        return "psf_sigma"
+
+    @cached_property
+    def _eff_time_column(self) -> str:
+        return "eff_time"
+
+    @cached_property
+    def _zero_point_column(self) -> str:
+        return "zero_point"
+
+    @cached_property
+    def eff_time_m5(self) -> pd.Series:
+        """Effective exposure time, in seconds.
+        This is the time to reach the m5 depth in each visit, under
+        a reference set of conditions.
+
+        Returns
+        -------
+        eff_time : `pd.Series`
+            The effective exposure time.
+        """
+        if self._have_numeric_values(self._eff_time_column):
+            eff_time = super().eff_time_m5
+        else:
+            eff_time = pd.Series(np.nan, index=self.consdb_visits.index)
+
+        return eff_time
 
 
 # Different subclasses of ConsDBOpsimConverter are needed for
@@ -1187,10 +1311,14 @@ def load_consdb_visits(instrument: str = "lsstcomcam", *args, **kwargs) -> ConsD
         raise NotImplementedError
 
     match instrument:
+        case "lsstcam":
+            converter: ConsDBVisits = LSSTCamConsDBVisits(*args, **kwargs)
         case "lsstcomcam":
             converter: ConsDBVisits = ComcamConsDBVisits(*args, **kwargs)
         case "lsstcomcamsim":
             converter: ConsDBVisits = ComcamSimConsDBVisits(*args, **kwargs)
+        case "latiss":
+            converter: ConsDBVisits = LATISSConsDBVisits(*args, **kwargs)
         case _:
             raise NotImplementedError
 
