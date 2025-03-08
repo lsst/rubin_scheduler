@@ -1,5 +1,6 @@
 from .almanac import *
 from .cloud_data import *
+from .cloud_maps import *
 from .cloud_model import *
 from .downtime_model import *
 from .read_fields import *
