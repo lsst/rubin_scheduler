@@ -105,6 +105,8 @@ class ObservationArray(np.ndarray):
         This maps to observation_reason in the ConsDB, although could
         be overwritten in JSON BLOCK.
         Most likely this is just "science" or "FBS" when using the FBS.
+    cloud_extinction : float
+        Cloud extinction that was applied by the model observatory (mags).
 
     Notes
     -----
@@ -172,6 +174,7 @@ class ObservationArray(np.ndarray):
             ("cummTelAz", float),
             ("observation_reason", "U40"),
             ("science_program", "U40"),
+            ("cloud_extinction", float),
             # TODO : Remove this hack which is for use with ts_scheduler
             # version <=v2.3 .. remove ts_scheduler actually drops "note".
             ("note", "U40"),

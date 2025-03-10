@@ -83,8 +83,9 @@ class Conditions:
         mjd : `float`
             Modified Julian Date (days).
         bulk_cloud : `float`
-            The fraction of sky covered by clouds. (In the future might
-            update to transparency map)
+            The fraction of sky covered by clouds. Generally only
+            set in simulations. Not currently being used, so probably
+            due for deprecation.
         cloud_maps : `CloudMap`
             rubin_scheduler.site_models.CloudMap object.
         slewtime : `np.ndarray`, (N,)
