@@ -21,10 +21,12 @@ class TestConsdb(unittest.TestCase):
         obs: np.recarray = consdb_visits.obs
         schema_converter.obs2opsim(obs)
 
-    @unittest.skip("avoid requiring access to consdb for tests.")
+    #    @unittest.skip("avoid requiring access to consdb for tests.")
     def test_consdb_read_visits_comcam(self):
         day_obs: str = "2024-12-10"
-        consdb_visits: ConsDBVisits = load_consdb_visits("lsstcomcam", day_obs)
+        consdb_visits: ConsDBVisits = load_consdb_visits(
+            "lsstcomcam", day_obs, url="https://usdf-rsp.slac.stanford.edu/consdb/query"
+        )
         schema_converter: SchemaConverter = SchemaConverter()
 
         opsim: pd.DataFrame = consdb_visits.opsim
