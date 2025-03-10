@@ -1,6 +1,4 @@
-import importlib.util
 import os
-import urllib.parse
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
@@ -38,13 +36,13 @@ try:
     import lsst.rsp
 
     @cache
-    def get_auth(*args, **kwargs) -> tuple[str, str]:
+    def _get_auth(*args, **kwargs) -> tuple[str, str]:
         return ("user", lsst.rsp.get_access_token(*args, **kwargs))
 
 except ImportError:
 
     @cache
-    def get_auth(token_file: str | None = None) -> tuple[str, str]:
+    def _get_auth(token_file: str | None = None) -> tuple[str, str]:
         token: str | None = None
 
         if token_file is not None:
@@ -61,7 +59,7 @@ except ImportError:
 
 def query_consdb(
     query: str,
-    url: str = "postgresql://usdf@usdf-summitdb.slac.stanford.edu:5432/exposurelog",
+    url: str = "https://usdf-rsp.slac.stanford.edu/consdb/query",
     token_file: str | None = None,
 ):
     """Query the consdb
@@ -72,49 +70,30 @@ def query_consdb(
         The SQL query to send to the consdb.
     url : `str`, optional
         The database connection string,
-        by default "postgresql://usdf@usdf-summitdb.slac.stanford.edu:5432/exposurelog"
+        by default "https://usdf-rsp.slac.stanford.edu/consdb/query"
 
     Returns
     -------
     result : `pandas.DataFrame`
         The result of the query.
     """
-    url_scheme: str = urllib.parse.urlparse(url).scheme
-    match url_scheme:
-        case "postgresql":
-            can_support_postgresql: bool = bool(
-                importlib.util.find_spec("sqlalchemy") and importlib.util.find_spec("psycopg2")
-            )
-            if not can_support_postgresql:
-                raise RuntimeError("Optional dependencies required for postgresql access not installed")
+    auth = _get_auth(token_file)
+    params = {"query": query}
 
-            # import sqlalchemy here rather than at the top to keep mypy happy.
-            # Add the type: ignore so IDEs do not complain when running in an
-            # environment without it.
-            import sqlalchemy  # type: ignore
+    # Requests from the logging urls often fail the 1st time.
+    failed_attempts = 0
+    response: None | requests.Response = None
+    while response is None or response.status_code != 200:
+        response = requests.post(url, auth=auth, json=params)
+        if response.status_code != 200:
+            failed_attempts += 1
+            if failed_attempts > 2:
+                # If we fail too many times, raise an exception
+                # appropriate to the last failure.
+                response.raise_for_status()
 
-            connection = sqlalchemy.create_engine(url)
-            query_results: pd.DataFrame = pd.read_sql(query, connection)
-        case "http" | "https":
-            auth = get_auth(token_file)
-            params = {"query": query}
-
-            # Requests from the logging urls often fail the 1st time.
-            failed_attempts = 0
-            response: None | requests.Response = None
-            while response is None or response.status_code != 200:
-                response = requests.post(url, auth=auth, json=params)
-                if response.status_code != 200:
-                    failed_attempts += 1
-                    if failed_attempts > 2:
-                        # If we fail too many times, raise an exception
-                        # appropriate to the last failure.
-                        response.raise_for_status()
-
-            messages = response.json()
-            query_results = pd.DataFrame(messages["data"], columns=messages["columns"])
-        case _:
-            raise ValueError(f"Unrecongined url scheme {url_scheme} in consdb url {url}")
+    messages = response.json()
+    query_results = pd.DataFrame(messages["data"], columns=messages["columns"])
 
     return query_results
 
@@ -151,7 +130,7 @@ class ConsDBVisits(ABC):
     """
 
     day_obs: str | int
-    url: str = "postgresql://usdf@usdf-summitdb.slac.stanford.edu:5432/exposurelog"
+    url: str = "https://usdf-rsp.slac.stanford.edu/consdb/query"
     num_nights: int = 1
 
     def _have_numeric_values(self, column) -> bool:
