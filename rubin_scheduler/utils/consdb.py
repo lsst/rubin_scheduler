@@ -57,9 +57,20 @@ except ImportError:
         return ("user", token)
 
 
+def _guess_consdb_endpoint():
+    location = os.getenv("EXTERNAL_INSTANCE_URL", "")
+    hostname = os.getenv("HOSTNAME", "")
+    if "summit-lsp" in location or hostname == "htcondor.cp.lsst.org":
+        endpoint = "https://summit-lsp.lsst.codes/consdb/query"
+    else:
+        endpoint = "https://usdf-rsp.slac.stanford.edu/consdb/query"
+
+    return endpoint
+
+
 def query_consdb(
     query: str,
-    url: str = "https://usdf-rsp.slac.stanford.edu/consdb/query",
+    url: str | None = None,
     token_file: str | None = None,
 ):
     """Query the consdb
@@ -69,14 +80,18 @@ def query_consdb(
     query : `str`
         The SQL query to send to the consdb.
     url : `str`, optional
-        The database connection string,
-        by default "https://usdf-rsp.slac.stanford.edu/consdb/query"
+        The ConsDB REST API URL, or ``None`` to guess.
+        Defaults to ``None``.
 
     Returns
     -------
     result : `pandas.DataFrame`
         The result of the query.
     """
+    if url is None:
+        url = _guess_consdb_endpoint()
+    assert url is not None
+
     auth = _get_auth(token_file)
     params = {"query": query}
 
@@ -122,15 +137,16 @@ class ConsDBVisits(ABC):
     ----------
     day_obs : `str`
         The date for which to query the database.
-    url : `str`
-        The connection string from the database.
+    url: `str` or `None`
+        The ConsDB REST API URL, or ``None`` to guess.
+        Defaults to ``None``.
     num_nights : `int`
         The number of nights (up to and including day_obs)
         for which to get visits. Defaults to 1.
     """
 
     day_obs: str | int
-    url: str = "https://usdf-rsp.slac.stanford.edu/consdb/query"
+    url: str | None = None
     num_nights: int = 1
 
     def _have_numeric_values(self, column) -> bool:
