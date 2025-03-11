@@ -793,9 +793,18 @@ class M5DiffBasisFunction(BaseBasisFunction):
     nside : `int`, optional
         The nside for the basis function.
         Default None uses `set_default_nside()`.
+    apply_cloud_extinction : `bool`
+        Apply extinction from cloud maps. Default False.
     """
 
-    def __init__(self, bandname="r", fiducial_FWHMEff=0.7, nside=DEFAULT_NSIDE, filtername=None):
+    def __init__(
+        self,
+        bandname="r",
+        fiducial_FWHMEff=0.7,
+        nside=DEFAULT_NSIDE,
+        filtername=None,
+        apply_cloud_extinction=False,
+    ):
         if filtername is not None:
             warnings.warn("filtername deprecated in favor of bandname", FutureWarning)
             bandname = filtername
@@ -804,14 +813,19 @@ class M5DiffBasisFunction(BaseBasisFunction):
         self.dark_map = None
         self.fiducial_FWHMEff = fiducial_FWHMEff
         self.bandname = bandname
+        self.apply_cloud_extinction = apply_cloud_extinction
 
     def _calc_value(self, conditions, indx=None):
         if self.dark_map is None:
             self.dark_map = dark_m5(
                 conditions.dec, self.bandname, conditions.site.latitude_rad, self.fiducial_FWHMEff
             )
-        # No way to get the sign on this right the first time.
+
         result = conditions.m5_depth[self.bandname] - self.dark_map
+        if self.apply_cloud_extinction:
+            if conditions.cloud_maps is not None:
+                extinction = conditions.cloud_maps.extinction_closest(conditions.mjd)
+                result -= extinction
         return result
 
 

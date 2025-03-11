@@ -83,10 +83,11 @@ class Conditions:
         mjd : `float`
             Modified Julian Date (days).
         bulk_cloud : `float`
-            The fraction of sky covered by clouds. (In the future might
-            update to transparency map)
-        cloud_map : `np.ndarray`, (N,)
-            XXX--to be done. HEALpix array with cloudy pixels set to NaN.
+            The fraction of sky covered by clouds. Generally only
+            set in simulations. Not currently being used, so probably
+            due for deprecation.
+        cloud_maps : `CloudMap`
+            rubin_scheduler.site_models.CloudMap object.
         slewtime : `np.ndarray`, (N,)
             Healpix showing the slewtime to each healpixel center (seconds)
         current_band : `str`
@@ -325,8 +326,8 @@ class Conditions:
         self.tel_alt_limits = None
         self.tel_az_limits = None
 
-        # Full sky cloud map
-        self._cloud_map = None
+        # Full sky cloud map object
+        self.cloud_maps = None
         self._HA = None
 
         # XXX--document
@@ -384,14 +385,6 @@ class Conditions:
     def calc_ha(self):
         self._HA = np.radians(self.lmst * 360.0 / 24.0) - self.ra
         self._HA[np.where(self._HA < 0)] += 2.0 * np.pi
-
-    @property
-    def cloud_map(self):
-        return self._cloud_map
-
-    @cloud_map.setter
-    def cloud_map(self, value):
-        self._cloud_map = match_hp_resolution(value, nside_out=self.nside)
 
     @property
     def slewtime(self):

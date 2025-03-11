@@ -168,6 +168,7 @@ class ModelObservatory:
         sky_alt_limits=None,
         sky_az_limits=None,
         telescope="rubin",
+        cloud_maps=None,
     ):
         self.nside = nside
 
@@ -343,6 +344,8 @@ class ModelObservatory:
 
         self.obs_id_counter = 0
 
+        self.cloud_maps = cloud_maps
+
     def get_info(self):
         """
         Returns
@@ -485,6 +488,9 @@ class ModelObservatory:
             self.conditions.wind_speed = wind_speed
             self.conditions.wind_direction = wind_direction
 
+        if self.cloud_maps is not None:
+            self.conditions.cloud_maps = self.cloud_maps
+
         return self.conditions
 
     @property
@@ -529,6 +535,12 @@ class ModelObservatory:
             observation["airmass"],
             nexp=observation["nexp"],
         )
+        # If there is cloud extinction, apply it.
+        if self.cloud_maps is not None:
+            hpid = _ra_dec2_hpid(self.sky_model.nside, observation["RA"], observation["dec"])
+            cloud_extinction = self.cloud_maps.extinction_closest(self.mjd, hpid)
+            observation["fivesigmadepth"] -= cloud_extinction
+            observation["cloud_extinction"] = cloud_extinction
 
         lmst = calc_lmst(self.mjd, self.site.longitude_rad)
         observation["lmst"] = lmst
