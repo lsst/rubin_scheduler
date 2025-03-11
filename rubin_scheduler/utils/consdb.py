@@ -1191,6 +1191,33 @@ class LSSTCamConsDBVisits(SimonyiConsDBVisits):
     def _psf_sigma_column(self) -> str:
         return "psf_sigma_median"
 
+    @cached_property
+    def extinction(self) -> pd.Series:
+        """The extinction for each visit.
+
+        Returns
+        -------
+        extinction : `pd.Series`
+            The extinction of each visit, in magnitudes.
+        """
+        # If SysEngVals is correct, the difference between that at what is
+        # measured will be the extinction.
+        sys_band_zp_t = defaultdict(np.array(np.nan).item, SysEngVals().zp_t.items())
+        sys_zp = self.band.map(sys_band_zp_t) + 2.5 * np.log10(self.shut_time)
+        extinction = self.zero_point - sys_zp
+        return extinction
+
+    @cached_property
+    def extinction_coefficient(self) -> pd.Series:
+        """Extinction coefficient for each visit.
+
+        Returns
+        -------
+        extinction_coeffcient : `pd.Series`
+            Extinction coefficient for each visit.
+        """
+        return self.extinction / self.airmass
+
 
 class ComcamConsDBVisits(LSSTCamConsDBVisits):
 
