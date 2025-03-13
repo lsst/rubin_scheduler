@@ -82,7 +82,7 @@ class GreedySurvey(BaseMarkovSurvey):
             self.night = copy(conditions.night)
 
         # Let's find the best N from the fields
-        order = np.argsort(self.reward)[::-1]
+        order = np.argsort(self.reward, kind="mergesort")[::-1]
         # Crop off any NaNs or Infs
         order = order[np.isfinite(self.reward[order])]
 
@@ -433,7 +433,7 @@ class BlobSurvey(GreedySurvey):
         ufields = ufields[not_nans]
         reward_by_field = reward_by_field[not_nans]
 
-        order = np.argsort(reward_by_field)[::-1]
+        order = np.argsort(reward_by_field, kind="mergesort")[::-1]
         ufields = ufields[order]
         self.best_fields = ufields[0 : self.nvisit_block]
 
@@ -463,7 +463,7 @@ class BlobSurvey(GreedySurvey):
             orig_order = np.arange(ordered_fields.size)
             # Remove duplicate field pointings
             _u_of, u_indx = np.unique(ordered_fields, return_index=True)
-            new_order = np.argsort(orig_order[u_indx])
+            new_order = np.argsort(orig_order[u_indx], kind="mergesort")
             best_fields = ordered_fields[u_indx[new_order]]
 
             if np.size(best_fields) < self.nvisit_block:
