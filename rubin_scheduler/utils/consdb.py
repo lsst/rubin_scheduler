@@ -1,5 +1,4 @@
-import importlib.util
-import urllib.parse
+import os
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
@@ -11,6 +10,7 @@ from warnings import warn
 import healpy as hp
 import numpy as np
 import pandas as pd
+import requests
 
 # import rubin_sim
 from astropy.coordinates import angular_separation
@@ -32,8 +32,47 @@ from rubin_scheduler.utils import (
 GAUSSIAN_FWHM_OVER_SIGMA: float = 2.0 * sqrt(2.0 * log(2.0))
 KNOWN_INSTRUMENTS = ["lsstcam", "lsstcomcam", "lsstcomcamsim", "latiss"]
 
+try:
+    import lsst.rsp
 
-def query_consdb(query: str, url: str = "postgresql://usdf@usdf-summitdb.slac.stanford.edu:5432/exposurelog"):
+    @cache
+    def _get_auth(*args, **kwargs) -> tuple[str, str]:
+        return ("user", lsst.rsp.get_access_token(*args, **kwargs))
+
+except ImportError:
+
+    @cache
+    def _get_auth(token_file: str | None = None) -> tuple[str, str]:
+        token: str | None = None
+
+        if token_file is not None:
+            with open("token_file", "r") as f:
+                token = f.read()
+        elif "ACCESS_TOKEN" in os.environ:
+            token = os.environ.get("ACCESS_TOKEN")
+
+        if token is None:
+            raise ValueError("No access token found.")
+
+        return ("user", token)
+
+
+def _guess_consdb_endpoint():
+    location = os.getenv("EXTERNAL_INSTANCE_URL", "")
+    hostname = os.getenv("HOSTNAME", "")
+    if "summit-lsp" in location or hostname == "htcondor.cp.lsst.org":
+        endpoint = "https://summit-lsp.lsst.codes/consdb/query"
+    else:
+        endpoint = "https://usdf-rsp.slac.stanford.edu/consdb/query"
+
+    return endpoint
+
+
+def query_consdb(
+    query: str,
+    url: str | None = None,
+    token_file: str | None = None,
+):
     """Query the consdb
 
     Parameters
@@ -41,48 +80,35 @@ def query_consdb(query: str, url: str = "postgresql://usdf@usdf-summitdb.slac.st
     query : `str`
         The SQL query to send to the consdb.
     url : `str`, optional
-        The database connection string,
-        by default "postgresql://usdf@usdf-summitdb.slac.stanford.edu:5432/exposurelog"
+        The ConsDB REST API URL, or ``None`` to guess.
+        Defaults to ``None``.
 
     Returns
     -------
     result : `pandas.DataFrame`
         The result of the query.
     """
-    url_scheme: str = urllib.parse.urlparse(url).scheme
-    match url_scheme:
-        case "postgresql":
-            can_support_postgresql: bool = bool(
-                importlib.util.find_spec("sqlalchemy") and importlib.util.find_spec("psycopg2")
-            )
-            if not can_support_postgresql:
-                raise RuntimeError("Optional dependencies required for postgresql access not installed")
+    if url is None:
+        url = _guess_consdb_endpoint()
+    assert url is not None
 
-            # import sqlalchemy here rather than at the top to keep mypy happy.
-            # Add the type: ignore so IDEs do not complain when running in an
-            # environment without it.
-            import sqlalchemy  # type: ignore
+    auth = _get_auth(token_file)
+    params = {"query": query}
 
-            connection = sqlalchemy.create_engine(url)
-            query_results: pd.DataFrame = pd.read_sql(query, connection)
-        case "http" | "https":
-            can_support_http: bool = bool(
-                importlib.util.find_spec("lsst")
-                and importlib.util.find_spec("lsst.summit")
-                and importlib.util.find_spec("lsst.summit.utils")
-            )
-            if not can_support_http:
-                raise RuntimeError("Optional dependencies required for ConsDB access not installed")
+    # Requests from the logging urls often fail the 1st time.
+    failed_attempts = 0
+    response: None | requests.Response = None
+    while response is None or response.status_code != 200:
+        response = requests.post(url, auth=auth, json=params)
+        if response.status_code != 200:
+            failed_attempts += 1
+            if failed_attempts > 2:
+                # If we fail too many times, raise an exception
+                # appropriate to the last failure.
+                response.raise_for_status()
 
-            # import ConsDbClient here rather than at the top to satisfy mypy.
-            # Add the type: ignore so IDEs do not complain when running in an
-            # environment without it.
-            from lsst.summit.utils import ConsDbClient  # type: ignore
-
-            consdb = ConsDbClient(url)
-            query_results: pd.DataFrame = consdb.query(query).to_pandas()
-        case _:
-            raise ValueError(f"Unrecongined url scheme {url_scheme} in consdb url {url}")
+    messages = response.json()
+    query_results = pd.DataFrame(messages["data"], columns=messages["columns"])
 
     return query_results
 
@@ -111,15 +137,16 @@ class ConsDBVisits(ABC):
     ----------
     day_obs : `str`
         The date for which to query the database.
-    url : `str`
-        The connection string from the database.
+    url: `str` or `None`
+        The ConsDB REST API URL, or ``None`` to guess.
+        Defaults to ``None``.
     num_nights : `int`
         The number of nights (up to and including day_obs)
         for which to get visits. Defaults to 1.
     """
 
     day_obs: str | int
-    url: str = "postgresql://usdf@usdf-summitdb.slac.stanford.edu:5432/exposurelog"
+    url: str | None = None
     num_nights: int = 1
 
     def _have_numeric_values(self, column) -> bool:
@@ -315,12 +342,12 @@ class ConsDBVisits(ABC):
             """
 
         visit_columns = (
-            query_consdb(columns_query(f"visit{self.num_exposures}", self.instrument))
+            query_consdb(columns_query(f"visit{self.num_exposures}", self.instrument), url=self.url)
             .loc[:, "column_name"]
             .values
         )
         ql_columns = (
-            query_consdb(columns_query(f"visit{self.num_exposures}_quicklook", self.instrument))
+            query_consdb(columns_query(f"visit{self.num_exposures}_quicklook", self.instrument), url=self.url)
             .loc[:, "column_name"]
             .values
         )
