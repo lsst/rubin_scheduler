@@ -25,10 +25,6 @@ fi
 source /sdf/group/rubin/sw/w_latest/loadLSST.sh
 conda activate /sdf/data/rubin/shared/scheduler/envs/prenight
 
-
-TS_CONFIG_OCS_HASH=$(obs_version_at_time ts_config_ocs)
-TS_FBS_UTILS_TAG=$(curl -s https://api.github.com/repos/lsst-ts/ts_fbs_utils/tags | jq -r '.[].name' | egrep '^v[0-9]+.[0-9]+.[0-9]+$' | sort -V | tail -1)
-
 export AWS_PROFILE=prenight
 WORK_DIR=$(date '+/sdf/data/rubin/shared/scheduler/prenight/work/run_prenight_sims/%Y-%m-%dT%H%M%S' --utc)
 echo "Working in $WORK_DIR"
@@ -36,8 +32,10 @@ mkdir ${WORK_DIR}
 cd ${WORK_DIR}
 
 # Get ts_ocs_config
-curl --output ts_ocs_config.zip https://github.com/lsst-ts/ts_config_ocs/archive/${TS_CONFIG_OCS_HASH}.zip
-unzip ts_ocs_config.zip
+TS_CONFIG_OCS_VERSION=$(obs_version_at_time ts_config_ocs)
+curl --location --output ts_config_ocs.zip https://github.com/lsst-ts/ts_config_ocs/archive/${TS_CONFIG_OCS_VERSION}.zip
+unzip ts_config_ocs.zip
+mv $(find . -maxdepth 1 -type d -name ts_config_ocs\*) ts_config_ocs
 
 # Install required python packages
 PACKAGE_DIR=$(readlink -f ${WORK_DIR}/packages)
@@ -51,9 +49,12 @@ pip install --no-deps --target=${PACKAGE_DIR} git+https://github.com/lsst/rubin_
 TS_FBS_UTILS_TAG=$(curl -s https://api.github.com/repos/lsst-ts/ts_fbs_utils/tags | jq -r '.[].name' | egrep '^v[0-9]+.[0-9]+.[0-9]+$' | sort -V | tail -1)
 pip install --no-deps --target=${PACKAGE_DIR} git+https://github.com/lsst-ts/ts_fbs_utils.git@${TS_FBS_UTILS_TAG}
 
-export PYTHONPATH=${PACKAGE_DIR}:${PYTHONPATH}
+# Get the scheduler configuration script
+SCHEDULER_CONFIG_SCRIPT=$(scheduler_config_at_time latiss)
 
+export PYTHONPATH=${PACKAGE_DIR}:${PYTHONPATH}
+export PATH=${PACKAGE_DIR}/bin:${PATH}
 printenv > env.out
-prenight_sim --scheduler auxtel.pickle.xz --opsim None --repo "https://github.com/lsst-ts/ts_config_ocs.git" --script "Scheduler/feature_scheduler/auxtel/fbs_config_image_photocal_survey.py" --branch main
+prenight_sim --scheduler auxtel.pickle.xz --opsim None --script ${SCHEDLURE_CONFIG_SCRIPT}
 echo "******* END of run_prenight_sims.sh *********"
 
