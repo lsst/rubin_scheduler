@@ -24,6 +24,40 @@ from rubin_scheduler.scheduler.example import example_scheduler
 from rubin_scheduler.scheduler.schedulers.core_scheduler import CoreScheduler
 
 
+def get_scheduler_instance_from_path(config_script_path: str | Path) -> CoreScheduler:
+    """Generate a CoreScheduler according to a configuration in a file.
+
+    Parameters
+    ----------
+    config_script_path : `str`
+        The configuration script path (relative to the repository root).
+
+    Returns
+    -------
+    scheduler : `CoreScheduler`
+        An instance of the Rubin Observatory FBS.
+
+    Raises
+    ------
+    ValueError
+        If the config file is invalid, or has invalid content.
+    """
+
+    config_module_name: str = "scheduler_config"
+    config_module_spec = importlib.util.spec_from_file_location(
+        config_module_name, config_script_path
+    )
+    if config_module_spec is None or config_module_spec.loader is None:
+        # Make type checking happy
+        raise ValueError(f"Cannot load config file {config_script_path}")
+
+    config_module: types.ModuleType = importlib.util.module_from_spec(config_module_spec)
+    sys.modules[config_module_name] = config_module
+    config_module_spec.loader.exec_module(config_module)
+
+    scheduler: CoreScheduler = config_module.get_scheduler()[1]
+    return scheduler
+
 def get_scheduler_instance_from_repo(
     config_repo: str,
     config_script: str,
@@ -54,19 +88,8 @@ def get_scheduler_instance_from_repo(
     with TemporaryDirectory() as local_config_repo_parent:
         repo: Repo = Repo.clone_from(config_repo, local_config_repo_parent, branch=config_branch)
         full_config_script_path: Path = Path(repo.working_dir).joinpath(config_script)
-        config_module_name: str = "scheduler_config"
-        config_module_spec = importlib.util.spec_from_file_location(
-            config_module_name, full_config_script_path
-        )
-        if config_module_spec is None or config_module_spec.loader is None:
-            # Make type checking happy
-            raise ValueError(f"Cannot load config file {full_config_script_path}")
+        scheduler = get_scheduler_instance_from_path(full_config_script_path)
 
-        config_module: types.ModuleType = importlib.util.module_from_spec(config_module_spec)
-        sys.modules[config_module_name] = config_module
-        config_module_spec.loader.exec_module(config_module)
-
-    scheduler: CoreScheduler = config_module.get_scheduler()[1]
     return scheduler
 
 
@@ -96,12 +119,14 @@ def get_scheduler(
     ValueError
         If the config file is invalid, or has invalid content.
     """
-    if config_repo is not None:
+    if config_repo is not None and len(config_repo) > 0:
         if config_script is None:
             raise ValueError("If the config repo is set, the script must be as well.")
         scheduler = get_scheduler_instance_from_repo(
             config_repo=config_repo, config_script=config_script, config_branch=config_branch
         )
+    elif config_script is not None:
+        scheduler = get_scheduler_instance_from_path(config_script)
     else:
         example_scheduler_result = example_scheduler()
         if isinstance(example_scheduler_result, CoreScheduler):
