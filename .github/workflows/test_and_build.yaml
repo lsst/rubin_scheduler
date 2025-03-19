@@ -29,8 +29,7 @@ jobs:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
           miniforge-version: latest
-          channels: conda-forge
-          conda-remove-defaults: true
+          channels: conda-forge, defaults
           show-channel-urls: true
 
       - name: configure conda and install requirements
