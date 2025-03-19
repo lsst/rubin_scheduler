@@ -170,9 +170,11 @@ class NObsCount(BaseSurveyFeature):
         Optionally also (or independently) specify a band to match.
     note : `str` or None
         Backwards compatible shim for scheduler_note.
+    per_night : `bool`
+        If True, only count within a night. Default False.
     """
 
-    def __init__(self, scheduler_note=None, bandname=None, note=None):
+    def __init__(self, scheduler_note=None, bandname=None, note=None, per_night=False):
         self.feature = 0
         if scheduler_note is None:
             self.scheduler_note = note
@@ -184,8 +186,15 @@ class NObsCount(BaseSurveyFeature):
         self.bandname = bandname
         # Will not add filtername backup here; users should not reach
         # down as far as the features in configurations.
+        self.per_night = per_night
+        self.night = -1
 
     def add_observations_array(self, observations_array, observations_hpid):
+        if self.per_night:
+            self.night = observations_array["night"].max() + 0
+            observations_array = observations_array[
+                np.where(observations_array["night"] == observations_array["night"].max())
+            ]
         if self.scheduler_note is None and self.bandname is None:
             self.feature += observations_array.size
         elif self.scheduler_note is None and self.bandname is not None:
@@ -201,6 +210,10 @@ class NObsCount(BaseSurveyFeature):
             self.feature += np.sum(count)
 
     def add_observation(self, observation, indx=None):
+        if self.per_night:
+            if observation["night"] != self.night:
+                self.feature = 0
+                self.night = observation["night"] + 0
         # Track all observations
         if self.scheduler_note is None and self.bandname is None:
             self.feature += 1

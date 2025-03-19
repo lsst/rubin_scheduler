@@ -24,7 +24,7 @@ class GreedySurvey(BaseMarkovSurvey):
         block_size=1,
         smoothing_kernel=None,
         nside=DEFAULT_NSIDE,
-        dither=True,
+        dither="night",
         seed=42,
         ignore_obs=None,
         survey_name=None,
@@ -77,9 +77,12 @@ class GreedySurvey(BaseMarkovSurvey):
         self.reward = self.calc_reward_function(conditions)
 
         # Check if we need to spin the tesselation
-        if self.dither & (conditions.night != self.night):
-            self._spin_fields(conditions)
+        if (self.dither == "night") & (conditions.night != self.night):
+            self._spin_fields(conditions.night)
             self.night = copy(conditions.night)
+        elif self.dither == "call":
+            self._spin_fields(self.call_num)
+            self.call_num += 1
 
         # Let's find the best N from the fields
         order = np.argsort(self.reward, kind="mergesort")[::-1]
@@ -183,7 +186,7 @@ class BlobSurvey(GreedySurvey):
         flush_time=30.0,
         smoothing_kernel=None,
         nside=DEFAULT_NSIDE,
-        dither=True,
+        dither="night",
         seed=42,
         ignore_obs=None,
         survey_name=None,
@@ -452,9 +455,12 @@ class BlobSurvey(GreedySurvey):
 
         self.reward[np.where(distances > self.max_radius_peak)] = np.nan
         # Check if we need to spin the tesselation
-        if self.dither & (conditions.night != self.night):
-            self._spin_fields(conditions)
+        if (self.dither == "night") & (conditions.night != self.night):
+            self._spin_fields(conditions.night)
             self.night = copy(conditions.night)
+        elif self.dither == "call":
+            self._spin_fields(self.call_num)
+            self.call_num += 1
 
         if self.grow_blob:
             # Note, returns highest first
