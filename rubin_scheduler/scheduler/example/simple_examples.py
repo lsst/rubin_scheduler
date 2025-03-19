@@ -342,6 +342,8 @@ def simple_pairs_survey(
     exptime: float = 30.0,
     nexp: int = 1,
     science_program: str | None = None,
+    dither: str = "night",
+    camera_dither: str = "night",
 ) -> BlobSurvey:
     """Set up a simple blob survey to acquire pairs of visits.
 
@@ -475,7 +477,9 @@ def simple_pairs_survey(
     detailer_list = []
     # Avoid camera rotator limits.
     detailer_list.append(
-        detailers.CameraRotDetailer(min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits))
+        detailers.CameraRotDetailer(
+            min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits), dither=camera_dither
+        )
     )
     # Convert rotTelPos to rotSkyPos_desired
     detailer_list.append(detailers.Rottep2RotspDesiredDetailer(telescope="rubin"))
@@ -498,7 +502,7 @@ def simple_pairs_survey(
         "smoothing_kernel": None,
         "nside": nside,
         "seed": 42,
-        "dither": True,
+        "dither": dither,
         "twilight_scale": False,
     }
 
@@ -537,6 +541,8 @@ def simple_greedy_survey(
     exptime: float = 30.0,
     nexp: int = 1,
     science_program: str | None = None,
+    dither: str = "night",
+    camera_dither: str = "night",
 ) -> GreedySurvey:
     """Set up a simple greedy survey to just observe single visits.
 
@@ -629,7 +635,11 @@ def simple_greedy_survey(
     detailer_list = []
     # Avoid camera rotator limits.
     detailer_list.append(
-        detailers.CameraRotDetailer(min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits))
+        detailers.CameraRotDetailer(
+            min_rot=np.min(camera_rot_limits),
+            max_rot=np.max(camera_rot_limits),
+            dither=camera_dither,
+        )
     )
     # Convert rotTelPos to rotSkyPos_desired
     detailer_list.append(detailers.Rottep2RotspDesiredDetailer(telescope="rubin"))
@@ -644,7 +654,7 @@ def simple_greedy_survey(
     GreedySurvey_params = {
         "nside": nside,
         "seed": 42,
-        "dither": True,
+        "dither": dither,
     }
 
     greedy_survey = GreedySurvey(
