@@ -499,8 +499,8 @@ class ConsDBVisits(ABC):
         return self.consdb_visits["band"]
 
     @cached_property
-    def extinction_coefficient(self) -> pd.Series:
-        """Extinction coefficient for each visit.
+    def extinction_coefficient_without_clouds(self) -> pd.Series:
+        """Atomspheric extinction coefficient for each visit, without clouds.
 
         Returns
         -------
@@ -511,15 +511,27 @@ class ConsDBVisits(ABC):
         return self.band.map(DEFAULT_EXTINCTION_COEFFICIENTS)
 
     @cached_property
-    def extinction(self) -> pd.Series:
-        """The extinction for each visit.
+    def cloud_extinction(self) -> pd.Series:
+        """Extinction due to clouds.
+
+        Returns
+        -------
+        cloud_extinction : `pd.Series`
+            The extinction due to clouds
+        """
+        warn("Measurment of cloud extinction not available; assuming photometric conditions.")
+        return pd.Series(0.0, index=self.consdb_visits.index)
+
+    @cached_property
+    def atmospheric_extinction_with_clouds_and_air(self) -> pd.Series:
+        """The total extinction for each visit.
 
         Returns
         -------
         extinction : `pd.Series`
             The extinction of each visit, in magnitudes.
         """
-        return self.airmass * self.extinction_coefficient
+        return self.airmass * self.extinction_coefficient_without_clouds + self.cloud_extinction
 
     @cached_property
     def azimuth(self) -> pd.Series:
@@ -877,7 +889,7 @@ class ConsDBVisits(ABC):
         sky : `pd.Series`
             Sky background in each visit, in mags asec^-2
         """
-        sky_zero_point = self.zero_point - self.extinction
+        sky_zero_point = self.zero_point - self.atmospheric_extinction_with_clouds_and_air
         sky_mag = sky_zero_point - 2.5 * np.log10(self.sky_e_per_pixel / (self.pixel_scale**2))
 
         return sky_mag
@@ -1192,7 +1204,7 @@ class LSSTCamConsDBVisits(SimonyiConsDBVisits):
         return "psf_sigma_median"
 
     @cached_property
-    def extinction(self) -> pd.Series:
+    def atmospheric_extinction_with_clouds_and_air(self) -> pd.Series:
         """The extinction for each visit.
 
         Returns
@@ -1206,17 +1218,6 @@ class LSSTCamConsDBVisits(SimonyiConsDBVisits):
         sys_zp = self.band.map(sys_band_zp_t) + 2.5 * np.log10(self.shut_time)
         extinction = self.zero_point - sys_zp
         return extinction
-
-    @cached_property
-    def extinction_coefficient(self) -> pd.Series:
-        """Extinction coefficient for each visit.
-
-        Returns
-        -------
-        extinction_coeffcient : `pd.Series`
-            Extinction coefficient for each visit.
-        """
-        return self.extinction / self.airmass
 
 
 class ComcamConsDBVisits(LSSTCamConsDBVisits):
