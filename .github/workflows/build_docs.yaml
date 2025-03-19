@@ -18,18 +18,17 @@ jobs:
       - uses: conda-incubator/setup-miniconda@v3
         with:
           auto-update-conda: true
-          python-version: ${{ matrix.python-version }}
-          miniforge-variant: Miniforge3
-          channels: conda-forge,defaults
-          use-mamba: true
-          channel-priority: strict
+          python-version: "3.12"
+          miniforge-version: latest
+          channels: conda-forge
+          conda-remove-defaults: true
           show-channel-urls: true
 
       - name: configure conda and install requirements
         shell: bash -l {0}
         run: |
-          mamba install --quiet --file=requirements.txt
-          mamba install --quiet pip
+          conda install --yes --file=requirements.txt
+          conda install --yes pip
           pip install lsst.resources
           pip install "documenteer[guide]"
 
@@ -68,7 +67,7 @@ jobs:
         run: |
           export RUBIN_SIM_DATA_DIR=~/rubin_sim_data
           cd docs
-          package-docs build
+          make html
 
       - name: upload documentation
         uses: lsst-sqre/ltd-upload@v1
