@@ -21,7 +21,7 @@ jobs:
           python-version: "3.12"
           miniforge-version: latest
           channels: conda-forge
-          channel-priority: strict
+          conda-remove-defaults: true
           show-channel-urls: true
 
       - name: configure conda and install requirements
