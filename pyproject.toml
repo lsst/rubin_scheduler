@@ -16,8 +16,8 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Astronomy",
  ]
 urls = {documentation = "https://rubin-scheduler.lsst.io", repository = "https://github.com/lsst/rubin_scheduler" }
@@ -27,7 +27,7 @@ dependencies = [
     "matplotlib",
     "healpy",
     "numexpr",
-    "scipy<1.14",
+    "scipy",
     "astropy",
     "astroplan",
     "tables",
@@ -78,7 +78,7 @@ exclude = "version.py"
 
 [tool.black]
 line-length = 110
-target-version = ["py311"]
+target-version = ["py312"]
 
 [tool.isort]
 profile = "black"
@@ -114,7 +114,7 @@ select = [
     "N",  # pep8-naming
     "W",  # pycodestyle
 ]
-target-version = "py311"
+target-version = "py312"
 extend-select = [
     "RUF100", # Warn about unused noqa
 ]
