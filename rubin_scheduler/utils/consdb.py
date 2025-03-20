@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from functools import cache, cached_property
 from math import log, sqrt
+from typing import List
 from warnings import warn
 
 import healpy as hp
@@ -30,7 +31,15 @@ from rubin_scheduler.utils import (
 )
 
 GAUSSIAN_FWHM_OVER_SIGMA: float = 2.0 * sqrt(2.0 * log(2.0))
-KNOWN_INSTRUMENTS = ["lsstcam", "lsstcomcam", "lsstcomcamsim", "latiss"]
+KNOWN_INSTRUMENTS: List[str] = ["lsstcam", "lsstcomcam", "lsstcomcamsim", "latiss"]
+DEFAULT_EXTINCTION_COEFFICIENTS: dict[str, float] = {
+    "u": -0.4582,
+    "g": -0.2079,
+    "r": -0.1223,
+    "i": -0.0739,
+    "z": -0.0574,
+    "y": -0.0947,
+}
 
 try:
     import lsst.rsp
@@ -208,22 +217,6 @@ class ConsDBVisits(ABC):
         -------
         telescope : `str`
             The telescope.
-        """
-        # Subclasses should return a constant specifying the relevant
-        # instrument.
-        # Specified as an property rather than an attribute so it can be
-        # abstract.
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def gain(self) -> pd.Series:
-        """The gain in electrons per ADU.
-
-        Returns
-        -------
-        gain : `pd.Series`
-            The gain.
         """
         # Subclasses should return a constant specifying the relevant
         # instrument.
@@ -504,6 +497,41 @@ class ConsDBVisits(ABC):
             Abstract filter for each visit.
         """
         return self.consdb_visits["band"]
+
+    @cached_property
+    def extinction_coefficient_without_clouds(self) -> pd.Series:
+        """Atomspheric extinction coefficient for each visit, without clouds.
+
+        Returns
+        -------
+        extinction_coeffcient : `pd.Series`
+            Extinction coefficient for each visit.
+        """
+        # pd.Series.map maps missing keys to nan
+        return self.band.map(DEFAULT_EXTINCTION_COEFFICIENTS)
+
+    @cached_property
+    def cloud_extinction(self) -> pd.Series:
+        """Extinction due to clouds.
+
+        Returns
+        -------
+        cloud_extinction : `pd.Series`
+            The extinction due to clouds
+        """
+        warn("Measurment of cloud extinction not available; assuming photometric conditions.")
+        return pd.Series(0.0, index=self.consdb_visits.index)
+
+    @cached_property
+    def atmospheric_extinction_with_clouds_and_air(self) -> pd.Series:
+        """The total extinction for each visit.
+
+        Returns
+        -------
+        extinction : `pd.Series`
+            The extinction of each visit, in magnitudes.
+        """
+        return self.airmass * self.extinction_coefficient_without_clouds + self.cloud_extinction
 
     @cached_property
     def azimuth(self) -> pd.Series:
@@ -822,7 +850,7 @@ class ConsDBVisits(ABC):
         raise NotImplementedError
 
     @cached_property
-    def zeropoint_e(self) -> pd.Series:
+    def zero_point(self) -> pd.Series:
         """Photometric zero point for each visit, with "counts" in electons.
 
         Returns
@@ -830,19 +858,7 @@ class ConsDBVisits(ABC):
         zp : `pd.Series`
             Photometric zero point for each visit, with "counts" in electons.
         """
-        return self.consdb_visits[self._zero_point_column] + 2.5 * np.log10(self.gain)
-
-    @cached_property
-    @abstractmethod
-    def instrumental_zeropoint_e(self) -> pd.Series:
-        """Instrumental zero point for each visit, with "counts" in electons.
-
-        Returns
-        -------
-        zp : `pd.Series`
-            Instrumental zero point for each visit, with "counts" in electons.
-        """
-        raise NotImplementedError
+        return self.consdb_visits[self._zero_point_column]
 
     @cached_property
     @abstractmethod
@@ -859,21 +875,24 @@ class ConsDBVisits(ABC):
             Median sky background of each visit (in electons).
         """
         if self._have_numeric_values(self._sky_bg_column):
-            sky = self.consdb_visits[self._sky_bg_column] * self.gain
+            sky = self.consdb_visits[self._sky_bg_column]
         else:
             sky = pd.Series(np.nan, index=self.consdb_visits.index)
         return sky
 
     @cached_property
     def sky_mag_per_asec(self) -> pd.Series:
-        """Median sky background in each visit, in mags asec^-2
+        """Sky background in each visit, in mags asec^-2
 
         Returns
         -------
         sky : `pd.Series`
-            Median sky background in each visit, in mags asec^-2
+            Sky background in each visit, in mags asec^-2
         """
-        return self.instrumental_zeropoint_e - 2.5 * np.log10(self.sky_e_per_pixel / (self.pixel_scale**2))
+        sky_zero_point = self.zero_point - self.atmospheric_extinction_with_clouds_and_air
+        sky_mag = sky_zero_point - 2.5 * np.log10(self.sky_e_per_pixel / (self.pixel_scale**2))
+
+        return sky_mag
 
     @cache
     def hpix(self, nside: int) -> pd.Series:
@@ -966,7 +985,7 @@ class ConsDBVisits(ABC):
             "observationStartMJD": self.obs_start_mjd,
             "flush_by_mjd": np.nan,
             "visitExposureTime": self.shut_time,
-            "filter": self.band,
+            "band": self.band,
             "rotSkyPos": self.sky_rotation,
             "rotSkyPos_desired": np.nan,
             "numExposures": self.num_exposures,
@@ -1061,10 +1080,6 @@ class LSSTCamConsDBVisits(SimonyiConsDBVisits):
     @property
     def num_exposures(self) -> int:
         return 1
-
-    @property
-    def gain(self) -> pd.Series:
-        return pd.Series(1.67, index=self.consdb_visits.index)
 
     @property
     def pixel_scale(self) -> pd.Series:
@@ -1177,18 +1192,6 @@ class LSSTCamConsDBVisits(SimonyiConsDBVisits):
         return band
 
     @cached_property
-    def instrumental_zeropoint_e(self) -> pd.Series:
-        """Instrumental zero point for each visit, with "counts" in electons.
-
-        Returns
-        -------
-        zp : `pd.Series`
-            Instrumental zero point for each visit, with "counts" in electons.
-        """
-        band_zp_t = defaultdict(np.array(np.nan).item, SysEngVals().zp_t.items())
-        return self.band.map(band_zp_t) + 2.5 * np.log10(self.shut_time)
-
-    @cached_property
     def _sky_bg_column(self) -> str:
         return "sky_bg_median"
 
@@ -1199,6 +1202,22 @@ class LSSTCamConsDBVisits(SimonyiConsDBVisits):
     @cached_property
     def _psf_sigma_column(self) -> str:
         return "psf_sigma_median"
+
+    @cached_property
+    def atmospheric_extinction_with_clouds_and_air(self) -> pd.Series:
+        """The extinction for each visit.
+
+        Returns
+        -------
+        extinction : `pd.Series`
+            The extinction of each visit, in magnitudes.
+        """
+        # If SysEngVals is correct, the difference between that at what is
+        # measured will be the extinction.
+        sys_band_zp_t = defaultdict(np.array(np.nan).item, SysEngVals().zp_t.items())
+        sys_zp = self.band.map(sys_band_zp_t) + 2.5 * np.log10(self.shut_time)
+        extinction = self.zero_point - sys_zp
+        return extinction
 
 
 class ComcamConsDBVisits(LSSTCamConsDBVisits):
@@ -1252,28 +1271,6 @@ class LATISSConsDBVisits(AuxTelConsDBVisits):
             # From TSTN-006
             pixel_scale = pd.Series(1.0, index=self.consdb_visits.index)
         return pixel_scale
-
-    @property
-    def gain(self) -> pd.Series:
-        """The gain in electrons per ADU.
-
-        Returns
-        -------
-        gain : `pd.Series`
-            The gain.
-        """
-        return pd.Series(np.nan, index=self.consdb_visits.index)
-
-    @cached_property
-    def instrumental_zeropoint_e(self) -> pd.Series:
-        """Instrumental zero point for each visit, with "counts" in electons.
-
-        Returns
-        -------
-        zp : `pd.Series`
-            Instrumental zero point for each visit, with "counts" in electons.
-        """
-        return pd.Series(np.nan, index=self.consdb_visits.index)
 
     @cached_property
     def _sky_bg_column(self) -> str:
