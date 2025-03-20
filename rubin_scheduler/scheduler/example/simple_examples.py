@@ -344,6 +344,7 @@ def simple_pairs_survey(
     science_program: str | None = None,
     dither: str = "night",
     camera_dither: str = "night",
+    require_time: bool = False,
 ) -> BlobSurvey:
     """Set up a simple blob survey to acquire pairs of visits.
 
@@ -387,6 +388,9 @@ def simple_pairs_survey(
     science_program : `str` | None
         The science_program key for the FieldSurvey.
         This maps to the BLOCK and `science_program` in the consDB.
+    require_time : `bool`
+        If True, add a mask basis function that checks there is enough
+        time before twilight to execute the pairs. Default False.
 
     Returns
     -------
@@ -408,6 +412,14 @@ def simple_pairs_survey(
 
     if mask_basis_functions is None:
         mask_basis_functions = standard_masks(nside=nside)
+
+    # Don't start a blob if there isn't time to finish it before twilight
+    if require_time:
+        time_needed = pair_time
+        if bandname2 is not None:
+            time_needed *= 2
+        mask_basis_functions.append(basis_functions.TimeToTwilightBasisFunction(time_needed=time_needed))
+
     # Mask basis functions have zero weights.
     mask_basis_functions_weights = [0 for mask in mask_basis_functions]
 
