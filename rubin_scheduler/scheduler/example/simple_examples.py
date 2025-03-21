@@ -337,6 +337,7 @@ def simple_pairs_survey(
     reward_basis_functions_weights: list[float] | None = None,
     survey_start: float = SURVEY_START_MJD,
     footprints_hp: np.ndarray | None = None,
+    footprint: Footprint | None = None,
     camera_rot_limits: list[float] = [-80.0, 80.0],
     pair_time: float = 30.0,
     exptime: float = 30.0,
@@ -404,11 +405,14 @@ def simple_pairs_survey(
     sun_moon_info = almanac.get_sun_moon_positions(survey_start)
     sun_ra_start = sun_moon_info["sun_RA"].copy()
 
-    if footprints_hp is None:
-        footprints_hp, labels = get_current_footprint(nside=nside)
-    footprints = Footprint(mjd_start=survey_start, sun_ra_start=sun_ra_start, nside=nside)
-    for f in footprints_hp.dtype.names:
-        footprints.set_footprint(f, footprints_hp[f])
+    if footprint is None:
+        if footprints_hp is None:
+            footprints_hp, labels = get_current_footprint(nside=nside)
+        footprints = Footprint(mjd_start=survey_start, sun_ra_start=sun_ra_start, nside=nside)
+        for f in footprints_hp.dtype.names:
+            footprints.set_footprint(f, footprints_hp[f])
+    else:
+        footprints = footprint
 
     if mask_basis_functions is None:
         mask_basis_functions = standard_masks(nside=nside)

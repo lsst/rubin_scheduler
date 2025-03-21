@@ -324,8 +324,8 @@ class CameraRotDetailer(BaseDetailer):
     min_rot : `float` (90)
         The minimum to offset the camera (degrees)
     dither : `str`
-        If "night", change positions per night. If call, change per call. If "all",
-        randomize per visit. Default "night".
+        If "night", change positions per night. If call, change per call.
+        If "all", randomize per visit. Default "night".
     telescope : `str`
         Telescope name. Options of "rubin" or "auxtel". Default "rubin".
     """
