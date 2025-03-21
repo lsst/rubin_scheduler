@@ -16,8 +16,6 @@ API
 
     Utils <utils-api>
 
-    Sim archive <sim-archive-api>
-
     FBS Scheduler <fbs-api>
 
 
