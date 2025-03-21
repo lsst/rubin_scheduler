@@ -1,5 +1,7 @@
 import unittest
+import warnings
 
+import numpy as np
 import pandas as pd
 
 import rubin_scheduler.scheduler.basis_functions as basis_functions
@@ -56,11 +58,28 @@ class TestCoreSched(unittest.TestCase):
         surveys_df = scheduler.surveys_df(0)
         self.assertIsInstance(surveys_df, pd.DataFrame)
 
-        # Test we can record basis function values when requested
-        recording_scheduler = CoreScheduler([survey], keep_rewards=True)
-        recording_scheduler.update_conditions(observatory.return_conditions())
-        obs = recording_scheduler.request_observation()
-        self.assertIsInstance(recording_scheduler.queue_reward_df, pd.DataFrame)
+    def test_record_rewards(self):
+        # Create two surveys, so we can have one of the with a basis function
+        # with all nans but stiff have the scheduler find observations it can
+        # return.
+        surveys = [simple_greedy_survey(bandname="r"), simple_greedy_survey(bandname="i")]
+
+        # Modify the 1st survey so that it has an all-nan array basis function.
+        new_basis_function = basis_functions.SimpleArrayBasisFunction(np.nan)
+        surveys[0].basis_functions.append(new_basis_function)
+        surveys[0].basis_weights.append(1)
+
+        scheduler = CoreScheduler(surveys, keep_rewards=True)
+        observatory = ModelObservatory()
+        scheduler.update_conditions(observatory.return_conditions())
+
+        with warnings.catch_warnings(record=True) as caught_warnings:
+            scheduler.request_observation()
+            for caught_warning in caught_warnings:
+                if issubclass(caught_warning.category, RuntimeWarning):
+                    assert str(caught_warning.message) != "All-NaN slice encountered"
+
+        self.assertIsInstance(scheduler.queue_reward_df, pd.DataFrame)
 
     def test_add_obs(self):
         """Test that add_observation works with slice or array"""
