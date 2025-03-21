@@ -333,7 +333,12 @@ class CoreScheduler:
             rewards = np.zeros(len(surveys))
             for i, survey in enumerate(surveys):
                 # For each survey, find the highest reward value.
-                rewards[i] = np.nanmax(survey.calc_reward_function(self.conditions))
+                all_rewards_this_survey = survey.calc_reward_function(self.conditions)
+                rewards[i] = (
+                    np.nan
+                    if np.all(np.isnan(all_rewards_this_survey))
+                    else np.nanmax(all_rewards_this_survey)
+                )
             # If we have a tier with a good reward, break out of the loop
             if np.nanmax(rewards) > -np.inf:
                 self.survey_index[0] = ns
@@ -610,7 +615,12 @@ class CoreScheduler:
                 survey_df["tier_label"] = f"tier {index0}"
                 survey_df["survey_label"] = survey_labels[index0][index1]
                 survey_df["survey_class"] = survey.__class__.__name__
-                survey_df["survey_reward"] = np.nanmax(survey.calc_reward_function(conditions))
+                all_rewards_this_survey = survey.calc_reward_function(conditions)
+                survey_df["survey_reward"] = (
+                    np.nan
+                    if np.all(np.isnan(all_rewards_this_survey))
+                    else np.nanmax(all_rewards_this_survey)
+                )
                 survey_dfs.append(survey_df)
 
         reward_df = pd.concat(survey_dfs).set_index(["list_index", "survey_index"])
