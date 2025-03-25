@@ -353,7 +353,7 @@ class SkyModelPreBase(abc.ABC):
                         sun_alt_az.alt.deg,
                         sun_alt_az.az.deg,
                         band_name=band_name,
-                    )
+                    )[indx]
 
             else:
                 warnings.warn("Requested MJD between sunrise and sunset, returning closest maps")
