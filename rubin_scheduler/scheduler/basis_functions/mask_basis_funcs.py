@@ -7,6 +7,7 @@ __all__ = (
     "SolarElongationMaskBasisFunction",
     "AreaCheckMaskBasisFunction",
     "AltAzShadowMaskBasisFunction",
+    "AltAzShadowTimeLimitedBasisFunction",
 )
 
 import warnings
@@ -324,6 +325,42 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
             result[to_mask_indx] = np.nan
 
         return result
+
+
+class AltAzShadowTimeLimitedBasisFunction(AltAzShadowMaskBasisFunction):
+    """Similar to AltAzShadowMaskBasisFunction, but only adds a mask
+    if the time within the night is close to the specified sunrise/sunset
+    event
+
+    Parameters
+    ----------
+    <all the kwargs from AltAzShadowMaskBasisFunction>
+
+    time_to_sun : `float`
+        How close in time one must be to the sun up/down time (hours).
+        Default 2.
+    sun_keys : `list`
+        List of strings that are looked up in the conditions object.
+        Default ["sunrise", "sunset"]. Options currently are
+        sunrise, sunset, sun_n12_setting, sun_n18_setting,
+        sun_n18_rising, sun_n12_rising
+    """
+
+    def __init__(self, time_to_sun=2.0, sun_keys=["sunrise", "sunset"], **kwargs):
+        self.time_to_sun = time_to_sun / 24.0  # to days
+        self.sun_keys = sun_keys
+        super().__init__(**kwargs)
+
+    def _calc_value(self, conditions, indx=None):
+
+        time_to_sun = [conditions.mjd - getattr(conditions, key) for key in self.sun_keys]
+        time_to_sun = np.abs(time_to_sun)
+        # We are close to a sunrise/set event, apply mask
+        if np.min(time_to_sun) < self.time_to_sun:
+            return super()._calc_value(conditions, indx=indx)
+        else:
+            # In the middle of the night, no mask
+            return 0
 
 
 class MoonAvoidanceBasisFunction(BaseBasisFunction):
