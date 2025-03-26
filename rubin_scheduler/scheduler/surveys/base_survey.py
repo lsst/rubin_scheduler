@@ -505,6 +505,7 @@ class BaseMarkovSurvey(BaseSurvey):
         )
 
         self.basis_weights = basis_weights
+        self.current_night = 0
         # Check that weights and basis functions are same length
         if len(basis_functions) != np.size(basis_weights):
             raise ValueError("basis_functions and basis_weights must be same length.")
@@ -551,6 +552,8 @@ class BaseMarkovSurvey(BaseSurvey):
         # Generate and store rotation positions to use.
         # This way, if different survey objects are seeded the same,
         # they will use the same dither positions each night
+        if dither == "call":
+            npositions = (npositions, npositions)
         rng = np.random.default_rng(seed)
         self.lon = rng.random(npositions) * np.pi * 2
         # Make sure latitude points spread correctly
@@ -699,7 +702,10 @@ class BaseMarkovSurvey(BaseSurvey):
             self._spin_fields(conditions.night)
             self.night = copy(conditions.night)
         elif self.dither == "call":
-            self._spin_fields(self.call_num)
+            if conditions.night != self.current_night:
+                self.current_night = conditions.night
+                self.call_num = 0
+            self._spin_fields((conditions.night, self.call_num))
             self.call_num += 1
 
         # XXX Use self.reward to decide what to observe.

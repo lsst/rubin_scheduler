@@ -328,14 +328,36 @@ class CameraRotDetailer(BaseDetailer):
         If "all", randomize per visit. Default "night".
     telescope : `str`
         Telescope name. Options of "rubin" or "auxtel". Default "rubin".
+    nnights : `int`
+        Number of dither positions to generate.
     """
 
-    def __init__(self, max_rot=90.0, min_rot=-90.0, dither="night", seed=42, nnights=7305, telescope="rubin"):
+    def __init__(
+        self,
+        max_rot=90.0,
+        min_rot=-90.0,
+        dither="night",
+        per_night=None,
+        seed=42,
+        nnights=7305,
+        telescope="rubin",
+    ):
         self.survey_features = {}
 
-        if dither in [True, False]:
-            warnings.warn("dither=True deprecated, swapping to dither=Night", FutureWarning)
+        if per_night is True:
+            warnings.warn("per_night deprecated, setting dither='night'", FutureWarning)
             dither = "night"
+        if per_night is False:
+            warnings.warn("per_night deprecated, setting dither='all'", FutureWarning)
+            dither = "all"
+
+        if dither is True:
+            warnings.warn("dither=True deprecated, swapping to dither='night'", FutureWarning)
+            dither = "night"
+
+        if dither is False:
+            warnings.warn("dither=False deprecated, swapping to dither='all'", FutureWarning)
+            dither = "all"
 
         self.current_night = -1
         self.max_rot = np.radians(max_rot)
@@ -343,7 +365,10 @@ class CameraRotDetailer(BaseDetailer):
         self.range = self.max_rot - self.min_rot
         self.dither = dither
         self.rng = np.random.default_rng(seed)
-        self.offsets = self.rng.random(nnights)
+        if dither == "call":
+            self.offsets = self.rng.random((nnights, nnights))
+        else:
+            self.offsets = self.rng.random(nnights)
 
         self.offset = None
         self.rc = rotation_converter(telescope=telescope)
@@ -357,7 +382,10 @@ class CameraRotDetailer(BaseDetailer):
                 self.offset = self.offsets[night] * self.range + self.min_rot
             offsets = np.ones(n_offsets) * self.offset
         elif self.dither == "call":
-            self.offset = self.offsets[self.call_num] * self.range + self.min_rot
+            if night != self.current_night:
+                self.current_night = night
+                self.call_num = 0
+            self.offset = self.offsets[night][self.call_num] * self.range + self.min_rot
             self.call_num += 1
             offsets = np.ones(n_offsets) * self.offset
         elif self.dither == "all":
