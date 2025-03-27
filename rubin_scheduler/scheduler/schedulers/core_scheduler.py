@@ -114,6 +114,27 @@ class CoreScheduler:
         else:
             self.band_to_filter_dict = band_to_filter
 
+    def set_target_id_counter(self, target_id_counter):
+        """In case can't be set on init.
+
+        Parameters
+        ----------
+        target_id_counter : `int`
+            What to start counting targets at.
+        """
+        self.target_id_counter = target_id_counter
+
+    def set_band_to_filter(self, band_to_filter):
+        """In case can't be set on init.
+
+        Parameters
+        ----------
+        band_to_filter : `dict`
+            Dictionary to use to map band names (ugrizy) to
+            physical filter names.
+        """
+        self.band_to_filter_dict = band_to_filter
+
     def flush_queue(self):
         """Like it sounds, clear any currently queued desired observations."""
         self.queue = []
