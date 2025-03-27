@@ -59,6 +59,7 @@ class TestBasis(unittest.TestCase):
             basis_functions.PlanetMaskBasisFunction,
             basis_functions.SolarElongationMaskBasisFunction,
             basis_functions.AltAzShadowMaskBasisFunction,
+            basis_functions.AltAzShadowTimeLimitedBasisFunction,
         ]
 
         obs = ObservationArray()
@@ -73,6 +74,33 @@ class TestBasis(unittest.TestCase):
             reward = awake_bf(self.conditions)
             assert feas is not None
             assert reward is not None
+
+    def test_altazshadowtimelimited(self):
+        cond = Conditions()
+        bf = basis_functions.AltAzShadowTimeLimitedBasisFunction()
+
+        # Set conditions to be in the middle of the night,
+        # bf should return 0
+        cond.mjd = 5900
+        # Sunrise is in 4 hours
+        cond.sunrise = 5900 + 4.0 / 24.0
+        cond.sunset = 5900 - 4.0 / 24.0
+
+        assert bf(cond) == 0
+
+        # set to be close to sunrise/set, should return mask
+        cond.sunrise = 5900 + 1.0 / 24.0
+
+        mask1 = bf(cond)
+        assert np.size(mask1) > 1
+
+        # Make a more restrictive mask
+        bf = basis_functions.AltAzShadowTimeLimitedBasisFunction(min_alt=40, max_alt=50)
+        mask2 = bf(cond)
+
+        # New mask should have fewer valid pixels than default values
+        assert np.size(mask2) > 2
+        assert np.sum(np.isfinite(mask1)) > np.sum(np.isfinite(mask2))
 
     def test_slewtime_basis_function(self):
         current_band = self.conditions.current_filter
