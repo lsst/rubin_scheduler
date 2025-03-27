@@ -1,7 +1,6 @@
 __all__ = ("GreedySurvey", "BlobSurvey")
 
 import warnings
-from copy import copy
 
 import healpy as hp
 import numpy as np
@@ -24,7 +23,7 @@ class GreedySurvey(BaseMarkovSurvey):
         block_size=1,
         smoothing_kernel=None,
         nside=DEFAULT_NSIDE,
-        dither=True,
+        dither="night",
         seed=42,
         ignore_obs=None,
         survey_name=None,
@@ -74,12 +73,7 @@ class GreedySurvey(BaseMarkovSurvey):
         """
         Just point at the highest reward healpix
         """
-        self.reward = self.calc_reward_function(conditions)
-
-        # Check if we need to spin the tesselation
-        if self.dither & (conditions.night != self.night):
-            self._spin_fields(conditions)
-            self.night = copy(conditions.night)
+        super().generate_observations_rough(conditions)
 
         # Let's find the best N from the fields
         order = np.argsort(self.reward, kind="mergesort")[::-1]
@@ -183,7 +177,7 @@ class BlobSurvey(GreedySurvey):
         flush_time=30.0,
         smoothing_kernel=None,
         nside=DEFAULT_NSIDE,
-        dither=True,
+        dither="night",
         seed=42,
         ignore_obs=None,
         survey_name=None,
@@ -441,8 +435,7 @@ class BlobSurvey(GreedySurvey):
         """
         Find a good block of observations.
         """
-
-        self.reward = self.calc_reward_function(conditions)
+        super().generate_observations_rough(conditions)
 
         # Mask off pixels that are far away from the maximum.
         max_reward_indx = np.min(np.where(self.reward == np.nanmax(self.reward)))
@@ -451,10 +444,6 @@ class BlobSurvey(GreedySurvey):
         )
 
         self.reward[np.where(distances > self.max_radius_peak)] = np.nan
-        # Check if we need to spin the tesselation
-        if self.dither & (conditions.night != self.night):
-            self._spin_fields(conditions)
-            self.night = copy(conditions.night)
 
         if self.grow_blob:
             # Note, returns highest first

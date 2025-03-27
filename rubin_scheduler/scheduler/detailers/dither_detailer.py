@@ -7,6 +7,8 @@ __all__ = (
     "DeltaCoordDitherDetailer",
 )
 
+import warnings
+
 import numpy as np
 
 from rubin_scheduler.scheduler.detailers import BaseDetailer
@@ -321,36 +323,76 @@ class CameraRotDetailer(BaseDetailer):
         The maximum amount to offset the camera (degrees)
     min_rot : `float` (90)
         The minimum to offset the camera (degrees)
-    per_night : `bool` (True)
-        If True, only set a new offset per night. If False, randomly
-        rotates every observation.
+    dither : `str`
+        If "night", change positions per night. If call, change per call.
+        If "all", randomize per visit. Default "night".
     telescope : `str`
         Telescope name. Options of "rubin" or "auxtel". Default "rubin".
+    nnights : `int`
+        Number of dither positions to generate.
     """
 
-    def __init__(self, max_rot=90.0, min_rot=-90.0, per_night=True, seed=42, nnights=7305, telescope="rubin"):
+    def __init__(
+        self,
+        max_rot=90.0,
+        min_rot=-90.0,
+        dither="night",
+        per_night=None,
+        seed=42,
+        nnights=7305,
+        telescope="rubin",
+    ):
         self.survey_features = {}
+
+        if per_night is True:
+            warnings.warn("per_night deprecated, setting dither='night'", FutureWarning)
+            dither = "night"
+        if per_night is False:
+            warnings.warn("per_night deprecated, setting dither='all'", FutureWarning)
+            dither = "all"
+
+        if dither is True:
+            warnings.warn("dither=True deprecated, swapping to dither='night'", FutureWarning)
+            dither = "night"
+
+        if dither is False:
+            warnings.warn("dither=False deprecated, swapping to dither='all'", FutureWarning)
+            dither = "all"
 
         self.current_night = -1
         self.max_rot = np.radians(max_rot)
         self.min_rot = np.radians(min_rot)
         self.range = self.max_rot - self.min_rot
-        self.per_night = per_night
+        self.dither = dither
         self.rng = np.random.default_rng(seed)
-        self.offsets = self.rng.random(nnights)
+        if dither == "call":
+            self.offsets = self.rng.random((nnights, nnights))
+        else:
+            self.offsets = self.rng.random(nnights)
 
         self.offset = None
         self.rc = rotation_converter(telescope=telescope)
 
+        self.call_num = 0
+
     def _generate_offsets(self, n_offsets, night):
-        if self.per_night:
+        if self.dither == "night":
             if night != self.current_night:
                 self.current_night = night
                 self.offset = self.offsets[night] * self.range + self.min_rot
             offsets = np.ones(n_offsets) * self.offset
-        else:
+        elif self.dither == "call":
+            if night != self.current_night:
+                self.current_night = night
+                self.call_num = 0
+            self.offset = self.offsets[night][self.call_num] * self.range + self.min_rot
+            self.call_num += 1
+            offsets = np.ones(n_offsets) * self.offset
+        elif self.dither == "all":
             self.rng = np.random.default_rng()
             offsets = self.rng.random(n_offsets) * self.range + self.min_rot
+        else:
+            raise ValueError("dither kwarg must be set to 'night', 'call', or 'all'.")
 
         return offsets
 

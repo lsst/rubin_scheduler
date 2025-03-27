@@ -1,5 +1,6 @@
 __all__ = ("BaseSurvey", "BaseMarkovSurvey")
 
+import warnings
 from copy import copy, deepcopy
 from functools import cached_property
 
@@ -464,6 +465,9 @@ class BaseMarkovSurvey(BaseSurvey):
     npositions : int (7305)
         The number of dither positions to pre-compute. Defaults
         to 7305 (so good for 20 years)
+    dither : `str`
+        Possible values of "night" (default), "call", or None.
+        Spins sky tesselation per night, per call, or not at all.
     """
 
     def __init__(
@@ -477,7 +481,7 @@ class BaseMarkovSurvey(BaseSurvey):
         scheduler_note=None,
         nside=DEFAULT_NSIDE,
         seed=42,
-        dither=True,
+        dither="night",
         detailers=None,
         camera="LSST",
         fields=None,
@@ -501,6 +505,7 @@ class BaseMarkovSurvey(BaseSurvey):
         )
 
         self.basis_weights = basis_weights
+        self.current_night = 0
         # Check that weights and basis functions are same length
         if len(basis_functions) != np.size(basis_weights):
             raise ValueError("basis_functions and basis_weights must be same length.")
@@ -536,11 +541,19 @@ class BaseMarkovSurvey(BaseSurvey):
         # Start tracking the night
         self.night = -1
 
+        if dither in [True, False]:
+            warnings.warn("setting dither to bool deprecated, swapping to dither='night'", FutureWarning)
+            dither = "night"
+        if dither not in ["night", "call", None]:
+            raise ValueError("dither kwarg must be one of 'night', 'call', or None.")
         self.dither = dither
+        self.call_num = 0
 
         # Generate and store rotation positions to use.
         # This way, if different survey objects are seeded the same,
         # they will use the same dither positions each night
+        if dither == "call":
+            npositions = (npositions, npositions)
         rng = np.random.default_rng(seed)
         self.lon = rng.random(npositions) * np.pi * 2
         # Make sure latitude points spread correctly
@@ -598,7 +611,7 @@ class BaseMarkovSurvey(BaseSurvey):
             dist, ind = tree.query(np.vstack([x, y, z]).T, k=1)
             self.hp2fields = ind
 
-    def _spin_fields(self, conditions, lon=None, lat=None, lon2=None):
+    def _spin_fields(self, indx, lon=None, lat=None, lon2=None):
         """Spin the field tessellation to generate a random orientation
 
         The default field tesselation is rotated randomly in longitude,
@@ -616,11 +629,11 @@ class BaseMarkovSurvey(BaseSurvey):
             The amount to rotate the pole in longitude (radians).
         """
         if lon is None:
-            lon = self.lon[conditions.night]
+            lon = self.lon[indx]
         if lat is None:
-            lat = self.lat[conditions.night]
+            lat = self.lat[indx]
         if lon2 is None:
-            lon2 = self.lon2[conditions.night]
+            lon2 = self.lon2[indx]
 
         # rotate longitude
         ra = (self.fields_init["RA"] + lon) % (2.0 * np.pi)
@@ -685,9 +698,15 @@ class BaseMarkovSurvey(BaseSurvey):
         self.reward = self.calc_reward_function(conditions)
 
         # Check if we need to spin the tesselation
-        if self.dither & (conditions.night != self.night):
-            self._spin_fields(conditions)
+        if (self.dither == "night") & (conditions.night != self.night):
+            self._spin_fields(conditions.night)
             self.night = copy(conditions.night)
+        elif self.dither == "call":
+            if conditions.night != self.current_night:
+                self.current_night = conditions.night
+                self.call_num = 0
+            self._spin_fields((conditions.night, self.call_num))
+            self.call_num += 1
 
         # XXX Use self.reward to decide what to observe.
         return None

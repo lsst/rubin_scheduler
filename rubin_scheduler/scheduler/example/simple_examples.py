@@ -337,11 +337,15 @@ def simple_pairs_survey(
     reward_basis_functions_weights: list[float] | None = None,
     survey_start: float = SURVEY_START_MJD,
     footprints_hp: np.ndarray | None = None,
+    footprint: Footprint | None = None,
     camera_rot_limits: list[float] = [-80.0, 80.0],
     pair_time: float = 30.0,
     exptime: float = 30.0,
     nexp: int = 1,
     science_program: str | None = None,
+    dither: str = "night",
+    camera_dither: str = "night",
+    require_time: bool = False,
 ) -> BlobSurvey:
     """Set up a simple blob survey to acquire pairs of visits.
 
@@ -385,6 +389,9 @@ def simple_pairs_survey(
     science_program : `str` | None
         The science_program key for the FieldSurvey.
         This maps to the BLOCK and `science_program` in the consDB.
+    require_time : `bool`
+        If True, add a mask basis function that checks there is enough
+        time before twilight to execute the pairs. Default False.
 
     Returns
     -------
@@ -398,14 +405,25 @@ def simple_pairs_survey(
     sun_moon_info = almanac.get_sun_moon_positions(survey_start)
     sun_ra_start = sun_moon_info["sun_RA"].copy()
 
-    if footprints_hp is None:
-        footprints_hp, labels = get_current_footprint(nside=nside)
-    footprints = Footprint(mjd_start=survey_start, sun_ra_start=sun_ra_start, nside=nside)
-    for f in footprints_hp.dtype.names:
-        footprints.set_footprint(f, footprints_hp[f])
+    if footprint is None:
+        if footprints_hp is None:
+            footprints_hp, labels = get_current_footprint(nside=nside)
+        footprints = Footprint(mjd_start=survey_start, sun_ra_start=sun_ra_start, nside=nside)
+        for f in footprints_hp.dtype.names:
+            footprints.set_footprint(f, footprints_hp[f])
+    else:
+        footprints = footprint
 
     if mask_basis_functions is None:
         mask_basis_functions = standard_masks(nside=nside)
+
+    # Don't start a blob if there isn't time to finish it before twilight
+    if require_time:
+        time_needed = pair_time
+        if bandname2 is not None:
+            time_needed *= 2
+        mask_basis_functions.append(basis_functions.TimeToTwilightBasisFunction(time_needed=time_needed))
+
     # Mask basis functions have zero weights.
     mask_basis_functions_weights = [0 for mask in mask_basis_functions]
 
@@ -475,7 +493,9 @@ def simple_pairs_survey(
     detailer_list = []
     # Avoid camera rotator limits.
     detailer_list.append(
-        detailers.CameraRotDetailer(min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits))
+        detailers.CameraRotDetailer(
+            min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits), dither=camera_dither
+        )
     )
     # Convert rotTelPos to rotSkyPos_desired
     detailer_list.append(detailers.Rottep2RotspDesiredDetailer(telescope="rubin"))
@@ -498,7 +518,7 @@ def simple_pairs_survey(
         "smoothing_kernel": None,
         "nside": nside,
         "seed": 42,
-        "dither": True,
+        "dither": dither,
         "twilight_scale": False,
     }
 
@@ -537,6 +557,8 @@ def simple_greedy_survey(
     exptime: float = 30.0,
     nexp: int = 1,
     science_program: str | None = None,
+    dither: str = "night",
+    camera_dither: str = "night",
 ) -> GreedySurvey:
     """Set up a simple greedy survey to just observe single visits.
 
@@ -629,7 +651,11 @@ def simple_greedy_survey(
     detailer_list = []
     # Avoid camera rotator limits.
     detailer_list.append(
-        detailers.CameraRotDetailer(min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits))
+        detailers.CameraRotDetailer(
+            min_rot=np.min(camera_rot_limits),
+            max_rot=np.max(camera_rot_limits),
+            dither=camera_dither,
+        )
     )
     # Convert rotTelPos to rotSkyPos_desired
     detailer_list.append(detailers.Rottep2RotspDesiredDetailer(telescope="rubin"))
@@ -644,7 +670,7 @@ def simple_greedy_survey(
     GreedySurvey_params = {
         "nside": nside,
         "seed": 42,
-        "dither": True,
+        "dither": dither,
     }
 
     greedy_survey = GreedySurvey(
