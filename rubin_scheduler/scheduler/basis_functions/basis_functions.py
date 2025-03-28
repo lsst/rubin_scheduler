@@ -82,10 +82,7 @@ class BaseBasisFunction:
         self.recalc = True
         # Basis functions don't technically all need an nside, but so
         # many do might as well set it here
-        if nside is None:
-            self.nside = utils.set_default_nside()
-        else:
-            self.nside = nside
+        self.nside = nside
 
         if filtername is not None:
             warnings.warn(

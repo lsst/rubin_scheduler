@@ -7,6 +7,7 @@ import numpy as np
 from rubin_scheduler.scheduler import features, utils
 from rubin_scheduler.scheduler.basis_functions import BaseBasisFunction
 from rubin_scheduler.scheduler.utils import ConstantFootprint
+from rubin_scheduler.utils import DEFAULT_NSIDE
 
 
 def send_unused_deprecation_warning(name):
@@ -44,7 +45,7 @@ class FootprintBasisFunction(BaseBasisFunction):
     def __init__(
         self,
         bandname="r",
-        nside=None,
+        nside=DEFAULT_NSIDE,
         footprint=None,
         out_of_bounds_val=-10.0,
         filtername=None,
