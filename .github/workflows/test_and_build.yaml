@@ -1,7 +1,10 @@
 name: Run Tests and Publish PyPI
 
 on:
-  # Trigger the workflow on push (to main) or pull request
+  # Run job at the end of each day
+  schedule:
+    - cron: "0 0 * * *"
+  # Run on push to main or a tag
   push:
     tags:
       - "*"
@@ -10,6 +13,7 @@ on:
   pull_request:
     branches:
       - "main"
+  # run by hand
   workflow_dispatch:
 
 
