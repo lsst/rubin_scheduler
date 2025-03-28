@@ -42,7 +42,7 @@ import numpy as np
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 
-from rubin_scheduler.scheduler import features, utils
+from rubin_scheduler.scheduler import features
 from rubin_scheduler.scheduler.utils import IntRounded, get_current_footprint
 from rubin_scheduler.skybrightness_pre import dark_m5
 from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD, _hpid2_ra_dec
@@ -82,10 +82,7 @@ class BaseBasisFunction:
         self.recalc = True
         # Basis functions don't technically all need an nside, but so
         # many do might as well set it here
-        if nside is None:
-            self.nside = utils.set_default_nside()
-        else:
-            self.nside = nside
+        self.nside = nside
 
         if filtername is not None:
             warnings.warn(
