@@ -35,7 +35,6 @@ dependencies = [
     "requests",
     "shapely",
     "tqdm",
-    "gitpython",
 ]
 
 [project.optional-dependencies]
