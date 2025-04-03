@@ -18,6 +18,7 @@ __all__ = (
     "AltAz2RaDecDetailer",
     "StartFieldSequenceDetailer",
     "BandToFilterDetailer",
+    "TagRadialDetailer",
 )
 
 import copy
@@ -632,3 +633,50 @@ class TwilightTripleDetailer(BaseDetailer):
                 sub_arr["scheduler_note"] = np.char.add(sub_arr["scheduler_note"], ", %i" % i)
             out_obs.append(sub_arr)
         return np.concatenate(out_obs)
+
+
+class TagRadialDetailer(BaseDetailer):
+    """Update target_name and scheduler note based on visit location.
+
+    Parameters
+    ----------
+    radius : `float`
+        How close to a location on the sky a visit must be to
+        get tagged. Defualr 5.6 (degrees).
+    ra : `float`
+        RA of the location. Default 0 (degrees).
+    dec : `float`
+        Dec of the location. Default -30 (degrees).
+    note_append : `str`
+        The string to append to the visit scheduler_note.
+        Default ", deep area".
+    target_prefix : `str`
+        String to add to the start of the target_name field.
+        Default "deep "
+    target_name : `str`
+        Target name to use. Overrides name generater with target_prefix.
+        Default None.
+    """
+
+    def __init__(
+        self, radius=5.6, ra=0, dec=-30.0, note_append=", deep area", target_prefix="deep ", target_name=None
+    ):
+        self.survey_features = {}
+        self.radius = np.radians(radius)
+        self.ra = np.radians(ra)
+        self.dec = np.radians(dec)
+        self.note_append = note_append
+        self.target_name = target_prefix + f"{np.degrees(self.ra):.3f} {np.degrees(self.dec):.3f}"
+        if target_name is not None:
+            self.target_name = target_name
+
+    def __call__(self, obsarray, conditions):
+        distances = _angular_separation(obsarray["RA"], obsarray["dec"], self.ra, self.dec)
+        if np.size(distances) == 1:
+            distances = np.array([distances])
+        in_region = np.where(distances <= self.radius)[0]
+        obsarray["target_name"][in_region] = self.target_name
+        obsarray["scheduler_note"][in_region] = np.char.add(
+            obsarray["scheduler_note"][in_region], self.note_append
+        )
+        return obsarray
