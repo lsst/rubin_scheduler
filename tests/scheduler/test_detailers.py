@@ -185,6 +185,19 @@ class TestDetailers(unittest.TestCase):
         for out in output:
             assert out["filter"] == filtername_dict[out["band"]]
 
+    def test_copycol(self):
+
+        obs = ObservationArray(3)
+        obs["band"][0] = "r"
+        obs["band"][1] = "g"
+        obs["band"][2] = "g"
+
+        detailer = detailers.CopyValueDetailer("band", "filter")
+
+        output = detailer(obs, None)
+
+        assert np.array_equal(output["band"], output["filter"])
+
 
 if __name__ == "__main__":
     unittest.main()
