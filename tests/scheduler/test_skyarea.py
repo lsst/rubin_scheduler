@@ -7,6 +7,7 @@ import numpy as np
 from rubin_scheduler.data import get_data_dir
 from rubin_scheduler.scheduler.utils import (
     EuclidOverlapFootprint,
+    PerFilterStep,
     SkyAreaGenerator,
     SkyAreaGeneratorGalplane,
     generate_all_sky,
@@ -19,6 +20,30 @@ datadir = os.path.join(get_data_dir(), "scheduler")
 class TestSkyArea(unittest.TestCase):
     def setUp(self):
         self.nside = 32
+
+    def test_perfilterstep(self):
+        survey_length = 13
+        pfs = PerFilterStep(
+            loaded_dict={"u": np.array([0, 1, 2, 3, 10, 11])},
+            survey_length=survey_length,
+        )
+        # check at day 1
+        t1 = pfs(1, np.array([0]))
+
+        # check at day 7
+        t7 = pfs(7, np.array([0]))
+
+        t_end = pfs(survey_length, np.array([0]))
+
+        # u should grow fast at the start
+        assert t1[0] > t1[2]
+
+        # i and r should always grow the same
+        assert t1[2] == t1[3]
+        assert t7[2] == t7[3]
+
+        # Everthing should be one at the end
+        assert np.unique(t_end) == 1
 
     def test_make_rolling(self):
         """Check that we can make rolling footprints"""
