@@ -19,6 +19,7 @@ __all__ = (
     "StartFieldSequenceDetailer",
     "BandToFilterDetailer",
     "TagRadialDetailer",
+    "CopyValueDetailer",
 )
 
 import copy
@@ -680,3 +681,24 @@ class TagRadialDetailer(BaseDetailer):
             obsarray["scheduler_note"][in_region], self.note_append
         )
         return obsarray
+
+
+class CopyValueDetailer(BaseDetailer):
+    """Copy a value from one observation array column to another
+
+    Parameters
+    ----------
+    source : `str`
+        The name of the source column.
+    destination : `str`
+        Name of the destination column.
+    """
+
+    def __init__(self, source, destination):
+        super().__init__()
+        self.source = source
+        self.destination = destination
+
+    def __call__(self, obs_array, conditions):
+        obs_array[self.destination] = obs_array[self.source]
+        return obs_array
