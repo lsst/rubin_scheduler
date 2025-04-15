@@ -20,21 +20,25 @@ __all__ = (
     "BandToFilterDetailer",
     "TagRadialDetailer",
     "CopyValueDetailer",
+    "LabelRegionDetailer",
+    "LabelDDFDetailer",
 )
 
 import copy
 import warnings
 
+import healpy as hp
 import numpy as np
 
 import rubin_scheduler.scheduler.features as features
-from rubin_scheduler.scheduler.utils import IntRounded, ObservationArray
+from rubin_scheduler.scheduler.utils import CurrentAreaMap, HpInLsstFov, IntRounded, ObservationArray
 from rubin_scheduler.utils import (
     DEFAULT_NSIDE,
     _angular_separation,
     _approx_alt_az2_ra_dec,
     _approx_altaz2pa,
     _approx_ra_dec2_alt_az,
+    ddf_locations,
     pseudo_parallactic_angle,
     rotation_converter,
 )
@@ -61,9 +65,9 @@ class BaseDetailer:
     def add_observations_array(self, observations_array, observations_hpid):
         """Like add_observation, but for loading a whole array of
         observations at a time"""
-
-        for feature in self.survey_features:
-            self.survey_features[feature].add_observations_array(observations_array, observations_hpid)
+        if hasattr(self, "survey_features"):
+            for feature in self.survey_features:
+                self.survey_features[feature].add_observations_array(observations_array, observations_hpid)
 
     def add_observation(self, observation, indx=None):
         """
@@ -75,8 +79,9 @@ class BaseDetailer:
             The indices of the healpix map that the observation overlaps
             with
         """
-        for feature in self.survey_features:
-            self.survey_features[feature].add_observation(observation, indx=indx)
+        if hasattr(self, "survey_features"):
+            for feature in self.survey_features:
+                self.survey_features[feature].add_observation(observation, indx=indx)
 
     def __call__(self, observation_list, conditions):
         """
@@ -681,6 +686,117 @@ class TagRadialDetailer(BaseDetailer):
             obsarray["scheduler_note"][in_region], self.note_append
         )
         return obsarray
+
+
+class LabelRegionDetailer(BaseDetailer):
+    """Label which region(s) of the footprint we are in.
+
+    Parameters
+    ----------
+    label_array : `np.array`
+        A HEALpix array of strings that are labels for each HEALpix.
+        Default of None uses CurrentAreaMap to load labels.
+    field_for_label : `str`
+        Which ObservationArray field should be modified.
+        Default "target_name".
+    camera : `str`
+        Which camera model to use to convert a pointing to
+        HEALpix IDs. Default "LSST".
+    append : `bool`
+        Should the labels be appended to `field_for_label`
+        (True, default), or clobber (False).
+    """
+
+    def __init__(self, label_array=None, field_for_label="target_name", camera="LSST", append=True):
+        if label_array is None:
+            sky = CurrentAreaMap()
+            _footprints, self.label_array = sky.return_maps()
+        else:
+            self.label_array = label_array
+        self.field_for_label = field_for_label
+        nside = hp.npix2nside(np.size(self.label_array))
+        self.append = append
+
+        if camera == "LSST":
+            self.pointing2hpindx = HpInLsstFov(nside=nside)
+        else:
+            raise ValueError("Unknown camera")
+
+    def __call__(self, obs_array, conditions):
+        for i in np.arange(obs_array.size):
+            indx = self.pointing2hpindx(obs_array["RA"][i], obs_array["dec"][i])
+            labels = np.unique(self.label_array[indx])
+            # ignore things that are out of bounds
+            labels = labels[np.where(labels != "")]
+            # If we overlap multiple regions
+            if np.size(labels) > 1:
+                result = ", ".join(labels)
+            else:
+                result = labels[0]
+
+            if self.append:
+                if obs_array[self.field_for_label][i] == "":
+                    obs_array[self.field_for_label][i] = result
+                else:
+                    obs_array[self.field_for_label][i] = obs_array[self.field_for_label][i] + ", " + result
+            else:
+                obs_array[self.field_for_label][i] = result
+        return obs_array
+
+
+class LabelDDFDetailer(BaseDetailer):
+    """Label if an observation is close enough to a
+    DDF location to be tagged.
+
+    Parameters
+    ----------
+    ddf_locations : `dict`
+        Dictionary with keys of DDF names and values of RA,dec
+        pairs (in degrees). Default of None uses ddf_locations
+        utility to get default locations and names.
+    field_for_label : `str`
+        Which ObservationArray field should be modified.
+        Default "target_name".
+    append : `bool`
+        Should the labels be appended to `field_for_label`
+        (True, default), or clobber (False).
+    match_radius : `float`
+        The radius away an observation can be from a DDF center
+        and still be tagged. Default 2.0 (degrees)
+    """
+
+    def __init__(self, ddf_location=None, field_for_label="target_name", append=True, match_radius=2.0):
+        self.field_for_label = field_for_label
+        self.append = append
+        self.match_radius = np.radians(match_radius)
+        if ddf_location is None:
+            self.ddf_locations = ddf_locations()
+        else:
+            self.ddf_locations = ddf_locations
+
+        for key in self.ddf_locations:
+            self.ddf_locations[key] = np.radians(self.ddf_locations[key])
+
+    def __call__(self, obs_array, conditions):
+
+        for key in self.ddf_locations:
+            distances = _angular_separation(
+                self.ddf_locations[key][0], self.ddf_locations[key][1], obs_array["RA"], obs_array["dec"]
+            )
+            distances = np.atleast_1d(distances)
+            indxes = np.where(distances <= self.match_radius)[0]
+
+            if indxes.size > 0:
+                for indx in indxes:
+                    if self.append:
+                        if obs_array[self.field_for_label][indx] == "":
+                            obs_array[self.field_for_label][indx] += key
+                        else:
+                            obs_array[self.field_for_label][indx] += ", " + key
+                    else:
+                        obs_array[self.field_for_label][indx] = key
+
+        return obs_array
 
 
 class CopyValueDetailer(BaseDetailer):
