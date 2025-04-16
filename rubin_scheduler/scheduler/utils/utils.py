@@ -25,6 +25,7 @@ __all__ = (
     "rotx",
 )
 
+import copy
 import datetime
 import os
 import socket
@@ -153,7 +154,14 @@ def mean_azimuth(az, min_val=0.1):
 class IntRounded:
     """
     Class to help force comparisons be made on scaled up integers,
-    preventing machine precision issues cross-platforms
+    preventing machine precision issues cross-platforms.
+
+    Danger zone would be doing comparisons with differences between
+    `scale` and `limit`, e.g.:
+    (1 + 1e-9) == (1 + 1e-10)
+    returns False as expected, but
+    IntRounded(1 + 1e-9) == intRounded(1 + 1e-10)
+    will return True because it rounds off at 9 decimal places.
 
     Note that casting a NaN to an int can have different behaviours
     cross-platforms, so will throw an error if attempted.
@@ -161,42 +169,82 @@ class IntRounded:
     Parameters
     ----------
     inval : number-like thing
-        Some number that we want to compare
-    scale : float (1e5)
+        Some number/array that we will want to compare
+    scale : `float`
         How much to scale inval before rounding and converting to an int.
+        Essentially how many digits of precesion to use in comparisons.
+        Default 1e6.
+    limit : `float`
+        If values have a differce less than the limit, force comparisions
+        to be done with scaled ints. Should be larger than whatever you
+        think the machine floating point precision might be.
+        Default 1e-9.
     """
 
-    def __init__(self, inval, scale=1e5):
+    def __init__(self, inval, scale=1e6, limit=1e-9):
         if np.any(~np.isfinite(inval)):
             raise ValueError("IntRounded can only take finite values.")
         self.initial = inval
-        if np.size(inval) == 1:
-            if (inval != 0) & (np.abs(inval) < 1.0 / scale):
-                warnings.warn("IntRounded being used with a potentially too-small scale factor.")
-        else:
-            badval = np.where((inval != 0) & (np.abs(inval) < 1.0 / scale))[0]
-            if len(badval) > 0:
-                warnings.warn("IntRounded being used with a potentially too-small scale factor.")
-        self.value = np.round(inval * scale).astype(int)
         self.scale = scale
+        self.limit = limit
+
+    def check_limit(self, v1, v2):
+        """See if two values are potentiall close to floating precision limit.
+        If they are close, return scaled up integers
+        """
+        v1 = np.atleast_1d(copy.copy(v1))
+        v2 = np.atleast_1d(copy.copy(v2))
+
+        non_zero_v1 = np.where(v1 != 0)
+        non_zero_v2 = np.where(v2 != 0)
+
+        # Don't need to worry if comparing arrays
+        # that are empty or only zeros
+        if (len(v1[non_zero_v1]) == 0) | (len(v2[non_zero_v2]) == 0):
+            return v1, v2
+
+        # Scale factor so we correctly compare things like 1e-25 to 1e-26
+        # Kinda messy to avoid zeros or negatives to log.
+        order_of_mag = np.min(
+            [
+                np.floor(np.log10(np.abs(v1[non_zero_v1]))).min(),
+                np.floor(np.log10(np.abs(v2[non_zero_v2]))).min(),
+            ]
+        )
+        scale_factor = 10**order_of_mag
+
+        ab_diff = np.abs(v1 / scale_factor - v2 / scale_factor)
+        close = np.where((ab_diff <= self.limit))[0]
+        # There are some values with a potential round error
+        if close.size > 0:
+            floor = np.floor(np.minimum(v1, v2))
+            v1 = np.round(v1 - floor * self.scale).astype(int)
+            v2 = np.round(v2 - floor * self.scale).astype(int)
+        return v1, v2
 
     def __eq__(self, other):
-        return self.value == other.value
+        v1, v2 = self.check_limit(self.initial, other.initial)
+        return v1 == v2
 
     def __ne__(self, other):
-        return self.value != other.value
+        v1, v2 = self.check_limit(self.initial, other.initial)
+        return v1 != v2
 
     def __lt__(self, other):
-        return self.value < other.value
+        v1, v2 = self.check_limit(self.initial, other.initial)
+        return v1 < v2
 
     def __le__(self, other):
-        return self.value <= other.value
+        v1, v2 = self.check_limit(self.initial, other.initial)
+        return v1 <= v2
 
     def __gt__(self, other):
-        return self.value > other.value
+        v1, v2 = self.check_limit(self.initial, other.initial)
+        return v1 > v2
 
     def __ge__(self, other):
-        return self.value >= other.value
+        v1, v2 = self.check_limit(self.initial, other.initial)
+        return v1 >= v2
 
     def __repr__(self):
         return str(self.initial)
