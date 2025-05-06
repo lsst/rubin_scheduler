@@ -3,6 +3,7 @@ __all__ = ("ToOScriptedSurvey", "gen_too_surveys")
 import warnings
 from copy import copy
 
+import healpy as hp
 import numpy as np
 
 from rubin_scheduler.scheduler.surveys import BaseMarkovSurvey, ScriptedSurvey
@@ -292,7 +293,11 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
             # we want to observe
             hpid_center = _ra_dec2_hpid(self.nside, target_o_o.ra_rad_center, target_o_o.dec_rad_center)
             if self.followup_footprint[hpid_center] > 0:
-                target_area = self.followup_footprint * target_o_o.footprint
+                # ToO footprint could be any nside, so match here
+                # hp.ud_grade takes a mean. So a 1/0 mask will be forgiving
+                # and expand, but a mask using np.nan will be hard.
+                matched_target_o_o_fp = hp.ud_grade(target_o_o.footprint, self.nside)
+                target_area = self.followup_footprint * matched_target_o_o_fp
                 # generate a list of pointings for that area
                 hpid_to_observe = np.where(target_area > 0)[0]
                 if hpid_to_observe.size > 0:

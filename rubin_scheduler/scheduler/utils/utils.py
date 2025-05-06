@@ -969,6 +969,8 @@ class TargetoO:
         Unique ID for the ToO.
     footprints : np.array
         np.array healpix maps. 1 for areas to observe, 0 for no observe.
+        Can use np.nan for no-observe pixels, but that will be interpreted
+        to mean the map cannot expand if the resolution chages.
     mjd_start : float
         The MJD the ToO starts
     duration : float
@@ -978,7 +980,7 @@ class TargetoO:
     dec_rad_center : float
         Dec of the estimated center of the event (radians).
     too_type : str
-        The type of ToO that is made
+        The type of ToO that is made.
     """
 
     def __init__(
