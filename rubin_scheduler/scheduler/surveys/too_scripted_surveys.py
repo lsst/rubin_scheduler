@@ -629,12 +629,12 @@ def gen_too_surveys(
         )
     )
 
-    times = [1.0]
+    times = [1.0,1.0]
     bands_at_times = [
-        "gr",
+    "g","r"
     ]
-    nvis = [10]
-    exptimes = [150]
+    nvis = [24,36]
+    exptimes = [150,150]
 
     result.append(
         ToOScriptedSurvey(
