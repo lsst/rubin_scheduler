@@ -524,13 +524,15 @@ def gen_too_surveys(
 
     # XXX--only considering bright objects now.
 
-    # SM-- adding support for different BBH cases. We should have a discussion about how to differentiate these, and if it is possible to do so through the alert stream.
+    # SM-- adding support for different BBH cases. We should have
+    # a discussion about how to differentiate these, and if it is
+    # possible to do so through the alert stream.
 
     # This is a nearby event during dark time
     times = np.array([0, 2, 7, 9, 39]) * 24
-    bands_at_times = ["ugi"] * 5
-    nvis = [1] * 3
-    exptimes = [DEFAULT_EXP_TIME] * 3
+    bands_at_times = ["ugi"] * times.size
+    nvis = [1] * times.size
+    exptimes = [DEFAULT_EXP_TIME] * times.size
 
     result.append(
         ToOScriptedSurvey(
@@ -553,9 +555,9 @@ def gen_too_surveys(
 
     # This is a distant event during dark time
     times = np.array([0, 2, 7, 9, 39]) * 24
-    bands_at_times = ["gri"] * 5
-    nvis = [1] * 3
-    exptimes = [DEFAULT_EXP_TIME] * 3
+    bands_at_times = ["gri"] * times.size
+    nvis = [1] * times.size
+    exptimes = [DEFAULT_EXP_TIME] * times.size
 
     result.append(
         ToOScriptedSurvey(
@@ -578,9 +580,9 @@ def gen_too_surveys(
 
     # This is a BBH event during bright time
     times = np.array([0, 2, 7, 9, 39]) * 24
-    bands_at_times = ["riz"] * 5
-    nvis = [1] * 3
-    exptimes = [DEFAULT_EXP_TIME] * 3
+    bands_at_times = ["riz"] * times.size
+    nvis = [1] * times.size
+    exptimes = [DEFAULT_EXP_TIME] * times.size
 
     result.append(
         ToOScriptedSurvey(
@@ -629,12 +631,10 @@ def gen_too_surveys(
         )
     )
 
-    times = [1.0,1.0]
-    bands_at_times = [
-    "g","r"
-    ]
-    nvis = [24,36]
-    exptimes = [150,150]
+    times = [1.0, 1.0]
+    bands_at_times = ["g", "r"]
+    nvis = [24, 36]
+    exptimes = [150, 150]
 
     result.append(
         ToOScriptedSurvey(
