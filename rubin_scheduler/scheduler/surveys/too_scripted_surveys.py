@@ -661,7 +661,7 @@ def gen_too_surveys(
 
     # XXX--need to update footprint to cut out galactic latitude
 
-    times = [0, 0, 15 / 60.0, 0.5, 24, 24.5, 144]
+    times = [0, 15 / 60.0, 0, 0.5, 24, 24.5, 144]
     bands_at_times = ["g", "r", "z", "g", "r", "z", "grz"]
     exptimes = [
         120,
