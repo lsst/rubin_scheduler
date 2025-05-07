@@ -524,10 +524,13 @@ def gen_too_surveys(
 
     # XXX--only considering bright objects now.
 
+    # SM-- adding support for different BBH cases. We should have a discussion about how to differentiate these, and if it is possible to do so through the alert stream.
+
+    # This is a nearby event during dark time
     times = np.array([0, 2, 7, 9, 39]) * 24
-    bands_at_times = ["ugri"] * 5
-    nvis = [1] * 5
-    exptimes = [DEFAULT_EXP_TIME] * 5
+    bands_at_times = ["ugi"] * 5
+    nvis = [1] * 3
+    exptimes = [DEFAULT_EXP_TIME] * 3
 
     result.append(
         ToOScriptedSurvey(
@@ -539,7 +542,57 @@ def gen_too_surveys(
             nvis=nvis,
             exptimes=exptimes,
             detailers=detailer_list,
-            too_types_to_follow=["BBH_case_A", "BBH_case_B", "BBH_case_C"],
+            too_types_to_follow=["BBH_case_A"],
+            survey_name="ToO, BBH",
+            target_name_base="BBH",
+            split_long=split_long,
+            flushtime=48,
+            n_snaps=n_snaps,
+        )
+    )
+
+    # This is a distant event during dark time
+    times = np.array([0, 2, 7, 9, 39]) * 24
+    bands_at_times = ["gri"] * 5
+    nvis = [1] * 3
+    exptimes = [DEFAULT_EXP_TIME] * 3
+
+    result.append(
+        ToOScriptedSurvey(
+            [],
+            nside=nside,
+            followup_footprint=too_footprint,
+            times=times,
+            bands_at_times=bands_at_times,
+            nvis=nvis,
+            exptimes=exptimes,
+            detailers=detailer_list,
+            too_types_to_follow=["BBH_case_B"],
+            survey_name="ToO, BBH",
+            target_name_base="BBH",
+            split_long=split_long,
+            flushtime=48,
+            n_snaps=n_snaps,
+        )
+    )
+
+    # This is a BBH event during bright time
+    times = np.array([0, 2, 7, 9, 39]) * 24
+    bands_at_times = ["riz"] * 5
+    nvis = [1] * 3
+    exptimes = [DEFAULT_EXP_TIME] * 3
+
+    result.append(
+        ToOScriptedSurvey(
+            [],
+            nside=nside,
+            followup_footprint=too_footprint,
+            times=times,
+            bands_at_times=bands_at_times,
+            nvis=nvis,
+            exptimes=exptimes,
+            detailers=detailer_list,
+            too_types_to_follow=["BBH_case_C"],
             survey_name="ToO, BBH",
             target_name_base="BBH",
             split_long=split_long,
