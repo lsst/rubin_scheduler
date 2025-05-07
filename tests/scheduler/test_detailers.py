@@ -6,7 +6,7 @@ import numpy as np
 import rubin_scheduler.scheduler.detailers as detailers
 from rubin_scheduler.scheduler.features import Conditions
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
-from rubin_scheduler.scheduler.utils import CurrentAreaMap, ObservationArray
+from rubin_scheduler.scheduler.utils import CurrentAreaMap, ObservationArray, TargetoO
 from rubin_scheduler.utils import DEFAULT_NSIDE, _ra_dec2_hpid
 
 
@@ -198,6 +198,49 @@ class TestDetailers(unittest.TestCase):
         output = detailer(obs, None)
 
         assert np.array_equal(output["band"], output["filter"])
+
+    def test_event(self):
+        observatory = ModelObservatory()
+        conditions = observatory.return_conditions()
+
+        detailer = detailers.BandPickToODetailer(
+            band_start="g", band_end="r", distance_limit=10.0, check_mounted=True
+        )
+
+        obs = ObservationArray(3)
+        obs["RA"] = np.radians(0.0)
+        obs["dec"] = np.radians(-20.0)
+        obs["band"] = "g"
+
+        too_event = TargetoO(
+            100, None, 10, 10, ra_rad_center=None, dec_rad_center=None, too_type=None, posterior_distance=1.0
+        )
+
+        # Should not do anything if distance to small
+        out_obs = detailer(obs, conditions, target_o_o=too_event)
+
+        assert np.all(out_obs["band"] == "g")
+
+        # Now it is far enough
+        too_event.posterior_distance = 12
+        out_obs = detailer(obs, conditions, target_o_o=too_event)
+        assert np.all(out_obs["band"] == "r")
+
+        # reset
+        obs["band"] = "g"
+
+        # does nothing if not mounted
+        conditions.mounted_bands = ["a", "b", "c"]
+        out_obs = detailer(obs, conditions, target_o_o=too_event)
+        assert np.all(out_obs["band"] == "g")
+
+        # Don't care if mounted, swap it
+        detailer = detailers.BandPickToODetailer(
+            band_start="g", band_end="r", distance_limit=10.0, check_mounted=False
+        )
+
+        out_obs = detailer(obs, conditions, target_o_o=too_event)
+        assert np.all(out_obs["band"] == "r")
 
     def test_region_label(self):
 
