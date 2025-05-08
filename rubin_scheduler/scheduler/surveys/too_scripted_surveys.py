@@ -6,7 +6,7 @@ from copy import copy
 import healpy as hp
 import numpy as np
 
-from rubin_scheduler.detailers import BandPickToODetailer
+from rubin_scheduler.scheduler.detailers import BandPickToODetailer
 from rubin_scheduler.scheduler.surveys import BaseMarkovSurvey, ScriptedSurvey
 from rubin_scheduler.scheduler.utils import (
     ScheduledObservationArray,
@@ -513,17 +513,12 @@ def gen_too_surveys(
         )
     )
 
-    
     ############
     # GW silver and GW unidentified silver
     ############
 
-    event_detailers = [
-        BandPickToODetailer(band_start="r", band_end="i", distance_limit=10.0, check_mounted=True),
-        BandPickToODetailer(band_start="i", band_end="z", distance_limit=100.0, check_mounted=True),
-    ]
     times = [0, 24, 48, 72]
-    bands_at_times = ["gr", "gr", "gr", "gr"]
+    bands_at_times = ["gi", "gi", "gi", "gi"]
     nvis = [1, 1, 1, 1]
     exptimes = [120.0, 120.0, 120.0, 120.0]
     result.append(
@@ -542,12 +537,15 @@ def gen_too_surveys(
             split_long=split_long,
             flushtime=48,
             n_snaps=long_exp_nsnaps,
-            event_detailers=event_detailers,
+            event_gen_detailers=None,
         )
     )
 
     ############
-    # Black hole-black hole GW merger
+    # BBH hole-black hole GW merger
+    # If nearby (dist < 2200 Mpc) and dark time, use ugi
+    # If distant (dist > 2200 Mpc) and dark time, use rgi
+    # If bright time, use rzi
     ############
 
     # XXX--only considering bright objects now.
@@ -556,21 +554,16 @@ def gen_too_surveys(
     # a discussion about how to differentiate these, and if it is
     # possible to do so through the alert stream.
 
-    
-    ############
-    # BBH events
-    # If nearby (dist < 2200 Mpc) and dark time, use ugi
-    # If distant (dist > 2200 Mpc) and dark time, use gri
-    # If bright time, use riz
-    ############
-
-    event_detailers = [ # This is not done, and needs development of the BandPickToODetailer
-        BandPickToODetailer(band_start="z", band_end="g", distance_limit=2.2E6, check_mounted=True),
-        BandPickToODetailer(band_start="r", band_end="u", distance_limit=10.0, check_mounted=True),
-        BandPickToODetailer(band_start="z", band_end="g", distance_limit=100.0, check_mounted=True),
+    event_detailers = [
+        BandPickToODetailer(
+            band_start="z", band_end="g", distance_limit=30e10, check_mounted=True, require_dark=True
+        ),
+        BandPickToODetailer(
+            band_start="r", band_end="u", distance_limit=2.2e6, check_mounted=True, require_dark=True
+        ),
     ]
     times = np.array([0, 2, 7, 9, 39]) * 24
-    bands_at_times = ["riz"] * times.size
+    bands_at_times = ["rzi"] * times.size
     nvis = [1] * times.size
     exptimes = [DEFAULT_EXP_TIME] * times.size
 
@@ -584,13 +577,13 @@ def gen_too_surveys(
             nvis=nvis,
             exptimes=exptimes,
             detailers=detailer_list,
-            too_types_to_follow=["BBH_case_A","BBH_case_B","BBH_case_C"],
+            too_types_to_follow=["BBH_case_A", "BBH_case_B", "BBH_case_C"],
             survey_name="ToO, BBH",
             target_name_base="BBH",
             split_long=split_long,
             flushtime=48,
             n_snaps=n_snaps,
-            event_detailers=event_detailers,
+            event_gen_detailers=event_detailers,
         )
     )
 

@@ -213,16 +213,15 @@ class TestDetailers(unittest.TestCase):
         obs["band"] = "g"
 
         too_event = TargetoO(
-            100, None, 10, 10, ra_rad_center=None, dec_rad_center=None, too_type=None, posterior_distance=1.0
+            100, None, 10, 10, ra_rad_center=None, dec_rad_center=None, too_type=None, posterior_distance=1e9
         )
 
-        # Should not do anything if distance to small
+        # Should not do anything if distance to large
         out_obs = detailer(obs, conditions, target_o_o=too_event)
-
         assert np.all(out_obs["band"] == "g")
 
-        # Now it is far enough
-        too_event.posterior_distance = 12
+        # Now it is small enough
+        too_event.posterior_distance = 0
         out_obs = detailer(obs, conditions, target_o_o=too_event)
         assert np.all(out_obs["band"] == "r")
 
