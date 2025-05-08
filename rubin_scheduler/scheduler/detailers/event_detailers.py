@@ -38,8 +38,8 @@ class BandPickToODetailer(BaseDetailer):
 
         if hasattr(target_o_o, "posterior_distance"):
             if target_o_o.posterior_distance is not None:
-                if self.require_dark and ("u" not in conditions.mounted_bands):
-                    warnings.warn("Requires dark time, u band not mounted.")
+                if self.require_dark and conditions.moon_phase > 50:
+                    warnings.warn("Requires dark time, moon phase is greater than 50%.")
                 elif target_o_o.posterior_distance < self.distance_limit:
                     if self.check_mounted:
                         mounted = self.band_end in conditions.mounted_bands
