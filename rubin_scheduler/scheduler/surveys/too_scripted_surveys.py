@@ -6,6 +6,7 @@ from copy import copy
 import healpy as hp
 import numpy as np
 
+from rubin_scheduler.scheduler.detailers import BandPickToODetailer
 from rubin_scheduler.scheduler.surveys import BaseMarkovSurvey, ScriptedSurvey
 from rubin_scheduler.scheduler.utils import (
     ScheduledObservationArray,
@@ -67,6 +68,9 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
     split_long_div : `float`
         Time to divide the exposure time by to decide how many
         snaps to use. Default 60s.
+    event_gen_detailers : `list`
+        A list of detailers to run on arrays right after generating
+        a list.
     """
 
     def __init__(
@@ -102,6 +106,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         split_long_max=30.0,
         split_long_div=60.0,
         filters_at_times=None,
+        event_gen_detailers=None,
     ):
         if filters_at_times is not None:
             warnings.warn("filters_at_times deprecated in favor of bands_at_times", FutureWarning)
@@ -139,7 +144,14 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         self.ignore_obs = ignore_obs
         self.extra_features = {}
         self.extra_basis_functions = {}
-        self.detailers = []
+        if detailers is None:
+            self.detailers = []
+        else:
+            self.detailers = detailers
+        if event_gen_detailers is None:
+            self.event_gen_detailers = []
+        else:
+            self.event_gen_detailers = event_gen_detailers
         self.dither = dither
         self.id_start = id_start
         self.detailers = detailers
@@ -383,6 +395,8 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
                             obs["target_name"] = self.target_name_base + "_i%i" % index
                             obs_list.append(obs)
                 observations = np.concatenate(obs_list)
+                for detailer in self.event_gen_detailers:
+                    observations = detailer(observations, conditions, target_o_o=target_o_o)
                 self.set_script(observations)
 
     def calc_reward_function(self, conditions):
@@ -472,6 +486,10 @@ def gen_too_surveys(
         )
     )
 
+    ############
+    # GW gold and GW unidentified gold
+    ############
+
     times = [0, 24, 48, 72]
     bands_at_times = ["gri", "ri", "ri", "ri"]
     nvis = [3, 1, 1, 1]
@@ -495,8 +513,12 @@ def gen_too_surveys(
         )
     )
 
+    ############
+    # GW silver and GW unidentified silver
+    ############
+
     times = [0, 24, 48, 72]
-    bands_at_times = ["gr", "gr", "gr", "gr"]
+    bands_at_times = ["gi", "gi", "gi", "gi"]
     nvis = [1, 1, 1, 1]
     exptimes = [120.0, 120.0, 120.0, 120.0]
     result.append(
@@ -515,11 +537,15 @@ def gen_too_surveys(
             split_long=split_long,
             flushtime=48,
             n_snaps=long_exp_nsnaps,
+            event_gen_detailers=None,
         )
     )
 
     ############
-    # Black hole-black hole GW merger
+    # BBH hole-black hole GW merger
+    # If nearby (dist < 2200 Mpc) and dark time, use ugi
+    # If distant (dist > 2200 Mpc) and dark time, use rgi
+    # If bright time, use rzi
     ############
 
     # XXX--only considering bright objects now.
@@ -528,9 +554,16 @@ def gen_too_surveys(
     # a discussion about how to differentiate these, and if it is
     # possible to do so through the alert stream.
 
-    # This is a nearby event during dark time
+    event_detailers = [
+        BandPickToODetailer(
+            band_start="z", band_end="g", distance_limit=30e10, check_mounted=True, require_dark=True
+        ),
+        BandPickToODetailer(
+            band_start="r", band_end="u", distance_limit=2.2e6, check_mounted=True, require_dark=True
+        ),
+    ]
     times = np.array([0, 2, 7, 9, 39]) * 24
-    bands_at_times = ["ugi"] * times.size
+    bands_at_times = ["rzi"] * times.size
     nvis = [1] * times.size
     exptimes = [DEFAULT_EXP_TIME] * times.size
 
@@ -544,62 +577,13 @@ def gen_too_surveys(
             nvis=nvis,
             exptimes=exptimes,
             detailers=detailer_list,
-            too_types_to_follow=["BBH_case_A"],
+            too_types_to_follow=["BBH_case_A", "BBH_case_B", "BBH_case_C"],
             survey_name="ToO, BBH",
             target_name_base="BBH",
             split_long=split_long,
             flushtime=48,
             n_snaps=n_snaps,
-        )
-    )
-
-    # This is a distant event during dark time
-    times = np.array([0, 2, 7, 9, 39]) * 24
-    bands_at_times = ["gri"] * times.size
-    nvis = [1] * times.size
-    exptimes = [DEFAULT_EXP_TIME] * times.size
-
-    result.append(
-        ToOScriptedSurvey(
-            [],
-            nside=nside,
-            followup_footprint=too_footprint,
-            times=times,
-            bands_at_times=bands_at_times,
-            nvis=nvis,
-            exptimes=exptimes,
-            detailers=detailer_list,
-            too_types_to_follow=["BBH_case_B"],
-            survey_name="ToO, BBH",
-            target_name_base="BBH",
-            split_long=split_long,
-            flushtime=48,
-            n_snaps=n_snaps,
-        )
-    )
-
-    # This is a BBH event during bright time
-    times = np.array([0, 2, 7, 9, 39]) * 24
-    bands_at_times = ["riz"] * times.size
-    nvis = [1] * times.size
-    exptimes = [DEFAULT_EXP_TIME] * times.size
-
-    result.append(
-        ToOScriptedSurvey(
-            [],
-            nside=nside,
-            followup_footprint=too_footprint,
-            times=times,
-            bands_at_times=bands_at_times,
-            nvis=nvis,
-            exptimes=exptimes,
-            detailers=detailer_list,
-            too_types_to_follow=["BBH_case_C"],
-            survey_name="ToO, BBH",
-            target_name_base="BBH",
-            split_long=split_long,
-            flushtime=48,
-            n_snaps=n_snaps,
+            event_gen_detailers=event_detailers,
         )
     )
 

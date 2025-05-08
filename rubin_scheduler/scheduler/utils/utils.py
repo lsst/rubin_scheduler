@@ -965,22 +965,24 @@ class TargetoO:
 
     Parameters
     ----------
-    tooid : int
+    tooid : `int`
         Unique ID for the ToO.
-    footprints : np.array
+    footprints : `np.array`
         np.array healpix maps. 1 for areas to observe, 0 for no observe.
         Can use np.nan for no-observe pixels, but that will be interpreted
         to mean the map cannot expand if the resolution chages.
-    mjd_start : float
+    mjd_start : `float`
         The MJD the ToO starts
-    duration : float
+    duration : `float`
         Duration of the ToO (days).
-    ra_rad_center : float
+    ra_rad_center : `float`
         RA of the estimated center of the event (radians).
-    dec_rad_center : float
+    dec_rad_center : `float`
         Dec of the estimated center of the event (radians).
-    too_type : str
+    too_type : `str`
         The type of ToO that is made.
+    posterior_distance : `float`
+        The posterior distance of the event. (kpc)
     """
 
     def __init__(
@@ -992,6 +994,7 @@ class TargetoO:
         ra_rad_center=None,
         dec_rad_center=None,
         too_type=None,
+        posterior_distance=None,
     ):
         self.footprint = footprint
         self.duration = duration
@@ -1000,6 +1003,7 @@ class TargetoO:
         self.ra_rad_center = ra_rad_center
         self.dec_rad_center = dec_rad_center
         self.too_type = too_type
+        self.posterior_distance = posterior_distance
 
 
 class SimTargetooServer:
