@@ -15,13 +15,19 @@ class LsstSiteParameters:
 
     (accessed on 4 January 2016)
 
+    Updated from:
+    https://rubinobs.atlassian.net/wiki/spaces/LTS/
+    pages/50084908/Rubin+Telescopes+
+    Latitude+and+Longitude+Coordinates?
+    force_transition=c54e56dd-7d7b-42c2-b5e5-79aa1c1bc777
+
     This class only exists for initializing Site with LSST parametervalues.
     Users should not be accessing this class directly.
     """
 
     def __init__(self):
-        self.longitude = -70.7494  # in degrees
-        self.latitude = -30.2444  # in degrees
+        self.longitude = -70.74941  # in degrees
+        self.latitude = -30.244628  # in degrees
         self.height = 2650.0  # in meters
         self.temperature = 11.5  # in centigrade
         self.pressure = 750.0  # in millibars
@@ -31,6 +37,29 @@ class LsstSiteParameters:
         # 0.0065 K/m appears to be the "standard" value
         # see, for example
         # http://mnras.oxfordjournals.org/content/365/4/1235.full
+
+
+class AuxTelParameters:
+    """
+    Struct with AuxTel default parameters
+
+    Values from:
+    https://rubinobs.atlassian.net/wiki/spaces/LTS/
+    pages/50084908/Rubin+Telescopes+
+    Latitude+and+Longitude+Coordinates?
+    force_transition=c54e56dd-7d7b-42c2-b5e5-79aa1c1bc777
+
+    """
+
+    def __init__(self):
+        self.longitude = -70.747686  # in degrees
+        self.latitude = -30.244789  # in degrees
+        # Setting these the same as LSSTSiteParameters
+        self.height = 2650.0  # in meters
+        self.temperature = 11.5  # in centigrade
+        self.pressure = 750.0  # in millibars
+        self.humidity = 0.4  # scale 0-1
+        self.lapse_rate = 0.0065  # in Kelvin per meter
 
 
 class Site:
@@ -46,7 +75,8 @@ class Site:
     ----------
     name : `str`, opt
         The name of the observatory. Set to 'LSST' for other parameters
-        to default to LSST values.
+        to default to LSST values. Set to 'AuxTel' for
+        auxtel values.
     longitude : `float`, opt
         Longitude of the site in degrees.
     latitude : `float`, opt
@@ -78,6 +108,9 @@ class Site:
         self._name = name
         if self._name == "LSST":
             default_params = LsstSiteParameters()
+
+        if self.name == "AuxTel":
+            default_params = AuxTelParameters()
 
         if default_params is not None:
             if longitude is None:

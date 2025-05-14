@@ -10,8 +10,8 @@ class SiteTest(unittest.TestCase):
     def setUp(self):
         # LSST default values taken from LSE-30
         self.height = 2650.0
-        self.longitude = -70.7494
-        self.latitude = -30.2444
+        self.longitude = -70.74941
+        self.latitude = -30.244628
         self.temperature = 11.5
         self.humidity = 0.4
         self.pressure = 750.0
@@ -33,6 +33,10 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(site.humidity, self.humidity)
         self.assertEqual(site.lapse_rate, self.lapse_rate)
         self.assertEqual(site.height, self.height)
+
+    def test_auxtel_values(self):
+        site = Site(name="Auxtel")
+        self.assertEqual(site.name, "Auxtel")
 
     def test_no_defaults(self):
         """
