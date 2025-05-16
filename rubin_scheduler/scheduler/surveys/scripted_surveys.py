@@ -274,7 +274,8 @@ class ScriptedSurvey(BaseSurvey):
                     )
                     valid_reward = np.isfinite(reward_interp)
                     observations = observations[valid_reward]
-
+                if len(observations) == 0:
+                    observations = None
         return observations
 
     def clear_script(self):
