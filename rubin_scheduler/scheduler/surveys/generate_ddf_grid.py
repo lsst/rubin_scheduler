@@ -64,7 +64,7 @@ def generate_ddf_grid(
 
     mjds = np.arange(mjd0, mjd0 + survey_length, delta_t)
 
-    names = ["mjd", "sun_alt", "sun_n18_rising_next"]
+    names = ["mjd", "sun_alt", "sun_n18_rising_next", "moon_phase", "moon_alt"]
     for survey_name in dds.keys():
         names.append(survey_name + "_airmass")
         names.append(survey_name + "_sky_g")
@@ -82,6 +82,8 @@ def generate_ddf_grid(
     mags = []
     airmasses = []
     sun_alts = []
+    moon_alts = []
+    moon_phases = []
 
     maxi = mjds.size
     for i, mjd in enumerate(mjds):
@@ -105,10 +107,14 @@ def generate_ddf_grid(
         result["sun_n18_rising_next"][i] = observer.twilight_morning_astronomical(
             Time(mjd, format="mjd"), which="next"
         ).mjd
+        moon_alts.append(sm.moon_alt)
+        moon_phases.append(sm.moon_phase)
 
     mags = np.array(mags)
     airmasses = np.array(airmasses)
     result["sun_alt"] = sun_alts
+    result["moon_alt"] = moon_alts
+    result["moon_phase"] = moon_phases
 
     for i, survey_name in enumerate(dds.keys()):
         result[survey_name + "_airmass"] = airmasses[:, i]
