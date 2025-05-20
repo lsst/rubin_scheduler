@@ -6,6 +6,7 @@ from copy import copy
 import healpy as hp
 import numpy as np
 
+import rubin_scheduler.scheduler.basis_functions as basis_functions
 from rubin_scheduler.scheduler.detailers import BandPickToODetailer
 from rubin_scheduler.scheduler.surveys import BaseMarkovSurvey, ScriptedSurvey
 from rubin_scheduler.scheduler.utils import (
@@ -107,6 +108,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         split_long_div=60.0,
         filters_at_times=None,
         event_gen_detailers=None,
+        return_n_limit=500,
     ):
         if filters_at_times is not None:
             warnings.warn("filters_at_times deprecated in favor of bands_at_times", FutureWarning)
@@ -122,6 +124,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
             ignore_obs = []
 
         self.basis_functions = basis_functions
+        self.basis_weights = [0] * len(basis_functions)
         self.survey_name = survey_name
         self.followup_footprint = followup_footprint
         self.last_event_id = -1
@@ -142,6 +145,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         self.HA_min = HA_min
         self.HA_max = HA_max
         self.ignore_obs = ignore_obs
+        self.return_n_limit = return_n_limit
         self.extra_features = {}
         self.extra_basis_functions = {}
         if detailers is None:
@@ -197,30 +201,6 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
 
         # list to keep track of alerts we have already seen
         self.seen_alerts = []
-
-    def _check_list(self, conditions):
-        """Check to see if the current mjd is good"""
-        observation = None
-        if self.obs_wanted.size > 0:
-            # Scheduled observations that are in the right
-            # time window and have not been executed
-            in_time_window = np.where(
-                (self.mjd_start < conditions.mjd)
-                & (self.obs_wanted["flush_by_mjd"] > conditions.mjd)
-                & (~self.obs_wanted["observed"])
-            )[0]
-
-            if np.size(in_time_window) > 0:
-                pass_checks = self._check_alts_ha(self.obs_wanted[in_time_window], conditions)
-                matches = in_time_window[pass_checks]
-            else:
-                matches = []
-
-            if np.size(matches) > 0:
-                observation = ScheduledObservationArray(n=1)
-                observation[0] = self.obs_wanted[matches[0]]
-
-        return observation
 
     def flush_script(self, conditions):
         """Remove things from the script that aren't needed anymore"""
@@ -449,9 +429,12 @@ def gen_too_surveys(
     split_long=False,
     long_exp_nsnaps=2,
     n_snaps=2,
+    wind_speed_maximum=20.0,
 ):
     result = []
-
+    bf_list = []
+    bf_list.append(basis_functions.AvoidDirectWind(wind_speed_maximum=wind_speed_maximum, nside=nside))
+    bf_list.append(basis_functions.MoonAvoidanceBasisFunction(moon_distance=30.0))
     ############
     # Generic GW followup
     ############
@@ -469,7 +452,7 @@ def gen_too_surveys(
     exptimes = [120.0, 120.0, 120.0]
     result.append(
         ToOScriptedSurvey(
-            [],
+            bf_list,
             nside=nside,
             followup_footprint=too_footprint,
             times=times,
@@ -496,7 +479,7 @@ def gen_too_surveys(
     exptimes = [120.0, 180.0, 180.0, 180.0]
     result.append(
         ToOScriptedSurvey(
-            [],
+            bf_list,
             nside=nside,
             followup_footprint=too_footprint,
             times=times,
@@ -523,7 +506,7 @@ def gen_too_surveys(
     exptimes = [120.0, 120.0, 120.0, 120.0]
     result.append(
         ToOScriptedSurvey(
-            [],
+            bf_list,
             nside=nside,
             followup_footprint=too_footprint,
             times=times,
@@ -569,7 +552,7 @@ def gen_too_surveys(
 
     result.append(
         ToOScriptedSurvey(
-            [],
+            bf_list,
             nside=nside,
             followup_footprint=too_footprint,
             times=times,
@@ -598,7 +581,7 @@ def gen_too_surveys(
 
     result.append(
         ToOScriptedSurvey(
-            [],
+            bf_list,
             nside=nside,
             followup_footprint=too_footprint,
             times=times,
@@ -622,7 +605,7 @@ def gen_too_surveys(
 
     result.append(
         ToOScriptedSurvey(
-            [],
+            bf_list,
             nside=nside,
             followup_footprint=too_footprint,
             times=times,
@@ -660,7 +643,7 @@ def gen_too_surveys(
 
     result.append(
         ToOScriptedSurvey(
-            [],
+            bf_list,
             nside=nside,
             followup_footprint=too_footprint,
             times=times,
@@ -686,7 +669,7 @@ def gen_too_surveys(
 
     result.append(
         ToOScriptedSurvey(
-            [],
+            bf_list,
             nside=nside,
             followup_footprint=too_footprint,
             times=times,
@@ -717,7 +700,7 @@ def gen_too_surveys(
 
     result.append(
         ToOScriptedSurvey(
-            [],
+            bf_list,
             nside=nside,
             followup_footprint=too_footprint,
             times=times,
@@ -741,7 +724,7 @@ def gen_too_surveys(
 
     result.append(
         ToOScriptedSurvey(
-            [],
+            bf_list,
             nside=nside,
             followup_footprint=too_footprint,
             times=times,

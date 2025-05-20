@@ -35,6 +35,8 @@ def gen_roman_on_season(
     camera_ddf_rot_limit=75.0,
     exptime=30.0,
     nexp=2,
+    wind_speed_maximum=20.0,
+    moon_limit=30.0,
 ):
     """Generate a survey object for observing the Roman field(s)
     in an on season"""
@@ -60,8 +62,9 @@ def gen_roman_on_season(
     basis_functions.append(bf.ForceDelayBasisFunction(days_delay=0.8, scheduler_note=scheduler_note))
     # Force it to be in a given observing season
     basis_functions.append(bf.InTimeWindowBasisFunction(mjd_windows=field_info["seasons_on"]))
-    basis_functions.append(bf.MoonDistPointRangeBasisFunction(RA, dec))
+    basis_functions.append(bf.MoonDistPointRangeBasisFunction(RA, dec, moon_limit=moon_limit))
     basis_functions.append(bf.AirmassPointRangeBasisFunction(RA, dec, nside=nside))
+    basis_functions.append(bf.AvoidDirectWind(wind_speed_maximum=wind_speed_maximum, nside=nside))
 
     # Add a dither detailer, so it dithers between each set
     # of exposures I guess?
@@ -88,6 +91,8 @@ def gen_roman_off_season(
     camera_ddf_rot_limit=75.0,
     exptime=30.0,
     nexp=2,
+    wind_speed_maximum=20.0,
+    moon_limit=30.0,
 ):
     """Generate a ddf-like survey object to observe the roman
     field every ~3 days in the off-season"""
@@ -112,8 +117,9 @@ def gen_roman_off_season(
     basis_functions.append(bf.ForceDelayBasisFunction(days_delay=3.0, scheduler_note=scheduler_note))
     # Force it to be in a given observing season
     basis_functions.append(bf.InTimeWindowBasisFunction(mjd_windows=field_info["seasons_off"]))
-    basis_functions.append(bf.MoonDistPointRangeBasisFunction(RA, dec))
+    basis_functions.append(bf.MoonDistPointRangeBasisFunction(RA, dec, moon_limit=moon_limit))
     basis_functions.append(bf.AirmassPointRangeBasisFunction(RA, dec, nside=nside))
+    basis_functions.append(bf.AvoidDirectWind(wind_speed_maximum=wind_speed_maximum, nside=nside))
 
     # Add a dither detailer, so it dithers between each
     # set of exposures I guess?
