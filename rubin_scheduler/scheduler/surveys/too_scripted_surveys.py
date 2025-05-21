@@ -491,7 +491,7 @@ def gen_too_surveys(
             survey_name="ToO, GW_case_B_C",
             target_name_base="GW_case_B_C",
             split_long=split_long,
-            flushtime=48,
+            flushtime=80,
             n_snaps=long_exp_nsnaps,
         )
     )
@@ -518,7 +518,7 @@ def gen_too_surveys(
             survey_name="ToO, GW_case_D_E",
             target_name_base="GW_case_D_E",
             split_long=split_long,
-            flushtime=48,
+            flushtime=80,
             n_snaps=long_exp_nsnaps,
             event_gen_detailers=None,
         )
@@ -564,7 +564,7 @@ def gen_too_surveys(
             survey_name="ToO, BBH",
             target_name_base="BBH",
             split_long=split_long,
-            flushtime=48,
+            flushtime=40*24,
             n_snaps=n_snaps,
             event_gen_detailers=event_detailers,
         )
@@ -655,7 +655,7 @@ def gen_too_surveys(
             survey_name="ToO, neutrino",
             target_name_base="neutrino",
             split_long=split_long,
-            flushtime=8.0,
+            flushtime=150,
             n_snaps=n_snaps,
         )
     )
@@ -712,7 +712,7 @@ def gen_too_surveys(
             survey_name="ToO, SSO_night",
             target_name_base="SSO_night",
             split_long=split_long,
-            flushtime=2.0,
+            flushtime=3.0,
             n_snaps=n_snaps,
         )
     )
@@ -736,7 +736,7 @@ def gen_too_surveys(
             survey_name="ToO, SSO_twi",
             target_name_base="SSO_twi",
             split_long=split_long,
-            flushtime=2.0,
+            flushtime=3.0,
             n_snaps=n_snaps,
         )
     )
