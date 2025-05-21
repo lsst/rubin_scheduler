@@ -503,7 +503,7 @@ def gen_too_surveys(
     times = [0, 24, 48, 72]
     bands_at_times = ["gi", "gi", "gi", "gi"]
     nvis = [1, 1, 1, 1]
-    exptimes = [120.0, 120.0, 120.0, 120.0]
+    exptimes = [30.0, 120.0, 120.0, 120.0]
     result.append(
         ToOScriptedSurvey(
             bf_list,
@@ -737,6 +737,37 @@ def gen_too_surveys(
             target_name_base="SSO_twi",
             split_long=split_long,
             flushtime=3.0,
+            n_snaps=n_snaps,
+        )
+    )
+
+    ############
+    # Galactic Supernova
+    ############
+    # For galactic supernovae, we want to tile continuously
+    # in the region in 1s and 15s exposures for i band, until
+    # a counterpart is identified
+    
+    times = [0]
+    bands_at_times = ["i"]
+    nvis = [100]
+    exptimes = [1,15]
+
+    result.append(
+        ToOScriptedSurvey(
+            bf_list,
+            nside=nside,
+            followup_footprint=too_footprint,
+            times=times,
+            bands_at_times=bands_at_times,
+            nvis=nvis,
+            exptimes=exptimes,
+            detailers=detailer_list,
+            too_types_to_follow=["SN_Galactic"],
+            survey_name="ToO, galactic SN",
+            target_name_base="SN_Galactic",
+            split_long=split_long,
+            flushtime=48.0,
             n_snaps=n_snaps,
         )
     )
