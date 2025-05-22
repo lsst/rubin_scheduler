@@ -747,11 +747,11 @@ def gen_too_surveys(
     # For galactic supernovae, we want to tile continuously
     # in the region in 1s and 15s exposures for i band, until
     # a counterpart is identified
-    
-    times = [0]
-    bands_at_times = ["i"]
-    nvis = [100]
-    exptimes = [1,15]
+
+    times = [0, 0, 0, 0] * 4
+    bands_at_times = ["i", "i", "i", "i"] * 4
+    nvis = [1, 1, 1, 1] * 4
+    exptimes = [1, 15, 1, 15] * 4
 
     result.append(
         ToOScriptedSurvey(
