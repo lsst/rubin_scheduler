@@ -473,10 +473,10 @@ def gen_too_surveys(
     # GW gold and GW unidentified gold
     ############
 
-    times = [0, 24, 48, 72]
-    bands_at_times = ["gri", "ri", "ri", "ri"]
-    nvis = [3, 1, 1, 1]
-    exptimes = [120.0, 180.0, 180.0, 180.0]
+    times = [0,2,4, 24, 48, 72]
+    bands_at_times = ["gri","gri","gri", "ri", "ri", "ri"]
+    nvis = [1,1,1, 1, 1, 1]
+    exptimes = [120.0,120.0,120.0, 180.0, 180.0, 180.0]
     result.append(
         ToOScriptedSurvey(
             bf_list,
