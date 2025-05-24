@@ -473,10 +473,10 @@ def gen_too_surveys(
     # GW gold and GW unidentified gold
     ############
 
-    times = [0, 24, 48, 72]
-    bands_at_times = ["gri", "ri", "ri", "ri"]
-    nvis = [3, 1, 1, 1]
-    exptimes = [120.0, 180.0, 180.0, 180.0]
+    times = [0, 2, 4, 24, 48, 72]
+    bands_at_times = ["gri", "gri", "gri", "ri", "ri", "ri"]
+    nvis = [1, 1, 1, 1, 1, 1]
+    exptimes = [120.0, 120.0, 120.0, 180.0, 180.0, 180.0]
     result.append(
         ToOScriptedSurvey(
             bf_list,
@@ -503,7 +503,7 @@ def gen_too_surveys(
     times = [0, 24, 48, 72]
     bands_at_times = ["gi", "gi", "gi", "gi"]
     nvis = [1, 1, 1, 1]
-    exptimes = [120.0, 120.0, 120.0, 120.0]
+    exptimes = [30.0, 120.0, 120.0, 120.0]
     result.append(
         ToOScriptedSurvey(
             bf_list,
@@ -626,17 +626,15 @@ def gen_too_surveys(
     # Neutrino detector followup
     ############
 
-    # XXX--need to update footprint to cut out galactic latitude
-
-    times = [0, 15 / 60.0, 0, 0.5, 24, 24.5, 144]
-    bands_at_times = ["g", "r", "z", "g", "r", "z", "grz"]
+    times = [0, 15 / 60.0, 0, 24, 24, 144, 144]
+    bands_at_times = ["g", "r", "z", "g", "r", "g", "rz"]
     exptimes = [
         120,
         DEFAULT_EXP_TIME,
         DEFAULT_EXP_TIME,
         120,
         DEFAULT_EXP_TIME,
-        DEFAULT_EXP_TIME,
+        120,
         DEFAULT_EXP_TIME,
     ]
     nvis = [1, 1, 1, 1, 1, 1, 1]
@@ -655,7 +653,7 @@ def gen_too_surveys(
             survey_name="ToO, neutrino",
             target_name_base="neutrino",
             split_long=split_long,
-            flushtime=8.0,
+            flushtime=48,
             n_snaps=n_snaps,
         )
     )
@@ -712,7 +710,7 @@ def gen_too_surveys(
             survey_name="ToO, SSO_night",
             target_name_base="SSO_night",
             split_long=split_long,
-            flushtime=2.0,
+            flushtime=3.0,
             n_snaps=n_snaps,
         )
     )
@@ -736,7 +734,38 @@ def gen_too_surveys(
             survey_name="ToO, SSO_twi",
             target_name_base="SSO_twi",
             split_long=split_long,
-            flushtime=2.0,
+            flushtime=3.0,
+            n_snaps=n_snaps,
+        )
+    )
+
+    ############
+    # Galactic Supernova
+    ############
+    # For galactic supernovae, we want to tile continuously
+    # in the region in 1s and 15s exposures for i band, until
+    # a counterpart is identified
+
+    times = [0, 0, 0, 0] * 4
+    bands_at_times = ["i", "i", "i", "i"] * 4
+    nvis = [1, 1, 1, 1] * 4
+    exptimes = [1, 15, 1, 15] * 4
+
+    result.append(
+        ToOScriptedSurvey(
+            bf_list,
+            nside=nside,
+            followup_footprint=too_footprint,
+            times=times,
+            bands_at_times=bands_at_times,
+            nvis=nvis,
+            exptimes=exptimes,
+            detailers=detailer_list,
+            too_types_to_follow=["SN_Galactic"],
+            survey_name="ToO, galactic SN",
+            target_name_base="SN_Galactic",
+            split_long=split_long,
+            flushtime=48.0,
             n_snaps=n_snaps,
         )
     )
