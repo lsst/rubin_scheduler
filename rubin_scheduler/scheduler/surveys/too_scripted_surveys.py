@@ -626,17 +626,15 @@ def gen_too_surveys(
     # Neutrino detector followup
     ############
 
-    # XXX--need to update footprint to cut out galactic latitude
-
-    times = [0, 15 / 60.0, 0, 0.5, 24, 24.5, 144]
-    bands_at_times = ["g", "r", "z", "g", "r", "z", "grz"]
+    times = [0, 15 / 60.0, 0, 24, 24, 144,144]
+    bands_at_times = ["g", "r", "z", "g", "r", "g","rz"]
     exptimes = [
         120,
         DEFAULT_EXP_TIME,
         DEFAULT_EXP_TIME,
         120,
         DEFAULT_EXP_TIME,
-        DEFAULT_EXP_TIME,
+        120,
         DEFAULT_EXP_TIME,
     ]
     nvis = [1, 1, 1, 1, 1, 1, 1]
