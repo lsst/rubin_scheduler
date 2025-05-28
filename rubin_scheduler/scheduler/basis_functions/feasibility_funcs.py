@@ -23,6 +23,8 @@ __all__ = (
     "MoonDistPointRangeBasisFunction",
     "AirmassPointRangeBasisFunction",
     "InTimeWindowBasisFunction",
+    "MoonAltLimitBasisFunction",
+    "OnlyBeforeNightBasisFunction",
 )
 
 import warnings
@@ -43,6 +45,27 @@ def send_unused_deprecation_warning(name):
         "this is in use elsewhere."
     )
     warnings.warn(message, FutureWarning)
+
+
+class OnlyBeforeNightBasisFunction(BaseBasisFunction):
+    """Only return feasible if current night is less than
+    maximum
+
+    Parameters
+    ----------
+    night_max : `int`
+        The maximum night. Default 366.
+    """
+
+    def __init__(self, night_max=366):
+        super(OnlyBeforeNightBasisFunction, self).__init__()
+        self.night_max = night_max
+
+    def check_feasibility(self, conditions, indx=None):
+        result = True
+        if conditions.night > self.night_max:
+            result = False
+        return result
 
 
 class BandLoadedBasisFunction(BaseBasisFunction):
@@ -97,6 +120,26 @@ class InTimeWindowBasisFunction(BaseBasisFunction):
         for mjd_windows in self.mjd_windows:
             if np.min(mjd_windows) <= conditions.mjd <= np.max(mjd_windows):
                 result = True
+        return result
+
+
+class MoonAltLimitBasisFunction(BaseBasisFunction):
+    """Only observe if the moon is below a given altitude limit.
+
+    Parameters
+    ----------
+    alt_limit : `float`
+        The maximum altitude for the moon. Default -5 (degrees)
+    """
+
+    def __init__(self, alt_limit=-5):
+        super(MoonAltLimitBasisFunction, self).__init__()
+        self.alt_limit = np.radians(alt_limit)
+
+    def check_feasibility(self, conditions):
+        result = True
+        if conditions.moon_alt > self.alt_limit:
+            result = False
         return result
 
 
