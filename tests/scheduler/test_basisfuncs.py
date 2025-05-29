@@ -60,6 +60,12 @@ class TestBasis(unittest.TestCase):
             basis_functions.SolarElongationMaskBasisFunction,
             basis_functions.AltAzShadowMaskBasisFunction,
             basis_functions.AltAzShadowTimeLimitedBasisFunction,
+            basis_functions.MoonAltLimitBasisFunction,
+            basis_functions.RevHaMaskBasisFunction,
+            basis_functions.MaskAllButNES,
+            basis_functions.NInNightMaskBasisFunction,
+            basis_functions.OnlyBeforeNightBasisFunction,
+            basis_functions.MaskAfterNObsBasisFunction,
         ]
 
         obs = ObservationArray()
