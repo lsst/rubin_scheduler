@@ -425,6 +425,7 @@ def blob_for_long(
         )
         detailer_list.append(detailers.CloseAltDetailer())
         detailer_list.append(detailers.BandNexp(bandname="u", nexp=1, exptime=u_exptime))
+        detailer_list.append(detailers.LabelRegionsAndDDFs())
 
         # List to hold tuples of (basis_function_object, weight)
         bfs = []
@@ -672,6 +673,7 @@ def gen_greedy_surveys(
         detailers.CameraRotDetailer(min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits))
     ]
     detailer_list.append(detailers.Rottep2RotspDesiredDetailer())
+    detailer_list.append(detailers.LabelRegionsAndDDFs())
 
     for bandname in bands:
         bfs = []
@@ -864,6 +866,7 @@ def generate_blobs(
         detailer_list.append(detailers.Rottep2RotspDesiredDetailer())
         detailer_list.append(detailers.CloseAltDetailer())
         detailer_list.append(detailers.FlushForSchedDetailer())
+        detailer_list.append(detailers.LabelRegionsAndDDFs())
         # List to hold tuples of (basis_function_object, weight)
         bfs = []
 
@@ -1111,6 +1114,7 @@ def generate_twi_blobs(
         detailer_list.append(detailers.Rottep2RotspDesiredDetailer())
         detailer_list.append(detailers.CloseAltDetailer())
         detailer_list.append(detailers.FlushForSchedDetailer())
+        detailer_list.append(detailers.LabelRegionsAndDDFs())
         # List to hold tuples of (basis_function_object, weight)
         bfs = []
 
@@ -1378,6 +1382,7 @@ def generate_twilight_near_sun(
         # Should put in a detailer so things start at lowest altitude
         detailer_list.append(detailers.TwilightTripleDetailer(slew_estimate=slew_estimate, n_repeat=n_repeat))
         detailer_list.append(detailers.RandomBandDetailer(bands=bands))
+        detailer_list.append(detailers.LabelRegionsAndDDFs())
         bfs = []
 
         bfs.append(
@@ -1636,12 +1641,14 @@ def gen_scheduler(args):
         dither_detailer,
         u_detailer,
         detailers.Rottep2RotspDesiredDetailer(),
+        detailers.LabelRegionsAndDDFs(),
     ]
     euclid_detailers = [
         detailers.CameraRotDetailer(min_rot=-camera_ddf_rot_limit, max_rot=camera_ddf_rot_limit),
         detailers.EuclidDitherDetailer(),
         u_detailer,
         detailers.Rottep2RotspDesiredDetailer(),
+        detailers.LabelRegionsAndDDFs(),
     ]
     ddfs = ddf_surveys(
         detailers=details,
@@ -1691,6 +1698,7 @@ def gen_scheduler(args):
         detailer_list.append(
             detailers.CameraRotDetailer(min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits))
         )
+        detailer_list.append(detailers.LabelRegionsAndDDFs())
         # Let's make a footprint to follow up ToO events
         too_footprint = footprints_hp["r"] * 0 + np.nan
         too_footprint[np.where(footprints_hp["r"] > 0)[0]] = 1.0

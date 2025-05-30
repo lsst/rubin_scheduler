@@ -243,40 +243,41 @@ class TestDetailers(unittest.TestCase):
 
     def test_region_label(self):
 
-        nside = 32
-        sky = CurrentAreaMap(nside=nside)
-        footprints, labels = sky.return_maps()
+        for detailer_start in [detailers.LabelRegionDetailer, detailers.LabelRegionsAndDDFs]:
+            nside = 32
+            sky = CurrentAreaMap(nside=nside)
+            footprints, labels = sky.return_maps()
 
-        obs = ObservationArray(3)
-        obs["RA"] = np.radians(0.0)
-        obs["dec"] = np.radians(-20.0)
+            obs = ObservationArray(3)
+            obs["RA"] = np.radians(0.0)
+            obs["dec"] = np.radians(-20.0)
 
-        obs["target_name"] = "dummy_start"
+            obs["target_name"] = "dummy_start"
 
-        detailer = detailers.LabelRegionDetailer(labels)
+            detailer = detailer_start(label_array=labels)
 
-        output = detailer(obs, None)
-        for res in output:
-            assert "dummy" in res["target_name"]
-            assert "lowdust" in res["target_name"]
+            output = detailer(obs, None)
+            for res in output:
+                assert "dummy" in res["target_name"]
+                assert "lowdust" in res["target_name"]
 
-        # Test that we clobber
-        detailer = detailers.LabelRegionDetailer(labels, append=False)
-        output = detailer(obs, None)
-        for res in output:
-            assert "dummy" not in res["target_name"]
-            assert "lowdust" in res["target_name"]
+            # Test that we clobber
+            detailer = detailers.LabelRegionDetailer(labels, append=False)
+            output = detailer(obs, None)
+            for res in output:
+                assert "dummy" not in res["target_name"]
+                assert "lowdust" in res["target_name"]
 
-        # Test that we can have multiple labels
-        obs = ObservationArray(3)
-        obs["RA"] = np.radians(0.0)
-        obs["dec"] = np.radians(3.0)
-        detailer = detailers.LabelRegionDetailer(labels)
-        output = detailer(obs, None)
-        for res in output:
-            assert "dummy" not in res["target_name"]
-            assert "lowdust" in res["target_name"]
-            assert "nes" in res["target_name"]
+            # Test that we can have multiple labels
+            obs = ObservationArray(3)
+            obs["RA"] = np.radians(0.0)
+            obs["dec"] = np.radians(3.0)
+            detailer = detailers.LabelRegionDetailer(labels)
+            output = detailer(obs, None)
+            for res in output:
+                assert "dummy" not in res["target_name"]
+                assert "lowdust" in res["target_name"]
+                assert "nes" in res["target_name"]
 
 
 if __name__ == "__main__":
