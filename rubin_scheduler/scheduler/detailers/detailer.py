@@ -22,6 +22,7 @@ __all__ = (
     "CopyValueDetailer",
     "LabelRegionDetailer",
     "LabelDDFDetailer",
+    "LabelRegionsAndDDFs",
 )
 
 import copy
@@ -707,7 +708,9 @@ class LabelRegionDetailer(BaseDetailer):
         (True, default), or clobber (False).
     """
 
-    def __init__(self, label_array=None, field_for_label="target_name", camera="LSST", append=True):
+    def __init__(
+        self, label_array=None, field_for_label="target_name", camera="LSST", append=True, seperator=", "
+    ):
         if label_array is None:
             sky = CurrentAreaMap()
             _footprints, self.label_array = sky.return_maps()
@@ -716,6 +719,7 @@ class LabelRegionDetailer(BaseDetailer):
         self.field_for_label = field_for_label
         nside = hp.npix2nside(np.size(self.label_array))
         self.append = append
+        self.seperator = seperator
 
         if camera == "LSST":
             self.pointing2hpindx = HpInLsstFov(nside=nside)
@@ -730,7 +734,7 @@ class LabelRegionDetailer(BaseDetailer):
             labels = labels[np.where(labels != "")]
             # If we overlap multiple regions
             if np.size(labels) > 1:
-                result = ", ".join(labels)
+                result = self.seperator.join(labels)
             else:
                 result = labels[0]
 
@@ -738,7 +742,9 @@ class LabelRegionDetailer(BaseDetailer):
                 if obs_array[self.field_for_label][i] == "":
                     obs_array[self.field_for_label][i] = result
                 else:
-                    obs_array[self.field_for_label][i] = obs_array[self.field_for_label][i] + ", " + result
+                    obs_array[self.field_for_label][i] = (
+                        obs_array[self.field_for_label][i] + self.seperator + result
+                    )
             else:
                 obs_array[self.field_for_label][i] = result
         return obs_array
@@ -763,12 +769,18 @@ class LabelDDFDetailer(BaseDetailer):
     match_radius : `float`
         The radius away an observation can be from a DDF center
         and still be tagged. Default 2.0 (degrees)
+    seperator : `str`
+        If append is True, what string to use when appending.
+        Default ", ".
     """
 
-    def __init__(self, ddf_location=None, field_for_label="target_name", append=True, match_radius=2.0):
+    def __init__(
+        self, ddf_location=None, field_for_label="target_name", append=True, match_radius=2.0, seperator=", "
+    ):
         self.field_for_label = field_for_label
         self.append = append
         self.match_radius = np.radians(match_radius)
+        self.seperator = seperator
         if ddf_location is None:
             self.ddf_locations = ddf_locations()
         else:
@@ -792,11 +804,46 @@ class LabelDDFDetailer(BaseDetailer):
                         if obs_array[self.field_for_label][indx] == "":
                             obs_array[self.field_for_label][indx] += key
                         else:
-                            obs_array[self.field_for_label][indx] += ", " + key
+                            obs_array[self.field_for_label][indx] += self.seperator + key
                     else:
                         obs_array[self.field_for_label][indx] = key
 
         return obs_array
+
+
+class LabelRegionsAndDDFs(BaseDetailer):
+    """Do both LabelRegionDetailer and LabelDDFDetailer"""
+
+    def __init__(
+        self,
+        label_array=None,
+        field_for_label="target_name",
+        camera="LSST",
+        append=True,
+        ddf_location=None,
+        seperator=", ",
+        match_radius=2.0,
+    ):
+        self.label_detailer = LabelRegionDetailer(
+            label_array=label_array,
+            field_for_label=field_for_label,
+            camera=camera,
+            append=append,
+            seperator=seperator,
+        )
+        self.ddf_detailer = LabelDDFDetailer(
+            ddf_location=ddf_location,
+            field_for_label=field_for_label,
+            append=append,
+            match_radius=match_radius,
+            seperator=seperator,
+        )
+
+    def __call__(self, obs_array, conditions):
+
+        result = self.label_detailer(obs_array, conditions)
+        result = self.ddf_detailer(result, conditions)
+        return result
 
 
 class CopyValueDetailer(BaseDetailer):
