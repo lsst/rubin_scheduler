@@ -8,6 +8,10 @@ __all__ = (
     "AreaCheckMaskBasisFunction",
     "AltAzShadowMaskBasisFunction",
     "AltAzShadowTimeLimitedBasisFunction",
+    "RevHaMaskBasisFunction",
+    "MaskAllButNES",
+    "NInNightMaskBasisFunction",
+    "MaskAfterNObsBasisFunction",
 )
 
 import warnings
@@ -15,9 +19,119 @@ import warnings
 import healpy as hp
 import numpy as np
 
+import rubin_scheduler.scheduler.features as features
 from rubin_scheduler.scheduler.basis_functions import BaseBasisFunction
-from rubin_scheduler.scheduler.utils import HpInLsstFov, IntRounded
+from rubin_scheduler.scheduler.utils import CurrentAreaMap, HpInLsstFov, IntRounded
 from rubin_scheduler.utils import DEFAULT_NSIDE, _angular_separation, _hp_grow_mask
+
+
+class MaskAllButNES(BaseBasisFunction):
+    """Mask everything but the NES region
+
+    Parameters
+    ----------
+    nes_region : `np.array`
+        The index values for HEALpix maps that
+        correspond to the NES region. Default None
+        uses current default map to label NES.
+    """
+
+    def __init__(self, nes_region=None, nside=DEFAULT_NSIDE):
+        super().__init__(nside=nside)
+
+        if nes_region is None:
+            sag = CurrentAreaMap()
+            sky_maps, labels = sag.return_maps()
+
+            nes_region = np.where(labels != "nes")[0]
+
+        self.indx = nes_region
+        self.result = np.zeros(hp.nside2npix(self.nside), dtype=float)
+
+    def _calc_value(self, conditions, **kwargs):
+        result = self.result.copy()
+        return result
+
+
+class NInNightMaskBasisFunction(BaseBasisFunction):
+    """Mask a HEALpix for the rest of the night
+    after it has been observed N times.
+
+    Parameters
+    ----------
+    n_limit : `int`
+        Number of visits to mask after. Default 1.
+    bandname : `str`
+        Which band to use. Default None assumes all bands.
+    """
+
+    def __init__(self, nside=DEFAULT_NSIDE, n_limit=1, bandname=None):
+
+        super(NInNightMaskBasisFunction, self).__init__(nside=nside)
+        self.n_limit = n_limit
+        self.result = np.zeros(hp.nside2npix(self.nside), dtype=float)
+        self.survey_features["n_in_night"] = features.NObsNight(nside=nside, bandname=bandname)
+
+    def _calc_value(self, conditions, indx=None):
+
+        result = self.result.copy()
+        to_mask = np.where(self.survey_features["n_in_night"].feature >= self.n_limit)[0]
+        result[to_mask] = np.nan
+        return result
+
+
+class RevHaMaskBasisFunction(BaseBasisFunction):
+    """Limit the sky based on hour angle
+
+    Parameters
+    ----------
+    ha_min : float (None)
+        The minimum hour angle to accept (hours)
+    ha_max : float (None)
+        The maximum hour angle to accept (hours)
+    """
+
+    def __init__(self, ha_min=None, ha_max=None, nside=DEFAULT_NSIDE):
+        super(RevHaMaskBasisFunction, self).__init__(nside=nside)
+        self.ha_max = ha_max
+        self.ha_min = ha_min
+        self.result = np.zeros(hp.nside2npix(self.nside), dtype=float) + np.nan
+
+    def _calc_value(self, conditions, **kwargs):
+        result = self.result.copy()
+
+        if self.ha_min is not None:
+            good = np.where(conditions.HA < (self.ha_min / 12.0 * np.pi))[0]
+            result[good] = 0
+        if self.ha_max is not None:
+            good = np.where(conditions.HA > (self.ha_max / 12.0 * np.pi))[0]
+            result[good] = 0
+
+        return result
+
+
+class MaskAfterNObsBasisFunction(BaseBasisFunction):
+    """Mask after a HEALpix has been observed N times.
+
+    Parameters
+    ----------
+    n_max : `int`
+        The maximum number of times. Default 3.
+    bandname : `str`
+        The bandname. Default None uses all bands.
+    """
+
+    def __init__(self, n_max=3, nside=DEFAULT_NSIDE, bandname=None):
+        super(MaskAfterNObsBasisFunction, self).__init__(nside=nside)
+        self.n_max = n_max
+        self.survey_features["nobs"] = features.NObservations(nside=nside, bandname=bandname)
+        self.result = np.zeros(hp.nside2npix(self.nside), dtype=float)
+
+    def _calc_value(self, conditions, indx=None):
+        result = self.result.copy()
+        to_mask = np.where(self.survey_features["nobs"].feature >= self.n_max)[0]
+        result[to_mask] = np.nan
+        return result
 
 
 class SolarElongMaskBasisFunction(BaseBasisFunction):
