@@ -12,6 +12,7 @@ import rubin_scheduler.skybrightness_pre as sb
 from rubin_scheduler.data import data_versions
 from rubin_scheduler.scheduler.features import Conditions
 from rubin_scheduler.scheduler.model_observatory import KinemModel
+from rubin_scheduler.scheduler.utils import smallest_signed_angle
 
 # For backwards compatibility
 from rubin_scheduler.site_models import (
@@ -141,6 +142,10 @@ class ModelObservatory:
         will allow altitudes anywhere between 20-86 degrees.
     telescope : `str`
         Telescope name for rotation computations. Default "rubin".
+    resolve_rotskypos : `bool`
+        If a requested value of rotSkyPos is not accessible, try adding
+        90 degrees until it works.
+
     """
 
     def __init__(
@@ -169,8 +174,10 @@ class ModelObservatory:
         sky_az_limits=None,
         telescope="rubin",
         cloud_maps=None,
+        resolve_rotskypos=True,
     ):
         self.nside = nside
+        self.resolve_rotskypos = resolve_rotskypos
 
         # Set the time now - mjd
         # and the time of the survey start
@@ -638,12 +645,24 @@ class ModelObservatory:
         else:
             return True, mjd
 
-    def _update_rot_sky_pos(self, observation):
-        """If we have an undefined rotSkyPos, try to fill it out."""
+    def _update_rot_sky_pos(self, observation, try_shifts=np.array([-np.pi / 2, np.pi / 2, -np.pi, np.pi])):
+        """Update the rotSkyPos value to make sure it is observable.
+
+        Parameters
+        ----------
+        observation : `rubin_scheduler.scheduler.ObservationArray`
+            The observation to fix rotSkyPos on.
+        try_shifts : `np.array`
+            If the rotSkyPos value results in an invalid rotTelPos,
+            rotate by the values in try_shifts and select the
+            one that results in the smallest rotator slew.
+            Default [-np.pi/2, np.pi/2, -np.pi, np.pi] (radians).
+        """
 
         # Grab the rotator limit from the observatory model
+        # Set so default rot_limit = [-90, 90]
         rot_limit = [
-            self.observatory.telrot_minpos_rad + 2.0 * np.pi,
+            self.observatory.telrot_minpos_rad,
             self.observatory.telrot_maxpos_rad,
         ]
 
@@ -657,21 +676,49 @@ class ModelObservatory:
 
         obs_pa = _approx_altaz2pa(alt, az, self.site.latitude_rad)
 
-        # If the observation has a rotTelPos set, use it to compute rotSkyPos
-        if np.isfinite(observation["rotTelPos"]):
-            observation["rotSkyPos"] = self.rc._rottelpos2rotskypos(observation["rotTelPos"], obs_pa)
-            observation["rotTelPos"] = np.nan
-        else:
-            # Try to fall back to rotSkyPos_desired
-            possible_rot_tel_pos = self.rc._rotskypos2rottelpos(observation["rotSkyPos_desired"], obs_pa)
-            # If in range, use rotSkyPos_desired for rotSkyPos
-            if (possible_rot_tel_pos > rot_limit[0]) | (possible_rot_tel_pos < rot_limit[1]):
+        if self.resolve_rotskypos:
+            if not np.isfinite(observation["rotSkyPos"]):
+                warnings.warn("No finite rotSkyPos value, using rotSkyPos_desired")
                 observation["rotSkyPos"] = observation["rotSkyPos_desired"]
+            rottelpos = self.rc._rotskypos2rottelpos(observation["rotSkyPos"], obs_pa)
+
+            if (rottelpos < rot_limit[0]) | (rottelpos > rot_limit[1]):
+                potential_rottelpos = rottelpos + try_shifts
+                valid = np.where((potential_rottelpos > rot_limit[0]) & (potential_rottelpos < rot_limit[1]))[
+                    0
+                ]
+                potential_rottelpos = potential_rottelpos[valid]
+                # Which potential rot_tel_pos is closest to the
+                # current rot_tel_pos?
+                if self.observatory.current_rot_sky_pos_rad is None:
+                    current_rot_tel_pos = 0
+                else:
+                    current_rot_tel_pos = self.rc._rotskypos2rottelpos(
+                        self.observatory.current_rot_sky_pos_rad, obs_pa
+                    )
+                ang_diff = np.abs(smallest_signed_angle(current_rot_tel_pos, potential_rottelpos))
+                indx = np.where(ang_diff == np.min(ang_diff))[0]
+                rottelpos = potential_rottelpos[indx]
+
+            observation["rotSkyPos"] = self.rc._rottelpos2rotskypos(rottelpos, obs_pa)
+
+        else:
+            # If the observation has a rotTelPos set,
+            # use it to compute rotSkyPos
+            if np.isfinite(observation["rotTelPos"]):
+                observation["rotSkyPos"] = self.rc._rottelpos2rotskypos(observation["rotTelPos"], obs_pa)
                 observation["rotTelPos"] = np.nan
             else:
-                # Fall back to the backup rotation angle if needed.
-                observation["rotSkyPos"] = np.nan
-                observation["rotTelPos"] = observation["rotTelPos_backup"]
+                # Try to fall back to rotSkyPos_desired
+                possible_rot_tel_pos = self.rc._rotskypos2rottelpos(observation["rotSkyPos_desired"], obs_pa)
+                # If in range, use rotSkyPos_desired for rotSkyPos
+                if (possible_rot_tel_pos > rot_limit[0]) & (possible_rot_tel_pos < rot_limit[1]):
+                    observation["rotSkyPos"] = observation["rotSkyPos_desired"]
+                    observation["rotTelPos"] = np.nan
+                else:
+                    # Fall back to the backup rotation angle if needed.
+                    observation["rotSkyPos"] = np.nan
+                    observation["rotTelPos"] = observation["rotTelPos_backup"]
 
         return observation
 
@@ -689,8 +736,7 @@ class ModelObservatory:
 
         start_night = self.night.copy()
 
-        if np.isnan(observation["rotSkyPos"]):
-            observation = self._update_rot_sky_pos(observation)
+        observation = self._update_rot_sky_pos(observation)
 
         # If there has been a long gap, assume telescope stopped
         # tracking and parked
