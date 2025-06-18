@@ -210,6 +210,12 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
             if isinstance(detailer, TrackingInfoDetailer):
                 has_tracking_detailer = True
                 break
+            # In case where kwarg was set but also have TrackingInfoDetailer:
+            if (science_program is not None) | (observation_reason is not None):
+                warnings.warn(
+                    f"Survey {self.survey_name} already has a TrackingInfoDetailer; "
+                    "ignoring kwargs for observation_reason and science_program."
+                )
         if not has_tracking_detailer:
             # Only add the TrackingInfoDetailer if necessary
             if (science_program is not None) | (observation_reason is not None):
