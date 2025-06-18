@@ -608,10 +608,10 @@ def gen_too_surveys(
     # Lensed BNS
     ############
 
-    times = [1.0, 1.0]
-    bands_at_times = ["g", "r"]
-    nvis = [1, 1]
-    exptimes = [DEFAULT_EXP_TIME, 90.0]
+    times = np.array([1.0, 1.0, 25, 25, 49, 49])
+    bands_at_times = ["g", "r"] * 3
+    nvis = [1, 3] * 3
+    exptimes = [DEFAULT_EXP_TIME, 90.0] * 3
 
     result.append(
         ToOScriptedSurvey(
@@ -634,10 +634,11 @@ def gen_too_surveys(
         )
     )
 
-    times = [1.0, 1.0]
-    bands_at_times = ["g", "r"]
-    nvis = [24, 36]
-    exptimes = [150, 150]
+    # This is the small skymap (15 deg^2 case)
+    times = np.array([1.0, 1.0, 25, 25, 49, 49])
+    bands_at_times = ["g", "r"] * 3
+    nvis = [30, 20] * 3
+    exptimes = [180] * times.size
 
     result.append(
         ToOScriptedSurvey(
