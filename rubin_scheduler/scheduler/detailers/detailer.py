@@ -101,10 +101,33 @@ class BaseDetailer:
 
 
 class TrackingInfoDetailer(BaseDetailer):
-    """Fill in lots of the different tracking strings for an observation.
-    Does not clobber information that has already been set"""
+    """Add metadata related to target_name, observation_reason and
+    target_name for an observation.
 
-    def __init__(self, target_name=None, science_program=None, observation_reason=None):
+    Does NOT clobber information that has been previously set.
+    Appended to all surveys detailer lists, if not already present,
+    by BaseSurvey using values from survey configuration.
+
+    See https://rtn-096.lsst.io for further information on these observation
+    metadata fields.
+
+    Parameters
+    ----------
+    target_name : `str` or `None`
+        The value to enter into the target_name field of the Observation.
+        With current metadata expectations, this will indicate a specific
+        target name or a general region label. See also LabelRegionDetailer.
+    science_program : `str` or `None`
+        The value to enter into the science_program field of the Observation.
+        With the current configuration of the SchedulerCSC, this corresponds
+        to the JSON BLOCK executed to acquire the visit.
+    observation_reason : `str` or `None`
+        The value to enter into the observation_reason of the Observation.
+        With current metadata expectations, this will indicate something
+        about the observing mode.
+    """
+
+    def __init__(self, target_name="", science_program="", observation_reason=""):
         self.survey_features = {}
         self.target_name = target_name
         self.science_program = science_program
@@ -113,7 +136,11 @@ class TrackingInfoDetailer(BaseDetailer):
 
     def __call__(self, observation_array, conditions):
         for key in self.keys:
-            indx = np.where((observation_array[key] == "") | (observation_array[key] is None))[0]
+            indx = np.where(
+                (observation_array[key] == "")
+                | (observation_array[key] is None)
+                | (observation_array[key] == "None")
+            )[0]
             observation_array[key][indx] = getattr(self, key)
 
         return observation_array
@@ -125,13 +152,12 @@ class FlushByDetailer(BaseDetailer):
 
     Parameters
     ----------
-    flush_time : float
+    flush_time : `float`
         The time to flush after the current MJD. Default 60 minutes
     """
 
-    def __init__(self, flush_time=60, nside=DEFAULT_NSIDE):
+    def __init__(self, flush_time=60):
         self.survey_features = {}
-        self.nside = nside
         self.flush_time = flush_time / 60 / 24.0
 
     def __call__(self, observation_array, conditions):
@@ -476,8 +502,7 @@ class FixedSkyAngleDetailer(BaseDetailer):
 
 
 class CloseAltDetailer(BaseDetailer):
-    """
-    re-order a list of observations so that the closest in altitude to
+    """Re-order a list of observations so that the closest in altitude to
     the current pointing is first.
 
     Parameters
@@ -706,10 +731,13 @@ class LabelRegionDetailer(BaseDetailer):
     append : `bool`
         Should the labels be appended to `field_for_label`
         (True, default), or clobber (False).
+    separator : `str`
+        If append is True, what string to use when appending.
+        Default ", ".
     """
 
     def __init__(
-        self, label_array=None, field_for_label="target_name", camera="LSST", append=True, seperator=", "
+        self, label_array=None, field_for_label="target_name", camera="LSST", append=True, separator=", "
     ):
         if label_array is None:
             sky = CurrentAreaMap()
@@ -719,7 +747,9 @@ class LabelRegionDetailer(BaseDetailer):
         self.field_for_label = field_for_label
         nside = hp.npix2nside(np.size(self.label_array))
         self.append = append
-        self.seperator = seperator
+        self.separator = separator
+
+        self.remove_vals = set(["", "", "None"])
 
         if camera == "LSST":
             self.pointing2hpindx = HpInLsstFov(nside=nside)
@@ -732,21 +762,18 @@ class LabelRegionDetailer(BaseDetailer):
             labels = np.unique(self.label_array[indx])
             # ignore things that are out of bounds
             labels = labels[np.where(labels != "")]
-            # If we overlap multiple regions
-            if np.size(labels) > 1:
-                result = self.seperator.join(labels)
+            # If there are no applicable labels, identify as OutOfFootprint
+            if np.size(labels) == 0:
+                result = set(["OOF"])
             else:
-                result = labels[0]
+                result = set(labels)
 
             if self.append:
-                if obs_array[self.field_for_label][i] == "":
-                    obs_array[self.field_for_label][i] = result
-                else:
-                    obs_array[self.field_for_label][i] = (
-                        obs_array[self.field_for_label][i] + self.seperator + result
-                    )
+                prev_values = set(obs_array[self.field_for_label][i].split(self.separator))
+                new_values = prev_values.union(result).difference(self.remove_vals)
             else:
-                obs_array[self.field_for_label][i] = result
+                new_values = result.difference(self.remove_vals)
+            obs_array[self.field_for_label][i] = self.separator.join(new_values)
         return obs_array
 
 
@@ -769,18 +796,18 @@ class LabelDDFDetailer(BaseDetailer):
     match_radius : `float`
         The radius away an observation can be from a DDF center
         and still be tagged. Default 2.0 (degrees)
-    seperator : `str`
+    separator : `str`
         If append is True, what string to use when appending.
         Default ", ".
     """
 
     def __init__(
-        self, ddf_location=None, field_for_label="target_name", append=True, match_radius=2.0, seperator=", "
+        self, ddf_location=None, field_for_label="target_name", append=True, match_radius=2.0, separator=", "
     ):
         self.field_for_label = field_for_label
         self.append = append
         self.match_radius = np.radians(match_radius)
-        self.seperator = seperator
+        self.separator = separator
         if ddf_location is None:
             self.ddf_locations = ddf_locations()
         else:
@@ -789,54 +816,80 @@ class LabelDDFDetailer(BaseDetailer):
         for key in self.ddf_locations:
             self.ddf_locations[key] = np.radians(self.ddf_locations[key])
 
+        self.remove_vals = set(["", "", "None"])
+
     def __call__(self, obs_array, conditions):
 
-        for key in self.ddf_locations:
+        for name in self.ddf_locations:
             distances = _angular_separation(
-                self.ddf_locations[key][0], self.ddf_locations[key][1], obs_array["RA"], obs_array["dec"]
+                self.ddf_locations[name][0], self.ddf_locations[name][1], obs_array["RA"], obs_array["dec"]
             )
             distances = np.atleast_1d(distances)
+            # Indexes of observations in obs_array which overlap the DDF
             indxes = np.where(distances <= self.match_radius)[0]
 
+            name_set = set([f"DDF {name}"])
             if indxes.size > 0:
                 for indx in indxes:
                     if self.append:
-                        if obs_array[self.field_for_label][indx] == "":
-                            obs_array[self.field_for_label][indx] += key
-                        else:
-                            obs_array[self.field_for_label][indx] += self.seperator + key
+                        prev_values = set(obs_array[self.field_for_label][indx].split(self.separator))
+                        new_values = prev_values.union(name_set).difference(self.remove_vals)
                     else:
-                        obs_array[self.field_for_label][indx] = key
-
+                        new_values = name_set.difference(self.remove_vals)
+                    obs_array[self.field_for_label][indx] = self.separator.join(new_values)
         return obs_array
 
 
 class LabelRegionsAndDDFs(BaseDetailer):
-    """Do both LabelRegionDetailer and LabelDDFDetailer"""
+    """Run both LabelRegionDetailer and LabelDDFDetailer.
+
+    Will always append onto current content of target_name.
+
+    Parameters
+    ----------
+    label_array : `np.array`
+        A HEALpix array of strings that are labels for each HEALpix.
+        Default of None uses CurrentAreaMap to load labels.
+    field_for_label : `str`
+        Which ObservationArray field should be modified.
+        Default "target_name".
+    camera : `str`
+        Which camera model to use to convert a pointing to
+        HEALpix IDs. Default "LSST".
+    ddf_locations : `dict`
+        Dictionary with keys of DDF names and values of RA,dec
+        pairs (in degrees). Default of None uses ddf_locations
+        utility to get default locations and names.
+    match_radius : `float`
+        The radius away an observation can be from a DDF center
+        and still be tagged. Default 2.0 (degrees)
+    separator : `str`
+        If append is True, what string to use when appending.
+        Default ", ".
+    """
 
     def __init__(
         self,
         label_array=None,
         field_for_label="target_name",
         camera="LSST",
-        append=True,
         ddf_location=None,
-        seperator=", ",
         match_radius=2.0,
+        separator=", ",
     ):
         self.label_detailer = LabelRegionDetailer(
             label_array=label_array,
             field_for_label=field_for_label,
             camera=camera,
-            append=append,
-            seperator=seperator,
+            append=True,
+            separator=separator,
         )
         self.ddf_detailer = LabelDDFDetailer(
             ddf_location=ddf_location,
             field_for_label=field_for_label,
-            append=append,
+            append=True,
             match_radius=match_radius,
-            seperator=seperator,
+            separator=separator,
         )
 
     def __call__(self, obs_array, conditions):
