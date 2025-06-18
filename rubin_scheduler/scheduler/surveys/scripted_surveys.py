@@ -54,6 +54,7 @@ class ScriptedSurvey(BaseSurvey):
         before_twi_check=True,
         band_change_time=120,
         filter_change_time=None,
+        science_program=None,
     ):
         if filter_change_time is not None:
             warnings.warn("filter_change_time deprecated in favor of band_change_time", FutureWarning)
@@ -85,6 +86,7 @@ class ScriptedSurvey(BaseSurvey):
             nside=nside,
             detailers=detailers,
             survey_name=survey_name,
+            science_program=science_program,
         )
         self.clear_script()
 

@@ -124,14 +124,21 @@ class BaseSurvey:
         self.scheduled_obs = scheduled_obs
 
         # Strings to pass onto observations
-        if (target_name is not None) | (science_program is not None) | (observation_reason is not None):
-            self.detailers.append(
-                TrackingInfoDetailer(
-                    target_name=target_name,
-                    science_program=science_program,
-                    observation_reason=observation_reason,
+        has_tracking_detailer = False
+        for detailer in self.detailers:
+            if isinstance(detailer, TrackingInfoDetailer):
+                has_tracking_detailer = True
+                break
+        if not has_tracking_detailer:
+            # Only add the TrackingInfoDetailer if necessary
+            if (target_name is not None) | (science_program is not None) | (observation_reason is not None):
+                self.detailers.append(
+                    TrackingInfoDetailer(
+                        target_name=target_name,
+                        science_program=science_program,
+                        observation_reason=observation_reason,
+                    )
                 )
-            )
 
     @cached_property
     def roi_hpid(self):
@@ -489,7 +496,7 @@ class BaseMarkovSurvey(BaseSurvey):
         npositions=7305,
         target_name=None,
         science_program=None,
-        observation_reason=None,
+        observation_reason="Area",
     ):
         super(BaseMarkovSurvey, self).__init__(
             basis_functions=basis_functions,
@@ -542,7 +549,13 @@ class BaseMarkovSurvey(BaseSurvey):
         self.night = -1
 
         if dither in [True, False]:
-            warnings.warn("setting dither to bool deprecated, swapping to dither='night'", FutureWarning)
+            survey_name = self.survey_name
+            if len(survey_name) == 0:
+                survey_name = self.__class__.__name__
+            warnings.warn(
+                f"setting dither to bool deprecated, swapping to dither='night' ({survey_name})",
+                FutureWarning,
+            )
             dither = "night"
         if dither not in ["night", "call", None]:
             raise ValueError("dither kwarg must be one of 'night', 'call', or None.")

@@ -37,6 +37,7 @@ def gen_roman_on_season(
     nexp=2,
     wind_speed_maximum=20.0,
     moon_limit=30.0,
+    science_program=None,
 ):
     """Generate a survey object for observing the Roman field(s)
     in an on season"""
@@ -82,6 +83,7 @@ def gen_roman_on_season(
         nexp=nexp,
         survey_name=scheduler_note,
         detailers=details,
+        science_program=science_program,
     )
     return survey
 
@@ -93,6 +95,7 @@ def gen_roman_off_season(
     nexp=2,
     wind_speed_maximum=20.0,
     moon_limit=30.0,
+    science_program=None,
 ):
     """Generate a ddf-like survey object to observe the roman
     field every ~3 days in the off-season"""
@@ -137,5 +140,6 @@ def gen_roman_off_season(
         nexp=nexp,
         survey_name=scheduler_note,
         detailers=details,
+        science_program=science_program,
     )
     return survey

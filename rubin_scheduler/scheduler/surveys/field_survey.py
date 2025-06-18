@@ -81,7 +81,7 @@ class FieldSurvey(BaseSurvey):
         survey_name=None,
         target_name=None,
         science_program=None,
-        observation_reason=None,
+        observation_reason="Target",
         scheduler_note=None,
         readtime=2.4,
         band_change_time=120.0,
