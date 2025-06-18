@@ -7,7 +7,7 @@ import healpy as hp
 import numpy as np
 
 import rubin_scheduler.scheduler.basis_functions as basis_functions
-from rubin_scheduler.scheduler.detailers import BandPickToODetailer
+from rubin_scheduler.scheduler.detailers import BandPickToODetailer, TrackingInfoDetailer
 from rubin_scheduler.scheduler.surveys import BaseMarkovSurvey, ScriptedSurvey
 from rubin_scheduler.scheduler.utils import (
     ScheduledObservationArray,
@@ -87,6 +87,8 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         camera="LSST",
         survey_name="ToO",
         target_name_base="ToO",
+        observation_reason="ToO",
+        science_program=None,
         flushtime=2.0,
         mjd_tol=1.0 / 24.0,
         dist_tol=0.5,
@@ -201,6 +203,28 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
 
         # list to keep track of alerts we have already seen
         self.seen_alerts = []
+
+        # Add information for visit metadata if necessary
+        has_tracking_detailer = False
+        for detailer in self.detailers:
+            if isinstance(detailer, TrackingInfoDetailer):
+                has_tracking_detailer = True
+                break
+            # In case where kwarg was set but also have TrackingInfoDetailer:
+            if (science_program is not None) | (observation_reason is not None):
+                warnings.warn(
+                    f"Survey {self.survey_name} already has a TrackingInfoDetailer; "
+                    "ignoring kwargs for observation_reason and science_program."
+                )
+        if not has_tracking_detailer:
+            # Only add the TrackingInfoDetailer if necessary
+            if (science_program is not None) | (observation_reason is not None):
+                self.detailers.append(
+                    TrackingInfoDetailer(
+                        science_program=science_program,
+                        observation_reason=observation_reason,
+                    )
+                )
 
     def flush_script(self, conditions):
         """Remove things from the script that aren't needed anymore"""
@@ -430,6 +454,8 @@ def gen_too_surveys(
     long_exp_nsnaps=2,
     n_snaps=2,
     wind_speed_maximum=20.0,
+    observation_reason="ToO",
+    science_program=None,
 ):
     result = []
     bf_list = []
@@ -466,6 +492,8 @@ def gen_too_surveys(
             flushtime=48.0,
             n_snaps=long_exp_nsnaps,
             target_name_base="GW_case_A",
+            observation_reason=observation_reason,
+            science_program=science_program,
         )
     )
 
@@ -490,6 +518,8 @@ def gen_too_surveys(
             too_types_to_follow=["GW_case_B", "GW_case_C"],
             survey_name="ToO, GW_case_B_C",
             target_name_base="GW_case_B_C",
+            observation_reason=observation_reason,
+            science_program=science_program,
             split_long=split_long,
             flushtime=48,
             n_snaps=long_exp_nsnaps,
@@ -517,6 +547,8 @@ def gen_too_surveys(
             too_types_to_follow=["GW_case_D", "GW_case_E"],
             survey_name="ToO, GW_case_D_E",
             target_name_base="GW_case_D_E",
+            observation_reason=observation_reason,
+            science_program=science_program,
             split_long=split_long,
             flushtime=48,
             n_snaps=long_exp_nsnaps,
@@ -563,6 +595,8 @@ def gen_too_surveys(
             too_types_to_follow=["BBH_case_A", "BBH_case_B", "BBH_case_C"],
             survey_name="ToO, BBH",
             target_name_base="BBH",
+            observation_reason=observation_reason,
+            science_program=science_program,
             split_long=split_long,
             flushtime=48,
             n_snaps=n_snaps,
@@ -592,6 +626,8 @@ def gen_too_surveys(
             too_types_to_follow=["lensed_BNS_case_A"],
             survey_name="ToO, LensedBNS_A",
             target_name_base="LensedBNS_A",
+            observation_reason=observation_reason,
+            science_program=science_program,
             split_long=split_long,
             flushtime=48.0,
             n_snaps=n_snaps,
@@ -616,6 +652,8 @@ def gen_too_surveys(
             too_types_to_follow=["lensed_BNS_case_B"],
             survey_name="ToO, LensedBNS_B",
             target_name_base="LensedBNS_B",
+            observation_reason=observation_reason,
+            science_program=science_program,
             split_long=split_long,
             flushtime=48.0,
             n_snaps=long_exp_nsnaps,
@@ -652,6 +690,8 @@ def gen_too_surveys(
             too_types_to_follow=["neutrino"],
             survey_name="ToO, neutrino",
             target_name_base="neutrino",
+            observation_reason=observation_reason,
+            science_program=science_program,
             split_long=split_long,
             flushtime=48,
             n_snaps=n_snaps,
@@ -678,6 +718,8 @@ def gen_too_surveys(
             too_types_to_follow=["neutrino"],
             survey_name="ToO, neutrino_u",
             target_name_base="neutrino_u",
+            observation_reason=observation_reason,
+            science_program=science_program,
             split_long=split_long,
             flushtime=1440,
             n_snaps=n_snaps,
@@ -709,6 +751,8 @@ def gen_too_surveys(
             too_types_to_follow=["SSO_night"],
             survey_name="ToO, SSO_night",
             target_name_base="SSO_night",
+            observation_reason=observation_reason,
+            science_program=science_program,
             split_long=split_long,
             flushtime=3.0,
             n_snaps=n_snaps,
@@ -733,6 +777,8 @@ def gen_too_surveys(
             too_types_to_follow=["SSO_twilight"],
             survey_name="ToO, SSO_twi",
             target_name_base="SSO_twi",
+            observation_reason=observation_reason,
+            science_program=science_program,
             split_long=split_long,
             flushtime=3.0,
             n_snaps=n_snaps,
@@ -764,6 +810,8 @@ def gen_too_surveys(
             too_types_to_follow=["SN_Galactic"],
             survey_name="ToO, galactic SN",
             target_name_base="SN_Galactic",
+            observation_reason=observation_reason,
+            science_program=science_program,
             split_long=split_long,
             flushtime=48.0,
             n_snaps=n_snaps,

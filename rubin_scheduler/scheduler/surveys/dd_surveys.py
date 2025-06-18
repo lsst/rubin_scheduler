@@ -64,12 +64,14 @@ class DeepDrillingSurvey(BaseSurvey):
         flush_pad=30.0,
         seed=42,
         detailers=None,
+        science_program=None,
     ):
         super(DeepDrillingSurvey, self).__init__(
             nside=nside,
             basis_functions=basis_functions,
             detailers=detailers,
             ignore_obs=ignore_obs,
+            science_program=science_program,
         )
         random.seed(a=seed)
 

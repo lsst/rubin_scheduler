@@ -65,6 +65,7 @@ class LongGapSurvey(BaseSurvey):
         site=None,
         hour_step=0.5,
         survey_name=None,
+        science_program=None,
     ):
         self.blob_survey = blob_survey
         self.scripted_survey = scripted_survey
@@ -82,6 +83,7 @@ class LongGapSurvey(BaseSurvey):
             self._generate_survey_name()
         else:
             self.survey_name = survey_name
+        self.science_program = science_program
         self.scripted_tol = scripted_tol / 24.0  # To days
         self.alt_min = np.radians(alt_min)
         self.alt_max = np.radians(alt_max)
@@ -194,7 +196,8 @@ class LongGapSurvey(BaseSurvey):
             # Make sure these have the note filled in
             sched_array["scheduler_note"] = self.long_name
             sched_array["target_name"] = ""
-            sched_array["observation_reason"] = "FBS"
+            sched_array["observation_reason"] = "triplet long gap"
+            sched_array["science_program"] = self.science_program
             # Don't let the desired rotSkyPos block the observation.
             sched_array["rotSkyPos_desired"] = sched_array["rotSkyPos"]
             sched_array["rotSkyPos"] = np.nan

@@ -343,6 +343,7 @@ def simple_pairs_survey(
     exptime: float = 30.0,
     nexp: int = 1,
     science_program: str | None = None,
+    observation_reason: str | None = None,
     dither: str = "night",
     camera_dither: str = "night",
     require_time: bool = False,
@@ -387,8 +388,11 @@ def simple_pairs_survey(
     nexp : `int`
         The number of exposures per visit (exptime * nexp = total on-sky time).
     science_program : `str` | None
-        The science_program key for the FieldSurvey.
+        The science_program for the Survey.
         This maps to the BLOCK and `science_program` in the consDB.
+    observation_reason : `str` | None
+        The observation_reason for the Survey.
+        Indicates survey mode, potentially enhanced with particular reason.
     require_time : `bool`
         If True, add a mask basis function that checks there is enough
         time before twilight to execute the pairs. Default False.
@@ -530,6 +534,7 @@ def simple_pairs_survey(
         exptime=exptime,
         ideal_pair_time=pair_time,
         survey_name=survey_name,
+        observation_reason=observation_reason,
         ignore_obs=ignore_obs,
         nexp=nexp,
         detailers=detailer_list,
@@ -557,6 +562,7 @@ def simple_greedy_survey(
     exptime: float = 30.0,
     nexp: int = 1,
     science_program: str | None = None,
+    observation_reason: str | None = None,
     dither: str = "night",
     camera_dither: str = "night",
 ) -> GreedySurvey:
@@ -597,6 +603,9 @@ def simple_greedy_survey(
     science_program : `str` | None
         The science_program key for the FieldSurvey.
         This maps to the BLOCK and `science_program` in the consDB.
+    observation_reason : `str` | None
+        The observation_reason for the Survey.
+        Indicates survey mode, potentially enhanced with particular reason.
 
     Returns
     -------
@@ -683,6 +692,7 @@ def simple_greedy_survey(
         nexp=nexp,
         detailers=detailer_list,
         science_program=science_program,
+        observation_reason=observation_reason,
         **GreedySurvey_params,
     )
 

@@ -28,6 +28,9 @@ class GreedySurvey(BaseMarkovSurvey):
         ignore_obs=None,
         survey_name=None,
         scheduler_note=None,
+        target_name=None,
+        observation_reason=None,
+        science_program=None,
         nexp=2,
         exptime=30.0,
         detailers=None,
@@ -48,6 +51,9 @@ class GreedySurvey(BaseMarkovSurvey):
         self.nexp = nexp
         self.exptime = exptime
 
+        if observation_reason is None:
+            observation_reason = f"singles {self.bandname}"
+
         super(GreedySurvey, self).__init__(
             basis_functions=basis_functions,
             basis_weights=basis_weights,
@@ -57,6 +63,9 @@ class GreedySurvey(BaseMarkovSurvey):
             nside=nside,
             survey_name=survey_name,
             scheduler_note=scheduler_note,
+            target_name=target_name,
+            observation_reason=observation_reason,
+            science_program=science_program,
             dither=dither,
             seed=seed,
             detailers=detailers,
@@ -231,6 +240,10 @@ class BlobSurvey(GreedySurvey):
             self._generate_survey_name()
         else:
             self.survey_name = survey_name
+
+        if observation_reason is None:
+            b2 = self.bandname2 if self.bandname2 is not None else ""
+            observation_reason = f"pairs {self.bandname1}{b2} {self.ideal_pair_time}"
 
         super(BlobSurvey, self).__init__(
             basis_functions=basis_functions,
