@@ -14,6 +14,7 @@ __all__ = (
     "FlushByDetailer",
     "RandomFilterDetailer",
     "RandomBandDetailer",
+    "BandSortDetailer",
     "TrackingInfoDetailer",
     "AltAz2RaDecDetailer",
     "StartFieldSequenceDetailer",
@@ -263,6 +264,46 @@ class RandomBandDetailer(BaseDetailer):
 
         observation_array["band"] = band_to_use
         return observation_array
+
+
+class BandSortDetailer(BaseDetailer):
+    """Detailer that sorts an array of observations by specified
+    band order, in order to minimize filter changes.
+
+    Useful for scripted surveys with many filter changes like DDFs.
+
+    Parameters
+    ----------
+    desired_band_order : `str`
+        The desired band order.
+    loaded_first : `bool`
+        If True, then the currently-in-use filter is always moved to
+        the start of the desired band order, to remove the first filter change.
+    """
+
+    def __init__(
+        self,
+        desired_band_order: str = "ugrizy",
+        loaded_first: bool = True,
+    ):
+        self.desired_band_order = desired_band_order
+        self.loaded_first = loaded_first
+
+    def __call__(
+        self, observation_array: ObservationArray, conditions: features.Conditions
+    ) -> ObservationArray:
+
+        order_to_set = copy.copy(self.desired_band_order)
+        if self.loaded_first:
+            order_to_set = order_to_set.replace(conditions.current_band, "")
+            order_to_set = conditions.current_band + order_to_set
+        indicies = []
+        for bandname in order_to_set:
+            indicies.append(np.where(observation_array["band"] == bandname)[0])
+
+        indices = np.concatenate(indicies)
+
+        return observation_array[indices]
 
 
 class ParallacticRotationDetailer(BaseDetailer):

@@ -169,6 +169,24 @@ class TestDetailers(unittest.TestCase):
 
         assert out_obs["band"] == "y"
 
+    def test_band_sort_detailer(self):
+        obs = ObservationArray(5)
+        input_bands = ["r", "g", "r", "g", "z"]
+        for i in range(len(obs)):
+            obs[i]["band"] = input_bands[i]
+
+        conditions = Conditions()
+        conditions.mounted_bands = ["g", "r", "i", "z", "y"]
+        conditions.current_band = "g"
+
+        det = detailers.BandSortDetailer(desired_band_order="rgz", loaded_first=True)
+        out_obs = det(obs, conditions)
+        self.assertTrue(np.all(out_obs["band"] == ["g", "g", "r", "r", "z"]))
+
+        det = detailers.BandSortDetailer(desired_band_order="rgz", loaded_first=False)
+        out_obs = det(obs, conditions)
+        self.assertTrue(np.all(out_obs["band"] == ["r", "r", "g", "g", "z"]))
+
     def test_bandtofilter(self):
         obs = ObservationArray(3)
         obs["band"][0] = "r"
@@ -187,7 +205,6 @@ class TestDetailers(unittest.TestCase):
             assert out["filter"] == filtername_dict[out["band"]]
 
     def test_copycol(self):
-
         obs = ObservationArray(3)
         obs["band"][0] = "r"
         obs["band"][1] = "g"
@@ -241,6 +258,25 @@ class TestDetailers(unittest.TestCase):
         out_obs = detailer(obs, conditions, target_o_o=too_event)
         assert np.all(out_obs["band"] == "r")
 
+    def test_splitdither(self):
+        obs = ObservationArray(5)
+        input_notes = ["survey_a", "survey_b", "survey_a", "survey_b", "survey_a"]
+        for i in range(len(obs)):
+            obs[i]["scheduler_note"] = input_notes[i]
+
+        conditions = Conditions()
+
+        # This is more likely used to split between dither patterns,
+        # But for easy test let's just assign different target_names.
+        det_a = detailers.TrackingInfoDetailer(target_name="a")
+        det_b = detailers.TrackingInfoDetailer(target_name="b")
+
+        det = detailers.SplitDetailer(det_a, det_b, split_str="_b")
+        out_obs = det(obs, conditions)
+
+        for o in out_obs:
+            assert o["scheduler_note"].split("_")[-1] == o["target_name"]
+
     def test_region_label(self):
 
         for detailer_start in [detailers.LabelRegionDetailer, detailers.LabelRegionsAndDDFs]:
@@ -261,23 +297,23 @@ class TestDetailers(unittest.TestCase):
                 assert "dummy" in res["target_name"]
                 assert "lowdust" in res["target_name"]
 
-            # Test that we clobber
-            detailer = detailers.LabelRegionDetailer(labels, append=False)
-            output = detailer(obs, None)
-            for res in output:
-                assert "dummy" not in res["target_name"]
-                assert "lowdust" in res["target_name"]
+        # Test that we clobber
+        detailer = detailers.LabelRegionDetailer(labels, append=False)
+        output = detailer(obs, None)
+        for res in output:
+            assert "dummy" not in res["target_name"]
+            assert "lowdust" in res["target_name"]
 
-            # Test that we can have multiple labels
-            obs = ObservationArray(3)
-            obs["RA"] = np.radians(0.0)
-            obs["dec"] = np.radians(3.0)
-            detailer = detailers.LabelRegionDetailer(labels)
-            output = detailer(obs, None)
-            for res in output:
-                assert "dummy" not in res["target_name"]
-                assert "lowdust" in res["target_name"]
-                assert "nes" in res["target_name"]
+        # Test that we can have multiple labels
+        obs = ObservationArray(3)
+        obs["RA"] = np.radians(0.0)
+        obs["dec"] = np.radians(3.0)
+        detailer = detailers.LabelRegionDetailer(labels)
+        output = detailer(obs, None)
+        for res in output:
+            assert "dummy" not in res["target_name"]
+            assert "lowdust" in res["target_name"]
+            assert "nes" in res["target_name"]
 
 
 if __name__ == "__main__":

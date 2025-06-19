@@ -1,6 +1,7 @@
 __all__ = (
     "DitherDetailer",
     "EuclidDitherDetailer",
+    "SplitDetailer",
     "CameraRotDetailer",
     "CameraSmallRotPerObservationListDetailer",
     "ComCamGridDitherDetailer",
@@ -12,6 +13,7 @@ import warnings
 import numpy as np
 
 from rubin_scheduler.scheduler.detailers import BaseDetailer
+from rubin_scheduler.scheduler.features import Conditions
 from rubin_scheduler.scheduler.utils import ObservationArray, rotx, thetaphi2xyz, wrap_ra_dec, xyz2thetaphi
 from rubin_scheduler.utils import (
     _approx_altaz2pa,
@@ -311,6 +313,44 @@ class EuclidDitherDetailer(BaseDetailer):
             else:
                 raise ValueError("scheduler_note does not contain EDFS_a or EDFS_b.")
         return obs_array
+
+
+class SplitDetailer(BaseDetailer):
+    """Combine two detailers, but choose which one of them to use, based on
+    the presence of a specified string in the scheduler_note.
+
+    Useful to identify different kinds of observations in a ScriptedSurvey
+    and then apply different detailers (such as EuclidDetailer vs. standard
+    DDF dither detailer).
+
+    Parameters
+    ----------
+    det1 : `detailers.BaseDetailer`
+        The first detailer, to use if the `split_str` is not present
+        in scheduler_note.
+    det2 : `detailers.BaseDetailer`
+        The second detailer, to use if `split_str` is present.
+    split_str : `str`
+        Search for this string in scheduler_note (matches sub-string).
+    """
+
+    def __init__(
+        self,
+        det1: BaseDetailer,
+        det2: BaseDetailer,
+        split_str: str = "EDFS",
+    ):
+        self.det1 = det1
+        self.det2 = det2
+        self.split_str = split_str
+
+    def __call__(self, observation_array: ObservationArray, conditions: Conditions) -> ObservationArray:
+        string_in = [self.split_str in note for note in observation_array["scheduler_note"]]
+        string_out = np.logical_not(string_in)
+
+        observation_array[string_out] = self.det1(observation_array[string_out], conditions)
+        observation_array[string_in] = self.det2(observation_array[string_in], conditions)
+        return observation_array
 
 
 class CameraRotDetailer(BaseDetailer):
