@@ -1,10 +1,12 @@
 import unittest
+import warnings
 
 import healpy as hp
 import numpy as np
 import pandas as pd
 
 import rubin_scheduler.scheduler.basis_functions as basis_functions
+import rubin_scheduler.scheduler.detailers as detailers
 import rubin_scheduler.scheduler.surveys as surveys
 from rubin_scheduler.scheduler.basis_functions import SimpleArrayBasisFunction
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
@@ -60,6 +62,35 @@ def make_observations_arrays(observations_list, nside=32):
 
 
 class TestSurveys(unittest.TestCase):
+
+    def test_base_survey(self):
+        nside = 32
+
+        bfs = []
+        bfs.append(basis_functions.MoonAvoidanceBasisFunction(nside=nside))
+
+        detailer_list = []
+        science_program = "BLOCK-0"
+        survey = surveys.BaseSurvey(
+            bfs, detailers=detailer_list, survey_name="test", science_program=science_program
+        )
+
+        # Check that the TrackingInfoDetailer was added.
+        idx = -1
+        for i, det in enumerate(survey.detailers):
+            if isinstance(det, detailers.TrackingInfoDetailer):
+                idx = i
+        self.assertTrue(i > -1)
+        self.assertEqual(science_program, survey.detailers[idx].science_program)
+        # And there is a warning if it's already present.
+        detailer_list = [detailers.TrackingInfoDetailer(science_program="BLOCK-T")]
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            surveys.BaseSurvey(
+                bfs, detailers=detailer_list, survey_name="test", science_program=science_program
+            )
+            assert len(w) >= 1
+
     def test_field_survey(self):
         nside = 32
 
