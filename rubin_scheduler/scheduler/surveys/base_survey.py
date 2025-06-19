@@ -124,20 +124,23 @@ class BaseSurvey:
         self.scheduled_obs = scheduled_obs
 
         # Strings to pass onto observations
-        has_tracking_detailer = False
-        for detailer in self.detailers:
-            if isinstance(detailer, TrackingInfoDetailer):
-                has_tracking_detailer = True
-                break
-            # In case where kwarg was set but also have TrackingInfoDetailer:
-            if (target_name is not None) | (science_program is not None) | (observation_reason is not None):
+        if (target_name is not None) | (science_program is not None) | (observation_reason is not None):
+            should_have_tracking_detailer = True
+        else:
+            should_have_tracking_detailer = False
+        if should_have_tracking_detailer:
+            # Check if one already present - will use that if so.
+            has_tracking_detailer = False
+            for detailer in self.detailers:
+                if isinstance(detailer, TrackingInfoDetailer):
+                    has_tracking_detailer = True
+                    break
+            if has_tracking_detailer:
                 warnings.warn(
-                    f"Survey {self.survey_name} already has a TrackingInfoDetailer; "
-                    "ignoring kwargs for target_name, observation_reason and science_program."
+                    f"Survey {self.survey_name} has a tracking detailer but target_name,"
+                    f"observation_reason or science_program also set (and will ignore)."
                 )
-        if not has_tracking_detailer:
-            # Only add the TrackingInfoDetailer if necessary
-            if (target_name is not None) | (science_program is not None) | (observation_reason is not None):
+            else:
                 self.detailers.append(
                     TrackingInfoDetailer(
                         target_name=target_name,
