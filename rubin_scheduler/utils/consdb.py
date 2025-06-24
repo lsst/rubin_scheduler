@@ -55,8 +55,8 @@ except ImportError:
         token: str | None = None
 
         if token_file is not None:
-            with open("token_file", "r") as f:
-                token = f.read()
+            with open(token_file, "r") as token_io:
+                token = token_io.read()
         elif "ACCESS_TOKEN" in os.environ:
             token = os.environ.get("ACCESS_TOKEN")
 
@@ -91,6 +91,9 @@ def query_consdb(
     url : `str`, optional
         The ConsDB REST API URL, or ``None`` to guess.
         Defaults to ``None``.
+    token_file : `str` or `None`
+        The file from which to read the access token.
+        ``None`` for default.
 
     Returns
     -------
@@ -152,11 +155,16 @@ class ConsDBVisits(ABC):
     num_nights : `int`
         The number of nights (up to and including day_obs)
         for which to get visits. Defaults to 1.
+    token_file : `str` or `None`
+        File from which to load the token. If `None`, use the ``lsst.rsp``
+        (if available) or the ``ACCESS_TOKEN`` environment variable.
+        Defaults to `None`.
     """
 
     day_obs: str | int
     url: str | None = None
     num_nights: int = 1
+    token_file: str | None = None
 
     def _have_numeric_values(self, column) -> bool:
         if column not in self.consdb_visits.columns:
@@ -363,7 +371,7 @@ class ConsDBVisits(ABC):
                 AND v.day_obs <= {self.day_obs_int}
                 AND v.day_obs > {prior_day_obs_int}
         """
-        return query_consdb(consdb_visits_query, self.url)
+        return query_consdb(consdb_visits_query, self.url, self.token_file)
 
     @cached_property
     def visit_id(self) -> pd.Series:
