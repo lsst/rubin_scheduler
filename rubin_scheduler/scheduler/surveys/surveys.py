@@ -52,7 +52,7 @@ class GreedySurvey(BaseMarkovSurvey):
         self.exptime = exptime
 
         if observation_reason is None:
-            observation_reason = f"singles {self.bandname}"
+            observation_reason = f"singles_{self.bandname}"
 
         super(GreedySurvey, self).__init__(
             basis_functions=basis_functions,
@@ -243,7 +243,7 @@ class BlobSurvey(GreedySurvey):
 
         if observation_reason is None:
             b2 = self.bandname2 if self.bandname2 is not None else ""
-            observation_reason = f"pairs {self.bandname1}{b2} {self.ideal_pair_time}"
+            observation_reason = f"pairs_{self.bandname1}{b2}_{self.ideal_pair_time}"
 
         super(BlobSurvey, self).__init__(
             basis_functions=basis_functions,

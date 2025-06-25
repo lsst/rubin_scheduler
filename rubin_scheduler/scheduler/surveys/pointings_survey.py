@@ -14,8 +14,12 @@ from .base_survey import BaseSurvey
 
 class PointingsSurvey(BaseSurvey):
     """Survey object for managing a set list of potential pointings
-    without specified observing times. Does not follow the usual
-    Survey class API by not using BasisFunction objects.
+    without specified observing times.
+
+    Does not follow the usual Survey class API by not using
+    BasisFunction objects -- this makes it unsuitable for use for Schedulers
+    which use generic masks to avoid observing in out of bounds areas.
+
 
     Parameters
     ----------
@@ -267,7 +271,10 @@ class PointingsSurvey(BaseSurvey):
     def balance_revisit(self, conditions):
         """Code to balance revisiting different targets."""
         sum_obs = np.sum(self.n_obs)
-        result = np.floor(1.0 + self.n_obs / sum_obs)
+        if sum_obs == 0:
+            result = np.floor(1.0 + self.n_obs)
+        else:
+            result = np.floor(1.0 + self.n_obs / sum_obs)
         result[np.where(self.n_obs == 0)] = 1
         return result
 

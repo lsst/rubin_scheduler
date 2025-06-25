@@ -196,7 +196,7 @@ class LongGapSurvey(BaseSurvey):
             # Make sure these have the note filled in
             sched_array["scheduler_note"] = self.long_name
             sched_array["target_name"] = ""
-            sched_array["observation_reason"] = "triplet long gap"
+            sched_array["observation_reason"] = "triplet_long_gap"
             sched_array["science_program"] = self.science_program
             # Don't let the desired rotSkyPos block the observation.
             sched_array["rotSkyPos_desired"] = sched_array["rotSkyPos"]

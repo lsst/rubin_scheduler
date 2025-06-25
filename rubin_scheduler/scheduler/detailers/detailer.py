@@ -126,6 +126,8 @@ class TrackingInfoDetailer(BaseDetailer):
         The value to enter into the observation_reason of the Observation.
         With current metadata expectations, this will indicate something
         about the observing mode.
+        Spaces in observation_reason will be replaced by underscores,
+        required by camera handling of metadata.
     """
 
     def __init__(self, target_name="", science_program="", observation_reason=""):
@@ -133,6 +135,8 @@ class TrackingInfoDetailer(BaseDetailer):
         self.target_name = target_name
         self.science_program = science_program
         self.observation_reason = observation_reason
+        if self.observation_reason is not None:
+            self.observation_reason = self.observation_reason.replace(" ", "_")
         self.keys = ["science_program", "target_name", "observation_reason"]
 
     def __call__(self, observation_array, conditions):
