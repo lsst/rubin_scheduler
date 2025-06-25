@@ -352,7 +352,8 @@ class LastNObsTimes(BaseSurveyFeature):
     def __init__(self, bandname=None, n_obs=3, nside=DEFAULT_NSIDE):
         self.bandname = bandname
         self.n_obs = n_obs
-        self.feature = np.zeros((n_obs, hp.nside2npix(nside)), dtype=float)
+        min_dim = max(1, self.n_obs)
+        self.feature = np.zeros((min_dim, hp.nside2npix(nside)), dtype=float)
         self.bins = np.arange(hp.nside2npix(nside) + 1) - 0.5
 
     def add_observations_array(self, observations_array, observations_hpid):

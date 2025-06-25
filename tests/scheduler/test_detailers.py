@@ -258,6 +258,41 @@ class TestDetailers(unittest.TestCase):
         out_obs = detailer(obs, conditions, target_o_o=too_event)
         assert np.all(out_obs["band"] == "r")
 
+    def test_trackinginfo(self):
+        obs = ObservationArray(2)
+        conditions = Conditions()
+
+        # Check basic function
+        det = detailers.TrackingInfoDetailer(
+            target_name="", observation_reason="pairs_12", science_program="BLOCK-T"
+        )
+
+        out_obs = det(obs, conditions)
+        for o in out_obs:
+            self.assertEqual(o["observation_reason"], "pairs_12")
+            self.assertEqual(o["science_program"], "BLOCK-T")
+            self.assertEqual(o["target_name"], "")
+
+        # Check that it replaces spaces with underscores
+        obs = ObservationArray(2)
+        det = detailers.TrackingInfoDetailer(
+            target_name="", observation_reason="pairs space", science_program="BLOCK-T"
+        )
+
+        out_obs = det(obs, conditions)
+        for o in out_obs:
+            self.assertEqual(o["observation_reason"], "pairs_space")
+            self.assertEqual(o["science_program"], "BLOCK-T")
+            self.assertEqual(o["target_name"], "")
+
+        # Check that it doesn't overwrite existing data
+        det = detailers.TrackingInfoDetailer(
+            target_name="", observation_reason="pairs_12", science_program="BLOCK-T"
+        )
+        out_obs = det(out_obs, conditions)
+        for o in out_obs:
+            self.assertEqual(o["observation_reason"], "pairs_space")
+
     def test_splitdither(self):
         obs = ObservationArray(5)
         input_notes = ["survey_a", "survey_b", "survey_a", "survey_b", "survey_a"]
