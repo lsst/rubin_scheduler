@@ -1,5 +1,6 @@
 __all__ = ("generate_ddf_grid",)
 
+import argparse
 import os
 import sys
 
@@ -9,7 +10,7 @@ from astropy.time import Time
 
 from rubin_scheduler.data import get_data_dir
 from rubin_scheduler.site_models.seeing_model import SeeingModel
-from rubin_scheduler.utils import Site, ddf_locations, m5_flat_sed
+from rubin_scheduler.utils import SURVEY_START_MJD, Site, ddf_locations, m5_flat_sed
 
 
 def generate_ddf_grid(
@@ -130,9 +131,23 @@ def generate_ddf_grid(
 
 
 if __name__ == "__main__":
-    # Generate a grid of airmass skybrightness values
-    # for each DDF in 15 minute intervals.
 
-    result = generate_ddf_grid()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--full",
+        dest="full",
+        action="store_true",
+        help="Compute 40 year grid at 15 min resolution. Default is 12 years at 5 min resolution.",
+    )
+    parser.set_defaults(full=False)
 
-    np.savez(os.path.join(get_data_dir(), "scheduler", "ddf_grid.npz"), ddf_grid=result)
+    args = parser.parse_args()
+
+    full = args.full
+
+    if full:
+        result = generate_ddf_grid()
+        np.savez(os.path.join(get_data_dir(), "scheduler", "ddf_grid.npz"), ddf_grid=result)
+    else:
+        result = generate_ddf_grid(verbose=True, mjd0=SURVEY_START_MJD - 365, delta_t=5.0, survey_length=12.0)
+        np.savez(os.path.join(get_data_dir(), "scheduler", "ddf_grid_fine.npz"), ddf_grid=result)
