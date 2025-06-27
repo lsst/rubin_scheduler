@@ -9,7 +9,7 @@ from astropy.time import Time
 
 from rubin_scheduler.data import get_data_dir
 from rubin_scheduler.site_models.seeing_model import SeeingModel
-from rubin_scheduler.utils import Site, ddf_locations, m5_flat_sed
+from rubin_scheduler.utils import Site, ddf_locations, m5_flat_sed, SURVEY_START_MJD
 
 
 def generate_ddf_grid(
@@ -133,6 +133,11 @@ if __name__ == "__main__":
     # Generate a grid of airmass skybrightness values
     # for each DDF in 15 minute intervals.
 
-    result = generate_ddf_grid()
+    full = False
 
-    np.savez(os.path.join(get_data_dir(), "scheduler", "ddf_grid.npz"), ddf_grid=result)
+    if full:
+        result = generate_ddf_grid()
+        np.savez(os.path.join(get_data_dir(), "scheduler", "ddf_grid.npz"), ddf_grid=result)
+    else:
+        result = generate_ddf_grid(verbose=True, mjd0=SURVEY_START_MJD - 365, delta_t=5.0, survey_length=12.0)
+        np.savez(os.path.join(get_data_dir(), "scheduler", "ddf_grid_fine.npz"), ddf_grid=result)
