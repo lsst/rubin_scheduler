@@ -160,7 +160,6 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
             self.event_gen_detailers = event_gen_detailers
         self.dither = dither
         self.id_start = id_start
-        self.detailers = detailers
         self.last_mjd = -1
         self.too_types_to_follow = too_types_to_follow
         self.split_long = split_long
