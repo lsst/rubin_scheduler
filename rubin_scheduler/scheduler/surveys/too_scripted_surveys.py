@@ -1,7 +1,7 @@
 __all__ = ("ToOScriptedSurvey", "gen_too_surveys")
 
 import warnings
-from copy import copy
+from copy import copy, deepcopy
 
 import healpy as hp
 import numpy as np
@@ -160,7 +160,6 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
             self.event_gen_detailers = event_gen_detailers
         self.dither = dither
         self.id_start = id_start
-        self.detailers = detailers
         self.last_mjd = -1
         self.too_types_to_follow = too_types_to_follow
         self.split_long = split_long
@@ -203,19 +202,17 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
 
         # list to keep track of alerts we have already seen
         self.seen_alerts = []
-
         # Add information for visit metadata if necessary
+        has_tracking_detailer = False
+        for detailer in self.detailers:
+            if isinstance(detailer, TrackingInfoDetailer):
+                has_tracking_detailer = True
         if (science_program is not None) | (observation_reason is not None):
             should_have_tracking_detailer = True
         else:
             should_have_tracking_detailer = False
         if should_have_tracking_detailer:
             # Check if one already present - will use that if so.
-            has_tracking_detailer = False
-            for detailer in self.detailers:
-                if isinstance(detailer, TrackingInfoDetailer):
-                    has_tracking_detailer = True
-                    break
             if has_tracking_detailer:
                 warnings.warn(
                     f"Survey {self.survey_name} has a tracking detailer but "
@@ -488,7 +485,7 @@ def gen_too_surveys(
             bands_at_times=bands_at_times,
             nvis=nvis,
             exptimes=exptimes,
-            detailers=detailer_list,
+            detailers=deepcopy(detailer_list),
             too_types_to_follow=["GW_case_A"],
             survey_name="ToO, GW_case_A",
             split_long=split_long,
@@ -517,7 +514,7 @@ def gen_too_surveys(
             bands_at_times=bands_at_times,
             nvis=nvis,
             exptimes=exptimes,
-            detailers=detailer_list,
+            detailers=deepcopy(detailer_list),
             too_types_to_follow=["GW_case_B", "GW_case_C"],
             survey_name="ToO, GW_case_B_C",
             target_name_base="GW_case_B_C",
@@ -546,7 +543,7 @@ def gen_too_surveys(
             bands_at_times=bands_at_times,
             nvis=nvis,
             exptimes=exptimes,
-            detailers=detailer_list,
+            detailers=deepcopy(detailer_list),
             too_types_to_follow=["GW_case_D", "GW_case_E"],
             survey_name="ToO, GW_case_D_E",
             target_name_base="GW_case_D_E",
@@ -594,7 +591,7 @@ def gen_too_surveys(
             bands_at_times=bands_at_times,
             nvis=nvis,
             exptimes=exptimes,
-            detailers=detailer_list,
+            detailers=deepcopy(detailer_list),
             too_types_to_follow=["BBH_case_A", "BBH_case_B", "BBH_case_C"],
             survey_name="ToO, BBH",
             target_name_base="BBH",
@@ -625,7 +622,7 @@ def gen_too_surveys(
             bands_at_times=bands_at_times,
             nvis=nvis,
             exptimes=exptimes,
-            detailers=detailer_list,
+            detailers=deepcopy(detailer_list),
             too_types_to_follow=["lensed_BNS_case_A"],
             survey_name="ToO, LensedBNS_A",
             target_name_base="LensedBNS_A",
@@ -652,7 +649,7 @@ def gen_too_surveys(
             bands_at_times=bands_at_times,
             nvis=nvis,
             exptimes=exptimes,
-            detailers=detailer_list,
+            detailers=deepcopy(detailer_list),
             too_types_to_follow=["lensed_BNS_case_B"],
             survey_name="ToO, LensedBNS_B",
             target_name_base="LensedBNS_B",
@@ -690,7 +687,7 @@ def gen_too_surveys(
             bands_at_times=bands_at_times,
             nvis=nvis,
             exptimes=exptimes,
-            detailers=detailer_list,
+            detailers=deepcopy(detailer_list),
             too_types_to_follow=["neutrino"],
             survey_name="ToO, neutrino",
             target_name_base="neutrino",
@@ -718,7 +715,7 @@ def gen_too_surveys(
             bands_at_times=bands_at_times,
             nvis=nvis,
             exptimes=exptimes,
-            detailers=detailer_list,
+            detailers=deepcopy(detailer_list),
             too_types_to_follow=["neutrino"],
             survey_name="ToO, neutrino_u",
             target_name_base="neutrino_u",
@@ -751,7 +748,7 @@ def gen_too_surveys(
             bands_at_times=bands_at_times,
             nvis=nvis,
             exptimes=exptimes,
-            detailers=detailer_list,
+            detailers=deepcopy(detailer_list),
             too_types_to_follow=["SSO_night"],
             survey_name="ToO, SSO_night",
             target_name_base="SSO_night",
@@ -777,7 +774,7 @@ def gen_too_surveys(
             bands_at_times=bands_at_times,
             nvis=nvis,
             exptimes=exptimes,
-            detailers=detailer_list,
+            detailers=deepcopy(detailer_list),
             too_types_to_follow=["SSO_twilight"],
             survey_name="ToO, SSO_twi",
             target_name_base="SSO_twi",
@@ -810,7 +807,7 @@ def gen_too_surveys(
             bands_at_times=bands_at_times,
             nvis=nvis,
             exptimes=exptimes,
-            detailers=detailer_list,
+            detailers=deepcopy(detailer_list),
             too_types_to_follow=["SN_Galactic"],
             survey_name="ToO, galactic SN",
             target_name_base="SN_Galactic",
