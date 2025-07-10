@@ -1,7 +1,32 @@
-__all__ = ("ddf_locations_skycoord", "ddf_locations", "ddf_locations_pre3_5")
+__all__ = ("ddf_locations_skycoord", "ddf_locations", "ddf_locations_pre3_5", "special_locations")
 
 import astropy.units as u
 from astropy.coordinates import SkyCoord
+
+
+def special_locations(skycoords=False):
+    """Special locations.
+
+    Parameters
+    ----------
+    skycoords : `bool`
+        Return locations as astropy.SkyCoords. If False, returns
+        as a tuple of floats. Default False.
+    """
+
+    # Roman bulge field location
+    roman_ra_deg = 268.708
+    roman_dec_deg = -28.975
+
+    result = {}
+    if skycoords:
+        result["Roman_bulge_location"] = SkyCoord(roman_ra_deg * u.deg, roman_dec_deg * u.deg, frame="icrs")
+        result.update(ddf_locations_skycoord())
+    else:
+        result["Roman_bulge_location"] = (roman_ra_deg, roman_dec_deg)
+        result.update(ddf_locations())
+
+    return result
 
 
 def ddf_locations_skycoord():

@@ -5,7 +5,7 @@ import warnings
 import rubin_scheduler.scheduler.basis_functions as bf
 import rubin_scheduler.scheduler.detailers as detailers
 from rubin_scheduler.scheduler.surveys import DeepDrillingSurvey
-from rubin_scheduler.utils import DEFAULT_NSIDE
+from rubin_scheduler.utils import DEFAULT_NSIDE, special_locations
 
 
 def roman_info():
@@ -15,8 +15,10 @@ def roman_info():
     # spring 2031, fall 2031
 
     result = {}
-    result["RA"] = 268.708
-    result["dec"] = -28.975
+    locations = special_locations()
+
+    result["RA"] = locations["Roman_bulge_location"][0]
+    result["dec"] = locations["Roman_bulge_location"][1]
 
     # Guessing these from the notebook in same dir.
     observing_season_mid_mjds = [61947.3, 62318.8, 62670.3, 63067.2, 63381.4, 63773.2]
