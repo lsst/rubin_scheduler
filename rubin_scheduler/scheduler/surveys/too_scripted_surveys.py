@@ -666,9 +666,10 @@ def gen_too_surveys(
     # Neutrino detector followup
     ############
 
-    times = [0, 15 / 60.0, 0, 24, 24, 144, 144]
-    bands_at_times = ["g", "r", "z", "g", "r", "g", "rz"]
+    times = [0, 0, 15 / 60.0, 0, 24, 24, 144, 144]
+    bands_at_times = ["u", "g", "r", "z", "g", "r", "g", "rz"]
     exptimes = [
+        30,
         120,
         DEFAULT_EXP_TIME,
         DEFAULT_EXP_TIME,
@@ -677,7 +678,7 @@ def gen_too_surveys(
         120,
         DEFAULT_EXP_TIME,
     ]
-    nvis = [1, 1, 1, 1, 1, 1, 1]
+    nvis = [1, 1, 1, 1, 1, 1, 1, 1]
 
     result.append(
         ToOScriptedSurvey(
@@ -696,34 +697,6 @@ def gen_too_surveys(
             science_program=science_program,
             split_long=split_long,
             flushtime=48,
-            n_snaps=n_snaps,
-        )
-    )
-
-    times = [0]
-    bands_at_times = ["u"]
-    exptimes = [DEFAULT_EXP_TIME]
-    nvis = [1]
-
-    # U-band with very long flush time.
-
-    result.append(
-        ToOScriptedSurvey(
-            bf_list,
-            nside=nside,
-            followup_footprint=too_footprint,
-            times=times,
-            bands_at_times=bands_at_times,
-            nvis=nvis,
-            exptimes=exptimes,
-            detailers=deepcopy(detailer_list),
-            too_types_to_follow=["neutrino"],
-            survey_name="ToO, neutrino_u",
-            target_name_base="neutrino_u",
-            observation_reason=observation_reason,
-            science_program=science_program,
-            split_long=split_long,
-            flushtime=1440,
             n_snaps=n_snaps,
         )
     )
