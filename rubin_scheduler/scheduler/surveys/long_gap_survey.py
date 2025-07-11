@@ -198,9 +198,6 @@ class LongGapSurvey(BaseSurvey):
             sched_array["target_name"] = ""
             sched_array["observation_reason"] = "triplet_long_gap"
             sched_array["science_program"] = self.science_program
-            # Don't let the desired rotSkyPos block the observation.
-            sched_array["rotSkyPos_desired"] = sched_array["rotSkyPos"]
-            sched_array["rotSkyPos"] = np.nan
 
             self.scripted_survey.set_script(sched_array, append=True)
 
