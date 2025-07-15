@@ -5,7 +5,6 @@ from astropy.coordinates import SkyCoord
 from rubin_scheduler.utils import (
     ddf_locations,
     ddf_locations_pre3_5,
-    ddf_locations_skycoord,
     special_locations,
 )
 
@@ -24,7 +23,7 @@ class LocationsTests(unittest.TestCase):
             assert isinstance(ddf_loc[key][0], float)
             assert isinstance(ddf_loc[key][1], float)
 
-        ddf_skycoords = ddf_locations_skycoord()
+        ddf_skycoords = ddf_locations(skycoords=True)
         for key in ddf_skycoords:
             assert isinstance(ddf_skycoords[key], SkyCoord)
 
