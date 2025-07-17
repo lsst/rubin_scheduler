@@ -170,7 +170,17 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         self.camera = camera
         # Load the OpSim field tesselation and map healpix to fields
         if self.camera == "LSST":
-            ra, dec = _read_fields()
+            ### Stopgap attempt - SM ###
+            def IndexToDeclRa(index): # Helper function
+                theta,phi=hp.pixelfunc.pix2ang(NSIDE,index)
+                return -np.degrees(theta-pi/2.),np.degrees(pi*2.-phi)
+            npix = 12*self.nside**2 # Total pix in skymap
+            ra, dec = [],[]
+            for ind in range(npix):
+                dec_ra = IndexToDeclRa(ind)
+                dec.append(np.radians(dec_ra[0]))
+                ra.append(np.radians(dec_ra[1]))
+            ### End stopgap attempt ###
             self.fields_init = np.empty(ra.size, dtype=list(zip(["RA", "dec"], [float, float])))
             self.fields_init["RA"] = ra
             self.fields_init["dec"] = dec
