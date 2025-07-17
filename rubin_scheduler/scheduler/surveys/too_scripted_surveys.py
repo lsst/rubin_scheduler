@@ -16,8 +16,8 @@ from rubin_scheduler.scheduler.utils import (
     thetaphi2xyz,
     xyz2thetaphi,
 )
-# from rubin_scheduler.site_models import _read_fields # commenting out, following stopgap
-# solution for pointings
+# from rubin_scheduler.site_models import _read_fields # commenting 
+# out, following stopgap solution for pointings
 from rubin_scheduler.utils import DEFAULT_NSIDE, _approx_ra_dec2_alt_az, _ra_dec2_hpid
 
 
@@ -174,7 +174,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
             ### Stopgap attempt - SM ###
             def IndexToDeclRa(index,NSIDE): # Helper function
                 theta,phi=hp.pixelfunc.pix2ang(NSIDE,index)
-                return -np.degrees(theta-np.pi/2.),np.degrees(pi*2.-phi)
+                return -np.degrees(theta-np.pi/2.),np.degrees(np.pi*2.-phi)
             npix = 12*self.nside**2 # Total pix in skymap
             ra, dec = [],[]
             for ind in range(npix):
