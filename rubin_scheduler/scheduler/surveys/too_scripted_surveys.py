@@ -16,10 +16,10 @@ from rubin_scheduler.scheduler.utils import (
     thetaphi2xyz,
     xyz2thetaphi,
 )
-# from rubin_scheduler.site_models import _read_fields # commenting
-# out, following stopgap solution for pointings
 from rubin_scheduler.utils import DEFAULT_NSIDE, _approx_ra_dec2_alt_az, _ra_dec2_hpid
 
+# from rubin_scheduler.site_models import _read_fields
+# commenting out, following stopgap solution for pointings
 
 def rotx(theta, x, y, z):
     """rotate the x,y,z points theta radians about x axis"""
