@@ -159,12 +159,15 @@ class ConsDBVisits(ABC):
         File from which to load the token. If `None`, use the ``lsst.rsp``
         (if available) or the ``ACCESS_TOKEN`` environment variable.
         Defaults to `None`.
+    constraints : `str`
+        Additional constraints in the SQL query to send to consdb.
     """
 
     day_obs: str | int
     url: str | None = None
     num_nights: int = 1
     token_file: str | None = None
+    constraints: str = ""
 
     def _have_numeric_values(self, column) -> bool:
         if column not in self.consdb_visits.columns:
@@ -371,6 +374,9 @@ class ConsDBVisits(ABC):
                 AND v.day_obs <= {self.day_obs_int}
                 AND v.day_obs > {prior_day_obs_int}
         """
+        if len(self.constraints) > 0:
+            consdb_visits_query += f" AND ({self.constraints})"
+
         return query_consdb(consdb_visits_query, self.url, self.token_file)
 
     @cached_property
