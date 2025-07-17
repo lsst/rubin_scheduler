@@ -21,6 +21,7 @@ from rubin_scheduler.utils import DEFAULT_NSIDE, _approx_ra_dec2_alt_az, _ra_dec
 # from rubin_scheduler.site_models import _read_fields
 # commenting out, following stopgap solution for pointings
 
+
 def rotx(theta, x, y, z):
     """rotate the x,y,z points theta radians about x axis"""
     sin_t = np.sin(theta)
@@ -172,13 +173,14 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         # Load the OpSim field tesselation and map healpix to fields
         if self.camera == "LSST":
             ### Stopgap attempt - SM ###
-            def IndexToDeclRa(index,NSIDE): # Helper function
-                theta,phi=hp.pixelfunc.pix2ang(NSIDE,index)
-                return -np.degrees(theta-np.pi/2.),np.degrees(np.pi*2.-phi)
-            npix = 12*self.nside**2 # Total pix in skymap
-            ra, dec = [],[]
+            def IndexToDeclRa(index, NSIDE):  # Helper function
+                theta, phi = hp.pixelfunc.pix2ang(NSIDE, index)
+                return -np.degrees(theta - np.pi / 2.0), np.degrees(np.pi * 2.0 - phi)
+
+            npix = 12 * self.nside**2  # Total pix in skymap
+            ra, dec = [], []
             for ind in range(npix):
-                dec_ra = IndexToDeclRa(ind,self.nside)
+                dec_ra = IndexToDeclRa(ind, self.nside)
                 dec.append(np.radians(dec_ra[0]))
                 ra.append(np.radians(dec_ra[1]))
             ### End stopgap attempt ###
