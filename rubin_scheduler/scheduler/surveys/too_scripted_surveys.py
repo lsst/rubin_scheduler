@@ -184,7 +184,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
                 dec.append(np.radians(dec_ra[0]))
                 ra.append(np.radians(dec_ra[1]))
             ### End stopgap attempt ###
-            self.fields_init = np.empty(ra.size, dtype=list(zip(["RA", "dec"], [float, float])))
+            self.fields_init = np.empty(len(ra), dtype=list(zip(["RA", "dec"], [float, float])))
             self.fields_init["RA"] = ra
             self.fields_init["dec"] = dec
         elif self.camera == "comcam":
