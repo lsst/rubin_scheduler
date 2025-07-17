@@ -16,8 +16,10 @@ from rubin_scheduler.scheduler.utils import (
     thetaphi2xyz,
     xyz2thetaphi,
 )
-from rubin_scheduler.site_models import _read_fields
 from rubin_scheduler.utils import DEFAULT_NSIDE, _approx_ra_dec2_alt_az, _ra_dec2_hpid
+
+# from rubin_scheduler.site_models import _read_fields
+# commenting out, following stopgap solution for pointings
 
 
 def rotx(theta, x, y, z):
@@ -170,8 +172,19 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         self.camera = camera
         # Load the OpSim field tesselation and map healpix to fields
         if self.camera == "LSST":
-            ra, dec = _read_fields()
-            self.fields_init = np.empty(ra.size, dtype=list(zip(["RA", "dec"], [float, float])))
+            ### Stopgap attempt - SM ###
+            def IndexToDeclRa(index, NSIDE):  # Helper function
+                theta, phi = hp.pixelfunc.pix2ang(NSIDE, index)
+                return -np.degrees(theta - np.pi / 2.0), np.degrees(np.pi * 2.0 - phi)
+
+            npix = 12 * self.nside**2  # Total pix in skymap
+            ra, dec = [], []
+            for ind in range(npix):
+                dec_ra = IndexToDeclRa(ind, self.nside)
+                dec.append(np.radians(dec_ra[0]))
+                ra.append(np.radians(dec_ra[1]))
+            ### End stopgap attempt ###
+            self.fields_init = np.empty(len(ra), dtype=list(zip(["RA", "dec"], [float, float])))
             self.fields_init["RA"] = ra
             self.fields_init["dec"] = dec
         elif self.camera == "comcam":
