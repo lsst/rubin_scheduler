@@ -17,7 +17,13 @@ from rubin_scheduler.scheduler.utils import (
     xyz2thetaphi,
 )
 from rubin_scheduler.site_models import _read_fields
-from rubin_scheduler.utils import DEFAULT_NSIDE, _approx_ra_dec2_alt_az, _ra_dec2_hpid
+from rubin_scheduler.utils import (
+    DEFAULT_NSIDE,
+    _approx_ra_dec2_alt_az,
+    _build_tree,
+    _hpid2_ra_dec,
+    _ra_dec2_hpid,
+)
 
 
 def rotx(theta, x, y, z):
@@ -72,6 +78,10 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
     event_gen_detailers : `list`
         A list of detailers to run on arrays right after generating
         a list.
+    simple_single_tesselate : `bool`
+        If tesselating a single HEALpixel, use the center of the
+        HEALpixel for the pointing rather than try to look up
+        pointings that cover the center and all corners. Default True.
     """
 
     def __init__(
@@ -80,7 +90,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         followup_footprint=None,
         nside=DEFAULT_NSIDE,
         reward_val=1e6,
-        times=[1, 2, 4, 24, 48],
+        times=[1, 2, 4, 8, 24, 48],
         bands_at_times=["gz", "gz", "gz", "gz", "gz", "gz"],
         nvis=[1, 1, 1, 1, 6, 6],
         exptimes=[DEFAULT_EXP_TIME] * 6,
@@ -111,6 +121,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         filters_at_times=None,
         event_gen_detailers=None,
         return_n_limit=500,
+        simple_single_tesselate=True,
     ):
         if filters_at_times is not None:
             warnings.warn("filters_at_times deprecated in favor of bands_at_times", FutureWarning)
@@ -150,6 +161,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         self.return_n_limit = return_n_limit
         self.extra_features = {}
         self.extra_basis_functions = {}
+        self.simple_single_tesselate = simple_single_tesselate
         if detailers is None:
             self.detailers = []
         else:
@@ -180,8 +192,8 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
             ValueError('camera %s unknown, should be "LSST" or "comcam"' % camera)
         self.fields = self.fields_init.copy()
 
-        self.hp2fields = np.array([])
         self._hp2fieldsetup(self.fields["RA"], self.fields["dec"])
+        self._hpcorners2fieldsetup(self.fields["RA"], self.fields["dec"])
 
         # Don't bother with checking if we can run before twilight ends
         self.before_twi_check = False
@@ -274,17 +286,43 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         # XXX-may be doing some ra,dec to conversions xyz more
         # than needed.
         self._hp2fieldsetup(ra, dec)
+        self._hpcorners2fieldsetup(ra, dec)
 
         # Advance the spin index
         self.spin_indx += 1
 
+    def _hpcorners2fieldsetup(self, ra, dec):
+        """Map each healpixel corner to nearest field.
+        Parameters
+        ----------
+        ra : `float`
+            The RA of the possible pointings (radians)
+        dec : `float`
+            The decs of the possible pointings (radians)
+        """
+        hpid = np.arange(hp.nside2npix(self.nside))
+        xyz = hp.boundaries(self.nside, hpid)
+        tree = _build_tree(ra, dec)
+
+        self.hpcorners2fields = []
+        for i in range(4):
+            dist, ind = tree.query(np.vstack([xyz[:, 0, i], xyz[:, 1, i], xyz[:, 2, i]]).T, k=1)
+            self.hpcorners2fields.append(ind)
+
     def _tesselate(self, hpid_to_observe):
-        self._spin_fields()
-        field_ids = np.unique(self.hp2fields[hpid_to_observe])
-        # Put the fields in a good order.
-        better_order = order_observations(self.fields["RA"][field_ids], self.fields["dec"][field_ids])
-        ras = self.fields["RA"][field_ids[better_order]]
-        decs = self.fields["dec"][field_ids[better_order]]
+
+        if self.simple_single_tesselate & (len(hpid_to_observe) == 1):
+            ras, decs = _hpid2_ra_dec(self.nside, hpid_to_observe)
+        else:
+            self._spin_fields()
+            center_field_ids = np.unique(self.hp2fields[hpid_to_observe])
+            corners = np.concatenate([np.unique(ind[hpid_to_observe]) for ind in self.hpcorners2fields])
+            field_ids = np.unique(np.concatenate([center_field_ids, corners]))
+
+            # Put the fields in a good order.
+            better_order = order_observations(self.fields["RA"][field_ids], self.fields["dec"][field_ids])
+            ras = self.fields["RA"][field_ids[better_order]]
+            decs = self.fields["dec"][field_ids[better_order]]
 
         return ras, decs
 
