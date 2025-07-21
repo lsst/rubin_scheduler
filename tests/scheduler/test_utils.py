@@ -178,7 +178,7 @@ class TestUtils(unittest.TestCase):
 
         scheduler = example_scheduler(mjd_start=mjd_start)
 
-        mo = ModelObservatory(mjd_start=mjd_start, downtimes="ideal")
+        mo = ModelObservatory(mjd_start=mjd_start, downtimes="ideal", cloud_data="ideal")
         # Never load too many nights of sky
         mo.sky_model.load_length = 10.0
         mo, scheduler, observations = sim_runner(
@@ -202,7 +202,7 @@ class TestUtils(unittest.TestCase):
         break_indx = np.min(np.where((observations["ID"] >= n_visit_limit / 2.0) & (nd != 0))[0])
         new_n_limit = n_visit_limit - break_indx
 
-        new_mo = ModelObservatory(mjd_start=mjd_start, downtimes="ideal")
+        new_mo = ModelObservatory(mjd_start=mjd_start, downtimes="ideal", cloud_data="ideal")
         # Never load too much sky
         new_mo.sky_model.load_length = 10.0
         new_sched = example_scheduler(mjd_start=mjd_start)
@@ -239,7 +239,7 @@ class TestUtils(unittest.TestCase):
             assert np.all(new_obs == observations[break_indx:])
 
         # And again, but this time using the fast array restore
-        new_mo = ModelObservatory(mjd_start=mjd_start, downtimes="ideal")
+        new_mo = ModelObservatory(mjd_start=mjd_start, downtimes="ideal", cloud_data="ideal")
         new_mo.sky_model.load_length = 10.0
         new_sched = example_scheduler(mjd_start=mjd_start)
         new_sched, new_mo = restore_scheduler(break_indx - 1, new_sched, new_mo, observations, fast=True)
