@@ -82,6 +82,10 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         If tesselating a single HEALpixel, use the center of the
         HEALpixel for the pointing rather than try to look up
         pointings that cover the center and all corners. Default True.
+    dither_per_visit : `bool`
+        If nvis > 1, randomize the tesselation between each visit.
+        Probably what you want to do if you're searching for an event
+        and worried about chip and raft gaps. Default True.
     """
 
     def __init__(
@@ -122,6 +126,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         event_gen_detailers=None,
         return_n_limit=500,
         simple_single_tesselate=True,
+        dither_per_visit=True,
     ):
         if filters_at_times is not None:
             warnings.warn("filters_at_times deprecated in favor of bands_at_times", FutureWarning)
@@ -162,6 +167,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         self.extra_features = {}
         self.extra_basis_functions = {}
         self.simple_single_tesselate = simple_single_tesselate
+        self.dither_per_visit = dither_per_visit
         if detailers is None:
             self.detailers = []
         else:
@@ -315,11 +321,12 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
             ras, decs = _hpid2_ra_dec(self.nside, hpid_to_observe)
         else:
             self._spin_fields()
+            # Closest pointings to all the HEALpix centers
             center_field_ids = np.unique(self.hp2fields[hpid_to_observe])
+            # Closest pointings to all the HEALpix corners
             corners = np.concatenate([np.unique(ind[hpid_to_observe]) for ind in self.hpcorners2fields])
             field_ids = np.unique(np.concatenate([center_field_ids, corners]))
-
-            # Put the fields in a good order.
+            # Put the fields in a good order
             better_order = order_observations(self.fields["RA"][field_ids], self.fields["dec"][field_ids])
             ras = self.fields["RA"][field_ids[better_order]]
             decs = self.fields["dec"][field_ids[better_order]]
@@ -387,9 +394,11 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
                     self.exptimes,
                     np.arange(np.size(self.times)),
                 ):
+                    # Could potentially throw in a dither change here
+                    # so it is different at each time as well?
                     for i in range(nv):
                         # let's dither each pointing
-                        if (i != 0) & (hpid_to_observe.size > 0):
+                        if (i != 0) & (hpid_to_observe.size > 0) & (self.dither_per_visit):
                             ras, decs = self._tesselate(hpid_to_observe)
 
                         for bandname in bandnames:

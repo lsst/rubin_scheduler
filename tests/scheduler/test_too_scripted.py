@@ -1,8 +1,5 @@
 import unittest
 
-import numpy as np
-
-import rubin_scheduler.utils as utils
 from rubin_scheduler.scheduler.surveys import ToOScriptedSurvey
 
 

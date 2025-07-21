@@ -10,7 +10,6 @@ import pandas as pd
 
 from rubin_scheduler.scheduler.detailers import TrackingInfoDetailer, ZeroRotDetailer
 from rubin_scheduler.scheduler.utils import (
-    HpInLsstFov,
     ObservationArray,
     comcam_tessellate,
     rotx,
