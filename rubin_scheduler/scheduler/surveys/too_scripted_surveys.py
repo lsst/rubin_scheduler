@@ -6,7 +6,6 @@ from copy import copy, deepcopy
 import healpy as hp
 import numpy as np
 
-import rubin_scheduler.scheduler.basis_functions as basis_functions
 from rubin_scheduler.scheduler.detailers import BandPickToODetailer, TrackingInfoDetailer
 from rubin_scheduler.scheduler.surveys import BaseMarkovSurvey, ScriptedSurvey
 from rubin_scheduler.scheduler.utils import (
