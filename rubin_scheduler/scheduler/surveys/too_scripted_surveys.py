@@ -349,21 +349,21 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
                     self.exptimes,
                     np.arange(np.size(self.times)),
                 ):
-                    for i in range(nv):
-                        # let's dither each pointing
-                        if (i != 0) & (hpid_to_observe.size > 0):
-                            ras, decs = self._tesselate(hpid_to_observe)
+                    for bandname in bandnames:
+                        # Subsitute y for z if needed on first observation
+                        if i == 0:
+                            if (bandname == "z") & (bandname not in conditions.mounted_bands):
+                                bandname = "y"
+    
+                        if bandname == "u":
+                            nexp = self.n_usnaps
+                        else:
+                            nexp = self.n_snaps
 
-                        for bandname in bandnames:
-                            # Subsitute y for z if needed on first observation
-                            if i == 0:
-                                if (bandname == "z") & (bandname not in conditions.mounted_bands):
-                                    bandname = "y"
-
-                            if bandname == "u":
-                                nexp = self.n_usnaps
-                            else:
-                                nexp = self.n_snaps
+                        for i in range(nv):
+                            # let's dither each pointing
+                            if (i != 0) & (hpid_to_observe.size > 0):
+                                ras, decs = self._tesselate(hpid_to_observe)
 
                             # If we are doing a short exposure
                             # need to be 1 snap for shutter limits
