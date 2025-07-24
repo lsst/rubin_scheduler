@@ -551,7 +551,7 @@ def gen_too_surveys(
 
     times = [0, 2, 4, 24, 48, 72]
     bands_at_times = ["gri", "gri", "gri", "ri", "ri", "ri"]
-    nvis = [4,4,4, 6,6,6]
+    nvis = [4, 4, 4, 6, 6, 6]
     exptimes = [30.0, 30.0, 30.0, 30.0, 30.0, 30.0]
     result.append(
         ToOScriptedSurvey(
@@ -581,7 +581,7 @@ def gen_too_surveys(
     times = [0, 24, 48, 72]
     bands_at_times = ["gi", "gi", "gi", "gi"]
     nvis = [1, 4, 4, 4]
-    exptimes = [30.0,30.0,30.0,30.0]
+    exptimes = [30.0, 30.0, 30.0, 30.0]
     result.append(
         ToOScriptedSurvey(
             bf_list,
@@ -659,7 +659,7 @@ def gen_too_surveys(
     times = np.array([1.0, 1.0, 25, 25, 49, 49])
     bands_at_times = ["g", "r"] * 3
     nvis = [1, 3] * 3
-    exptimes = [DEFAULT_EXP_TIME,DEFAULT_EXP_TIME] * 3
+    exptimes = [DEFAULT_EXP_TIME, DEFAULT_EXP_TIME] * 3
 
     result.append(
         ToOScriptedSurvey(
