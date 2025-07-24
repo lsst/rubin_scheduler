@@ -18,6 +18,7 @@ from rubin_scheduler.scheduler.utils import (
 )
 from rubin_scheduler.site_models import _read_fields
 from rubin_scheduler.utils import DEFAULT_NSIDE, _approx_ra_dec2_alt_az, _ra_dec2_hpid
+import lsst.ts.fbs.utils.maintel.sv_surveys as svs
 
 
 def rotx(theta, x, y, z):
@@ -459,9 +460,8 @@ def gen_too_surveys(
     science_program=None,
 ):
     result = []
-    bf_list = []
-    bf_list.append(basis_functions.AvoidDirectWind(wind_speed_maximum=wind_speed_maximum, nside=nside))
-    bf_list.append(basis_functions.MoonAvoidanceBasisFunction(moon_distance=30.0))
+    bf_list = svs.safety_masks(nside=nside)
+
     ############
     # Generic GW followup
     ############
