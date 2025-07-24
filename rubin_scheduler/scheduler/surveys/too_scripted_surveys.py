@@ -696,7 +696,7 @@ def gen_too_surveys(
             observation_reason=observation_reason,
             science_program=science_program,
             split_long=split_long,
-            flushtime=20*24,
+            flushtime=20 * 24,
             n_snaps=n_snaps,
         )
     )
