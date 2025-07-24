@@ -351,10 +351,10 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
                 ):
                     for bandname in bandnames:
                         # Subsitute y for z if needed on first observation
-                        if i == 0:
+                        if bandname == bandnames[0]:
                             if (bandname == "z") & (bandname not in conditions.mounted_bands):
                                 bandname = "y"
-    
+
                         if bandname == "u":
                             nexp = self.n_usnaps
                         else:
