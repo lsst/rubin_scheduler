@@ -10,7 +10,6 @@ import pandas as pd
 
 from rubin_scheduler.scheduler.detailers import TrackingInfoDetailer, ZeroRotDetailer
 from rubin_scheduler.scheduler.utils import (
-    HpInLsstFov,
     ObservationArray,
     comcam_tessellate,
     rotx,
@@ -541,7 +540,6 @@ class BaseMarkovSurvey(BaseSurvey):
         else:
             self.fields_init = fields
         self.fields = self.fields_init.copy()
-        self.hp2fields = np.array([])
         self._hp2fieldsetup(self.fields["RA"], self.fields["dec"])
 
         if smoothing_kernel is not None:
@@ -619,19 +617,15 @@ class BaseMarkovSurvey(BaseSurvey):
         dec : `float`
             The decs of the possible pointings (radians)
         """
-        self.hp2fields = np.zeros(hp.nside2npix(self.nside), dtype=int)
-        if self.camera == "LSST":
-            pointing2hpindx = HpInLsstFov(nside=self.nside)
-            for i in range(len(ra)):
-                hpindx = pointing2hpindx(ra[i], dec[i], rotSkyPos=0.0)
-                self.hp2fields[hpindx] = i
-        elif self.camera == "comcam":
-            # Let's just map each healpix to the closest field location
-            tree = _build_tree(ra, dec)
-            hp_ra, hp_dec = _hpid2_ra_dec(self.nside, np.arange(hp.nside2npix(self.nside)))
-            x, y, z = _xyz_from_ra_dec(hp_ra, hp_dec)
-            dist, ind = tree.query(np.vstack([x, y, z]).T, k=1)
-            self.hp2fields = ind
+
+        # Let's just map each healpix to the closest field location
+        tree = _build_tree(ra, dec)
+        hp_ra, hp_dec = _hpid2_ra_dec(self.nside, np.arange(hp.nside2npix(self.nside)))
+        x, y, z = _xyz_from_ra_dec(hp_ra, hp_dec)
+        dist, ind = tree.query(np.vstack([x, y, z]).T, k=1)
+
+        # XXX--maybe add a check that distance isn't too large
+        self.hp2fields = ind
 
     def _spin_fields(self, indx, lon=None, lat=None, lon2=None):
         """Spin the field tessellation to generate a random orientation
