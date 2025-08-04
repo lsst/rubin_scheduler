@@ -279,7 +279,8 @@ class BandSortDetailer(BaseDetailer):
     Parameters
     ----------
     desired_band_order : `str`
-        The desired band order.
+        The desired band order. Default of None retains order
+        and only moves observations up if they match the current filter.
     loaded_first : `bool`
         If True, then the currently-in-use filter is always moved to
         the start of the desired band order, to remove the first filter change.
@@ -287,7 +288,7 @@ class BandSortDetailer(BaseDetailer):
 
     def __init__(
         self,
-        desired_band_order: str = "ugrizy",
+        desired_band_order: str = None,
         loaded_first: bool = True,
     ):
         self.desired_band_order = desired_band_order
@@ -298,6 +299,16 @@ class BandSortDetailer(BaseDetailer):
     ) -> ObservationArray:
 
         order_to_set = copy.copy(self.desired_band_order)
+
+        u_vals, indx = np.unique(observation_array["band"], return_index=True)
+        # If we have only 1 filter, nothing to sort, so return
+        if np.size(u_vals) == 1:
+            return observation_array
+
+        if order_to_set is None:
+            # unique values, in order they appear, as a string
+            order_to_set = "".join(u_vals[np.argsort(indx)].tolist())
+
         if self.loaded_first:
             order_to_set = order_to_set.replace(conditions.current_band, "")
             order_to_set = conditions.current_band + order_to_set
