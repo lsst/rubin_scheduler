@@ -451,16 +451,19 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
                     observations = detailer(observations, conditions, target_o_o=target_o_o)
                 self.set_script(observations)
 
-    def calc_reward_function(self, conditions):
-        """If there is an observation ready to go, execute it,
-        otherwise, -inf"""
-        # check if any new event has come in
-
+    def update_conditions(self, conditions):
         if conditions.targets_of_opportunity is not None:
             for target_o_o in conditions.targets_of_opportunity:
                 if target_o_o.id > self.last_event_id:
                     self._new_event(target_o_o, conditions)
                     self.last_event_id = target_o_o.id
+
+    def calc_reward_function(self, conditions):
+        """If there is an observation ready to go, execute it,
+        otherwise, -inf"""
+
+        # check if any new event has come in
+        self.update_conditions(conditions)
 
         observation = self.generate_observations_rough(conditions)
 
