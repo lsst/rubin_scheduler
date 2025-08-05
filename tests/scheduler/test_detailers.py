@@ -293,6 +293,81 @@ class TestDetailers(unittest.TestCase):
         for o in out_obs:
             self.assertEqual(o["observation_reason"], "pairs_space")
 
+    def test_band_sort(self):
+        """Test BandSortDetailer"""
+
+        detailer = detailers.BandSortDetailer()
+        conditions = Conditions()
+
+        conditions.current_band = "i"
+
+        obs = ObservationArray(2)
+        obs["band"][0] = "r"
+        obs["band"][1] = "z"
+
+        # Default settings should not change order
+        obs_out = detailer(obs, conditions)
+        assert (obs_out["band"][0] == "r") & (obs_out["band"][1] == "z")
+
+        # Swap, make sure still doesn't change order
+        obs = ObservationArray(2)
+        obs["band"][0] = "z"
+        obs["band"][1] = "r"
+
+        # Default settings should not change order
+        obs_out = detailer(obs, conditions)
+        assert (obs_out["band"][1] == "r") & (obs_out["band"][0] == "z")
+
+        # If r is loaded, should always swap to having r first
+        conditions.current_band = "r"
+
+        obs = ObservationArray(2)
+        obs["band"][0] = "r"
+        obs["band"][1] = "z"
+
+        # Default settings should not change order
+        obs_out = detailer(obs, conditions)
+        assert (obs_out["band"][0] == "r") & (obs_out["band"][1] == "z")
+
+        # Swap, make sure still doesn't change order
+        obs = ObservationArray(2)
+        obs["band"][0] = "z"
+        obs["band"][1] = "r"
+
+        # Default settings should not change order
+        obs_out = detailer(obs, conditions)
+        assert (obs_out["band"][0] == "r") & (obs_out["band"][1] == "z")
+
+        # If we want a specified order, ignore what's loaded
+        detailer = detailers.BandSortDetailer(desired_band_order="yzi", loaded_first=False)
+        conditions = Conditions()
+        conditions.current_band = "i"
+        obs = ObservationArray(3)
+        obs["band"][0] = "i"
+        obs["band"][1] = "y"
+        obs["band"][2] = "z"
+
+        obs_out = detailer(obs, conditions)
+
+        assert obs_out["band"][0] == "y"
+        assert obs_out["band"][1] == "z"
+        assert obs_out["band"][2] == "i"
+
+        # Same, but now do bump up band if loaded
+        detailer = detailers.BandSortDetailer(desired_band_order="yzi", loaded_first=True)
+        conditions = Conditions()
+        conditions.current_band = "i"
+        obs = ObservationArray(3)
+        obs["band"][0] = "i"
+        obs["band"][1] = "y"
+        obs["band"][2] = "z"
+
+        obs_out = detailer(obs, conditions)
+
+        assert obs_out["band"][0] == "i"
+        assert obs_out["band"][1] == "y"
+        assert obs_out["band"][2] == "z"
+
     def test_splitdither(self):
         obs = ObservationArray(5)
         input_notes = ["survey_a", "survey_b", "survey_a", "survey_b", "survey_a"]
