@@ -228,6 +228,12 @@ class CoreScheduler:
         # put the local queue in the conditions
         self.conditions.queue = self.queue
 
+        # Update conditions in all survey objects so they
+        # can generate scheduled observations for any new ToO events
+        for surveys in self.survey_lists:
+            for survey in surveys:
+                survey.update_conditions(conditions_in)
+
         # Check if any surveys have upcomming scheduled observations.
         # Note that we are accumulating all of the possible scheduled
         # observations, so it's up to the user to make sure things don't
