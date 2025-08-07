@@ -191,6 +191,10 @@ class Conditions:
         tel_alt_limits : `list` [`float`, `float`]
             A simple two-element list giving the valid altitude ranges
             for the telescope movement. Radians
+        commands_for_corescheduler : `dict`
+            Dictionary of commands for CoreScheduler to run. Should have
+            keys of strings corresponding to CoreScheduler methods, and
+            values of dicts with args to be passed to the bespoke method.
 
         Attributes (calculated on demand and cached)
         ------------------------------------------
@@ -341,6 +345,8 @@ class Conditions:
         self._solar_elongation = None
         self._az_to_sun = None
         self._az_to_antisun = None
+
+        self.commands_for_corescheduler = {}
 
     # We can get away with only using current_filter and mounted_filter
     # with getter/setter because we don't have to shim back to these

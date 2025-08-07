@@ -82,6 +82,16 @@ class CoreScheduler:
             self.survey_lists = surveys
         else:
             self.survey_lists = [surveys]
+
+        # Make a list of list of bools to track if a survey
+        # object is active
+        self.survey_active_tracking = []
+        for surveys in self.survey_lists:
+            active_tier = []
+            for survey in surveys:
+                active_tier.append(True)
+            self.survey_active_tracking.append(active_tier)
+
         self.nside = nside
         hpid = np.arange(hp.nside2npix(nside))
         self.ra_grid_rad, self.dec_grid_rad = _hpid2_ra_dec(nside, hpid)
@@ -228,6 +238,10 @@ class CoreScheduler:
         # put the local queue in the conditions
         self.conditions.queue = self.queue
 
+        # Execute any commands that have been passed in via conditions:
+        for key in conditions_in.commands_for_corescheduler:
+            getattr(self, key)(**conditions_in.commands_for_corescheduler[key])
+
         # Check if any surveys have upcomming scheduled observations.
         # Note that we are accumulating all of the possible scheduled
         # observations, so it's up to the user to make sure things don't
@@ -263,6 +277,21 @@ class CoreScheduler:
             ):
                 result = True
         return result
+
+    def deactivate_tier(self, tier_int):
+        """Set a survey tier to False."""
+        for i, val in enumerate(self.survey_active_tracking[tier_int]):
+            self.survey_active_tracking[tier_int][i] = False
+
+    def activate_tier(self, tier_int):
+        for i, val in enumerate(self.survey_active_tracking[tier_int]):
+            self.survey_active_tracking[tier_int][i] = True
+
+    def deactivate_survey(self, tier_int, survey_int):
+        self.survey_active_tracking[tier_int][survey_int] = False
+
+    def activate_survey(self, tier_int, survey_int):
+        self.survey_active_tracking[tier_int][survey_int] = True
 
     def request_observation(self, mjd=None, whole_queue=False):
         """
@@ -353,13 +382,17 @@ class CoreScheduler:
         for ns, surveys in enumerate(self.survey_lists):
             rewards = np.zeros(len(surveys))
             for i, survey in enumerate(surveys):
-                # For each survey, find the highest reward value.
-                all_rewards_this_survey = survey.calc_reward_function(self.conditions)
-                rewards[i] = (
-                    np.nan
-                    if np.all(np.isnan(all_rewards_this_survey))
-                    else np.nanmax(all_rewards_this_survey)
-                )
+                # only execute if survey should be active:
+                if self.survey_active_tracking[ns][i]:
+                    # For each survey, find the highest reward value.
+                    all_rewards_this_survey = survey.calc_reward_function(self.conditions)
+                    rewards[i] = (
+                        np.nan
+                        if np.all(np.isnan(all_rewards_this_survey))
+                        else np.nanmax(all_rewards_this_survey)
+                    )
+                else:
+                    rewards[i] = -np.inf
             # If we have a tier with a good reward, break out of the loop
             if np.nanmax(rewards) > -np.inf:
                 self.survey_index[0] = ns
