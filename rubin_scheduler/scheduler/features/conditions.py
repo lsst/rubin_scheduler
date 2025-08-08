@@ -12,6 +12,7 @@ import pandas as pd
 from rubin_scheduler.scheduler.utils import match_hp_resolution, smallest_signed_angle
 from rubin_scheduler.utils import (
     DEFAULT_NSIDE,
+    JD2MJDOFFSET,
     Site,
     _angular_separation,
     _approx_altaz2pa,
@@ -225,6 +226,9 @@ class Conditions:
         solar_elongation : `np.ndarray`, (N,)
             Healpix map of the solar elongation (angular distance to the sun)
             for each healpixel (radians)
+        int_jd : `int`
+            The integer value for Julian Date. Can be a handy substitute for
+            "night" as everyone should agree on the calculation of it.
 
         Attributes (set by the scheduler)
         -------------------------------
@@ -270,6 +274,7 @@ class Conditions:
         self._mounted_filters = None
         self.night = None
         self._lmst = None
+        self._int_jd = None
         # Should be a dict with bandname keys
         self._skybrightness = {}
         self._fwhm_eff = {}
@@ -385,6 +390,15 @@ class Conditions:
     def calc_ha(self):
         self._HA = np.radians(self.lmst * 360.0 / 24.0) - self.ra
         self._HA[np.where(self._HA < 0)] += 2.0 * np.pi
+
+    @property
+    def int_jd(self):
+        if self._int_jd is None:
+            self.calc_int_jd()
+        return self._int_jd
+
+    def calc_int_jd(self):
+        self._int_jd = np.floor(self.mjd + JD2MJDOFFSET).astype(int)
 
     @property
     def slewtime(self):

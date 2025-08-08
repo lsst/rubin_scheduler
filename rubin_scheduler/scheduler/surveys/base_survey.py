@@ -520,7 +520,7 @@ class BaseMarkovSurvey(BaseSurvey):
         )
 
         self.basis_weights = basis_weights
-        self.current_night = 0
+        self.current_int_jd = 0
         # Check that weights and basis functions are same length
         if len(basis_functions) != np.size(basis_weights):
             raise ValueError("basis_functions and basis_weights must be same length.")
@@ -553,7 +553,7 @@ class BaseMarkovSurvey(BaseSurvey):
             self.area_required = area_required * (np.pi / 180.0) ** 2  # To steradians
 
         # Start tracking the night
-        self.night = -1
+        self.int_jd = -1
 
         if dither in [True, False]:
             survey_name = self.survey_name
@@ -576,6 +576,7 @@ class BaseMarkovSurvey(BaseSurvey):
             npositions = (npositions, npositions)
         rng = np.random.default_rng(seed)
         self.lon = rng.random(npositions) * np.pi * 2
+        self.npositions = npositions
         # Make sure latitude points spread correctly
         # http://mathworld.wolfram.com/SpherePointPicking.html
         self.lat = np.arccos(2.0 * rng.random(npositions) - 1.0)
@@ -644,6 +645,11 @@ class BaseMarkovSurvey(BaseSurvey):
         lon2 : float (None)
             The amount to rotate the pole in longitude (radians).
         """
+
+        # If we go past where we have pre-generated offsets,
+        # just loop around.
+        indx = indx % self.npositions
+
         if lon is None:
             lon = self.lon[indx]
         if lat is None:
@@ -714,14 +720,14 @@ class BaseMarkovSurvey(BaseSurvey):
         self.reward = self.calc_reward_function(conditions)
 
         # Check if we need to spin the tesselation
-        if (self.dither == "night") & (conditions.night != self.night):
-            self._spin_fields(conditions.night)
-            self.night = copy(conditions.night)
+        if (self.dither == "night") & (conditions.int_jd != self.int_jd):
+            self._spin_fields(conditions.int_jd)
+            self.int_jd = copy(conditions.int_jd)
         elif self.dither == "call":
-            if conditions.night != self.current_night:
-                self.current_night = conditions.night
+            if conditions.int_jd != self.current_int_jd:
+                self.current_int_jd = conditions.int_jd
                 self.call_num = 0
-            self._spin_fields((conditions.night, self.call_num))
+            self._spin_fields((conditions.int_jd, self.call_num))
             self.call_num += 1
 
         # XXX Use self.reward to decide what to observe.
