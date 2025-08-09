@@ -53,14 +53,42 @@ class TestBandSchedulers(unittest.TestCase):
         # known time with known filters
         tt = Time("2025-08-05T20:00:00")
         conditions = Conditions(nside=8, mjd=tt.mjd)
-        self.assertEqual(bandsched(conditions), ["r", "i", "z", "y"])
+        self.assertEqual(
+            bandsched(conditions),
+            [
+                "u",
+                "r",
+                "i",
+                "z",
+            ],
+        )
         # full moon, past the current end of the band scheduler
         tt2 = Time("2025-11-05T20:00:00")
         conditions = Conditions(nside=8, mjd=tt2.mjd)
         conditions.moon_phase_sunset = 100
         self.assertEqual(bandsched(conditions), ["g", "r", "i", "z", "y"])
-        # Set values
-        date_swaps = {Time("2025-08-05T12:00:00"): ["u", "g"], Time("2025-08-06T12:00:00"): ["z", "y"]}
+        # Set values - including override history
+        date_swaps = {"2025-08-05": ["u", "g"], "2025-08-06": ["z", "y"]}
+        end_date = Time("2025-08-07T12:00:00")
+        backup_band_scheduler = SimpleBandSched(illum_limit=50)
+        bandsched = DateSwapBandScheduler(
+            swap_schedule=date_swaps, end_date=end_date, backup_band_scheduler=backup_band_scheduler
+        )
+        tt = Time("2025-08-05T20:00:00")
+        conditions = Conditions(nside=8, mjd=tt.mjd)
+        self.assertEqual(bandsched(conditions), ["u", "g"])
+        tt = Time("2025-08-06T20:00:00")
+        conditions = Conditions(nside=8, mjd=tt.mjd)
+        self.assertEqual(bandsched(conditions), ["z", "y"])
+        tt = Time("2025-08-07T20:00:00")
+        conditions = Conditions(nside=8, mjd=tt.mjd)
+        conditions.moon_phase_sunset = 25
+        self.assertEqual(bandsched(conditions), ["u", "g", "r", "i", "z"])
+        # And just check that sorting doesn't matter in the input dicts
+        date_swaps = {
+            "2025-08-06": ["z", "y"],
+            "2025-08-05": ["u", "g"],
+        }
         end_date = Time("2025-08-07T12:00:00")
         backup_band_scheduler = SimpleBandSched(illum_limit=50)
         bandsched = DateSwapBandScheduler(
