@@ -162,6 +162,14 @@ class BaseSurvey:
 
         return mask
 
+    def update_conditions(self, conditions):
+        """Pass the latest conditions to the survey.
+
+        Usually not relevant, but ScriptedSurveys and ToOs
+        may want to update.
+        """
+        pass
+
     def _generate_survey_name(self):
         self.survey_name = ""
 
