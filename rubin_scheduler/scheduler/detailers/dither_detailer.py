@@ -8,6 +8,7 @@ __all__ = (
     "DeltaCoordDitherDetailer",
 )
 
+import copy
 import warnings
 
 import numpy as np
@@ -51,24 +52,42 @@ class DitherDetailer(BaseDetailer):
         self.max_dither = np.radians(max_dither)
         self.per_night = per_night
         self.rng = np.random.default_rng(seed)
+
+        self.n_positions = copy.copy(nnights)
+
+        if not per_night:
+            nnights = (nnights, nnights)
+
         self.angles = self.rng.random(nnights) * 2 * np.pi
         self.radii = self.max_dither * np.sqrt(self.rng.random(nnights))
-        self.offsets = (self.rng.random((nnights, 2)) - 0.5) * 2.0 * self.max_dither
-        self.offset = None
+
+        self.offset_ra = None
+        self.offset_dec = None
+        self.indx_in_night = 0
+        self.current_night = -1
 
     def _generate_offsets(self, n_offsets, night):
+
         if self.per_night:
             if night != self.current_night:
                 self.current_night = night
-                self.offset = self.offsets[night, :]
                 angle = self.angles[night]
                 radius = self.radii[night]
-                self.offset = np.array([radius * np.cos(angle), radius * np.sin(angle)])
-            offsets = np.tile(self.offset, (n_offsets, 1))
+
+                self.offset_ra = radius * np.cos(angle)
+                self.offset_dec = radius * np.sin(angle)
+            offsets = np.tile(np.array([self.offset_ra, self.offset_dec]), (n_offsets, 1))
         else:
-            angle = self.rng.random(n_offsets) * 2 * np.pi
-            radius = self.max_dither * np.sqrt(self.rng.random(n_offsets))
-            offsets = np.array([radius * np.cos(angle), radius * np.sin(angle)]).T
+            if night != self.current_night:
+                self.indx_in_night = 0
+                self.current_night = night
+            angle = self.angles[night, self.indx_in_night : self.indx_in_night + n_offsets]
+            radius = self.radii[night, self.indx_in_night : self.indx_in_night + n_offsets]
+            offsets_ra = radius * np.cos(angle)
+            offsets_dec = radius * np.sin(angle)
+            offsets = np.array([offsets_ra, offsets_dec]).T
+            self.indx_in_night += n_offsets
+            self.indx_in_night = self.indx_in_night % self.n_positions
 
         return offsets
 
@@ -204,6 +223,7 @@ class EuclidDitherDetailer(BaseDetailer):
         self.survey_features = {}
 
         default_locations = ddf_locations()
+        self.n_positions = copy.copy(nnights)
 
         if ra_a is None:
             self.ra_a = np.radians(default_locations["EDFS_a"][0])
@@ -237,6 +257,12 @@ class EuclidDitherDetailer(BaseDetailer):
         self.shifted_dec_b = None
 
         rng = np.random.default_rng(seed)
+
+        if not per_night:
+            nnights = (nnights, nnights)
+
+        self.indx_in_night = 0
+
         self.bearings_mag_1 = rng.uniform(
             low=self.dither_bearing_dir.min(),
             high=self.dither_bearing_dir.max(),
@@ -260,37 +286,49 @@ class EuclidDitherDetailer(BaseDetailer):
         )
 
     def _generate_offsets(self, n_offsets, night):
+
+        if night != self.current_night:
+            self.indx_in_night = 0
+            self.current_night = night
         if self.per_night:
-            if night != self.current_night:
-                self.current_night = night
-                bearing_mag = self.bearings_mag_1[night]
-                perp_mag = self.perp_mag_1[night]
-                # Move point a along the bearings
-                self.shifted_dec_a, self.shifted_ra_a = dest_latlon(
-                    bearing_mag, self.bearing_atob, self.dec_a, self.ra_a
-                )
-                self.shifted_dec_a, self.shifted_ra_a = dest_latlon(
-                    perp_mag,
-                    self.bearing_atob + np.pi / 2.0,
-                    self.shifted_dec_a,
-                    self.shifted_ra_a,
-                )
-
-                # Shift the second position
-                bearing_mag = self.bearings_mag_2[night]
-                perp_mag = self.perp_mag_2[night]
-
-                self.shifted_dec_b, self.shifted_ra_b = dest_latlon(
-                    bearing_mag, self.bearing_btoa, self.dec_b, self.ra_b
-                )
-                self.shifted_dec_b, self.shifted_ra_b = dest_latlon(
-                    perp_mag,
-                    self.bearing_btoa + np.pi / 2.0,
-                    self.shifted_dec_b,
-                    self.shifted_ra_b,
-                )
+            bearing_mag = self.bearings_mag_1[night]
+            perp_mag = self.perp_mag_1[night]
         else:
-            raise ValueError("not implamented")
+            bearing_mag = self.bearings_mag_1[night, self.indx_in_night : self.indx_in_night + n_offsets]
+            perp_mag = self.perp_mag_1[night, self.indx_in_night : self.indx_in_night + n_offsets]
+
+        # Move point a along the bearings
+        self.shifted_dec_a, self.shifted_ra_a = dest_latlon(
+            bearing_mag, self.bearing_atob, self.dec_a, self.ra_a
+        )
+        self.shifted_dec_a, self.shifted_ra_a = dest_latlon(
+            perp_mag,
+            self.bearing_atob + np.pi / 2.0,
+            self.shifted_dec_a,
+            self.shifted_ra_a,
+        )
+
+        # Shift the second position
+        if self.per_night:
+            bearing_mag = self.bearings_mag_2[night]
+            perp_mag = self.perp_mag_2[night]
+        else:
+            bearing_mag = self.bearings_mag_2[night, self.indx_in_night : self.indx_in_night + n_offsets]
+            perp_mag = self.perp_mag_2[night, self.indx_in_night : self.indx_in_night + n_offsets]
+
+        self.shifted_dec_b, self.shifted_ra_b = dest_latlon(
+            bearing_mag, self.bearing_btoa, self.dec_b, self.ra_b
+        )
+        self.shifted_dec_b, self.shifted_ra_b = dest_latlon(
+            perp_mag,
+            self.bearing_btoa + np.pi / 2.0,
+            self.shifted_dec_b,
+            self.shifted_ra_b,
+        )
+
+        self.indx_in_night += n_offsets
+        # Modulo on off-chance we actually go over.
+        self.indx_in_night = self.indx_in_night % self.n_positions
 
         return (
             self.shifted_ra_a,
