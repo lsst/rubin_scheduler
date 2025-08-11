@@ -12,7 +12,7 @@ import pandas as pd
 from astropy.time import Time
 
 from rubin_scheduler.scheduler.utils import HpInComcamFov, HpInLsstFov, IntRounded, ObservationArray
-from rubin_scheduler.utils import DEFAULT_NSIDE, _hpid2_ra_dec, rotation_converter
+from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD, _hpid2_ra_dec, rotation_converter
 
 
 class CoreScheduler:
@@ -49,6 +49,12 @@ class CoreScheduler:
         Dict for mapping band name to filter name if filter has not been
         specified. Default of None maps 'ugrizy' to the same. Empty dict
         will do no mapping for missing "filter" values.
+    survey_start_mjd : `float`
+            The starting MJD of the survey.
+    mjd_night_offset : `float`
+        Value to use when computing night of the survey.
+        Should be such that floor(mjd - mjd_night_offset) will
+        not change during the night. Default 0.5 (days).
     """
 
     def __init__(
@@ -61,8 +67,12 @@ class CoreScheduler:
         telescope="rubin",
         target_id_counter=0,
         band_to_filter=None,
+        survey_start_mjd=SURVEY_START_MJD,
+        mjd_night_offset=0.5,
     ):
         self.keep_rewards = keep_rewards
+        self.survey_start_mjd = survey_start_mjd
+        self.mjd_night_offset = mjd_night_offset
         # Use integer ns just to be sure there are no rounding issues.
         self.mjd_perf_counter_offset = np.int64(Time.now().mjd * 86400000000000) - time.perf_counter_ns()
 
@@ -225,6 +235,11 @@ class CoreScheduler:
         """
         # Add the current queue and scheduled queue to the conditions
         self.conditions = conditions_in
+
+        # Use our own def of survey start
+        self.conditions.survey_start_mjd = self.survey_start_mjd
+        self.conditions.mjd_night_offset = self.mjd_night_offset
+
         # put the local queue in the conditions
         self.conditions.queue = self.queue
 

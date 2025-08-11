@@ -155,12 +155,11 @@ class TestDetailers(unittest.TestCase):
 
         det = detailers.RandomBandDetailer(bands="iz")
 
-        conditions = Conditions()
-        conditions.night = 3
+        conditions = Conditions(mjd=3, survey_start_mjd=0)
         conditions.mounted_bands = ["i", "z"]
 
         out_obs = det(obs, conditions)
-        assert (out_obs["band"] == "i") | (out_obs["filter"] == "z")
+        assert (out_obs["band"] == "i") | (out_obs["band"] == "z")
 
         # Check that we fall back properly
         conditions.mounted_bands = ["r", "g", "u", "y"]

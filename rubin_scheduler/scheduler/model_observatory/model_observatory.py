@@ -175,6 +175,7 @@ class ModelObservatory:
         telescope="rubin",
         cloud_maps=None,
         resolve_rotskypos=True,
+        mjd_night_offset=0.5,
     ):
         self.nside = nside
         self.resolve_rotskypos = resolve_rotskypos
@@ -182,6 +183,8 @@ class ModelObservatory:
         # Set the time now - mjd
         # and the time of the survey start
         self.mjd_start = mjd_start
+
+        self.mjd_night_offset = mjd_night_offset
 
         if mjd is None:
             mjd = mjd_start
@@ -379,7 +382,6 @@ class ModelObservatory:
             mjd=self.mjd,
         )
 
-        self.conditions.night = int(self.night)
         # Current time as astropy time
         current_time = Time(self.mjd, format="mjd")
 
@@ -508,7 +510,7 @@ class ModelObservatory:
     def mjd(self, value):
         self._mjd = value
         self.almanac_indx = self.almanac.mjd_indx(value)
-        self.night = np.max(self.almanac.sunsets["night"][self.almanac_indx])
+        self.night = np.floor(self.mjd - self.mjd_start + self.mjd_night_offset).astype(int)
 
     def observation_add_data(self, observation):
         """

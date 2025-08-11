@@ -12,6 +12,7 @@ import pandas as pd
 from rubin_scheduler.scheduler.utils import match_hp_resolution, smallest_signed_angle
 from rubin_scheduler.utils import (
     DEFAULT_NSIDE,
+    SURVEY_START_MJD,
     Site,
     _angular_separation,
     _approx_altaz2pa,
@@ -62,6 +63,8 @@ class Conditions:
         site="LSST",
         exptime=30.0,
         mjd=None,
+        survey_start_mjd=SURVEY_START_MJD,
+        mjd_night_offset=0.5,
     ):
         """
         Attributes (Set on init)
@@ -77,6 +80,12 @@ class Conditions:
         dec : `np.ndarray`, (N,)
             A healpix array with the Dec of each healpixel center (radians).
             Automatically generated.
+        mjd_night_offset : `float`
+            Value to use when computing night of the survey.
+            Should be such that floor(mjd - mjd_night_offset) will
+            not change during the night. Default 0.5 (days).
+        survey_start_mjd : `float`
+            The starting MJD of the survey.
 
         Attributes (to be set by user/telemetry stream/scheduler)
         -------------------------------------------
@@ -99,8 +108,6 @@ class Conditions:
             (expect 5 of u, g, r, i, z, y for LSSTCam).
         mounted_filters : `list` [`str`]
             Deprecated version of mounted_bands.
-        night : `int`
-            The current night number (days). Probably starts at 1.
         skybrightness : `dict` {`str: `np.ndarray`, (N,)}
             Dictionary keyed by band name.
             Values are healpix arrays with the sky brightness at each
@@ -225,6 +232,8 @@ class Conditions:
         solar_elongation : `np.ndarray`, (N,)
             Healpix map of the solar elongation (angular distance to the sun)
             for each healpixel (radians)
+        night : `int`
+            The current night number (days).
 
         Attributes (set by the scheduler)
         -------------------------------
@@ -234,6 +243,8 @@ class Conditions:
 
         """
         self.nside = nside
+        self.survey_start_mjd = survey_start_mjd
+        self.mjd_night_offset = mjd_night_offset
 
         # The RA, Dec grid we are using
         hpids = np.arange(hp.nside2npix(self.nside))
@@ -268,7 +279,6 @@ class Conditions:
         self._current_filter = None
         self.mounted_bands = None
         self._mounted_filters = None
-        self.night = None
         self._lmst = None
         # Should be a dict with bandname keys
         self._skybrightness = {}
@@ -497,6 +507,15 @@ class Conditions:
         for key in indict:
             self._fwhm_eff[key] = match_hp_resolution(indict[key], nside_out=self.nside)
         self._m5_depth = None
+
+    @property
+    def night(self):
+        self.calc_night()
+        # Take a max to make sure we strip off any strange array structure
+        return np.max(self._night)
+
+    def calc_night(self):
+        self._night = np.floor(self.mjd - self.survey_start_mjd + self.mjd_night_offset).astype(int)
 
     @property
     def m5_depth(self):
@@ -742,16 +761,22 @@ class Conditions:
         """
         self._init_attributes()
 
+        if night is not None:
+            warnings.warn("Setting value for night no longer supported. Setting to None.")
+            night = None
+
         maintel_args = signature(self.set_maintel_info)
         loc = locals()
         for key in maintel_args.parameters.keys():
-            setattr(self, key, loc[key])
+            if key != "night":
+                setattr(self, key, loc[key])
 
         potential_attrs = dir(self)
         for key in kwargs:
             if key not in potential_attrs:
                 warnings.warn("Setting unexpected Conditions attribute %s" % key)
-            setattr(self, key, kwargs[key])
+            if key != "night":
+                setattr(self, key, kwargs[key])
 
     def set_attrs(self, **kwargs):
         """Convenience function for setting lots of attributes at once.
