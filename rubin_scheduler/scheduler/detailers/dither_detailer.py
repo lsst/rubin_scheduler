@@ -95,7 +95,6 @@ class DitherDetailer(BaseDetailer):
             return obs_array
         # Generate offsets in RA and Dec
         offsets = self._generate_offsets(len(obs_array), conditions.night)
-
         new_ra, new_dec = gnomonic_project_tosky(
             offsets[:, 0], offsets[:, 1], obs_array["RA"], obs_array["dec"]
         )
