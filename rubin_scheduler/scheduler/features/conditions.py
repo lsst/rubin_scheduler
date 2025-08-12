@@ -517,6 +517,15 @@ class Conditions:
     def calc_night(self):
         self._night = np.floor(self.mjd - self.survey_start_mjd + self.mjd_night_offset).astype(int)
 
+    @night.setter
+    def night(self, val):
+        msg = (
+            "Attribute 'night' no longer to be set by users. "
+            "Set survey_start_mjd on init and mjd so Conditions"
+            "can compute value for 'night'."
+        )
+        warnings.DeprecationWarning(msg)
+
     @property
     def m5_depth(self):
         if self._m5_depth is None:
