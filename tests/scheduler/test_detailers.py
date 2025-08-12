@@ -424,6 +424,65 @@ class TestDetailers(unittest.TestCase):
             assert "lowdust" in res["target_name"]
             assert "nes" in res["target_name"]
 
+    def test_euclid_dither(self):
+        detailer = detailers.EuclidDitherDetailer(per_night=True)
+
+        ra_a, dec_a, ra_b, dec_b = detailer._generate_offsets(100, 2)
+
+        # Going per night, should only be one offset
+        assert np.size(ra_a) == 1
+
+        # if we call again, should be the same
+        ra_ap, dec_ap, ra_bp, dec_bp = detailer._generate_offsets(100, 2)
+
+        assert ra_a == ra_ap
+        assert dec_a == dec_ap
+        assert ra_b == ra_bp
+        assert dec_b == dec_bp
+
+        # Now want a unique position
+        detailer = detailers.EuclidDitherDetailer(per_night=False)
+
+        ra_a, dec_a, ra_b, dec_b = detailer._generate_offsets(100, 2)
+
+        assert np.size(ra_a) == 100
+
+        # call again should result in different values
+        ra_ap, dec_ap, ra_bp, dec_bp = detailer._generate_offsets(100, 2)
+        assert np.all(np.not_equal(ra_a, ra_ap))
+
+    def test_dither(self):
+        detailer = detailers.DitherDetailer(per_night=True)
+
+        offsets = detailer._generate_offsets(100, 2)
+        ra_a = offsets[:, 0]
+        dec_a = offsets[:, 1]
+        # Going per night, should only be one offset
+        assert np.size(np.unique(ra_a)) == 1
+
+        # if we call again, should be the same
+        offsets = detailer._generate_offsets(100, 2)
+        ra_ap = offsets[:, 0]
+        dec_ap = offsets[:, 1]
+        assert np.all(ra_a == ra_ap)
+        assert np.all(dec_a == dec_ap)
+
+        # Now want a unique position
+        detailer = detailers.DitherDetailer(per_night=False)
+
+        offsets = detailer._generate_offsets(100, 2)
+        ra_a = offsets[:, 0]
+        dec_a = offsets[:, 1]
+
+        assert np.size(np.unique(ra_a)) == 100
+
+        # call again should result in different values
+        offsets = detailer._generate_offsets(100, 2)
+        ra_ap = offsets[:, 0]
+        dec_ap = offsets[:, 1]
+
+        assert np.all(np.not_equal(ra_a, ra_ap))
+
 
 if __name__ == "__main__":
     unittest.main()
