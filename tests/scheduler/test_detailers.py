@@ -448,6 +448,11 @@ class TestDetailers(unittest.TestCase):
 
         assert np.size(ra_a) == 100
 
+        # If those get executed, they get added to the detailer
+        obs = ObservationArray(n=100)
+        obs["night"] = 2
+        detailer.add_observations_array(obs, None)
+
         # call again should result in different values
         ra_ap, dec_ap, ra_bp, dec_bp = detailer._generate_offsets(100, 2)
         assert np.all(np.not_equal(ra_a, ra_ap))
@@ -476,6 +481,11 @@ class TestDetailers(unittest.TestCase):
         dec_a = offsets[:, 1]
 
         assert np.size(np.unique(ra_a)) == 100
+
+        # If those get executed, they get added to the detailer
+        obs = ObservationArray(n=100)
+        obs["night"] = 2
+        detailer.add_observations_array(obs, None)
 
         # call again should result in different values
         offsets = detailer._generate_offsets(100, 2)

@@ -14,7 +14,7 @@ import warnings
 import numpy as np
 
 from rubin_scheduler.scheduler.detailers import BaseDetailer
-from rubin_scheduler.scheduler.features import Conditions
+from rubin_scheduler.scheduler.features import Conditions, NObsCount
 from rubin_scheduler.scheduler.utils import ObservationArray, rotx, thetaphi2xyz, wrap_ra_dec, xyz2thetaphi
 from rubin_scheduler.utils import (
     _approx_altaz2pa,
@@ -33,9 +33,6 @@ class DitherDetailer(BaseDetailer):
     direction. Mostly intended for DDF pointings, the BaseMarkovDF_survey
     class includes dithering for large areas.
 
-    Note that if scheduler is re-built during a night dither positions
-    will reset and repeat.
-
     Parameters
     ----------
     max_dither : `float` (0.7)
@@ -50,7 +47,7 @@ class DitherDetailer(BaseDetailer):
     """
 
     def __init__(self, max_dither=0.7, seed=42, per_night=True, nnights=7305):
-        self.survey_features = {}
+        self.survey_features = {"n_in_night": NObsCount(per_night=True)}
 
         self.current_night = -1
         self.max_dither = np.radians(max_dither)
@@ -68,7 +65,6 @@ class DitherDetailer(BaseDetailer):
 
         self.offset_ra = None
         self.offset_dec = None
-        self.indx_in_night = 0
         self.current_night = -1
 
     def _generate_offsets(self, n_offsets, night):
@@ -84,15 +80,13 @@ class DitherDetailer(BaseDetailer):
             offsets = np.tile(np.array([self.offset_ra, self.offset_dec]), (n_offsets, 1))
         else:
             if night != self.current_night:
-                self.indx_in_night = 0
                 self.current_night = night
-            angle = self.angles[night, self.indx_in_night : self.indx_in_night + n_offsets]
-            radius = self.radii[night, self.indx_in_night : self.indx_in_night + n_offsets]
+            indx_in_night = self.survey_features["n_in_night"].feature
+            angle = self.angles[night, indx_in_night : indx_in_night + n_offsets]
+            radius = self.radii[night, indx_in_night : indx_in_night + n_offsets]
             offsets_ra = radius * np.cos(angle)
             offsets_dec = radius * np.sin(angle)
             offsets = np.array([offsets_ra, offsets_dec]).T
-            self.indx_in_night += n_offsets
-            self.indx_in_night = self.indx_in_night % self.n_positions
 
         return offsets
 
@@ -190,9 +184,6 @@ class DeltaCoordDitherDetailer(BaseDetailer):
 class EuclidDitherDetailer(BaseDetailer):
     """Directional dithering for Euclid DDFs
 
-    Note that if scheduler is re-built during a night dither positions
-    will reset and repeat.
-
     Parameters
     ----------
     dither_bearing_dir : `list`
@@ -228,7 +219,7 @@ class EuclidDitherDetailer(BaseDetailer):
         dec_b=None,
         nnights=7305,
     ):
-        self.survey_features = {}
+        self.survey_features = {"n_in_night": NObsCount(per_night=True)}
 
         default_locations = ddf_locations()
         self.n_positions = copy.copy(nnights)
@@ -269,8 +260,6 @@ class EuclidDitherDetailer(BaseDetailer):
         if not per_night:
             nnights = (nnights, nnights)
 
-        self.indx_in_night = 0
-
         self.bearings_mag_1 = rng.uniform(
             low=self.dither_bearing_dir.min(),
             high=self.dither_bearing_dir.max(),
@@ -295,6 +284,7 @@ class EuclidDitherDetailer(BaseDetailer):
 
     def _generate_offsets(self, n_offsets, night):
 
+        indx_in_night = self.survey_features["n_in_night"].feature
         if night != self.current_night:
             self.indx_in_night = 0
             self.current_night = night
@@ -302,8 +292,8 @@ class EuclidDitherDetailer(BaseDetailer):
             bearing_mag = self.bearings_mag_1[night]
             perp_mag = self.perp_mag_1[night]
         else:
-            bearing_mag = self.bearings_mag_1[night, self.indx_in_night : self.indx_in_night + n_offsets]
-            perp_mag = self.perp_mag_1[night, self.indx_in_night : self.indx_in_night + n_offsets]
+            bearing_mag = self.bearings_mag_1[night, indx_in_night : indx_in_night + n_offsets]
+            perp_mag = self.perp_mag_1[night, indx_in_night : indx_in_night + n_offsets]
 
         # Move point a along the bearings
         self.shifted_dec_a, self.shifted_ra_a = dest_latlon(
@@ -321,8 +311,8 @@ class EuclidDitherDetailer(BaseDetailer):
             bearing_mag = self.bearings_mag_2[night]
             perp_mag = self.perp_mag_2[night]
         else:
-            bearing_mag = self.bearings_mag_2[night, self.indx_in_night : self.indx_in_night + n_offsets]
-            perp_mag = self.perp_mag_2[night, self.indx_in_night : self.indx_in_night + n_offsets]
+            bearing_mag = self.bearings_mag_2[night, indx_in_night : indx_in_night + n_offsets]
+            perp_mag = self.perp_mag_2[night, indx_in_night : indx_in_night + n_offsets]
 
         self.shifted_dec_b, self.shifted_ra_b = dest_latlon(
             bearing_mag, self.bearing_btoa, self.dec_b, self.ra_b
@@ -333,10 +323,6 @@ class EuclidDitherDetailer(BaseDetailer):
             self.shifted_dec_b,
             self.shifted_ra_b,
         )
-
-        self.indx_in_night += n_offsets
-        # Modulo on off-chance we actually go over.
-        self.indx_in_night = self.indx_in_night % self.n_positions
 
         return (
             self.shifted_ra_a,
