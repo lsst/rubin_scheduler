@@ -781,11 +781,7 @@ class ConsDBVisits(ABC):
         night : `int`
             The night of the survey.
         """
-        night0_mjd: int = int(np.floor(SURVEY_START_MJD))
-        if night0_mjd > np.min(self.obs_start_mjd):
-            night0_mjd = np.min(self.obs_start_mjd)
-
-        night: int = 1 + (np.round(self.obs_start_mjd) - 0.5).astype(int) - int(np.floor(SURVEY_START_MJD))
+        night: int = (np.floor(self.obs_start_mjd - 0.5) - np.floor(SURVEY_START_MJD - 0.5)).astype(int)
         return night
 
     @cached_property
