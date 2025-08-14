@@ -105,7 +105,7 @@ def query_consdb(
     assert url is not None
 
     if token_file is None:
-        token_file = os.environ.get('ACCESS_TOKEN_FILE', None)
+        token_file = os.environ.get("ACCESS_TOKEN_FILE", None)
 
     auth = _get_auth(token_file)
     params = {"query": query}
@@ -349,12 +349,20 @@ class ConsDBVisits(ABC):
             """
 
         visit_columns = (
-            query_consdb(columns_query(f"visit{self.num_exposures}", self.instrument), url=self.url, token_file=self.token_file)
+            query_consdb(
+                columns_query(f"visit{self.num_exposures}", self.instrument),
+                url=self.url,
+                token_file=self.token_file,
+            )
             .loc[:, "column_name"]
             .values
         )
         ql_columns = (
-            query_consdb(columns_query(f"visit{self.num_exposures}_quicklook", self.instrument), url=self.url, token_file=self.token_file)
+            query_consdb(
+                columns_query(f"visit{self.num_exposures}_quicklook", self.instrument),
+                url=self.url,
+                token_file=self.token_file,
+            )
             .loc[:, "column_name"]
             .values
         )
