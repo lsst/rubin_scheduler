@@ -33,12 +33,16 @@ class DitherDetailer(BaseDetailer):
     direction. Mostly intended for DDF pointings, the BaseMarkovDF_survey
     class includes dithering for large areas.
 
+    Note that if scheduler is re-built during a night dither positions
+    will reset and repeat.
+
     Parameters
     ----------
     max_dither : `float` (0.7)
         The maximum dither size to use (degrees).
     per_night : `bool` (True)
-        If true, us the same dither offset for an entire night
+        If true, use the same dither offset for an entire night. If False,
+        generate a dither position per visit.
     nnights : `int` (7305)
         The number of nights to pre-generate random dithers for
 
@@ -56,6 +60,7 @@ class DitherDetailer(BaseDetailer):
         self.n_positions = copy.copy(nnights)
 
         if not per_night:
+            # Number of nights, number of positions inside a night
             nnights = (nnights, nnights)
 
         self.angles = self.rng.random(nnights) * 2 * np.pi
@@ -184,6 +189,9 @@ class DeltaCoordDitherDetailer(BaseDetailer):
 
 class EuclidDitherDetailer(BaseDetailer):
     """Directional dithering for Euclid DDFs
+
+    Note that if scheduler is re-built during a night dither positions
+    will reset and repeat.
 
     Parameters
     ----------
