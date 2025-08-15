@@ -179,6 +179,7 @@ class DateSwapBandScheduler(BandSwapScheduler):
                 "z",
             ],
             "2025-08-07": ["r", "i", "z", "y"],
+            "2025-08-12": ["g", "r", "i", "z"],
         }
         previous_swap_times = np.sort(np.array([key_to_time(k) for k in previous_swap_schedule.keys()]))
 
@@ -187,22 +188,6 @@ class DateSwapBandScheduler(BandSwapScheduler):
             # Subject to change, although past dates should match reality.
             swap_schedule = {
                 "2025-08-12": ["g", "r", "i", "z"],
-                "2025-08-19": ["u", "g", "r", "i"],
-                "2025-08-26": [
-                    "g",
-                    "r",
-                    "i",
-                    "z",
-                ],
-                "2025-09-02": ["g", "r", "i", "y"],
-                "2025-09-09": ["r", "i", "z", "y"],
-                "2025-09-16": ["g", "r", "i", "z"],
-                "2025-09-21": [
-                    "u",
-                    "g",
-                    "r",
-                    "i",
-                ],
             }
         new_swap_times = np.sort(np.array([key_to_time(k) for k in swap_schedule.keys()]))
 
