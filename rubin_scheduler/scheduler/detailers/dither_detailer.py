@@ -8,12 +8,13 @@ __all__ = (
     "DeltaCoordDitherDetailer",
 )
 
+import copy
 import warnings
 
 import numpy as np
 
 from rubin_scheduler.scheduler.detailers import BaseDetailer
-from rubin_scheduler.scheduler.features import Conditions
+from rubin_scheduler.scheduler.features import Conditions, NObsCount
 from rubin_scheduler.scheduler.utils import ObservationArray, rotx, thetaphi2xyz, wrap_ra_dec, xyz2thetaphi
 from rubin_scheduler.utils import (
     _approx_altaz2pa,
@@ -37,7 +38,8 @@ class DitherDetailer(BaseDetailer):
     max_dither : `float` (0.7)
         The maximum dither size to use (degrees).
     per_night : `bool` (True)
-        If true, us the same dither offset for an entire night
+        If true, use the same dither offset for an entire night. If False,
+        generate a dither position per visit.
     nnights : `int` (7305)
         The number of nights to pre-generate random dithers for
 
@@ -45,30 +47,46 @@ class DitherDetailer(BaseDetailer):
     """
 
     def __init__(self, max_dither=0.7, seed=42, per_night=True, nnights=7305):
-        self.survey_features = {}
+        self.survey_features = {"n_in_night": NObsCount(per_night=True)}
 
         self.current_night = -1
         self.max_dither = np.radians(max_dither)
         self.per_night = per_night
         self.rng = np.random.default_rng(seed)
+
+        self.n_positions = copy.copy(nnights)
+
+        if not per_night:
+            # Number of nights, number of positions inside a night
+            nnights = (nnights, nnights)
+
         self.angles = self.rng.random(nnights) * 2 * np.pi
         self.radii = self.max_dither * np.sqrt(self.rng.random(nnights))
-        self.offsets = (self.rng.random((nnights, 2)) - 0.5) * 2.0 * self.max_dither
-        self.offset = None
+
+        self.offset_ra = None
+        self.offset_dec = None
+        self.current_night = -1
 
     def _generate_offsets(self, n_offsets, night):
+
         if self.per_night:
             if night != self.current_night:
                 self.current_night = night
-                self.offset = self.offsets[night, :]
                 angle = self.angles[night]
                 radius = self.radii[night]
-                self.offset = np.array([radius * np.cos(angle), radius * np.sin(angle)])
-            offsets = np.tile(self.offset, (n_offsets, 1))
+
+                self.offset_ra = radius * np.cos(angle)
+                self.offset_dec = radius * np.sin(angle)
+            offsets = np.tile(np.array([self.offset_ra, self.offset_dec]), (n_offsets, 1))
         else:
-            angle = self.rng.random(n_offsets) * 2 * np.pi
-            radius = self.max_dither * np.sqrt(self.rng.random(n_offsets))
-            offsets = np.array([radius * np.cos(angle), radius * np.sin(angle)]).T
+            if night != self.current_night:
+                self.current_night = night
+            indx_in_night = self.survey_features["n_in_night"].feature
+            angle = self.angles[night, indx_in_night : indx_in_night + n_offsets]
+            radius = self.radii[night, indx_in_night : indx_in_night + n_offsets]
+            offsets_ra = radius * np.cos(angle)
+            offsets_dec = radius * np.sin(angle)
+            offsets = np.array([offsets_ra, offsets_dec]).T
 
         return offsets
 
@@ -201,9 +219,10 @@ class EuclidDitherDetailer(BaseDetailer):
         dec_b=None,
         nnights=7305,
     ):
-        self.survey_features = {}
+        self.survey_features = {"n_in_night": NObsCount(per_night=True)}
 
         default_locations = ddf_locations()
+        self.n_positions = copy.copy(nnights)
 
         if ra_a is None:
             self.ra_a = np.radians(default_locations["EDFS_a"][0])
@@ -237,6 +256,10 @@ class EuclidDitherDetailer(BaseDetailer):
         self.shifted_dec_b = None
 
         rng = np.random.default_rng(seed)
+
+        if not per_night:
+            nnights = (nnights, nnights)
+
         self.bearings_mag_1 = rng.uniform(
             low=self.dither_bearing_dir.min(),
             high=self.dither_bearing_dir.max(),
@@ -260,37 +283,46 @@ class EuclidDitherDetailer(BaseDetailer):
         )
 
     def _generate_offsets(self, n_offsets, night):
+
+        indx_in_night = self.survey_features["n_in_night"].feature
+        if night != self.current_night:
+            self.indx_in_night = 0
+            self.current_night = night
         if self.per_night:
-            if night != self.current_night:
-                self.current_night = night
-                bearing_mag = self.bearings_mag_1[night]
-                perp_mag = self.perp_mag_1[night]
-                # Move point a along the bearings
-                self.shifted_dec_a, self.shifted_ra_a = dest_latlon(
-                    bearing_mag, self.bearing_atob, self.dec_a, self.ra_a
-                )
-                self.shifted_dec_a, self.shifted_ra_a = dest_latlon(
-                    perp_mag,
-                    self.bearing_atob + np.pi / 2.0,
-                    self.shifted_dec_a,
-                    self.shifted_ra_a,
-                )
-
-                # Shift the second position
-                bearing_mag = self.bearings_mag_2[night]
-                perp_mag = self.perp_mag_2[night]
-
-                self.shifted_dec_b, self.shifted_ra_b = dest_latlon(
-                    bearing_mag, self.bearing_btoa, self.dec_b, self.ra_b
-                )
-                self.shifted_dec_b, self.shifted_ra_b = dest_latlon(
-                    perp_mag,
-                    self.bearing_btoa + np.pi / 2.0,
-                    self.shifted_dec_b,
-                    self.shifted_ra_b,
-                )
+            bearing_mag = self.bearings_mag_1[night]
+            perp_mag = self.perp_mag_1[night]
         else:
-            raise ValueError("not implamented")
+            bearing_mag = self.bearings_mag_1[night, indx_in_night : indx_in_night + n_offsets]
+            perp_mag = self.perp_mag_1[night, indx_in_night : indx_in_night + n_offsets]
+
+        # Move point a along the bearings
+        self.shifted_dec_a, self.shifted_ra_a = dest_latlon(
+            bearing_mag, self.bearing_atob, self.dec_a, self.ra_a
+        )
+        self.shifted_dec_a, self.shifted_ra_a = dest_latlon(
+            perp_mag,
+            self.bearing_atob + np.pi / 2.0,
+            self.shifted_dec_a,
+            self.shifted_ra_a,
+        )
+
+        # Shift the second position
+        if self.per_night:
+            bearing_mag = self.bearings_mag_2[night]
+            perp_mag = self.perp_mag_2[night]
+        else:
+            bearing_mag = self.bearings_mag_2[night, indx_in_night : indx_in_night + n_offsets]
+            perp_mag = self.perp_mag_2[night, indx_in_night : indx_in_night + n_offsets]
+
+        self.shifted_dec_b, self.shifted_ra_b = dest_latlon(
+            bearing_mag, self.bearing_btoa, self.dec_b, self.ra_b
+        )
+        self.shifted_dec_b, self.shifted_ra_b = dest_latlon(
+            perp_mag,
+            self.bearing_btoa + np.pi / 2.0,
+            self.shifted_dec_b,
+            self.shifted_ra_b,
+        )
 
         return (
             self.shifted_ra_a,
