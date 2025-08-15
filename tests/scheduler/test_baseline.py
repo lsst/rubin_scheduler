@@ -18,9 +18,11 @@ class TestExample(unittest.TestCase):
         """Try out the example scheduler."""
         mjd_start = utils.SURVEY_START_MJD
         nside = 32
-        survey_length = 2.0  # days
+        survey_length = 4.0  # days
         scheduler = example_scheduler(nside=nside, mjd_start=mjd_start)
-        observatory = ModelObservatory(nside=nside, mjd_start=mjd_start)
+        observatory = ModelObservatory(
+            nside=nside, mjd_start=mjd_start, cloud_data="ideal", downtimes="ideal"
+        )
         observatory, scheduler, observations = sim_runner(
             observatory, scheduler, sim_duration=survey_length, filename=None
         )
