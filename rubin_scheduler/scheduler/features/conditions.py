@@ -515,7 +515,10 @@ class Conditions:
         return np.max(self._night)
 
     def calc_night(self):
-        self._night = np.floor(self.mjd - self.survey_start_mjd + self.mjd_night_offset).astype(int)
+        self._night = (
+            np.floor(self.mjd - self.mjd_night_offset)
+            - np.floor(self.survey_start_mjd - self.mjd_night_offset)
+        ).astype(int)
 
     @night.setter
     def night(self, val):

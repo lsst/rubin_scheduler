@@ -49,7 +49,7 @@ class DitherDetailer(BaseDetailer):
     def __init__(self, max_dither=0.7, seed=42, per_night=True, nnights=7305):
         self.survey_features = {"n_in_night": NObsCount(per_night=True)}
 
-        self.current_night = -1
+        self.current_night = -np.inf
         self.max_dither = np.radians(max_dither)
         self.per_night = per_night
         self.rng = np.random.default_rng(seed)
@@ -65,7 +65,6 @@ class DitherDetailer(BaseDetailer):
 
         self.offset_ra = None
         self.offset_dec = None
-        self.current_night = -1
 
     def _generate_offsets(self, n_offsets, night):
 
@@ -246,7 +245,7 @@ class EuclidDitherDetailer(BaseDetailer):
         self.bearing_atob = bearing(self.ra_a, self.dec_a, self.ra_b, self.dec_b)
         self.bearing_btoa = bearing(self.ra_b, self.dec_b, self.ra_a, self.dec_a)
 
-        self.current_night = -1
+        self.current_night = -np.inf
 
         self.per_night = per_night
         self.shifted_ra_a = None
@@ -430,7 +429,7 @@ class CameraRotDetailer(BaseDetailer):
             warnings.warn("dither=False deprecated, swapping to dither='all'", FutureWarning)
             dither = "all"
 
-        self.current_night = -1
+        self.current_night = -np.inf
         self.max_rot = np.radians(max_rot)
         self.min_rot = np.radians(min_rot)
         self.range = self.max_rot - self.min_rot

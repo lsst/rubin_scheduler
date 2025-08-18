@@ -510,7 +510,9 @@ class ModelObservatory:
     def mjd(self, value):
         self._mjd = value
         self.almanac_indx = self.almanac.mjd_indx(value)
-        self.night = np.floor(self.mjd - self.mjd_start + self.mjd_night_offset).astype(int)
+        self.night = (
+            np.floor(self.mjd - self.mjd_night_offset) - np.floor(self.mjd_start - self.mjd_night_offset)
+        ).astype(int)
 
     def observation_add_data(self, observation):
         """

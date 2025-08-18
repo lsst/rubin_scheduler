@@ -1,4 +1,5 @@
 import os
+import pathlib
 import unittest
 
 import healpy as hp
@@ -22,7 +23,7 @@ from rubin_scheduler.utils import SURVEY_START_MJD
 
 class TestUtils(unittest.TestCase):
     def tearDownClass():
-        os.remove("temp.sqlite")
+        pathlib.Path("temp.sqlite").unlink(missing_ok=True)
 
     @unittest.skipUnless(
         os.path.isfile(os.path.join(get_data_dir(), "scheduler/dust_maps/dust_nside_32.npz")),
@@ -39,7 +40,8 @@ class TestUtils(unittest.TestCase):
         "Test data not available.",
     )
     def test_start_of_night_example(self):
-        """Test the example scheduler starting at the beginnig of a night."""
+        """Test example scheduler and sim_runner having mis-matched
+        start dates."""
         mjd_start = SURVEY_START_MJD
         scheduler = example_scheduler(mjd_start=mjd_start)
         observatory, scheduler, observations = run_sched(
