@@ -57,7 +57,8 @@ class ModelObservatory:
     mjd_start : `float`, optional
         The MJD of the start of the survey.
         This must be set to start of whole survey, for tracking
-        purposes.  Default None uses `survey_start_mjd()`.
+        purposes. Should be during the day so night will be
+        computed properly.
     alt_min : `float`, optional
         The minimum altitude to compute models at (degrees).
     lax_dome : `bool`, optional
@@ -175,7 +176,6 @@ class ModelObservatory:
         telescope="rubin",
         cloud_maps=None,
         resolve_rotskypos=True,
-        mjd_night_offset=0.5,
     ):
         self.nside = nside
         self.resolve_rotskypos = resolve_rotskypos
@@ -183,8 +183,6 @@ class ModelObservatory:
         # Set the time now - mjd
         # and the time of the survey start
         self.mjd_start = mjd_start
-
-        self.mjd_night_offset = mjd_night_offset
 
         if mjd is None:
             mjd = mjd_start
@@ -510,9 +508,7 @@ class ModelObservatory:
     def mjd(self, value):
         self._mjd = value
         self.almanac_indx = self.almanac.mjd_indx(value)
-        self.night = (
-            np.floor(self.mjd - self.mjd_night_offset) - np.floor(self.mjd_start - self.mjd_night_offset)
-        ).astype(int)
+        self.night = np.floor(self.mjd - self.mjd_start).astype(int)
 
     def observation_add_data(self, observation):
         """

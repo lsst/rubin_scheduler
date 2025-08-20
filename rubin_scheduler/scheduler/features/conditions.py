@@ -64,7 +64,6 @@ class Conditions:
         exptime=30.0,
         mjd=None,
         survey_start_mjd=SURVEY_START_MJD,
-        mjd_night_offset=0.5,
     ):
         """
         Attributes (Set on init)
@@ -80,12 +79,9 @@ class Conditions:
         dec : `np.ndarray`, (N,)
             A healpix array with the Dec of each healpixel center (radians).
             Automatically generated.
-        mjd_night_offset : `float`
-            Value to use when computing night of the survey.
-            Should be such that floor(mjd - mjd_night_offset) will
-            not change during the night. Default 0.5 (days).
         survey_start_mjd : `float`
-            The starting MJD of the survey.
+            The starting MJD of the survey. Should be durring the day
+            before the first night of observing.
 
         Attributes (to be set by user/telemetry stream/scheduler)
         -------------------------------------------
@@ -244,7 +240,6 @@ class Conditions:
         """
         self.nside = nside
         self.survey_start_mjd = survey_start_mjd
-        self.mjd_night_offset = mjd_night_offset
 
         # The RA, Dec grid we are using
         hpids = np.arange(hp.nside2npix(self.nside))
@@ -515,10 +510,7 @@ class Conditions:
         return np.max(self._night)
 
     def calc_night(self):
-        self._night = (
-            np.floor(self.mjd - self.mjd_night_offset)
-            - np.floor(self.survey_start_mjd - self.mjd_night_offset)
-        ).astype(int)
+        self._night = np.floor(self.mjd - self.survey_start_mjd).astype(int)
 
     @night.setter
     def night(self, val):
