@@ -1,10 +1,12 @@
 import unittest
+import warnings
 from inspect import signature
 
 import numpy as np
 
 from rubin_scheduler.scheduler.features import Conditions
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
+from rubin_scheduler.utils import SURVEY_START_MJD
 
 
 class TestConditions(unittest.TestCase):
@@ -61,6 +63,20 @@ class TestConditions(unittest.TestCase):
 
         with self.assertWarns(Warning):
             conditions.set_attrs(not_an_attribute=10)
+
+        # Test that conditions.night is set as expected
+        current_mjd = 60914.73382326572
+        conditions.mjd = current_mjd
+        print(conditions.mjd, conditions.night)
+        expected_night = np.floor(current_mjd - 0.5) - np.floor(SURVEY_START_MJD - 0.5)
+        self.assertEqual(expected_night, conditions.night)
+        # Test that warning is raised if you try to set night directly
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            conditions.night = 10
+            # Verify deprecation warning
+            assert len(w) >= 1
+            assert issubclass(w[-1].category, (DeprecationWarning, FutureWarning))
 
 
 if __name__ == "__main__":

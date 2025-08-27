@@ -519,7 +519,7 @@ class Conditions:
             "Set survey_start_mjd on init and mjd so Conditions"
             "can compute value for 'night'."
         )
-        warnings.DeprecationWarning(msg)
+        warnings.warn(msg, DeprecationWarning)
 
     @property
     def m5_depth(self):
