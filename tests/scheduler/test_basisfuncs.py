@@ -469,6 +469,19 @@ class TestBasis(unittest.TestCase):
         overlap = np.where(np.isnan(result_shadow) & ~np.isnan(result))
         self.assertTrue(len(overlap[0]) > 0)
 
+        # Check that shadow is being computed multiple times
+        # basis function where time step is too large, so zenith exclusion path
+        # will not be filled properly
+        bf_gap = basis_functions.AltAzShadowMaskBasisFunction(shadow_minutes=120.0, time_step=500.0)
+        # Better time_step so path of zenith is masked. So bf_filled should
+        # have fewer valid pixels.
+        bf_filled = basis_functions.AltAzShadowMaskBasisFunction(shadow_minutes=120.0, time_step=10.0)
+
+        mask_gap = bf_gap(conditions)
+        mask_filled = bf_filled(conditions)
+
+        assert np.sum(np.isfinite(mask_gap)) > np.sum(np.isfinite(mask_filled))
+
     def test_deprecated(self):
         # Add to-be-deprecated functions here as they appear
         deprecated_basis_functions = [
