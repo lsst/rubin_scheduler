@@ -508,6 +508,8 @@ def gen_too_surveys(
     observation_reason="ToO",
     science_program=None,
 ):
+
+    warnings.warn("Function gen_too_surveys moving out of rubin_scheduler.", DeprecationWarning)
     result = []
     bf_list = []
     bf_list.append(basis_functions.AvoidDirectWind(wind_speed_maximum=wind_speed_maximum, nside=nside))

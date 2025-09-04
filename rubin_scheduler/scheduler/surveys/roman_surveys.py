@@ -44,6 +44,7 @@ def gen_roman_on_season(
     """Generate a survey object for observing the Roman field(s)
     in an on season"""
 
+    warnings.warn("Fucntion gen_roman_on_season moving out of rubin_scheduler.", DeprecationWarning)
     warnings.warn("Generating Roman survey place holder. Should probably not be in production.")
 
     field_info = roman_info()
