@@ -8,7 +8,6 @@ __all__ = (
     "DeltaCoordDitherDetailer",
 )
 
-import copy
 import warnings
 
 import numpy as np
@@ -40,64 +39,73 @@ class DitherDetailer(BaseDetailer):
     per_night : `bool` (True)
         If true, use the same dither offset for an entire night. If False,
         generate a dither position per visit.
-    nnights : `int` (7305)
-        The number of nights to pre-generate random dithers for
+    n_in_night : `int` (1200)
+        The number of unique positions to generate in a night.
+        Only used if per_night is False.
 
 
     """
 
-    def __init__(self, max_dither=0.7, seed=42, per_night=True, nnights=7305):
+    def __init__(self, max_dither=0.7, per_night=True, n_in_night=1200, nnights=None, seed=None):
+
+        if nnights is not None:
+            warnings.warn("kwarg nnights deprecated", FutureWarning)
+        if seed is not None:
+            warnings.warn("kwarg seed deprecated", FutureWarning)
         self.survey_features = {"n_in_night": NObsCount(per_night=True)}
 
         self.current_night = -np.inf
         self.max_dither = np.radians(max_dither)
+        self.n_in_night = n_in_night
         self.per_night = per_night
-        self.rng = np.random.default_rng(seed)
-
-        self.n_positions = copy.copy(nnights)
-
-        if not per_night:
-            # Number of nights, number of positions inside a night
-            nnights = (nnights, nnights)
-
-        self.angles = self.rng.random(nnights) * 2 * np.pi
-        self.radii = self.max_dither * np.sqrt(self.rng.random(nnights))
 
         self.offset_ra = None
         self.offset_dec = None
+
+        self.current_night = -np.inf
+
+    def _new_ang_rad(self, night):
+
+        # Seed with the current night
+        rng = np.random.default_rng(night)
+        if self.per_night:
+            n_gen = 1
+        else:
+            n_gen = self.n_in_night
+
+        self.angles = rng.random(n_gen) * 2 * np.pi
+        self.radii = self.max_dither * np.sqrt(rng.random(n_gen))
 
     def _generate_offsets(self, n_offsets, night):
 
         if self.per_night:
             if night != self.current_night:
+                self._new_ang_rad(night)
                 self.current_night = night
-                angle = self.angles[night]
-                radius = self.radii[night]
+                angle = self.angles
+                radius = self.radii
 
-                self.offset_ra = radius * np.cos(angle)
-                self.offset_dec = radius * np.sin(angle)
-            offsets = np.tile(np.array([self.offset_ra, self.offset_dec]), (n_offsets, 1))
+                self.offsets_ra = radius * np.cos(angle)
+                self.offsets_dec = radius * np.sin(angle)
         else:
             if night != self.current_night:
+                self._new_ang_rad(night)
                 self.current_night = night
             indx_in_night = self.survey_features["n_in_night"].feature
-            angle = self.angles[night, indx_in_night : indx_in_night + n_offsets]
-            radius = self.radii[night, indx_in_night : indx_in_night + n_offsets]
-            offsets_ra = radius * np.cos(angle)
-            offsets_dec = radius * np.sin(angle)
-            offsets = np.array([offsets_ra, offsets_dec]).T
+            angle = self.angles[indx_in_night : indx_in_night + n_offsets]
+            radius = self.radii[indx_in_night : indx_in_night + n_offsets]
+            self.offsets_ra = radius * np.cos(angle)
+            self.offsets_dec = radius * np.sin(angle)
 
-        return offsets
+        return self.offsets_ra, self.offsets_dec
 
     def __call__(self, obs_array, conditions):
         if len(obs_array) == 0:
             return obs_array
+
         # Generate offsets in RA and Dec
-        offsets = self._generate_offsets(len(obs_array), conditions.night)
-        new_ra, new_dec = gnomonic_project_tosky(
-            offsets[:, 0], offsets[:, 1], obs_array["RA"], obs_array["dec"]
-        )
-        new_ra, new_dec = wrap_ra_dec(new_ra, new_dec)
+        offsets_ra, offsets_dec = self._generate_offsets(len(obs_array), conditions.night)
+        new_ra, new_dec = gnomonic_project_tosky(offsets_ra, offsets_dec, obs_array["RA"], obs_array["dec"])
 
         obs_array["RA"] = new_ra
         obs_array["dec"] = new_dec
@@ -200,27 +208,32 @@ class EuclidDitherDetailer(BaseDetailer):
         Positions for the two field centers. Default None
         will load the positions from
         rubin_scheduler.utils.ddf_locations
-    nnights : `int`
-        Number of nights to generate dither positions for.
-        Default 7305 (20 years).
+    n_in_night : `int`
+        Number of positions to generate dither positions for
+        within a night.
     """
 
     def __init__(
         self,
         dither_bearing_dir=[-0.25, 1],
         dither_bearing_perp=[-0.25, 0.25],
-        seed=42,
         per_night=True,
         ra_a=None,
         dec_a=None,
         ra_b=None,
         dec_b=None,
-        nnights=7305,
+        n_in_night=1200,
+        nnights=None,
+        seed=None,
     ):
+        if nnights is not None:
+            warnings.warn("kwarg nnights deprecated", FutureWarning)
+        if seed is not None:
+            warnings.warn("kwarg seed deprecated", FutureWarning)
+        self.n_in_night = n_in_night
         self.survey_features = {"n_in_night": NObsCount(per_night=True)}
 
         default_locations = ddf_locations()
-        self.n_positions = copy.copy(nnights)
 
         if ra_a is None:
             self.ra_a = np.radians(default_locations["EDFS_a"][0])
@@ -253,31 +266,35 @@ class EuclidDitherDetailer(BaseDetailer):
         self.shifted_ra_b = None
         self.shifted_dec_b = None
 
-        rng = np.random.default_rng(seed)
+    def _new_ang_rad(self, night):
 
-        if not per_night:
-            nnights = (nnights, nnights)
+        # seed with the current night
+        rng = np.random.default_rng(night)
+        if self.per_night:
+            n_gen = 1
+        else:
+            n_gen = self.n_in_night
 
         self.bearings_mag_1 = rng.uniform(
             low=self.dither_bearing_dir.min(),
             high=self.dither_bearing_dir.max(),
-            size=nnights,
+            size=n_gen,
         )
         self.perp_mag_1 = rng.uniform(
             low=self.dither_bearing_perp.min(),
             high=self.dither_bearing_perp.max(),
-            size=nnights,
+            size=n_gen,
         )
 
         self.bearings_mag_2 = rng.uniform(
             low=self.dither_bearing_dir.min(),
             high=self.dither_bearing_dir.max(),
-            size=nnights,
+            size=n_gen,
         )
         self.perp_mag_2 = rng.uniform(
             low=self.dither_bearing_perp.min(),
             high=self.dither_bearing_perp.max(),
-            size=nnights,
+            size=n_gen,
         )
 
     def _generate_offsets(self, n_offsets, night):
@@ -285,13 +302,14 @@ class EuclidDitherDetailer(BaseDetailer):
         indx_in_night = self.survey_features["n_in_night"].feature
         if night != self.current_night:
             self.indx_in_night = 0
+            self._new_ang_rad(night)
             self.current_night = night
         if self.per_night:
-            bearing_mag = self.bearings_mag_1[night]
-            perp_mag = self.perp_mag_1[night]
+            bearing_mag = self.bearings_mag_1
+            perp_mag = self.perp_mag_1
         else:
-            bearing_mag = self.bearings_mag_1[night, indx_in_night : indx_in_night + n_offsets]
-            perp_mag = self.perp_mag_1[night, indx_in_night : indx_in_night + n_offsets]
+            bearing_mag = self.bearings_mag_1[indx_in_night : indx_in_night + n_offsets]
+            perp_mag = self.perp_mag_1[indx_in_night : indx_in_night + n_offsets]
 
         # Move point a along the bearings
         self.shifted_dec_a, self.shifted_ra_a = dest_latlon(
@@ -306,11 +324,11 @@ class EuclidDitherDetailer(BaseDetailer):
 
         # Shift the second position
         if self.per_night:
-            bearing_mag = self.bearings_mag_2[night]
-            perp_mag = self.perp_mag_2[night]
+            bearing_mag = self.bearings_mag_2
+            perp_mag = self.perp_mag_2
         else:
-            bearing_mag = self.bearings_mag_2[night, indx_in_night : indx_in_night + n_offsets]
-            perp_mag = self.perp_mag_2[night, indx_in_night : indx_in_night + n_offsets]
+            bearing_mag = self.bearings_mag_2[indx_in_night : indx_in_night + n_offsets]
+            perp_mag = self.perp_mag_2[indx_in_night : indx_in_night + n_offsets]
 
         self.shifted_dec_b, self.shifted_ra_b = dest_latlon(
             bearing_mag, self.bearing_btoa, self.dec_b, self.ra_b

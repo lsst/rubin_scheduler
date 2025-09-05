@@ -459,25 +459,20 @@ class TestDetailers(unittest.TestCase):
     def test_dither(self):
         detailer = detailers.DitherDetailer(per_night=True)
 
-        offsets = detailer._generate_offsets(100, 2)
-        ra_a = offsets[:, 0]
-        dec_a = offsets[:, 1]
+        ra_a, dec_a = detailer._generate_offsets(100, 2)
         # Going per night, should only be one offset
         assert np.size(np.unique(ra_a)) == 1
 
         # if we call again, should be the same
-        offsets = detailer._generate_offsets(100, 2)
-        ra_ap = offsets[:, 0]
-        dec_ap = offsets[:, 1]
+        ra_ap, dec_ap = detailer._generate_offsets(100, 2)
+
         assert np.all(ra_a == ra_ap)
         assert np.all(dec_a == dec_ap)
 
         # Now want a unique position
         detailer = detailers.DitherDetailer(per_night=False)
 
-        offsets = detailer._generate_offsets(100, 2)
-        ra_a = offsets[:, 0]
-        dec_a = offsets[:, 1]
+        ra_a, dec_a = detailer._generate_offsets(100, 2)
 
         assert np.size(np.unique(ra_a)) == 100
 
@@ -487,9 +482,7 @@ class TestDetailers(unittest.TestCase):
         detailer.add_observations_array(obs, None)
 
         # call again should result in different values
-        offsets = detailer._generate_offsets(100, 2)
-        ra_ap = offsets[:, 0]
-        dec_ap = offsets[:, 1]
+        ra_ap, dec_ap = detailer._generate_offsets(100, 2)
 
         assert np.all(np.not_equal(ra_a, ra_ap))
 
