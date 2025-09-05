@@ -12,6 +12,8 @@ __all__ = (
     "MaskAllButNES",
     "NInNightMaskBasisFunction",
     "MaskAfterNObsBasisFunction",
+    "MaskPoorSeeing",
+    "MaskAfterNObsSeeingBasisFunction",
 )
 
 import warnings
@@ -22,7 +24,72 @@ import numpy as np
 import rubin_scheduler.scheduler.features as features
 from rubin_scheduler.scheduler.basis_functions import BaseBasisFunction
 from rubin_scheduler.scheduler.utils import CurrentAreaMap, HpInLsstFov, IntRounded
-from rubin_scheduler.utils import DEFAULT_NSIDE, _angular_separation, _hp_grow_mask
+from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD, _angular_separation, _hp_grow_mask
+
+
+class MaskPoorSeeing(BaseBasisFunction):
+    """Mask any part of the sky that is below a seeing limit
+
+    Potential to update to take a declination-dependent seeing limit
+
+    Parameters
+    ----------
+    bandname : `str`
+        The band in which to use the seeing value
+    seeing_fwhm_max : `float`
+        The seeing FWHM effective to use as a limit (arcsec).
+    """
+
+    def __init__(self, bandname, seeing_fwhm_max=1.3, nside=DEFAULT_NSIDE):
+        super().__init__(nside=nside)
+        self.seeing_fwhm_max = seeing_fwhm_max
+        self.result = np.zeros(hp.nside2npix(self.nside), dtype=float)
+        self.bandname = bandname
+
+    def __call__(self, conditions, indx=None):
+        result = self.result.copy()
+        to_mask = np.where(conditions.fwhm_eff[self.bandname] > self.seeing_fwhm_max)
+        result[to_mask] = np.nan
+        return result
+
+
+class MaskAfterNObsSeeingBasisFunction(BaseBasisFunction):
+    """Mask after a HEALpix has been observed N times. In a
+    season.
+
+    Parameters
+    ----------
+    n_max : `int`
+        The maximum number of times to obseve in a season. Default 3.
+    bandname : `str`
+        The bandname. Default None uses all bands.
+    seeing_fwhm_max : `float`
+        The seeing limit to use when counting observations (arcsec).
+    """
+
+    def __init__(
+        self,
+        n_max=3,
+        nside=DEFAULT_NSIDE,
+        bandname=None,
+        seeing_fwhm_max=1.3,
+        mjd_start=SURVEY_START_MJD,
+    ):
+        super().__init__(nside=nside)
+        self.n_max = n_max
+        self.survey_features["nobs"] = features.NObservationsCurrentSeason(
+            nside=nside,
+            bandname=bandname,
+            mjd_start=mjd_start,
+            seeing_fwhm_max=seeing_fwhm_max,
+        )
+        self.result = np.zeros(hp.nside2npix(self.nside), dtype=float)
+
+    def _calc_value(self, conditions, indx=None):
+        result = self.result.copy()
+        to_mask = np.where(self.survey_features["nobs"].feature >= self.n_max)[0]
+        result[to_mask] = np.nan
+        return result
 
 
 class MaskAllButNES(BaseBasisFunction):
