@@ -39,7 +39,9 @@ class FootprintBasisFunction(BaseBasisFunction):
     out_of_bounds_val : `float`, optional
         The value to set the basis function for regions that are not in
         the footprint. Default -10, np.nan is another good value to use.
-
+    fwhm_eff_limit : `float`
+        Seeing limit to use (arcsec) when counting observations.
+        Default None.
     """
 
     def __init__(
@@ -49,6 +51,7 @@ class FootprintBasisFunction(BaseBasisFunction):
         footprint=None,
         out_of_bounds_val=-10.0,
         filtername=None,
+        fwhm_eff_limit=None
     ):
         if filtername is not None:
             warnings.warn("filtername deprecated in favor of bandname", FutureWarning)
@@ -67,8 +70,8 @@ class FootprintBasisFunction(BaseBasisFunction):
 
         self.survey_features = {}
         # All the observations in all bands
-        self.survey_features["N_obs_all"] = features.NObservations(nside=self.nside, bandname=None)
-        self.survey_features["N_obs"] = features.NObservations(nside=self.nside, bandname=bandname)
+        self.survey_features["N_obs_all"] = features.NObservations(nside=self.nside, bandname=None, seeing_limit=fwhm_eff_limit)
+        self.survey_features["N_obs"] = features.NObservations(nside=self.nside, bandname=bandname, seeing_limit=fwhm_eff_limit)
 
         # should probably actually loop over all the target maps?
         self.out_of_bounds_area = np.where(footprint.get_footprint(self.bandname) <= 0)[0]

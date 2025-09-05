@@ -292,11 +292,15 @@ class NObservations(BaseSurveyFeature):
         The scheduler_note value to match.
         Deprecated in favor of scheduler_note, but provided for backward
         compatibility. Will be removed in the future.
+    seeing_limit : `float`
+        The limit to apply on accepting image quality.
     """
 
-    def __init__(self, bandname=None, nside=DEFAULT_NSIDE, scheduler_note=None, survey_name=None):
+    def __init__(self, bandname=None, nside=DEFAULT_NSIDE, scheduler_note=None, survey_name=None,
+                 seeing_limit=None):
         self.feature = np.zeros(hp.nside2npix(nside), dtype=float)
         self.bandname = bandname
+        self.seeing_limit = seeing_limit
         if scheduler_note is None and survey_name is not None:
             self.scheduler_note = survey_name
         else:
@@ -305,6 +309,8 @@ class NObservations(BaseSurveyFeature):
 
     def add_observations_array(self, observations_array, observations_hpid):
         valid_indx = np.ones(observations_hpid.size, dtype=bool)
+        if self.seeing_limit is not None:
+            valid_indx[np.where(IntRounded(observations_hpid["FWHMeff"]) > IntRounded(self.seeing_limit))] = False
         if self.bandname is not None:
             valid_indx[np.where(observations_hpid["band"] != self.bandname)[0]] = False
         if self.scheduler_note is not None:
@@ -318,9 +324,14 @@ class NObservations(BaseSurveyFeature):
             self.feature += result
 
     def add_observation(self, observation, indx=None):
+        seeing_check = True
+        if self.seeing_limit is not None:
+            seeing_check = IntRounded(observation["FWHMeff"]) <= IntRounded(self.seeing_limit)
+
         if self.bandname is None or observation["band"][0] in self.bandname:
-            if self.scheduler_note is None or observation["scheduler_note"][0] in self.scheduler_note:
-                self.feature[indx] += 1
+            if seeing_check:
+                if self.scheduler_note is None or observation["scheduler_note"][0] in self.scheduler_note:
+                    self.feature[indx] += 1
 
 
 class LargestN:
