@@ -356,7 +356,12 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         # Basis function value will be 0 except where masked (then np.nan)
         result = np.zeros(hp.nside2npix(self.nside), dtype=float)
 
-        n_steps = np.floor(self.shadow_time / self.time_step)
+        # For backwards compatiibility:
+        try:
+            n_steps = np.floor(self.shadow_time / self.time_step)
+        except AttributeError:
+            n_steps = 0
+
         if n_steps > 0:
             times = np.arange(n_steps) * self.time_step
             times = times.tolist()
