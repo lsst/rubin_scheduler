@@ -403,7 +403,7 @@ class SplitDetailer(BaseDetailer):
 
 class CameraRotDetailer(BaseDetailer):
     """
-    Randomly set the camera rotation, either for each exposure, 
+    Randomly set the camera rotation, either for each exposure,
     for each time the detailer is called, or per night.
 
     Note dithering for each exposure may not be repeatable if

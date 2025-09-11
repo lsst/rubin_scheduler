@@ -884,7 +884,7 @@ class LabelDDFDetailer(BaseDetailer):
             # Indexes of observations in obs_array which overlap the DDF
             indxes = np.where(distances <= self.match_radius)[0]
 
-            name_set = set([f"DDF {name}"])
+            name_set = set(["ddf_" + name.lower()])
             if indxes.size > 0:
                 for indx in indxes:
                     if self.append:
