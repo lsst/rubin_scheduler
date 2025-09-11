@@ -294,7 +294,7 @@ class ModelObservatory:
 
         # Set up the skybrightness
         if not self.no_sky:
-            self.sky_model = sb.SkyModelPre(init_load_length=init_load_length)
+            self.sky_model = sb.SkyModelPre(init_load_length=init_load_length, mjd0=self.mjd_start)
         else:
             self.sky_model = None
 

@@ -332,7 +332,9 @@ def gen_sso_events(n_events=900, twi_fraction=0.75, seed=52, radius=2.0, mjd_sta
     return events
 
 
-def gen_all_events(scale=1, nside=DEFAULT_NSIDE, include_gw=True, include_neutrino=True, include_ss=True):
+def gen_all_events(scale=1, nside=DEFAULT_NSIDE, include_gw=True, include_neutrino=True,
+                   mjd_start=SURVEY_START_MJD, include_ss=True, O5_start_mjd=O5_START_MJD, 
+                   O5_end_mjd=O5_END_MJD):
     """Function to generate ToO events
 
     Parameters
@@ -357,15 +359,15 @@ def gen_all_events(scale=1, nside=DEFAULT_NSIDE, include_gw=True, include_neutri
 
     events = []
     if include_gw:
-        events.append(gen_gw_events(scale=3.0 * scale))
-        events.append(gen_bbh_events(scale=3.0 * scale))
-        events.append(gen_lensed_BNS(scale=3.0 * scale))
+        events.append(gen_gw_events(scale=3.0 * scale, mjd_start=O5_start_mjd, mjd_end=O5_end_mjd))
+        events.append(gen_bbh_events(scale=3.0 * scale, mjd_start=O5_start_mjd, mjd_end=O5_end_mjd))
+        events.append(gen_lensed_BNS(scale=3.0 * scale, mjd_start=O5_start_mjd, mjd_end=O5_end_mjd))
     # Not varying the number of neutrino events
     if include_neutrino:
-        events.append(gen_neutrino_events())
+        events.append(gen_neutrino_events(mjd_start=mjd_start, mjd_end=mjd_start+365))
     # Not varying the number of SSO events
     if include_ss:
-        events.append(gen_sso_events())
+        events.append(gen_sso_events(mjd_start=mjd_start))
     event_table = np.concatenate(events)
 
     event_table.sort(order="mjd_start")

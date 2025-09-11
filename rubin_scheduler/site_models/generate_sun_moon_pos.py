@@ -7,7 +7,7 @@ from rubin_scheduler.utils import Site, _angular_separation
 # want to generate moon and sun position information.
 
 if __name__ == "__main__":
-    mjd_start = 59853.5 - 3.0 * 365.25
+    mjd_start = 55197 - 3.0 * 365.25
     duration = 50.0 * 365.25
     pad_around = 40
     t_step = 1.0 / 24.0  # Start with 1-hour timesteps.
