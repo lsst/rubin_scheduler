@@ -108,8 +108,10 @@ def _wrap_180(in_angle):
     in_angle : `float`
         Input angle in radians.
     """
+    # angle = np.atan2(np.sin(in_angle), np.cos(in_angle))
+    # would be simpler, but maybe slower?
     angle = in_angle % (2.0 * np.pi)
-    if np.size(angle) == 1:
+    if np.isscalar(angle):
         if angle > np.pi:
             result = angle - 2.0 * np.pi
             return result
