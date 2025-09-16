@@ -403,7 +403,11 @@ class SplitDetailer(BaseDetailer):
 
 class CameraRotDetailer(BaseDetailer):
     """
-    Randomly set the camera rotation, either for each exposure, or per night.
+    Randomly set the camera rotation, either for each exposure,
+    for each time the detailer is called, or per night.
+
+    Note dithering for each exposure may not be repeatable if
+    scheduler is restarted.
 
     Parameters
     ----------
@@ -416,8 +420,10 @@ class CameraRotDetailer(BaseDetailer):
         If "all", randomize per visit. Default "night".
     telescope : `str`
         Telescope name. Options of "rubin" or "auxtel". Default "rubin".
-    nnights : `int`
-        Number of dither positions to generate.
+    n_in_night : `int`
+        Number of dither positions to generate. Should be greater than
+        the maximum number of visits expected in a night (if
+        dither set to "night"). Default 2000.
     """
 
     def __init__(
@@ -427,10 +433,14 @@ class CameraRotDetailer(BaseDetailer):
         dither="night",
         per_night=None,
         seed=42,
-        nnights=7305,
+        nnights=None,
         telescope="rubin",
+        n_in_night=2000,
     ):
         self.survey_features = {}
+
+        if nnights is not None:
+            warnings.warn("nnights deprecated", FutureWarning)
 
         if per_night is True:
             warnings.warn("per_night deprecated, setting dither='night'", FutureWarning)
@@ -453,10 +463,11 @@ class CameraRotDetailer(BaseDetailer):
         self.range = self.max_rot - self.min_rot
         self.dither = dither
         self.rng = np.random.default_rng(seed)
+        self.n_in_night = n_in_night
         if dither == "call":
-            self.offsets = self.rng.random((nnights, nnights))
+            self.offsets = None
         else:
-            self.offsets = self.rng.random(nnights)
+            self.offsets = self.rng.random(n_in_night)
 
         self.offset = None
         self.rc = rotation_converter(telescope=telescope)
@@ -473,9 +484,11 @@ class CameraRotDetailer(BaseDetailer):
             if night != self.current_night:
                 self.current_night = night
                 self.call_num = 0
-            self.offset = self.offsets[night][self.call_num] * self.range + self.min_rot
+                self.rng = np.random.default_rng(night)
+                self.offsets = self.rng.random(self.n_in_night)
+            offsets = self.offsets[self.call_num] * self.range + self.min_rot
             self.call_num += 1
-            offsets = np.ones(n_offsets) * self.offset
+            offsets = np.ones(n_offsets) * offsets
         elif self.dither == "all":
             self.rng = np.random.default_rng()
             offsets = self.rng.random(n_offsets) * self.range + self.min_rot
