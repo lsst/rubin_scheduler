@@ -631,6 +631,28 @@ class TestFeatures(unittest.TestCase):
         count_feature.add_observations_array(observations_array, observations_hpid=observations_hpid_array)
         self.assertTrue(count_feature.feature.max() == 1)
 
+        # Observations matching specific note and specified band and seeing
+        fwhms = [0.1] * 6 + [10.0] * 6
+        bands = ["r", "g"] * 6
+        for obs, fwhm, band in zip(observations_list, fwhms, bands):
+            obs["band"] = band
+            obs["FWHMeff"] = fwhm
+            obs["scheduler_note"] = "survey"
+
+        observations_array, observations_hpid_array, list_of_hpids = make_observations_arrays(
+            observations_list
+        )
+
+        count_feature = features.NObservations(bandname="r", scheduler_note="survey", seeing_limit=1.0)
+        for obs, indx in zip(observations_list, indexes):
+            count_feature.add_observation(obs, indx)
+        self.assertTrue(count_feature.feature.max() == 3)
+        # and count again using add_observations_array
+        count_feature = features.NObservations(bandname="r", scheduler_note="survey", seeing_limit=1.0)
+        count_feature.add_observations_array(observations_array, observations_hpid=observations_hpid_array)
+
+        self.assertTrue(count_feature.feature.max() == 3)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -421,7 +421,9 @@ class CameraRotDetailer(BaseDetailer):
     telescope : `str`
         Telescope name. Options of "rubin" or "auxtel". Default "rubin".
     n_in_night : `int`
-        Number of dither positions to generate.
+        Number of dither positions to generate. Should be greater than
+        the maximum number of visits expected in a night (if
+        dither set to "night"). Default 2000.
     """
 
     def __init__(
@@ -433,7 +435,7 @@ class CameraRotDetailer(BaseDetailer):
         seed=42,
         nnights=None,
         telescope="rubin",
-        n_in_night=7310,
+        n_in_night=2000,
     ):
         self.survey_features = {}
 
