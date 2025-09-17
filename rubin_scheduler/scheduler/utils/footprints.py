@@ -6,6 +6,7 @@ appropriately for a given time.
 __all__ = (
     "calc_norm_factor",
     "calc_norm_factor_array",
+    "ecliptic_target",
     "StepLine",
     "Footprints",
     "Footprint",
@@ -23,12 +24,48 @@ import warnings
 
 import healpy as hp
 import numpy as np
+import numpy.typing as npt
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 
 from rubin_scheduler.utils import DEFAULT_NSIDE, _hpid2_ra_dec
 
 from .sky_area import CurrentAreaMap
+
+
+def ecliptic_target(
+    nside: int = DEFAULT_NSIDE,
+    dist_to_eclip: float = 40.0,
+    dec_max: float = 30.0,
+    mask: npt.NDArray = 1,
+) -> npt.NDArray:
+    """Generate a target_map for the area around the ecliptic
+
+    Parameters
+    ----------
+    nside : `int`
+        The HEALpix nside to use
+    dist_to_eclip : `float`
+        The distance to the ecliptic to constrain to (degrees).
+        Default 40.
+    dec_max : `float`
+        The max declination to alow (degrees).
+        Default 30.
+    mask : `np.array`
+        Any additional mask to apply, should be a
+        HEALpix mask with matching nside. Default None.
+    """
+
+    ra, dec = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(nside)))
+    result = np.zeros(ra.size)
+    coord = SkyCoord(ra=ra * u.rad, dec=dec * u.rad)
+    eclip_lat = coord.barycentrictrueecliptic.lat.radian
+    good = np.where((np.abs(eclip_lat) < np.radians(dist_to_eclip)) & (dec < np.radians(dec_max)))
+    result[good] += 1
+
+    result *= mask
+
+    return result
 
 
 def make_rolling_footprints(
