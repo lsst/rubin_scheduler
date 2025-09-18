@@ -13,7 +13,7 @@ from rubin_scheduler.scheduler.utils import (
     ObservationArray,
     ScheduledObservationArray,
     SchemaConverter,
-    ecliptic_target,
+    ecliptic_area,
     make_rolling_footprints,
     restore_scheduler,
     run_info_table,
@@ -363,12 +363,12 @@ class TestUtils(unittest.TestCase):
         for k in need_keys:
             self.assertTrue(k in have_keys)
 
-    def test_ecliptic_target(self):
+    def test_ecliptic_area(self):
 
-        result = ecliptic_target()
+        result = ecliptic_area()
         assert np.sum(result) > 0
 
-        result = ecliptic_target(nside=128, dist_to_eclip=50.0, dec_max=-10.0)
+        result = ecliptic_area(nside=128, dist_to_eclip=50.0, dec_max=-10.0)
         assert np.sum(result) > 0
 
     def test_make_rolling_footprints_uniform(self):

@@ -423,7 +423,8 @@ class CameraRotDetailer(BaseDetailer):
     n_in_night : `int`
         Number of dither positions to generate. Should be greater than
         the maximum number of visits expected in a night (if
-        dither set to "night"). Default 2000.
+        dither set to "call"), or greather than number of ngihts
+        in survey if dither set to "night". Default 7350.
     """
 
     def __init__(
@@ -435,7 +436,7 @@ class CameraRotDetailer(BaseDetailer):
         seed=42,
         nnights=None,
         telescope="rubin",
-        n_in_night=2000,
+        n_in_night=7350,
     ):
         self.survey_features = {}
 

@@ -6,7 +6,7 @@ appropriately for a given time.
 __all__ = (
     "calc_norm_factor",
     "calc_norm_factor_array",
-    "ecliptic_target",
+    "ecliptic_area",
     "StepLine",
     "Footprints",
     "Footprint",
@@ -33,13 +33,13 @@ from rubin_scheduler.utils import DEFAULT_NSIDE, _hpid2_ra_dec
 from .sky_area import CurrentAreaMap
 
 
-def ecliptic_target(
+def ecliptic_area(
     nside: int = DEFAULT_NSIDE,
     dist_to_eclip: float = 40.0,
     dec_max: float = 30.0,
     mask: npt.NDArray = 1,
 ) -> npt.NDArray:
-    """Generate a target_map for the area around the ecliptic
+    """Generate a HEALpix map for the area around the ecliptic
 
     Parameters
     ----------
