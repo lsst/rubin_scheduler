@@ -22,6 +22,13 @@ class TestLsstcamerafootprint(unittest.TestCase):
         # the FOV, while the second is outside
         self.assertEqual(idx_obs, [0])
 
+        # Check that lower max radius means
+        # fewer valid pixels
+        c1 = LsstCameraFootprint(max_radius=1.75)
+        c2 = LsstCameraFootprint(max_radius=1.94)
+
+        assert c1.camera_fov.sum() < c2.camera_fov.sum()
+
 
 if __name__ == "__main__":
     unittest.main()
