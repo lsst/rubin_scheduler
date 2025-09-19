@@ -21,6 +21,9 @@ def rotate(x, y, rotation_angle_rad):
 class LsstCameraFootprint:
     """
     Identify point on the sky within an LSST camera footprint.
+    Note:
+    1.94deg = 350mm in the focal plane
+    1.75 deg =317mm in the focal plane (which is requirement)
 
     Parameters
     ----------
