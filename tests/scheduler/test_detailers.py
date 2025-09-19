@@ -55,6 +55,7 @@ class TestDetailers(unittest.TestCase):
             detailers.BandToFilterDetailer,
             detailers.TagRadialDetailer,
             detailers.LabelDDFDetailer,
+            detailers.TruncatePreTwiDetailer,
         ]
 
         for det in det_list:
