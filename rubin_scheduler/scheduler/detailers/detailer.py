@@ -216,13 +216,13 @@ class TruncatePreTwiDetailer(BaseDetailer):
         Estimate of filter change time
     visit_overhead : `float`
         Estimate of visit overhead (read, slew, settle).
-        Default 2.5 (seconds).
+        Default 4.0 (seconds).
     twilight_cut_to : `str`
         Cut to sun altitude of -18 degrees or -12 degrees.
         Valid values of "n18" or "n12".
     """
 
-    def __init__(self, pad=5.0, filter_change_time=120.0, visit_overhead=2.5, twilight_cut_to="n18"):
+    def __init__(self, pad=5.0, filter_change_time=120.0, visit_overhead=4.0, twilight_cut_to="n18"):
         self.pad = pad / 60.0 / 24.0  # To days
         self.filter_change_time = filter_change_time / 3600.0 / 24.0  # To days
 
