@@ -21,6 +21,9 @@ def rotate(x, y, rotation_angle_rad):
 class LsstCameraFootprint:
     """
     Identify point on the sky within an LSST camera footprint.
+    Note:
+    1.94deg = 350mm in the focal plane
+    1.75 deg =317mm in the focal plane (which is requirement)
 
     Parameters
     ----------
@@ -32,10 +35,12 @@ class LsstCameraFootprint:
         Location for the camera footprint map.
         Default None loads the default map from
         $RUBIN_SIM_DATA_DIR/maf/fov_map.npz
-
+    max_radius : `float`
+        The maximum radius to consider valid, pixels beyond
+        are masked. Default 1.94 (degrees).
     """
 
-    def __init__(self, units="degrees", footprint_file=None):
+    def __init__(self, units="degrees", footprint_file=None, max_radius=1.94):
         if footprint_file is None:
             footprint_file = os.path.join(get_data_dir(), "utils", "fov_map.npz")
         _temp = np.load(footprint_file)
@@ -47,6 +52,15 @@ class LsstCameraFootprint:
         _temp.close()
         self.plate_scale = self.x_camera[1] - self.x_camera[0]
         self.indx_max = len(self.x_camera)
+
+        # Crop off pixels beyond max radius.
+        ones = np.ones(self.camera_fov.shape)
+        full_x = ones * self.x_camera
+        full_y = ones * self.x_camera[np.newaxis].T
+
+        radius = np.sqrt(full_x**2 + full_y**2)
+        beyond_max = np.where(radius > np.radians(max_radius))
+        self.camera_fov[beyond_max] = False
 
     def __call__(self, obj_ra, obj_dec, boresight_ra, boresight_dec, boresight_rot_sky_pos):
         """Determine which observations are within the actual camera
