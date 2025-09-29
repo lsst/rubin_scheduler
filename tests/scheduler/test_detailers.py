@@ -486,6 +486,15 @@ class TestDetailers(unittest.TestCase):
 
         assert np.all(np.not_equal(ra_a, ra_ap))
 
+        # Check that negative nights are ok
+        detailer = detailers.DitherDetailer(per_night=True)
+        detailer._new_ang_rad(-10)
+        ang1 = detailer.angles.copy()
+        detailer._new_ang_rad(10)
+        ang2 = detailer.angles.copy()
+
+        assert np.all(ang1 != ang2)
+
 
 if __name__ == "__main__":
     unittest.main()
