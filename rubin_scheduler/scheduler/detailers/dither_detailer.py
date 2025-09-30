@@ -8,6 +8,7 @@ __all__ = (
     "DeltaCoordDitherDetailer",
 )
 
+import sys
 import warnings
 
 import numpy as np
@@ -42,16 +43,25 @@ class DitherDetailer(BaseDetailer):
     n_in_night : `int` (1200)
         The number of unique positions to generate in a night.
         Only used if per_night is False.
-
-
+    big_int : `int`
+        A big integer to use for seeding random number generator
+        in case one send in a `night` value that is negative.
     """
 
-    def __init__(self, max_dither=0.7, per_night=True, n_in_night=1200, nnights=None, seed=None):
+    def __init__(
+        self, max_dither=0.7, per_night=True, n_in_night=1200, nnights=None, big_int=700000, seed=None
+    ):
 
         if nnights is not None:
             warnings.warn("kwarg nnights deprecated", FutureWarning)
         if seed is not None:
             warnings.warn("kwarg seed deprecated", FutureWarning)
+
+        # Check we can run for 10 years no problem
+        test = 36525 < big_int < (sys.maxsize - 36525)
+        if not test:
+            raise ValueError("Value used for big_int won't work for 10 year survey.")
+
         self.survey_features = {"n_in_night": NObsCount(per_night=True)}
 
         self.current_night = -np.inf
@@ -63,11 +73,16 @@ class DitherDetailer(BaseDetailer):
         self.offset_dec = None
 
         self.current_night = -np.inf
+        self.big_int = big_int
 
     def _new_ang_rad(self, night):
 
         # Seed with the current night
-        rng = np.random.default_rng(night)
+        if night < 0:
+            seed = self.big_int + night
+        else:
+            seed = night
+        rng = np.random.default_rng(seed)
         if self.per_night:
             n_gen = 1
         else:
@@ -351,15 +366,19 @@ class EuclidDitherDetailer(BaseDetailer):
         # Generate offsets in RA and Dec
         ra_a, dec_a, ra_b, dec_b = self._generate_offsets(len(obs_array), conditions.night)
 
+        ra = []
+        dec = []
         for i, obs in enumerate(obs_array):
             if "DD:EDFS_a" in obs["scheduler_note"][0:9]:
-                obs_array[i]["RA"] = ra_a
-                obs_array[i]["dec"] = dec_a
+                ra.append(ra_a)
+                dec.append(dec_a)
             elif "DD:EDFS_b" in obs["scheduler_note"][0:9]:
-                obs_array[i]["RA"] = ra_b
-                obs_array[i]["dec"] = dec_b
+                ra.append(ra_b)
+                dec.append(dec_b)
             else:
                 raise ValueError("scheduler_note does not contain EDFS_a or EDFS_b.")
+        obs_array["RA"] = np.concatenate(ra)
+        obs_array["dec"] = np.concatenate(dec)
         return obs_array
 
 
