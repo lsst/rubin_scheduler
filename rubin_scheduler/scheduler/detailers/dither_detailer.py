@@ -8,6 +8,7 @@ __all__ = (
     "DeltaCoordDitherDetailer",
 )
 
+import sys
 import warnings
 
 import numpy as np
@@ -55,6 +56,12 @@ class DitherDetailer(BaseDetailer):
             warnings.warn("kwarg nnights deprecated", FutureWarning)
         if seed is not None:
             warnings.warn("kwarg seed deprecated", FutureWarning)
+
+        # Check we can run for 10 years no problem
+        test = 36525 < big_int < (sys.maxsize - 36525)
+        if not test:
+            raise ValueError("Value used for big_int won't work for 10 year survey.")
+
         self.survey_features = {"n_in_night": NObsCount(per_night=True)}
 
         self.current_night = -np.inf
