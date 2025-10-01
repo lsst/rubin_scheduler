@@ -247,9 +247,12 @@ class TruncatePreTwiDetailer(BaseDetailer):
 
         time_avail = cut_mjd - conditions.mjd - self.pad
 
-        trunc_indx = np.max(np.where(IntRounded(cumulative_time) <= IntRounded(time_avail)))
-
-        return observation_array[0 : trunc_indx + 1]
+        indx = np.where(IntRounded(cumulative_time) <= IntRounded(time_avail))[0]
+        if np.size(indx) > 0:
+            trunc_indx = np.max(indx)
+            return observation_array[0 : trunc_indx + 1]
+        else:
+            return ObservationArray(n=0)
 
 
 class AltAz2RaDecDetailer(BaseDetailer):
