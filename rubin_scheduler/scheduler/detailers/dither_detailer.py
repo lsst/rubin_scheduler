@@ -363,6 +363,9 @@ class EuclidDitherDetailer(BaseDetailer):
         )
 
     def __call__(self, obs_array, conditions):
+        if np.size(obs_array) == 0:
+            return obs_array
+
         # Generate offsets in RA and Dec
         ra_a, dec_a, ra_b, dec_b = self._generate_offsets(len(obs_array), conditions.night)
 
