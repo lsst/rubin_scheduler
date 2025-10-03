@@ -532,6 +532,30 @@ class TestDetailers(unittest.TestCase):
 
         assert n3 > 0
 
+    def test_rollband(self):
+
+        orig_order = np.array(["u", "g", "r"])
+
+        observation_array = ObservationArray(n=3)
+        observation_array["band"] = ["u", "g", "r"]
+
+        # Test where no change should happen
+        detailer = detailers.RollBandMatchDetailer()
+        conditions = Conditions()
+        conditions.current_band = "u"
+        o1 = detailer(observation_array, conditions)
+        for bn, ob in zip(orig_order, o1["band"]):
+            assert bn == ob
+
+        # Test where things should roll
+        conditions.current_band = "r"
+        o2 = detailer(observation_array, conditions)
+
+        assert o2["band"][0] == "r"
+
+        for bn in orig_order:
+            assert bn in o2["band"]
+
 
 if __name__ == "__main__":
     unittest.main()
