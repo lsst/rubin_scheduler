@@ -55,6 +55,7 @@ class TestDetailers(unittest.TestCase):
             detailers.BandToFilterDetailer,
             detailers.TagRadialDetailer,
             detailers.LabelDDFDetailer,
+            detailers.TruncatePreTwiDetailer,
         ]
 
         for det in det_list:
@@ -494,6 +495,42 @@ class TestDetailers(unittest.TestCase):
         ang2 = detailer.angles.copy()
 
         assert np.all(ang1 != ang2)
+
+    def test_truncate(self):
+        """Test we truncate observations before twilight"""
+        detailer = detailers.TruncatePreTwiDetailer()
+        observation_array = ObservationArray(n=100)
+        n1 = np.size(observation_array)
+
+        observation_array["band"] = "r"
+        observation_array["exptime"] = 30.0
+
+        conditions = Conditions(mjd=3, survey_start_mjd=0)
+        conditions.current_band = "r"
+        # Have a ton of time, no obs should be cut
+        conditions.sun_n18_rising = 3.5
+        obs_out = detailer(observation_array, conditions)
+
+        assert np.size(obs_out) == n1
+
+        # cut down to not enough time
+        conditions.sun_n18_rising = 3.016
+
+        obs_out = detailer(observation_array, conditions)
+        n2 = np.size(obs_out)
+
+        # Now if we are in a different filter, should
+        # Have to lose a few more, but not all
+        conditions.current_band = "b"
+        obs_out = detailer(observation_array, conditions)
+
+        n3 = np.size(obs_out)
+
+        assert n1 > n2
+
+        assert n2 > n3
+
+        assert n3 > 0
 
 
 if __name__ == "__main__":

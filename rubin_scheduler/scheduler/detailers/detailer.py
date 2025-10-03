@@ -15,6 +15,7 @@ __all__ = (
     "RandomFilterDetailer",
     "RandomBandDetailer",
     "BandSortDetailer",
+    "TruncatePreTwiDetailer",
     "TrackingInfoDetailer",
     "AltAz2RaDecDetailer",
     "StartFieldSequenceDetailer",
@@ -200,6 +201,58 @@ class BandToFilterDetailer(BaseDetailer):
             observation_array["filter"][indx] = filtername
 
         return observation_array
+
+
+class TruncatePreTwiDetailer(BaseDetailer):
+    """Truncate an array of observations so they fit before
+    morning twilight starts.
+
+    Parameters
+    ----------
+    pad : `float`
+        The pad to give before start of morning twilight.
+        Default 5 (minutes).
+    filter_change_time : `float`
+        Estimate of filter change time
+    visit_overhead : `float`
+        Estimate of visit overhead (read, slew, settle).
+        Default 4.0 (seconds).
+    twilight_cut_to : `str`
+        Cut to sun altitude of -18 degrees or -12 degrees.
+        Valid values of "n18" or "n12".
+    """
+
+    def __init__(self, pad=5.0, filter_change_time=120.0, visit_overhead=4.0, twilight_cut_to="n18"):
+        self.pad = pad / 60.0 / 24.0  # To days
+        self.filter_change_time = filter_change_time / 3600.0 / 24.0  # To days
+
+        self.visit_overhead = visit_overhead / 3600.0 / 24.0  # To days
+        self.twilight_cut_to = twilight_cut_to
+
+    def __call__(self, observation_array, conditions):
+
+        b1 = observation_array["band"][0:-1]
+        b2 = observation_array["band"][1:]
+
+        f_changes = b1 != b2
+        # Do we start with a filter change?
+        prepend = observation_array["band"][0] != conditions.current_band
+        f_changes = np.array([prepend] + np.array(f_changes).tolist())
+        f_time = f_changes * self.filter_change_time
+
+        tot_time = observation_array["exptime"] / 3600.0 / 24.0 + f_time + self.visit_overhead
+        cumulative_time = np.cumsum(tot_time)
+
+        cut_mjd = getattr(conditions, "sun_%s_rising" % self.twilight_cut_to)
+
+        time_avail = cut_mjd - conditions.mjd - self.pad
+
+        indx = np.where(IntRounded(cumulative_time) <= IntRounded(time_avail))[0]
+        if np.size(indx) > 0:
+            trunc_indx = np.max(indx)
+            return observation_array[0 : trunc_indx + 1]
+        else:
+            return ObservationArray(n=0)
 
 
 class AltAz2RaDecDetailer(BaseDetailer):
