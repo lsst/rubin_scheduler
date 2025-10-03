@@ -149,7 +149,7 @@ class ScriptedSurvey(BaseSurvey):
     def calc_reward_function(self, conditions):
         """If there is an observation ready to go, execute it,
         otherwise, -inf"""
-        observation = self.generate_observations_rough(conditions)
+        observation = self.generate_observations(conditions)
         if (observation is None) | (np.size(observation) == 0):
             self.reward = -np.inf
         else:
