@@ -25,6 +25,7 @@ __all__ = (
     "LabelRegionDetailer",
     "LabelDDFDetailer",
     "LabelRegionsAndDDFs",
+    "RollBandMatchDetailer",
 )
 
 import copy
@@ -148,6 +149,20 @@ class TrackingInfoDetailer(BaseDetailer):
                 | (observation_array[key] == "None")
             )[0]
             observation_array[key][indx] = getattr(self, key)
+
+        return observation_array
+
+
+class RollBandMatchDetailer(BaseDetailer):
+    """Roll the order of visits to eliminate a filter change."""
+
+    def __call__(self, observation_array, conditions):
+
+        bm_index = np.where(observation_array["band"] == conditions.current_band)[0]
+        if np.size(bm_index) > 0:
+            indx = np.arange(observation_array.size)
+            indx = np.roll(indx, -np.min(bm_index))
+            observation_array = observation_array[indx]
 
         return observation_array
 
