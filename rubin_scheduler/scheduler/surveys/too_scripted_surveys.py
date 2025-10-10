@@ -12,6 +12,7 @@ from rubin_scheduler.scheduler.utils import (
     ScheduledObservationArray,
     comcam_tessellate,
     order_observations,
+    rotx,
     thetaphi2xyz,
     xyz2thetaphi,
 )
@@ -22,9 +23,7 @@ from rubin_scheduler.utils import (
     _build_tree,
     _hpid2_ra_dec,
     _ra_dec2_hpid,
-    rotx,
 )
-
 
 DEFAULT_EXP_TIME = 29.2
 
