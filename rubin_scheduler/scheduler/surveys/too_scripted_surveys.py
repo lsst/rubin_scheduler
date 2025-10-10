@@ -22,17 +22,8 @@ from rubin_scheduler.utils import (
     _build_tree,
     _hpid2_ra_dec,
     _ra_dec2_hpid,
+    rotx,
 )
-
-
-def rotx(theta, x, y, z):
-    """rotate the x,y,z points theta radians about x axis"""
-    sin_t = np.sin(theta)
-    cos_t = np.cos(theta)
-    xp = x
-    yp = y * cos_t + z * sin_t
-    zp = -y * sin_t + z * cos_t
-    return xp, yp, zp
 
 
 DEFAULT_EXP_TIME = 29.2
@@ -480,17 +471,3 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
                 observations = detailer(observations, conditions)
 
         return observations
-
-
-def mean_longitude(longitude):
-    """Compute a mean longitude, accounting for wrap around."""
-    x = np.cos(longitude)
-    y = np.sin(longitude)
-    meanx = np.mean(x)
-    meany = np.mean(y)
-    angle = np.arctan2(meany, meanx)
-    radius = np.sqrt(meanx**2 + meany**2)
-    mid_longitude = angle % (2.0 * np.pi)
-    if radius < 0.1:
-        mid_longitude = np.pi
-    return mid_longitude
