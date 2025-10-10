@@ -302,6 +302,8 @@ def restore_scheduler(observation_id, scheduler, observatory, in_obs, band_sched
     else:
         observations = in_obs
     good_obs = np.where(observations["ID"] <= observation_id)[0]
+    scheduler.target_id_counter = observations["target_id"][np.max(good_obs) + 1] - 1
+
     observations = observations[good_obs]
 
     if fast:

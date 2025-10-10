@@ -33,8 +33,8 @@ class TestUtils(unittest.TestCase):
     def test_nside(self):
         """Test the example scheduler can be set to different nsides."""
         mjd_start = SURVEY_START_MJD
-        _ = example_scheduler(mjd_start=mjd_start, nside=64)
-        _ = example_scheduler(mjd_start=mjd_start, nside=8)
+        _ = example_scheduler(survey_start_mjd=mjd_start, nside=64)
+        _ = example_scheduler(survey_start_mjd=mjd_start, nside=8)
 
     @unittest.skipUnless(
         os.path.isfile(os.path.join(get_data_dir(), "scheduler/dust_maps/dust_nside_32.npz")),
@@ -44,9 +44,9 @@ class TestUtils(unittest.TestCase):
         """Test example scheduler and sim_runner having mis-matched
         start dates."""
         mjd_start = SURVEY_START_MJD
-        scheduler = example_scheduler(mjd_start=mjd_start)
+        scheduler = example_scheduler(survey_start_mjd=mjd_start)
         observatory, scheduler, observations = run_sched(
-            scheduler, mjd_start=mjd_start - 0.5, survey_length=5
+            scheduler, survey_start_mjd=mjd_start - 0.5, survey_length=5
         )
 
     @unittest.skipUnless(
@@ -57,7 +57,7 @@ class TestUtils(unittest.TestCase):
         """Test that setting some azimuth limits via different approaches
         for the AltAzShadowMaskBasisFunction works"""
         mjd_start = SURVEY_START_MJD
-        scheduler = example_scheduler(mjd_start=mjd_start)
+        scheduler = example_scheduler(survey_start_mjd=mjd_start)
 
         # Constrain the pointings available with the telescope mount
         # This test needs to run in the north, not the south
@@ -179,7 +179,7 @@ class TestUtils(unittest.TestCase):
         mjd_start = SURVEY_START_MJD
         n_visit_limit = 3000
 
-        scheduler = example_scheduler(mjd_start=mjd_start)
+        scheduler = example_scheduler(survey_start_mjd=mjd_start)
 
         mo = ModelObservatory(mjd_start=mjd_start, downtimes="ideal", cloud_data="ideal")
         # Never load too many nights of sky
@@ -208,7 +208,7 @@ class TestUtils(unittest.TestCase):
         new_mo = ModelObservatory(mjd_start=mjd_start, downtimes="ideal", cloud_data="ideal")
         # Never load too much sky
         new_mo.sky_model.load_length = 10.0
-        new_sched = example_scheduler(mjd_start=mjd_start)
+        new_sched = example_scheduler(survey_start_mjd=mjd_start)
 
         # Restore some of the observations
         new_sched, new_mo = restore_scheduler(break_indx - 1, new_sched, new_mo, observations, fast=False)
@@ -236,6 +236,7 @@ class TestUtils(unittest.TestCase):
                 # Otherwise should be number-like
                 else:
                     assert np.allclose(new_obs[name], observations[break_indx:][name])
+
         # Didn't need to go by column, the observations after restart
         # match the ones that were taken all at once.
         else:
@@ -244,7 +245,7 @@ class TestUtils(unittest.TestCase):
         # And again, but this time using the fast array restore
         new_mo = ModelObservatory(mjd_start=mjd_start, downtimes="ideal", cloud_data="ideal")
         new_mo.sky_model.load_length = 10.0
-        new_sched = example_scheduler(mjd_start=mjd_start)
+        new_sched = example_scheduler(survey_start_mjd=mjd_start)
         new_sched, new_mo = restore_scheduler(break_indx - 1, new_sched, new_mo, observations, fast=True)
         # Simulate ahead and confirm that it behaves the same as
         # running straight through
