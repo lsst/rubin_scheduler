@@ -404,6 +404,7 @@ class KinemModel:
         bandname=np.array(["r"]),
         lax_dome=True,
         slew_while_changing_filter=False,
+        constant_band_changetime=True,
         alt_rad=None,
         az_rad=None,
         starting_alt_rad=None,
@@ -467,6 +468,10 @@ class KinemModel:
         slew_while_changing_filter : `bool`, default False
             If False, slew first and then stop to change the filter.
             If True, change filter in parallel with slewing.
+        constant_band_changetime : `bool`, default True
+            If True, use a constant (average) value for the band change time.
+            The value will be self.band_changetime.
+            If False, calculate rotator + approximate carousel swap time.
         starting_alt_rad : `float` (None)
             The starting altitude for the slew (radians).
             If None, will use internally stored last pointing.
@@ -701,16 +706,24 @@ class KinemModel:
             rotator_time = jerk_time(
                 delta_rotation, self.telrot_maxspeed_rad, self.telrot_accel_rad, self.telrot_jerk_rad
             )
+            # Do not include rotator movement if changing band,
+            # as rotator movement is baked into band change time.
+            band_change = np.where(bandname != self.current_band)
+            rotator_time[band_change] = 0
             slew_time = np.maximum(slew_time, rotator_time)
 
         # include band change time if necessary. Assume no band
         # change time needed if we are starting parked
         if not self.parked:
             band_change = np.where(bandname != self.current_band)
-            if slew_while_changing_filter:
-                slew_time[band_change] = np.maximum(slew_time[band_change], self.band_changetime)
+            if not constant_band_changetime and rot_tel_pos is not None:
+                band_changetime = self.better_band_changetime(current_rot_tel_pos, rot_tel_pos)
             else:
-                slew_time[band_change] = slew_time[band_change] + self.band_changetime
+                band_changetime = self.band_changetime
+            if slew_while_changing_filter:
+                slew_time[band_change] = np.maximum(slew_time[band_change], band_changetime)
+            else:
+                slew_time[band_change] = slew_time[band_change] + band_changetime
 
         # Add closed loop optics correction
         # Find the limit where we must add the delay
@@ -751,6 +764,44 @@ class KinemModel:
             self.last_mjd = mjd
 
         return slew_time
+
+    def better_band_changetime(self, rot_tel_prev, rot_tel_next, band_change=90):
+        """A more precise estimate for the filter change time.
+
+        The default of 120s is intended to capture an average rotator movement
+        plus band change. In reality, the rotator moves from current position,
+        to 0, changes the filter (either 60 or 90s), then moves to next
+        rotation position.
+
+        Parameters
+        ----------
+        rot_tel_prev : `float`
+            Starting rotator position. Radians.
+        rot_tel_next : `float`
+            Ending rotator position. Radians.
+        band_change : `float`
+            The time to swap the filters in the carousel.
+            This value depends on which slots are being changed, so
+            could be 60 or 90s. Assume 90 for now. Seconds.
+
+        Returns
+        -------
+        better_band_changetime : `float`
+            An estimate of the filter change time required, in s.
+        """
+        # Rotate from previous angle to 0
+        delta_rotation = np.abs(smallest_signed_angle(rot_tel_prev, np.array([0])))
+        band_change_time = jerk_time(
+            delta_rotation, self.telrot_maxspeed_rad, self.telrot_accel_rad, self.telrot_jerk_rad
+        )
+        # Add the carousel swap
+        band_change_time += band_change
+        # Rotate from 0 to new angle
+        delta_rotation = np.abs(smallest_signed_angle(np.array([0]), rot_tel_next))
+        band_change_time += jerk_time(
+            delta_rotation, self.telrot_maxspeed_rad, self.telrot_accel_rad, self.telrot_jerk_rad
+        )
+        return band_change_time
 
     def visit_time(self, observation):
         # How long does it take to make an observation.

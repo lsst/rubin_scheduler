@@ -38,11 +38,16 @@ class TestKinematicModel(unittest.TestCase):
         tma_kwargs = tma_movement(40)
         kinematic_model.setup_telescope(**tma_kwargs)
         # Model automatically starts at park
+        # Set up two basic positions
         mjd1 = np.array([60921.289709])
         ra1 = np.radians(np.array([319.711379]))
         dec1 = np.radians(np.array([-14.821931]))
         sky_angle1 = np.radians(np.array([98.649120]))
         band = np.array(["i"])
+        ra2 = ra1 + np.radians(10.0)
+        dec2 = dec1 + np.radians(15.0)
+        sky_angle2 = sky_angle1
+        band2 = np.array(["r"])
         #  Slew to this starting position
         slewtime = kinematic_model.slew_times(
             ra1,
@@ -70,9 +75,25 @@ class TestKinematicModel(unittest.TestCase):
             update_tracking=True,
         )
         self.assertEqual(slewtime, 0)
+        # Unless we set the overhead (from readout from the previous obs)
+        # then minimum slewtime would be overhead value
+        kinematic_model.overhead = kinematic_model.readtime
+        mjd1 += slewtime / 60 / 60 / 24
+        slewtime = kinematic_model.slew_times(
+            ra1,
+            dec1,
+            mjd1,
+            rot_sky_pos=sky_angle1,
+            bandname=band,
+            lax_dome=False,
+            slew_while_changing_filter=False,
+            update_tracking=True,
+        )
+        self.assertEqual(slewtime, kinematic_model.readtime)
         # And a third slew with a rotator change
         #  Slew to this starting position
         rotator_move = 16.61
+        kinematic_model.overhead = 0
         mjd1 += slewtime / 60 / 60 / 24
         slewtime = kinematic_model.slew_times(
             ra1,
@@ -93,39 +114,50 @@ class TestKinematicModel(unittest.TestCase):
             dec1,
             mjd1,
             rot_sky_pos=sky_angle1 - np.pi / 2,
-            bandname=np.array(["r"]),
+            bandname=band2,
             lax_dome=False,
             slew_while_changing_filter=True,
             update_tracking=True,
         )
         self.assertEqual(kinematic_model.band_changetime, (round(slewtime, 2)))
-        # And if we change the filter after slewing it is longer
-        # (and should be longer by the rotator time above)
+        # And if we change the filter while slewing,
+        # we still get the base filter change time (because this includes
+        # rotator movement).
         mjd1 += slewtime / 60 / 60 / 24
         slewtime = kinematic_model.slew_times(
             ra1,
             dec1,
             mjd1,
             rot_sky_pos=sky_angle1 - np.pi / 4,
-            bandname=np.array(["i"]),
+            bandname=band,
             lax_dome=False,
             slew_while_changing_filter=False,
             update_tracking=True,
         )
-        self.assertEqual(rotator_move + kinematic_model.band_changetime, (round(slewtime, 2)))
+        self.assertEqual(kinematic_model.band_changetime, (round(slewtime, 2)))
+        # And then use better_band_change_time which calculates rotator + FES
+        mjd1 += slewtime / 60 / 60 / 24
+        slewtime = kinematic_model.slew_times(
+            ra1,
+            dec1,
+            mjd1,
+            rot_sky_pos=sky_angle1 - np.pi / 4,
+            bandname=band2,
+            lax_dome=False,
+            slew_while_changing_filter=False,
+            constant_band_changetime=False,
+            update_tracking=True,
+        )
+        self.assertNotEqual(kinematic_model.band_changetime, (round(slewtime, 2)))
         # Slew to new position without tracking the slew
         # but vary lax dome or not
         mjd1 += slewtime / 60 / 60 / 24
-        ra2 = ra1 + np.radians(10.0)
-        dec2 = dec1 + np.radians(15.0)
-        sky_angle2 = sky_angle1
-        mjd2 = mjd1
         slewtime1 = kinematic_model.slew_times(
             ra2,
             dec2,
-            mjd2,
+            mjd1,
             rot_sky_pos=sky_angle2,
-            bandname=band,
+            bandname=band2,
             lax_dome=False,
             slew_while_changing_filter=False,
             update_tracking=False,
@@ -133,39 +165,14 @@ class TestKinematicModel(unittest.TestCase):
         slewtime2 = kinematic_model.slew_times(
             ra2,
             dec2,
-            mjd2,
+            mjd1,
             rot_sky_pos=sky_angle2,
-            bandname=band,
+            bandname=band2,
             lax_dome=True,
             slew_while_changing_filter=False,
             update_tracking=False,
         )
         self.assertGreater(slewtime1, slewtime2)
-        # Verify that slew to the same position,
-        # but adding the readout time to the overhead sets min slewtime.
-        slewtime = kinematic_model.slew_times(
-            ra2,
-            dec2,
-            mjd2,
-            rot_sky_pos=sky_angle2,
-            bandname=band,
-            lax_dome=True,
-            slew_while_changing_filter=False,
-            update_tracking=True,
-        )
-        mjd2 += slewtime / 60 / 60 / 24
-        kinematic_model.overhead = kinematic_model.readtime
-        slewtime = kinematic_model.slew_times(
-            ra2,
-            dec2,
-            mjd2,
-            rot_sky_pos=sky_angle2,
-            bandname=band,
-            lax_dome=True,
-            slew_while_changing_filter=False,
-            update_tracking=False,
-        )
-        self.assertEqual(slewtime, kinematic_model.readtime)
 
     def test_observe(self):
         # Test observe method
