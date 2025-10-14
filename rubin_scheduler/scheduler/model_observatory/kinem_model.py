@@ -168,7 +168,7 @@ class KinemModel:
 
     def setup_camera(
         self,
-        readtime=2.4,
+        readtime=3.07,
         shuttertime=1.0,
         band_changetime=120.0,
         fov=3.5,
@@ -401,8 +401,10 @@ class KinemModel:
         mjd,
         rot_sky_pos=None,
         rot_tel_pos=None,
-        bandname="r",
+        bandname=np.array(["r"]),
         lax_dome=True,
+        slew_while_changing_filter=False,
+        constant_band_changetime=True,
         alt_rad=None,
         az_rad=None,
         starting_alt_rad=None,
@@ -423,10 +425,11 @@ class KinemModel:
         over 180 degrees.
 
         Calculates the slew time necessary to get from current state
-        to alt2/az2/band2. The time returned is actually the time between
-        the end of an exposure at current location and the beginning of an
-        exposure at alt2/az2, since it includes readout time in
-        the slew time.
+        to alt2/az2/band2. The readout time is NOT included in the slewtime,
+        as you could slew without taking an exposure. However, the readout
+        time (from the previous exposure) will be included in `self.overhead`
+        when calculating visit+slew using `observe`, and `self.overhead`
+        will be a minimum value for the slewtime.
 
         Parameters
         ----------
@@ -462,6 +465,13 @@ class KinemModel:
             require the dome to settle in azimuth. If False, adhere to the
             way SOCS calculates slew times (as of June 21 2017) and do not
             allow dome creep.
+        slew_while_changing_filter : `bool`, default False
+            If False, slew first and then stop to change the filter.
+            If True, change filter in parallel with slewing.
+        constant_band_changetime : `bool`, default True
+            If True, use a constant (average) value for the band change time.
+            The value will be self.band_changetime.
+            If False, calculate rotator + approximate carousel swap time.
         starting_alt_rad : `float` (None)
             The starting altitude for the slew (radians).
             If None, will use internally stored last pointing.
@@ -475,11 +485,27 @@ class KinemModel:
             If True, update the internal attributes to say we are tracking
             the specified RA,Dec,RotSkyPos position.
 
+
         Returns
         -------
         slew_time : `np.ndarray`
             The number of seconds between the two specified exposures.
             Will be np.nan or np.inf if slew is not possible.
+
+
+        Notes
+        -----
+        When using the KinematicModel with the ModelObservatory,
+        actual slews + observations are calculated using
+        `KinematicModel.observe`. This adds any additional time due to
+        shutter motion limits or readout into `self.overhead` which
+        is then applied as a minimum to the slew to the next pointing,
+        appropriately attributing the slewtime (slew is always counted
+        as the time *to* a pointing).
+        When using the KinematicModel to just calculate slewtime
+        between real visits, either use `observe` or use `slewtime`
+        directly but add the readout time to `KinematicModel.overhead`
+        for each visit.
         """
         if bandname is None:
             bandname = self.current_band
@@ -502,8 +528,8 @@ class KinemModel:
         # Setting rot_sky_pos can restrict slew range on-sky
         # as some rot_tel_pos values that result will be out of bounds.
         # Use rot_tel_pos first if available, to override rot_sky_pos.
-        if (rot_tel_pos is not None) & (rot_sky_pos is not None):
-            if np.isfinite(rot_tel_pos):
+        if (rot_tel_pos is not None) | (rot_sky_pos is not None):
+            if rot_tel_pos is not None and np.isfinite(rot_tel_pos):
                 rot_sky_pos = self.rc._rottelpos2rotskypos(rot_tel_pos, pa)
             else:
                 rot_tel_pos = self.rc._rotskypos2rottelpos(rot_sky_pos, pa)
@@ -590,7 +616,9 @@ class KinemModel:
         tot_tel_time[settle_and_ol] += np.maximum(0, self.mount_settletime - ol_time[settle_and_ol])
 
         # And any leftover overhead sets a minimum on the total telescope
-        # time
+        # time. The overhead includes the readout time from the previous
+        # observation and any rate-limitation from the shutter motion.
+        # self.overhead is set in the `observe` method by default.
         tot_tel_time = np.maximum(self.overhead, tot_tel_time)
 
         # now compute dome slew time
@@ -652,30 +680,11 @@ class KinemModel:
 
         # Find the max of the above for slew time.
         slew_time = np.maximum(tot_tel_time, tot_dom_time)
-        # include band change time if necessary. Assume no band
-        # change time needed if we are starting parked
-        if not self.parked:
-            band_change = np.where(bandname != self.current_band)
-            slew_time[band_change] = np.maximum(slew_time[band_change], self.band_changetime)
-        # Add closed loop optics correction
-        # Find the limit where we must add the delay
-        cl_limit = self.optics_cl_altlimit[1]
-        cl_delay = self.optics_cl_delay[1]
-        close_loop = np.where(delta_alt >= cl_limit)
-        slew_time[close_loop] += cl_delay
-
-        # Mask min/max altitude limits so slewtime = np.nan
-        outside_limits = np.where((alt_rad > self.telalt_maxpos_rad) | (alt_rad < self.telalt_minpos_rad))[0]
-        slew_time[outside_limits] = np.nan
-        # Azimuth limits already masked through cumulative azimuth
-        # calculation above (it might be inf, not nan, so let's swap).
-        slew_time = np.where(np.isfinite(slew_time), slew_time, np.nan)
 
         # If we want to include the camera rotation time
         # We will have already set rot_tel_pos above, if either
         # rot_sky_pos or rot_tel_pos is set.
         if rot_tel_pos is not None:
-            # rot_tel_pos will be
             outside_limits = np.where(
                 (rot_tel_pos < self.telrot_minpos_rad) | (rot_tel_pos > self.telrot_maxpos_rad)
             )
@@ -697,11 +706,42 @@ class KinemModel:
             rotator_time = jerk_time(
                 delta_rotation, self.telrot_maxspeed_rad, self.telrot_accel_rad, self.telrot_jerk_rad
             )
+            # Do not include rotator movement if changing band,
+            # as rotator movement is baked into band change time.
+            band_change = np.where(bandname != self.current_band)
+            rotator_time[band_change] = 0
             slew_time = np.maximum(slew_time, rotator_time)
 
-            # Recreate how this happened to work previously with single targets
-            if len(slew_time) == 1:
-                slew_time = slew_time[0]
+        # include band change time if necessary. Assume no band
+        # change time needed if we are starting parked
+        if not self.parked:
+            band_change = np.where(bandname != self.current_band)
+            if not constant_band_changetime and rot_tel_pos is not None:
+                band_changetime = self.better_band_changetime(current_rot_tel_pos, rot_tel_pos)
+            else:
+                band_changetime = self.band_changetime
+            if slew_while_changing_filter:
+                slew_time[band_change] = np.maximum(slew_time[band_change], band_changetime)
+            else:
+                slew_time[band_change] = slew_time[band_change] + band_changetime
+
+        # Add closed loop optics correction
+        # Find the limit where we must add the delay
+        cl_limit = self.optics_cl_altlimit[1]
+        cl_delay = self.optics_cl_delay[1]
+        close_loop = np.where(delta_alt >= cl_limit)
+        slew_time[close_loop] += cl_delay
+
+        # Mask min/max altitude limits so slewtime = np.nan
+        outside_limits = np.where((alt_rad > self.telalt_maxpos_rad) | (alt_rad < self.telalt_minpos_rad))[0]
+        slew_time[outside_limits] = np.nan
+        # Azimuth limits already masked through cumulative azimuth
+        # calculation above (it might be inf, not nan, so let's swap).
+        slew_time = np.where(np.isfinite(slew_time), slew_time, np.nan)
+
+        # Recreate how this happened to work previously with single targets
+        if len(slew_time) == 1 and rot_tel_pos is not None:
+            slew_time = slew_time[0]
 
         # Update the internal attributes to note that we are now pointing
         # and tracking at the requested RA,Dec,rot_sky_pos
@@ -725,8 +765,48 @@ class KinemModel:
 
         return slew_time
 
+    def better_band_changetime(self, rot_tel_prev, rot_tel_next, band_change=90):
+        """A more precise estimate for the filter change time.
+
+        The default of 120s is intended to capture an average rotator movement
+        plus band change. In reality, the rotator moves from current position,
+        to 0, changes the filter (either 60 or 90s), then moves to next
+        rotation position.
+
+        Parameters
+        ----------
+        rot_tel_prev : `float`
+            Starting rotator position. Radians.
+        rot_tel_next : `float`
+            Ending rotator position. Radians.
+        band_change : `float`
+            The time to swap the filters in the carousel.
+            This value depends on which slots are being changed, so
+            could be 60 or 90s. Assume 90 for now. Seconds.
+
+        Returns
+        -------
+        better_band_changetime : `float`
+            An estimate of the filter change time required, in s.
+        """
+        # Rotate from previous angle to 0
+        delta_rotation = np.abs(smallest_signed_angle(rot_tel_prev, np.array([0])))
+        band_change_time = jerk_time(
+            delta_rotation, self.telrot_maxspeed_rad, self.telrot_accel_rad, self.telrot_jerk_rad
+        )
+        # Add the carousel swap
+        band_change_time += band_change
+        # Rotate from 0 to new angle
+        delta_rotation = np.abs(smallest_signed_angle(np.array([0]), rot_tel_next))
+        band_change_time += jerk_time(
+            delta_rotation, self.telrot_maxspeed_rad, self.telrot_accel_rad, self.telrot_jerk_rad
+        )
+        return band_change_time
+
     def visit_time(self, observation):
         # How long does it take to make an observation.
+        # Includes shuttertime for each exposure and
+        # all but last readout within same visit, as well as on-sky exptime
         visit_time = (
             observation["exptime"]
             + observation["nexp"] * self.shuttertime
@@ -743,22 +823,48 @@ class KinemModel:
             result = self.shutter_2motion_min_time - delta_t
         return result
 
-    def observe(self, observation, mjd, rot_tel_pos=None, lax_dome=True):
+    def observe(self, observation, mjd, rot_tel_pos=None, lax_dome=True, slew_while_changing_filter=False):
         """Observe a target, and return the slewtime and visit time for
         the action
 
         If slew is not allowed, returns np.nan and does not update state.
-        """
-        if (observation["nexp"] >= 2) & (
-            (observation["exptime"] / observation["nexp"] + self.readtime * (observation["nexp"] - 1))
-            < self.shutter_2motion_min_time
-        ):
-            msg = "%i exposures in %i seconds is violating number of shutter motion limit" % (
-                observation["nexp"],
-                observation["exptime"],
-            )
-            warnings.warn(msg)
 
+        Calculates the visit time, taking into account the number of exposures
+        and the readout time. It also imposes a minimum time between the
+        start of exposures of `shutter_2motion_min_time`, adding a limit to
+        the rate of acquiring observations.
+
+        Parameters
+        ----------
+        observation : `ObservationArray`
+            An observation array with the target to be observed.
+        mjd : `float`
+            The current MJD at the start of the slew.
+        rot_tel_pos : `float` or None
+            If specified, use rot_tel_pos for the rotator angle.
+            Otherwise, will use rot_sky_pos from observation.
+        lax_dome : `bool`, default True
+            If True, allow the dome to creep, model a dome slit, and don't
+            require the dome to settle in azimuth. If False, adhere to the
+            way SOCS calculates slew times (as of June 21 2017) and do not
+            allow dome creep.
+        slew_while_changing_filter : `bool`, default False
+            If False, slew first and then stop to change the filter.
+            If True, change filter in parallel with slewing.
+        """
+        # Check on rate of shutter motion (but don't fail, just warn)
+        if observation["nexp"] >= 2:
+            shutter_rate = observation["exptime"] / observation["nexp"] + self.readtime * (
+                observation["nexp"] - 1
+            )
+            if shutter_rate < self.shutter_2motion_min_time:
+                msg = "%i exposures in %i seconds is violating number of shutter motion limit" % (
+                    observation["nexp"],
+                    observation["exptime"],
+                )
+                warnings.warn(msg)
+
+        # Calculate slew time (without readout)
         slewtime = self.slew_times(
             observation["RA"],
             observation["dec"],
@@ -767,10 +873,15 @@ class KinemModel:
             rot_tel_pos=rot_tel_pos,
             bandname=observation["band"],
             update_tracking=True,
+            slew_while_changing_filter=slew_while_changing_filter,
             lax_dome=lax_dome,
         )
+
+        # Calculate visit time (without last readout)
         visit_time = self.visit_time(observation)
-        # Compute any overhead that is left over from this
+
+        # Compute any overhead that is left over from this -
+        # to be applied to next slewtime calculation.
         if ~np.isnan(slewtime):
             self.overhead = np.maximum(self.readtime, self.shutter_stall(observation))
 
