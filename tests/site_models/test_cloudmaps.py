@@ -35,6 +35,23 @@ class TestCloudMap(unittest.TestCase):
         map3 = cm.extinction_closest(-5000)
         assert map3 == 0
 
+        # Now with uncertainty frames
+        cm = CloudMap()
+        for mjd in np.arange(n_frames):
+            cm.add_frame(rng.random(n_pix), mjd, uncert=rng.random(n_pix))
+
+        # check that 19 minutes ahead of last frame,
+        # still returns closest
+        map1, uncert1 = cm.extinction_closest(mjd + 19 / 60 / 24, uncert=True)
+        assert np.size(map1) == n_pix
+        assert np.size(uncert1) == n_pix
+
+        # check that going too far from used times
+        # returns zero
+        map2, uncert2 = cm.extinction_closest(5000, uncert=True)
+        assert map2 == 0
+        assert uncert2 == 0
+
 
 if __name__ == "__main__":
     unittest.main()
