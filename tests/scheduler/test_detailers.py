@@ -7,7 +7,7 @@ import rubin_scheduler.scheduler.detailers as detailers
 from rubin_scheduler.scheduler.features import Conditions
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
 from rubin_scheduler.scheduler.utils import CurrentAreaMap, ObservationArray, TargetoO
-from rubin_scheduler.utils import DEFAULT_NSIDE, _ra_dec2_hpid
+from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD, _ra_dec2_hpid
 
 
 class TestDetailers(unittest.TestCase):
@@ -441,6 +441,13 @@ class TestDetailers(unittest.TestCase):
         assert ra_b == ra_bp
         assert dec_b == dec_bp
 
+        # Check this works as a detailer
+        obs = ObservationArray(n=3)
+        obs["scheduler_note"] = np.array(["DD:EDFS_a", "DD:EDFS_a", "DD:EDFS_b"])
+        conditions = Conditions(mjd=SURVEY_START_MJD + 1)
+        obs2 = detailer(obs, conditions)
+        assert np.all(np.not_equal(obs2["RA"], 0))
+
         # Now want a unique position
         detailer = detailers.EuclidDitherDetailer(per_night=False)
 
@@ -456,6 +463,13 @@ class TestDetailers(unittest.TestCase):
         # call again should result in different values
         ra_ap, dec_ap, ra_bp, dec_bp = detailer._generate_offsets(100, 2)
         assert np.all(np.not_equal(ra_a, ra_ap))
+
+        # Check this works as a detailer
+        obs = ObservationArray(n=3)
+        obs["scheduler_note"] = np.array(["DD:EDFS_a", "DD:EDFS_a", "DD:EDFS_b"])
+        conditions = Conditions(mjd=SURVEY_START_MJD + 1)
+        obs2 = detailer(obs, conditions)
+        assert np.all(np.not_equal(obs2["RA"], 0))
 
     def test_dither(self):
         detailer = detailers.DitherDetailer(per_night=True)
