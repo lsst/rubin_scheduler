@@ -284,6 +284,8 @@ class EuclidDitherDetailer(BaseDetailer):
     def _new_ang_rad(self, night):
 
         # seed with the current night
+        if night < 0:
+            night = abs(night)
         rng = np.random.default_rng(night)
         if self.per_night:
             n_gen = 1
@@ -369,19 +371,25 @@ class EuclidDitherDetailer(BaseDetailer):
         # Generate offsets in RA and Dec
         ra_a, dec_a, ra_b, dec_b = self._generate_offsets(len(obs_array), conditions.night)
 
-        ra = []
-        dec = []
-        for i, obs in enumerate(obs_array):
-            if "DD:EDFS_a" in obs["scheduler_note"][0:9]:
-                ra.append(ra_a)
-                dec.append(dec_a)
-            elif "DD:EDFS_b" in obs["scheduler_note"][0:9]:
-                ra.append(ra_b)
-                dec.append(dec_b)
-            else:
-                raise ValueError("scheduler_note does not contain EDFS_a or EDFS_b.")
-        obs_array["RA"] = np.concatenate(ra)
-        obs_array["dec"] = np.concatenate(dec)
+        indx_a = (np.char.find(obs_array["scheduler_note"], "EDFS_a") + 1).astype(bool)
+        indx_b = (np.char.find(obs_array["scheduler_note"], "EDFS_b") + 1).astype(bool)
+
+        if np.min(indx_a + indx_b) == 0:
+            raise ValueError("scheduler_note does not contain EDFS_a or EDFS_b.")
+
+        if self.per_night:
+            obs_array["RA"][indx_a] = ra_a
+            obs_array["dec"][indx_a] = dec_a
+
+            obs_array["RA"][indx_b] = ra_b
+            obs_array["dec"][indx_b] = dec_b
+        else:
+            obs_array["RA"][indx_a] = ra_a[indx_a]
+            obs_array["dec"][indx_a] = dec_a[indx_a]
+
+            obs_array["RA"][indx_b] = ra_b[indx_b]
+            obs_array["dec"][indx_b] = dec_b[indx_b]
+
         return obs_array
 
 

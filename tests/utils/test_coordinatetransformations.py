@@ -53,6 +53,10 @@ class LMSTTest(unittest.TestCase):
     def test_fast_lmst(self):
         """Test that the fast LMST calculation is accurate enough"""
 
+        # If this test fails, try running
+        # rubin_scheduler.utils.calc_constants_for_lmst
+        # and see if constants in calc_lmst need updating.
+
         # test sending in array
         mjds = np.arange(60796, 60796 + 500, 0.25)
         longitude_rad = -1.2348
