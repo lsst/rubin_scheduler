@@ -27,6 +27,7 @@ __all__ = (
     "radians_from_arcsec",
     "arcsec_from_degrees",
     "degrees_from_arcsec",
+    "calc_constants_for_lmst",
 )
 
 import numbers
@@ -36,8 +37,11 @@ from astropy import units as u
 from astropy.coordinates import AltAz, EarthLocation, SkyCoord
 from astropy.time import Time
 from astropy.utils.iers import conf
+from scipy.optimize import curve_fit
 
 from rubin_scheduler.utils.code_utilities import _validate_inputs
+
+from .constants import SURVEY_START_MJD
 
 
 def _wrap_hour_angle(ha_rad):
@@ -92,6 +96,29 @@ def _alt_az_pa_from_ra_dec(ra, dec, mjd, site_longitude, site_latitude):
     return altaz.alt.rad, altaz.az.rad, pa
 
 
+def _for_gmst(mjd, a, b, longitude_rad=0):
+    """For finding best fit numbers to go intot calc_lmst"""
+    gmst = a + b * (mjd - 51544.5)
+    gmst = gmst % 24  # to hours
+    longitude = np.degrees(longitude_rad) / 15.0  # Convert longi to hours
+    lst = gmst + longitude  # Fraction LST. If negative we want to add 24
+    if np.size(lst) == 1:
+        if lst < 0:
+            lst += 24
+    else:
+        lst[np.where(lst < 0)] += 24
+    return lst
+
+
+def calc_constants_for_lmst():
+    """Calculate constants for fast LMST function below."""
+    mjd = SURVEY_START_MJD + np.arange(-500, 500, 1)
+    lmst_ap = calc_lmst_astropy(mjd, 0)
+
+    popt, pcov = curve_fit(_for_gmst, mjd, lmst_ap, p0=[18.697374558, 24.06570982441908])
+    print("best fit constants for func calc_lmst", str(popt[0]), str(popt[1]))
+
+
 def calc_lmst(mjd, longitude_rad):
     """Calculate the LMST for a location
     based on:  https://github.com/jhaupt/Sidereal-Time-Calculator/
@@ -117,7 +144,8 @@ def calc_lmst(mjd, longitude_rad):
         The local sidereal time in hours
 
     """
-    gmst = 18.697374558 + 24.06570982441908 * (mjd - 51544.5)
+    # Constants from _calc_constants_for_lmst above
+    gmst = 18.69711679816973 + 24.065709854011313 * (mjd - 51544.5)
     gmst = gmst % 24  # to hours
     longitude = np.degrees(longitude_rad) / 15.0  # Convert longi to hours
     lst = gmst + longitude  # Fraction LST. If negative we want to add 24
