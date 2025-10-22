@@ -37,6 +37,7 @@ def sim_runner(
     anomalous_overhead_func=None,
     telescope="rubin",
     snapshot_dir="",
+    save_on_fail=True,
 ):
     """
     run a simulation
@@ -185,6 +186,10 @@ def sim_runner(
             # An observation failed to execute, usually it was outside
             # the altitude limits.
             if observatory.mjd == mjd_last_flush:
+                if save_on_fail:
+                    np.savez("sim_runner_crash.npz", observatory=observatory,
+                             observations=observations.view(type=np.ndarray),
+                             scheduler=scheduler, desired_obs=desired_obs.view(type=np.ndarray))
                 raise RuntimeError(
                     "Scheduler has failed to provide a valid observation multiple times "
                     f" at time ({observatory.mjd} from survey {scheduler.survey_index}."
