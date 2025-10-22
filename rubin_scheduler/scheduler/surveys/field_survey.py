@@ -91,8 +91,8 @@ class FieldSurvey(BaseSurvey):
         filter_change_time=None,
     ):
         default_nvisits = {"u": 20, "g": 20, "r": 20, "i": 20, "z": 20, "y": 20}
-        default_exptimes = {"u": 38, "g": 29.2, "r": 29.2, "i": 29.2, "z": 29.2, "y": 29.2}
-        default_nexps = {"u": 1, "g": 2, "r": 2, "i": 2, "z": 2, "y": 2}
+        default_exptimes = {"u": 38, "g": 30, "r": 30, "i": 30, "z": 30, "y": 30}
+        default_nexps = {"u": 1, "g": 1, "r": 1, "i": 1, "z": 1, "y": 1}
 
         if filter_change_time is not None:
             warnings.warn("filter_change_time deprecated in favor of band_change_time", FutureWarning)
@@ -179,9 +179,6 @@ class FieldSurvey(BaseSurvey):
             self.observations = np.concatenate(self.observations)
         # and backfill "band" if it was set by the user in "filter"
         self.observations = backfill_filter_from_band(self.observations)
-
-        order = np.argsort(self.observations["band"])
-        self.observations = self.observations[order]
 
         n_band_change = np.size(np.unique(self.observations["band"]))
 
