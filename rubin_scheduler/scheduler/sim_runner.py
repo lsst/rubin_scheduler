@@ -73,6 +73,11 @@ def sim_runner(
         Dir in which to safe scheduler + pickle snapshots with
         each scheduler call. An empty string if the snapshots should not be
         saved. Defaults to an empty string.
+    save_on_fail : `bool`
+        Save a /npz file with the scheduler, observatory, completed
+        observations, and desired observation in the event of a crash.
+        Helpful for debugging surveys that are requesting out of
+        bounds pointings.
     """
 
     if extra_info is None:
@@ -187,9 +192,13 @@ def sim_runner(
             # the altitude limits.
             if observatory.mjd == mjd_last_flush:
                 if save_on_fail:
-                    np.savez("sim_runner_crash.npz", observatory=observatory,
-                             observations=observations.view(type=np.ndarray),
-                             scheduler=scheduler, desired_obs=desired_obs.view(type=np.ndarray))
+                    np.savez(
+                        "sim_runner_crash.npz",
+                        observatory=observatory,
+                        observations=observations.view(type=np.ndarray),
+                        scheduler=scheduler,
+                        desired_obs=desired_obs.view(type=np.ndarray),
+                    )
                 raise RuntimeError(
                     "Scheduler has failed to provide a valid observation multiple times "
                     f" at time ({observatory.mjd} from survey {scheduler.survey_index}."
