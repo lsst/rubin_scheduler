@@ -259,10 +259,6 @@ class FieldSurvey(BaseSurvey):
             # remove bands that are not mounted
             mask = np.isin(result["band"], conditions.mounted_bands)
             result = result[mask]
-            # Put current loaded band first
-            ind1 = np.where(result["band"] == conditions.current_band)[0]
-            ind2 = np.where(result["band"] != conditions.current_band)[0]
-            result = result[ind1.tolist() + (ind2.tolist())]
 
         return result
 
