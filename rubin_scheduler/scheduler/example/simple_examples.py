@@ -779,6 +779,7 @@ def simple_field_survey(
         Detailers for the survey.
         Detailers can add information to output observations, including
         specifying rotator or dither positions.
+        Add a BandSortDetailer or RollBandMatchDetailer to modify sequences.
     sequence : `str` or `list` [`str`]
         The bands (in order?) for the sequence of observations.
     nvisits : `dict` {`str`:`int`} | None
