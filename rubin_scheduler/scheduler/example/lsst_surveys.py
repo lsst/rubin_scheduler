@@ -19,7 +19,7 @@ import numpy.typing as npt
 import rubin_scheduler.scheduler.basis_functions as bf
 import rubin_scheduler.scheduler.detailers as detailers
 import rubin_scheduler.scheduler.example.ddf_df_gen as ddf_df_gen
-import rubin_scheduler.scheduler.example.ddf_presched as ddf_presched
+import rubin_scheduler.scheduler.example.lsst_ddf_presched as ddf_presched
 from rubin_scheduler.data import get_data_dir
 from rubin_scheduler.scheduler.surveys import (
     BlobSurvey,
@@ -1488,7 +1488,7 @@ def ddf_surveys(
     survey_name: str = "deep drilling",
     science_program: str = SCIENCE_PROGRAM,
     save: bool = True,
-    save_filename: str = "ddf_array.npz",
+    save_filename: str = "example_ddf_array.npz",
     save_path: str = None,
 ) -> list[ScriptedSurvey]:
     """Generate surveys for DDF observations.

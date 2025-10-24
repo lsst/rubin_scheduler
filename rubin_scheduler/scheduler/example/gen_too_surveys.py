@@ -9,7 +9,7 @@ from rubin_scheduler.scheduler.detailers import BandPickToODetailer
 from rubin_scheduler.scheduler.surveys import ToOScriptedSurvey
 from rubin_scheduler.utils import DEFAULT_NSIDE
 
-from .generate_surveys import EXPTIME as DEFAULT_EXP_TIME
+from .lsst_surveys import EXPTIME as DEFAULT_EXP_TIME
 
 
 def gen_too_surveys(

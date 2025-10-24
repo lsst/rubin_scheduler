@@ -31,7 +31,7 @@ from rubin_scheduler.site_models import Almanac
 from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD
 
 from .gen_too_surveys import gen_too_surveys
-from .generate_surveys import (
+from .lsst_surveys import (
     CAMERA_ROT_LIMITS,
     EXPTIME,
     NEXP,
