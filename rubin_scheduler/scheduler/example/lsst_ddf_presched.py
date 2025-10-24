@@ -1,3 +1,24 @@
+# This file is part of ts_fbs_utils.
+#
+# Developed for the Vera Rubin Observatory Telescope and Site System.
+# This product includes software developed by the LSST Project
+# (https://www.lsst.org).
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 __all__ = (
     "generate_ddf_scheduled_obs",
     "ddf_slopes",
@@ -5,8 +26,10 @@ __all__ = (
     "optimize_ddf_times",
 )
 
+import hashlib
 import os
 import warnings
+from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
@@ -16,6 +39,16 @@ from rubin_scheduler.data import get_data_dir
 from rubin_scheduler.scheduler.utils import ScheduledObservationArray
 from rubin_scheduler.site_models import Almanac
 from rubin_scheduler.utils import SURVEY_START_MJD, calc_season, ddf_locations
+
+
+def calculate_checksum(filenames: list[str]) -> bytes:
+    hash = hashlib.md5()
+    for fn in filenames:
+        try:
+            hash.update(Path(fn).read_bytes())
+        except IsADirectoryError:
+            pass
+    return hash.digest()
 
 
 def ddf_slopes(
@@ -85,7 +118,11 @@ def ddf_slopes(
 
     # Add extra adjustment to boost visits in seasons 0, 1, and 2
     # and maybe -1.
-    if boost_early_factor is not None:
+    if (
+        boost_early_factor is not None
+        and boost_factor_fractional is not None
+        and boost_factor_third is not None
+    ):
         early_season = np.where(season_list == -1)[0]
         if (len(early_season) > 0) & (boost_factor_fractional > 0):
             season_vals[early_season] = season_seq * boost_factor_fractional
@@ -176,7 +213,7 @@ def match_cumulative(
 def optimize_ddf_times(
     ddf_name: str,
     ddf_RA: float,
-    ddf_grid: float,
+    ddf_grid: npt.NDArray,
     sun_limit: float = -18,
     sequence_time: float = 60.0,
     airmass_limit: float = 2.5,
@@ -192,10 +229,10 @@ def optimize_ddf_times(
     boost_factor_fractional: float | None = None,
     only_season: int | None = None,
     mask_even_odd: bool | None = None,
-    moon_illum_lt=None,
-    moon_illum_gt=None,
+    moon_illum_lt: float | None = None,
+    moon_illum_gt: float | None = None,
     early_late_season_only: bool = False,
-) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray]:
+) -> tuple[list[float], npt.NDArray, npt.NDArray, npt.NDArray]:
     """
 
     Parameters
@@ -212,12 +249,6 @@ def optimize_ddf_times(
     sun_limit : `float`, optional
         The maximum sun altitude allowed when prescheduling DDF visits.
         In degrees.
-    season_seq : `int`
-        Number of sequences to try to place into each season.
-        Default of 30.
-    sequence_time : `float`, optional
-        Expected time for each DDF sequence, used to avoid hitting the
-        sun_limit (running DDF visits into twilight). In minutes.
     airmass_limit : `float`, optional
         The maximum airmass allowed when prescheduling DDF visits.
     sky_limit : `float`, optional
@@ -254,11 +285,27 @@ def optimize_ddf_times(
         The MJD of the start of the survey. Used to identify the
         starting point when counting seasons.
         Default SURVEY_START_MJD.
+    season_seq : `int`
+        Number of sequences to try to place into each season.
+        Default of 30.
+    boost_early_factor : `float`, optional
+        Number of early seasons to give a boost to
+    boost_factor_third : `float`
+        If boosting, the boot factor to use on the third season.
+    boost_factor_fractional : `float`
+        If there is an initial partial season, also boost that one by
+        the given factor.
     only_season : `int`
         Only optimize for a single season. Default None.
     mask_even_odd : `bool`
         If True, mask even nights, if False, mask odd. Default
         None masks nothing.
+    moon_illum_lt : `float`
+        If not None, mask times when the moon illumination fraction is
+        greater than this (max threshold)
+    moon_illum_gt : `float`
+        If not None, mask times when the moon illumination fraction is less
+        than this (min threshold).
     early_late_season_only : `bool`
         Only schedule things in the early and late season.
     """
@@ -270,7 +317,7 @@ def optimize_ddf_times(
     sequence_time = sequence_time / 60.0 / 24.0  # to days
 
     # Calculate the night value for each grid point.
-    almanac = Almanac(mjd_start=ddf_grid["mjd"].min())
+    almanac: Almanac = Almanac(mjd_start=ddf_grid["mjd"].min())
     almanac_indx = almanac.mjd_indx(ddf_grid["mjd"])
     night = almanac.sunsets["night"][almanac_indx]
 
@@ -296,9 +343,8 @@ def optimize_ddf_times(
     if g_depth_limit is not None:
         m5_mask[np.where(ddf_grid["%s_m5_g" % ddf_name] < g_depth_limit)] = 0
 
-    eo_mask = 1
+    eo_mask = np.ones(ngrid, dtype=bool)
     if mask_even_odd is not None:
-        eo_mask = np.ones(ngrid, dtype=bool)
         is_odd_indx = night % 2 != 0
         is_even_indx = night % 2 == 0
         if mask_even_odd:
@@ -306,13 +352,11 @@ def optimize_ddf_times(
         else:
             eo_mask[is_odd_indx] = 0
 
-    moon_illum_mask = 1
+    moon_illum_mask = np.ones(ngrid, dtype=bool)
     if moon_illum_lt is not None:
-        moon_illum_mask = np.ones(ngrid, dtype=bool)
         indx = np.where(ddf_grid["moon_phase"] > moon_illum_lt)[0]
         moon_illum_mask[indx] = 0
     if moon_illum_gt is not None:
-        moon_illum_mask = np.ones(ngrid, dtype=bool)
         indx = np.where(ddf_grid["moon_phase"] < moon_illum_gt)[0]
         moon_illum_mask[indx] = 0
 
@@ -380,14 +424,14 @@ def optimize_ddf_times(
             boost_factor_fractional=boost_factor_fractional,
         )
     else:
-        return [], [], [], []
+        return [], np.array([]), np.array([]), np.array([])
 
     # Identify which nights (only scheduling 1 sequence per night)
     # would be usable, based on the masks above.
     night_mask = unights * 0
     # which unights are in potential nights
-    indx = np.isin(unights, potential_nights)
-    night_mask[indx] = 1
+    n_indx = np.isin(unights, potential_nights)
+    night_mask[n_indx] = 1
 
     # scale things down if we don't have enough nights
     n_possible_nights = np.sum(night_mask)
@@ -538,7 +582,7 @@ def generate_ddf_scheduled_obs(
     for index, row in configs_df.iterrows():
 
         ddf_name = row["ddf_name"]
-        offseason_length = (365.0 - row["season_length"]) / 2.0  # stupid factor of 2
+        offseason_length = (365.0 - row["season_length"]) / 2.0  # 2 shoulder seasons
         n_sequences = row["n_sequences"]
 
         sequence_time = 0.0
@@ -632,7 +676,7 @@ def generate_ddf_scheduled_obs(
                     obs["nexp"] = nsnaps[bandname]
                     obs["scheduler_note"] = "DD:%s" % ddf_name
                     obs["target_name"] = "ddf_" + ddf_name.lower()
-                    obs["science_program"] = "DD"
+                    obs["science_program"] = science_program
                     obs["observation_reason"] = "ddf_" + ddf_name.lower()
 
                     obs["mjd_tol"] = mjd_tol

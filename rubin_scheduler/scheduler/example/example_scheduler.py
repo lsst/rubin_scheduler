@@ -30,22 +30,22 @@ from rubin_scheduler.scheduler.utils import (
 from rubin_scheduler.site_models import Almanac
 from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD
 
-from .gen_too_surveys import gen_too_surveys
-from .generate_surveys import (
+from .lsst_ddf_gen import gen_ddf_surveys
+from .lsst_surveys import (
     CAMERA_ROT_LIMITS,
     EXPTIME,
     NEXP,
     U_EXPTIME,
     U_NEXP,
-    ddf_surveys,
     gen_greedy_surveys,
     gen_long_gaps_survey,
     gen_template_surveys,
     generate_blobs,
-    generate_twi_blobs,
+    generate_short_blobs,
     generate_twilight_near_sun,
 )
 from .roman_surveys import gen_roman_off_season, gen_roman_on_season
+from .too_surveys import gen_too_surveys
 
 # So things don't fail on hyak
 iers.conf.auto_download = False
@@ -274,7 +274,7 @@ def gen_scheduler(
         detailers.TruncatePreTwiDetailer(),
     ]
 
-    ddfs = ddf_surveys(
+    ddfs = gen_ddf_surveys(
         detailer_list=details,
         nside=nside,
     )
@@ -297,7 +297,7 @@ def gen_scheduler(
         survey_start=survey_start_mjd,
         u_exptime=U_EXPTIME,
     )
-    twi_blobs = generate_twi_blobs(
+    twi_blobs = generate_short_blobs(
         nside=nside,
         nexp=NEXP,
         footprints=footprints,
