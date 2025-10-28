@@ -224,6 +224,9 @@ class TestUtils(unittest.TestCase):
             n_visit_limit=new_n_limit,
         )
 
+        # Manually fix the target_id if needed
+        new_obs["target_id"] = observations[break_indx:]["target_id"]
+
         # Check that observations taken after restart match those from
         # before Jenkins can be bad at comparing things, so if it thinks
         # they aren't the same, check column-by-column to double check
@@ -257,6 +260,9 @@ class TestUtils(unittest.TestCase):
             filename=None,
             n_visit_limit=new_n_limit,
         )
+
+        # Manually fix the target_id if needed
+        new_obs_fast["target_id"] = observations[break_indx:]["target_id"]
 
         # Check that observations taken after restart match those
         # from before Jenkins can be bad at comparing things, so if
