@@ -302,6 +302,13 @@ def restore_scheduler(observation_id, scheduler, observatory, in_obs, band_sched
     else:
         observations = in_obs
     good_obs = np.where(observations["ID"] <= observation_id)[0]
+    # Deal with if we are restoring a scheduler and the target_id
+    # was advanced but observations were not taken.
+    if np.size(good_obs) < observations.size:
+        scheduler.set_target_id_counter(np.max(observations["target_id"][good_obs + 1]))
+    else:
+        scheduler.set_target_id_counter(np.max(observations["target_id"][good_obs]) + 1)
+
     observations = observations[good_obs]
 
     if fast:

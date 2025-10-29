@@ -265,15 +265,14 @@ def sim_runner(
     if len(observations) > 0:
         if filename is not None:
             print("Writing results to ", filename)
-        if filename is not None:
             info = run_info_table(observatory, extra_info=extra_info)
             converter = SchemaConverter()
             converter.obs2opsim(observations, filename=filename, info=info, delete_past=delete_past)
-        if event_table is not None:
-            df = pd.DataFrame(event_table)
-            con = sqlite3.connect(filename)
-            df.to_sql("events", con)
-            con.close()
+            if event_table is not None:
+                df = pd.DataFrame(event_table)
+                con = sqlite3.connect(filename)
+                df.to_sql("events", con)
+                con.close()
 
         if record_rewards:
             reward_df = pd.concat(reward_dfs)

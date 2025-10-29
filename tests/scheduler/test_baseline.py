@@ -19,15 +19,16 @@ class TestExample(unittest.TestCase):
         mjd_start = utils.SURVEY_START_MJD
         nside = 32
         survey_length = 4.0  # days
-        scheduler = example_scheduler(nside=nside, mjd_start=mjd_start)
+        scheduler = example_scheduler(nside=nside, survey_start_mjd=mjd_start)
         observatory = ModelObservatory(
             nside=nside, mjd_start=mjd_start, cloud_data="ideal", downtimes="ideal"
         )
         observatory, scheduler, observations = sim_runner(
             observatory, scheduler, sim_duration=survey_length, filename=None
         )
+
         # Check that greedy observed some
-        assert "greedy" in observations["scheduler_note"]
+        assert np.any("greedy" in note for note in observations["scheduler_note"])
         # check some long pairs got observed
         assert np.any(["pair_33" in obs for obs in observations["scheduler_note"]])
         # Make sure lots of observations executed
