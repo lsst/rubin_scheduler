@@ -56,6 +56,7 @@ class TestDetailers(unittest.TestCase):
             detailers.TagRadialDetailer,
             detailers.LabelDDFDetailer,
             detailers.TruncatePreTwiDetailer,
+            detailers.IndexNoteDetailer,
         ]
 
         for det in det_list:
