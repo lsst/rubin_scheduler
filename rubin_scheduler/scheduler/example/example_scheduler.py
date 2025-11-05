@@ -53,8 +53,11 @@ iers.conf.auto_download = False
 iers.conf.auto_max_age = None
 
 
-def example_scheduler(**kwargs) -> CoreScheduler:
+def example_scheduler(mjd_start=SURVEY_START_MJD, **kwargs) -> CoreScheduler:
     """Renamed"""
+    # In case folks are using old kwarg name
+    if "survey_start_mjd" not in kwargs:
+        kwargs["survey_start_mjd"] = mjd_start
     return generate_baseline_coresched(**kwargs)
 
 
