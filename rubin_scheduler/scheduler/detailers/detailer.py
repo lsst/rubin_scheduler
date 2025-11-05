@@ -26,6 +26,7 @@ __all__ = (
     "LabelDDFDetailer",
     "LabelRegionsAndDDFs",
     "RollBandMatchDetailer",
+    "IndexNoteDetailer",
 )
 
 import copy
@@ -101,6 +102,31 @@ class BaseDetailer:
         """
 
         return ObservationArray()
+
+
+class IndexNoteDetailer(BaseDetailer):
+    """Add an indexing integer to a string field to
+    make it easier to track when different scheduler calls
+    are made.
+
+    Parameters
+    ----------
+    field_to_modify : `str`
+        The field to modify. Needs to be a field made of strings.
+        Default "scheduler_note".
+    sep : `str`
+        Seperator string to use. Default ", ".
+    """
+
+    def __init__(self, field_to_modify="scheduler_note", sep=", "):
+        self.field_to_modify = field_to_modify
+        self.sep = sep
+
+    def __call__(self, observation_array, conditions):
+        indices = np.arange(observation_array.size).astype(str)
+        ending = np.char.add(self.sep, indices)
+        observation_array[self.field_to_modify] = np.char.add(observation_array[self.field_to_modify], ending)
+        return observation_array
 
 
 class TrackingInfoDetailer(BaseDetailer):
