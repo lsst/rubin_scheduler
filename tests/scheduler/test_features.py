@@ -555,6 +555,47 @@ class TestFeatures(unittest.TestCase):
 
         assert feature.feature["mjd"] == 30
 
+    def test_nobs_fwhm(self):
+        """Test that NObservations can take nan"""
+        observation_list = make_observations_list(nobs=5)
+        observation_list[0]["FWHMeff"] = np.nan
+        observations_array, observations_hpids_array, list_of_hpids = make_observations_arrays(
+            observation_list
+        )
+
+        feature = features.NObservations(bandname=None, scheduler_note=None, seeing_limit=1.0)
+
+        # Check adding array works
+        observations_array["FWHMeff"] += 2.0
+        observations_hpids_array["FWHMeff"] += 2.0
+        feature.add_observations_array(observations_array, observations_hpids_array)
+
+        assert np.max(feature.feature) == 0
+
+        observations_array["FWHMeff"] -= 1.5
+        observations_hpids_array["FWHMeff"] -= 1.5
+        feature.add_observations_array(observations_array, observations_hpids_array)
+        assert np.max(feature.feature) == 4
+
+        # Check adding single observation works
+        observation = observations_array[0]
+        feature = features.NObservations(bandname=None, scheduler_note=None, seeing_limit=1.0)
+        observation["FWHMeff"] = 2.0
+        feature.add_observation(observation)
+
+        assert np.max(feature.feature) == 0
+
+        observation["FWHMeff"] = 0.5
+        feature.add_observation(observation)
+
+        assert np.max(feature.feature) == 1
+
+        feature = features.NObservations(bandname=None, scheduler_note=None, seeing_limit=1.0)
+        observation["FWHMeff"] = np.nan
+        feature.add_observation(observation)
+
+        assert np.max(feature.feature) == 0
+
     def test_NObservations(self):
         # Make some observations to count
         observations_list = make_observations_list(12)

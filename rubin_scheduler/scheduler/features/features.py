@@ -311,9 +311,16 @@ class NObservations(BaseSurveyFeature):
     def add_observations_array(self, observations_array, observations_hpid):
         valid_indx = np.ones(observations_hpid.size, dtype=bool)
         if self.seeing_limit is not None:
-            valid_indx[np.where(IntRounded(observations_hpid["FWHMeff"]) > IntRounded(self.seeing_limit))] = (
-                False
-            )
+            finite_fwhm_indx = np.where(np.isfinite(observations_hpid["FWHMeff"]) == True)[0]
+            seeing_over = np.where(
+                IntRounded(observations_hpid["FWHMeff"][finite_fwhm_indx]) > IntRounded(self.seeing_limit)
+            )[0]
+            valid_indx[finite_fwhm_indx[seeing_over]] = False
+            # What to do with NaN seeing values? Consider them bad for now
+            valid_indx[~np.isfinite(observations_hpid["FWHMeff"])] = False
+            if np.sum(~np.isfinite(observations_hpid["FWHMeff"])) > 0:
+                warnings.warn("Adding observations with invalid FWHMeff values")
+
         if self.bandname is not None:
             valid_indx[np.where(observations_hpid["band"] != self.bandname)[0]] = False
         if self.scheduler_note is not None:
@@ -329,7 +336,12 @@ class NObservations(BaseSurveyFeature):
     def add_observation(self, observation, indx=None):
         seeing_check = True
         if self.seeing_limit is not None:
-            seeing_check = IntRounded(observation["FWHMeff"]) <= IntRounded(self.seeing_limit)
+            if np.isfinite(observation["FWHMeff"]):
+                seeing_check = IntRounded(observation["FWHMeff"]) <= IntRounded(self.seeing_limit)
+            else:
+                # What to do with NaN seeing values? Consider them bad for now
+                seeing_check = False
+                warnings.warn("Adding observation with invalid FWHMeff value: %f" % observation["FWHMeff"])
 
         if self.bandname is None or observation["band"][0] in self.bandname:
             if seeing_check:
