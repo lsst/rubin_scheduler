@@ -294,14 +294,28 @@ class NObservations(BaseSurveyFeature):
         compatibility. Will be removed in the future.
     seeing_limit : `float`
         The limit to apply on accepting image quality.
+    seeing_fill_value : `float`
+        Value to use if observations have non-finite values for FWHMeff.
+        Defualt 100 arcsec. Ignored if seeing_limit is None. Setting to
+        a small value will mean observations with no seeing info are
+        considered to pass the seeing requirements.
     """
 
     def __init__(
-        self, bandname=None, nside=DEFAULT_NSIDE, scheduler_note=None, survey_name=None, seeing_limit=None
+        self,
+        bandname=None,
+        nside=DEFAULT_NSIDE,
+        scheduler_note=None,
+        survey_name=None,
+        seeing_limit=None,
+        seeing_fill_value=100.0,
     ):
         self.feature = np.zeros(hp.nside2npix(nside), dtype=float)
         self.bandname = bandname
         self.seeing_limit = seeing_limit
+        if self.seeing_limit is not None:
+            self.seeing_limit = IntRounded(self.seeing_limit)
+        self.seeing_fill_value = seeing_fill_value
         if scheduler_note is None and survey_name is not None:
             self.scheduler_note = survey_name
         else:
@@ -311,9 +325,12 @@ class NObservations(BaseSurveyFeature):
     def add_observations_array(self, observations_array, observations_hpid):
         valid_indx = np.ones(observations_hpid.size, dtype=bool)
         if self.seeing_limit is not None:
-            valid_indx[np.where(IntRounded(observations_hpid["FWHMeff"]) > IntRounded(self.seeing_limit))] = (
-                False
-            )
+            seeing_vals = observations_hpid["FWHMeff"].copy()
+            seeing_vals[~np.isfinite(observations_hpid["FWHMeff"])] = self.seeing_fill_value
+            valid_indx[np.where(IntRounded(seeing_vals) >= self.seeing_limit)[0]] = False
+            if np.any(~np.isfinite(observations_hpid["FWHMeff"])):
+                warnings.warn("Adding observations with invalid FWHMeff values")
+
         if self.bandname is not None:
             valid_indx[np.where(observations_hpid["band"] != self.bandname)[0]] = False
         if self.scheduler_note is not None:
@@ -329,7 +346,11 @@ class NObservations(BaseSurveyFeature):
     def add_observation(self, observation, indx=None):
         seeing_check = True
         if self.seeing_limit is not None:
-            seeing_check = IntRounded(observation["FWHMeff"]) <= IntRounded(self.seeing_limit)
+            seeing_val = observation["FWHMeff"].copy()
+            if ~np.isfinite(seeing_val):
+                seeing_val = self.seeing_fill_value
+                warnings.warn("Adding observation with invalid FWHMeff value: %f" % observation["FWHMeff"])
+            seeing_check = IntRounded(seeing_val) <= self.seeing_limit
 
         if self.bandname is None or observation["band"][0] in self.bandname:
             if seeing_check:
