@@ -49,7 +49,7 @@ jobs:
         shell: bash -l {0}
         run: |
           export RUBIN_SIM_DATA_DIR=~/rubin_sim_data
-          scheduler_download_data --force --tdqm_disable
+          scheduler_download_data --update --tdqm_disable
 
       - name: Check data
         shell: bash -l {0}
