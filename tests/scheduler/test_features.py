@@ -555,6 +555,66 @@ class TestFeatures(unittest.TestCase):
 
         assert feature.feature["mjd"] == 30
 
+    def test_nobs_fwhm(self):
+        """Test that NObservations can take nan"""
+        observation_list = make_observations_list(nobs=5)
+        # 5 visits, one with a missing FHWMeff value
+        observation_list[0]["FWHMeff"] = np.nan
+        observations_array, observations_hpids_array, list_of_hpids = make_observations_arrays(
+            observation_list
+        )
+
+        feature = features.NObservations(bandname=None, scheduler_note=None, seeing_limit=1.0)
+        # Now again, but set the fill value small so missing value counts
+        feature_forgiving = features.NObservations(
+            bandname=None, scheduler_note=None, seeing_limit=1.0, seeing_fill_value=0.1
+        )
+
+        # Check adding array works. FWHM set high
+        observations_array["FWHMeff"] += 2.0
+        observations_hpids_array["FWHMeff"] += 2.0
+        feature.add_observations_array(observations_array, observations_hpids_array)
+        assert np.max(feature.feature) == 0
+        feature_forgiving.add_observations_array(observations_array, observations_hpids_array)
+        assert np.max(feature_forgiving.feature) == 1
+        feature_forgiving.feature *= 0
+
+        # Check adding array works. FWHM set low
+        observations_array["FWHMeff"] -= 1.5
+        observations_hpids_array["FWHMeff"] -= 1.5
+        feature.add_observations_array(observations_array, observations_hpids_array)
+        assert np.max(feature.feature) == 4
+        feature_forgiving.add_observations_array(observations_array, observations_hpids_array)
+        assert np.max(feature_forgiving.feature) == 5
+
+        # Check adding single observation works
+        observation = observations_array[0]
+        feature = features.NObservations(bandname=None, scheduler_note=None, seeing_limit=1.0)
+        feature_forgiving = features.NObservations(
+            bandname=None, scheduler_note=None, seeing_limit=1.0, seeing_fill_value=0.1
+        )
+        observation["FWHMeff"] = 2.0
+        feature.add_observation(observation)
+        assert np.max(feature.feature) == 0
+        feature_forgiving.add_observation(observation)
+        assert np.max(feature_forgiving.feature) == 0
+
+        observation["FWHMeff"] = 0.5
+        feature.add_observation(observation)
+        assert np.max(feature.feature) == 1
+        feature_forgiving.add_observation(observation)
+        assert np.max(feature_forgiving.feature) == 1
+
+        feature = features.NObservations(bandname=None, scheduler_note=None, seeing_limit=1.0)
+        feature_forgiving = features.NObservations(
+            bandname=None, scheduler_note=None, seeing_limit=1.0, seeing_fill_value=0.1
+        )
+        observation["FWHMeff"] = np.nan
+        feature.add_observation(observation)
+        assert np.max(feature.feature) == 0
+        feature_forgiving.add_observation(observation)
+        assert np.max(feature_forgiving.feature) == 1
+
     def test_NObservations(self):
         # Make some observations to count
         observations_list = make_observations_list(12)

@@ -42,6 +42,8 @@ class FootprintBasisFunction(BaseBasisFunction):
     seeing_fwhm_max : `float`
         Seeing limit to use (arcsec) when counting observations.
         Default None.
+    seeing_fill_value : `float`
+        Value to use for missing FWHMeff values. Default 100 arcsec.
     """
 
     def __init__(
@@ -52,6 +54,7 @@ class FootprintBasisFunction(BaseBasisFunction):
         out_of_bounds_val=-10.0,
         filtername=None,
         seeing_fwhm_max=None,
+        seeing_fill_value=100.0,
     ):
         if filtername is not None:
             warnings.warn("filtername deprecated in favor of bandname", FutureWarning)
@@ -71,10 +74,13 @@ class FootprintBasisFunction(BaseBasisFunction):
         self.survey_features = {}
         # All the observations in all bands
         self.survey_features["N_obs_all"] = features.NObservations(
-            nside=self.nside, bandname=None, seeing_limit=seeing_fwhm_max
+            nside=self.nside, bandname=None, seeing_limit=seeing_fwhm_max, seeing_fill_value=seeing_fill_value
         )
         self.survey_features["N_obs"] = features.NObservations(
-            nside=self.nside, bandname=bandname, seeing_limit=seeing_fwhm_max
+            nside=self.nside,
+            bandname=bandname,
+            seeing_limit=seeing_fwhm_max,
+            seeing_fill_value=seeing_fill_value,
         )
 
         # should probably actually loop over all the target maps?
