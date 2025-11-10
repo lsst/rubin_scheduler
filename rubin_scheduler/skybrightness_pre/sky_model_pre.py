@@ -6,6 +6,7 @@ import os
 import urllib
 import warnings
 from pathlib import Path
+from typing import Tuple
 
 import h5py
 import healpy as hp
@@ -207,20 +208,58 @@ class SkyModelPreBase(abc.ABC):
             file with same root name.
         """
 
-        if filename is None:
+        def _load_sbfile(filename: str) -> Tuple[h5py.File, np.ndarray]:
+            if self.verbose:
+                print("Loading file %s" % filename)
+            h5 = self._create_h5(filename, "r")
+            mjds = h5["mjds"][:]
+            return h5, mjds
+
+        def _best_matching_file(instant_mjd: float) -> str:
             # Figure out which file to load.
-            file_indx = np.where((mjd >= self.mjd_left) & (mjd <= self.mjd_right))[0]
+            file_indx = np.where((instant_mjd >= self.mjd_left) & (instant_mjd <= self.mjd_right))[0]
             if np.size(file_indx) == 0:
                 raise ValueError(
                     "MJD = %f is out of range for the files found (%f-%f)"
-                    % (mjd, self.mjd_left.min(), self.mjd_right.max())
+                    % (instant_mjd, self.mjd_left.min(), self.mjd_right.max())
                 )
             # Just take the later one, assuming we're probably
             # simulating forward in time
             file_indx = np.max(file_indx)
 
             filename = self.files[file_indx]
+            return filename
+
+        if filename is None:
+            filename = _best_matching_file(mjd)
+            h5, mjds = _load_sbfile(filename)
+            first_max_mjd = mjds.max()
+            if mjd > first_max_mjd:
+                # The round shifts mjd to mjd rollover
+                # in the dayobs on which the requested
+                # mjd falls. The 0.2 puts it past
+                # sunset always on that dayobs, and not
+                # at exactly the MJD rollover, so
+                # this should work if the file boundries
+                # are either at intereger mjds or at
+                # sunset or twilight.
+                # Use nextafter because numpy sometimes
+                # seems to round 0.5 down!?
+                mjd_in_dayobs = np.round(np.nextafter(mjd, np.inf)) + 0.2
+                filename = _best_matching_file(mjd_in_dayobs)
+                h5, mjds = _load_sbfile(filename)
+                second_min_mjd = mjds.min()
+                if mjd < second_min_mjd:
+                    assert second_min_mjd - mjd < 1
+                    requested_mjd = mjd
+                    mjd = second_min_mjd
+                    warnings.warn(
+                        f"Requested mjd0 of {requested_mjd} is between sky brightness files, "
+                        "probably during the day, so"
+                        f" loading with mjd0 of {mjd} instead"
+                        )
         else:
+            h5, mjds = _load_sbfile(filename)
             self.loaded_range = None
 
         # Use three separate try/excepet blocks so that if any of
@@ -240,10 +279,6 @@ class SkyModelPreBase(abc.ABC):
         except AttributeError:
             pass
 
-        if self.verbose:
-            print("Loading file %s" % filename)
-        h5 = self._create_h5(filename, "r")
-        mjds = h5["mjds"][:]
         indxs = np.where((mjds >= mjd) & (mjds <= (mjd + self.load_length)))
         indxs = [np.min(indxs), np.max(indxs)]
         if indxs[0] > 0:
@@ -324,14 +359,21 @@ class SkyModelPreBase(abc.ABC):
             full_sky = False
 
         # If we are out of bounds
+
+        # To test if there is an issue with getting the
+        # right set of sky brightness files.
+        max_day_length = 0.75
         if right >= self.mjds.size:
             right -= 1
             baseline = 1.0
+            assert (mjd - self.mjds[right]) < max_day_length, "Loaded sky brightness files are too far away."
         elif left < 0:
             left += 1
             baseline = 1.0
+            assert (self.mjds[left] - mjd) < max_day_length, "Loaded sky brightness files are too far away."
         else:
             baseline = self.mjds[right] - self.mjds[left]
+            assert self.mjds[left] <= mjd <= self.mjds[right]
 
         # Check if we are between sunrise/set
         if baseline > self.timestep_max + 1e-6:
