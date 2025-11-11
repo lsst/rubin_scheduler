@@ -257,7 +257,7 @@ class SkyModelPreBase(abc.ABC):
                         f"Requested mjd0 of {requested_mjd} is between sky brightness files, "
                         "probably during the day, so"
                         f" loading with mjd0 of {mjd} instead"
-                        )
+                    )
         else:
             h5, mjds = _load_sbfile(filename)
             self.loaded_range = None
