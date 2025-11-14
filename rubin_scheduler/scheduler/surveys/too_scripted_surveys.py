@@ -19,10 +19,8 @@ from rubin_scheduler.scheduler.utils import (
 from rubin_scheduler.site_models import _read_fields
 from rubin_scheduler.utils import (
     DEFAULT_NSIDE,
-    _approx_ra_dec2_alt_az,
     _build_tree,
     _hpid2_ra_dec,
-    _ra_dec2_hpid,
 )
 
 DEFAULT_EXP_TIME = 29.2
@@ -340,105 +338,105 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
 
         if correct_type & unseen:
             self.seen_alerts.append(target_o_o.id)
-            # Check that the event center is in the footprint
-            # we want to observe
-            hpid_center = _ra_dec2_hpid(self.nside, target_o_o.ra_rad_center, target_o_o.dec_rad_center)
-            if self.followup_footprint[hpid_center] > 0:
-                # ToO footprint could be any nside, so match here
-                # hp.ud_grade takes a mean. So a 1/0 mask will be forgiving
-                # and expand, but a mask using np.nan will be hard.
-                matched_target_o_o_fp = hp.ud_grade(target_o_o.footprint, self.nside)
-                target_area = self.followup_footprint * matched_target_o_o_fp
-                # generate a list of pointings for that area
-                hpid_to_observe = np.where(target_area > 0)[0]
-                if hpid_to_observe.size > 0:
-                    ras, decs = self._tesselate(hpid_to_observe)
-                else:
-                    ras = np.array([target_o_o.ra_rad_center])
-                    decs = np.array([target_o_o.dec_rad_center])
+            # Ignore event center - we'll follow any hpids that are in
+            # the followup footprint.
 
-                # Figure out an MJD start time for the object
-                # if it is still rising and low.
-                alt, az = _approx_ra_dec2_alt_az(
-                    target_o_o.ra_rad_center,
-                    target_o_o.dec_rad_center,
-                    conditions.site.latitude_rad,
-                    None,
-                    conditions.mjd,
-                    lmst=np.max(conditions.lmst),
-                )
-                HA = np.max(conditions.lmst) - target_o_o.ra_rad_center * 12.0 / np.pi
+            # ToO footprint could be any nside, so match here
+            # hp.ud_grade takes a mean. So a 1/0 mask will be forgiving
+            # and expand, but a mask using np.nan will be hard.
+            matched_target_o_o_fp = hp.ud_grade(target_o_o.footprint, self.nside)
+            target_area = self.followup_footprint * matched_target_o_o_fp
+            # generate a list of pointings for that area
+            hpid_to_observe = np.where(target_area > 0)[0]
+            if hpid_to_observe.size > 0:
+                # If there are multiple healpixes - tesselate
+                ras, decs = self._tesselate(hpid_to_observe)
+                # We could block these into subsets here?
+                # Need to properly account for RA wrap. (convert to xyz?)
+            else:
+                # Otherwise, point directly at ra/dec center.
+                ras = np.array([target_o_o.ra_rad_center])
+                decs = np.array([target_o_o.dec_rad_center])
 
-                if (HA < self.HA_max) & (HA > self.HA_min):
-                    t_to_rise = (self.HA_max - HA) / 24.0
-                    mjd0 = conditions.mjd + t_to_rise
-                else:
-                    mjd0 = conditions.mjd + 0.0
+            # Figure out an MJD start time for the object
+            # if it is still rising and low.
+            # HA = np.max(conditions.lmst) -
+            #      target_o_o.ra_rad_center * 12.0 / np.pi
+            #
+            # if (HA < self.HA_max) & (HA > self.HA_min):
+            #     t_to_rise = (self.HA_max - HA) / 24.0
+            #     mjd0 = conditions.mjd + t_to_rise
+            # else:
+            #     mjd0 = conditions.mjd + 0.0
 
-                obs_list = []
-                for time, bandnames, nv, exptime, index in zip(
-                    self.times,
-                    self.bands_at_times,
-                    self.nvis,
-                    self.exptimes,
-                    np.arange(np.size(self.times)),
-                ):
-                    # Could potentially throw in a dither change here
-                    # so it is different at each time as well?
-                    for i in range(nv):
-                        # let's dither each pointing
-                        if (i != 0) & (hpid_to_observe.size > 0) & (self.dither_per_visit):
-                            ras, decs = self._tesselate(hpid_to_observe)
+            # For now - just start asap.
+            # Should revisit if block up RA values.
+            mjd0 = conditions.mjd
 
-                        for bandname in bandnames:
-                            # Subsitute y for z if needed on first observation
-                            if i == 0:
-                                if (bandname == "z") & (bandname not in conditions.mounted_bands):
-                                    bandname = "y"
+            obs_list = []
+            for time, bandnames, nv, exptime, index in zip(
+                self.times,
+                self.bands_at_times,
+                self.nvis,
+                self.exptimes,
+                np.arange(np.size(self.times)),
+            ):
+                # Could potentially throw in a dither change here
+                # so it is different at each time as well?
+                for i in range(nv):
+                    # let's dither each pointing
+                    if (i != 0) & (hpid_to_observe.size > 0) & (self.dither_per_visit):
+                        ras, decs = self._tesselate(hpid_to_observe)
 
-                            if bandname == "u":
-                                nexp = self.n_usnaps
-                            else:
-                                nexp = self.n_snaps
+                    for bandname in bandnames:
+                        # Subsitute y for z if needed on first observation
+                        if i == 0:
+                            if (bandname == "z") & (bandname not in conditions.mounted_bands):
+                                bandname = "y"
 
-                            # If we are doing a short exposure
-                            # need to be 1 snap for shutter limits
-                            if exptime < 29.0:
-                                nexp = 1
+                        if bandname == "u":
+                            nexp = self.n_usnaps
+                        else:
+                            nexp = self.n_snaps
 
-                            # check if we should break
-                            # long exposures into multiple
-                            if self.split_long:
-                                if exptime > self.split_long_max:
-                                    nexp = int(np.ceil(exptime / self.split_long_div))
+                        # If we are doing a short exposure
+                        # need to be 1 snap for shutter limits
+                        if exptime < 29.0:
+                            nexp = 1
 
-                            obs = ScheduledObservationArray(ras.size)
-                            obs["RA"] = ras
-                            obs["dec"] = decs
-                            obs["mjd"] = mjd0 + time
-                            obs["flush_by_mjd"] = mjd0 + time + self.flushtime
-                            obs["exptime"] = exptime
-                            obs["nexp"] = nexp
-                            obs["band"] = bandname
-                            obs["rotSkyPos"] = 0  # XXX--maybe throw a rotation detailer in here
-                            obs["mjd_tol"] = self.mjd_tol
-                            obs["dist_tol"] = self.dist_tol
-                            obs["alt_min"] = self.alt_min
-                            obs["alt_max"] = self.alt_max
-                            obs["HA_max"] = self.HA_max
-                            obs["HA_min"] = self.HA_min
+                        # check if we should break
+                        # long exposures into multiple
+                        if self.split_long:
+                            if exptime > self.split_long_max:
+                                nexp = int(np.ceil(exptime / self.split_long_div))
 
-                            obs["scheduler_note"] = self.survey_name + ", %i_t%i_i%i" % (
-                                target_o_o.id,
-                                time * 24,
-                                index,
-                            )
-                            obs["target_name"] = self.target_name_base + "_i%i" % index
-                            obs_list.append(obs)
-                observations = np.concatenate(obs_list)
-                for detailer in self.event_gen_detailers:
-                    observations = detailer(observations, conditions, target_o_o=target_o_o)
-                self.set_script(observations)
+                        obs = ScheduledObservationArray(ras.size)
+                        obs["RA"] = ras
+                        obs["dec"] = decs
+                        obs["mjd"] = mjd0 + time
+                        obs["flush_by_mjd"] = mjd0 + time + self.flushtime
+                        obs["exptime"] = exptime
+                        obs["nexp"] = nexp
+                        obs["band"] = bandname
+                        obs["rotSkyPos"] = 0  # XXX--maybe throw a rotation detailer in here
+                        obs["mjd_tol"] = self.mjd_tol
+                        obs["dist_tol"] = self.dist_tol
+                        obs["alt_min"] = self.alt_min
+                        obs["alt_max"] = self.alt_max
+                        obs["HA_max"] = self.HA_max
+                        obs["HA_min"] = self.HA_min
+                        obs["scheduler_note"] = (
+                            f"{self.survey_name}, {target_o_o.id}_t{time*24:.2f}_i{index:.0f}"
+                        )
+                        obs["observation_reason"] = (
+                            f"too_{self.target_name_base}_{target_o_o.id}_i{index:.0f}"
+                        )
+                        obs["target_name"] = f"{self.target_name_base}_{target_o_o.id}"
+                        obs_list.append(obs)
+            observations = np.concatenate(obs_list)
+            for detailer in self.event_gen_detailers:
+                observations = detailer(observations, conditions, target_o_o=target_o_o)
+            self.set_script(observations)
 
     def update_conditions(self, conditions):
         if conditions.targets_of_opportunity is not None:
