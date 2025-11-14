@@ -173,8 +173,8 @@ class Conditions:
         moon_phase_sunset : `float`
             The phase of the moon (0-100 illuminated) at sunset.
             Useful for setting which bands should be loaded.
-        targets_of_opportunity : `list` [`rubin_scheduler.scheduler.targetoO`]
-            targetoO objects.
+        targets_of_opportunity : `list` [`~scheduler.utils.TargetoO`]
+            The current targetoO objects.
         planet_positions : `dict` {`str`: `float`}
             Dictionary of planet name and coordinate e.g., 'venus_RA',
             'mars_dec'

@@ -67,7 +67,7 @@ class ModelObservatory:
         The limit to stop taking observations if the cloud model returns
         something equal or higher. Default of 0.3 is validated as a
         "somewhat pessimistic" weather downtime choice.
-    sim_to_o : `sim_targetoO` object, optional
+    sim_to_o :  `SimTargetooServer`, optional
         If one would like to inject simulated ToOs into the telemetry
         stream. Default None adds no ToOs.
     park_after : `float`, optional
