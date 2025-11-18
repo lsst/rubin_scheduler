@@ -2,11 +2,12 @@ __all__ = ("data_dict", "scheduler_download_data", "download_rubin_data", "DEFAU
 
 import argparse
 import os
+import time
 import warnings
 from shutil import rmtree, unpack_archive
 
 import requests
-from requests.exceptions import ConnectionError
+from requests.exceptions import ChunkedEncodingError, ConnectionError, Timeout
 from tqdm.auto import tqdm
 
 from .data_sets import data_versions, get_data_dir
@@ -197,26 +198,134 @@ def download_rubin_data(
                     rmtree(path)
                     warnings.warn("Removed existing directory %s, downloading updated version" % path)
         if download_this_dir:
-            # Download file
+            # Download file with retry and resume support
             url = url_base + filename
+            final_path = os.path.join(data_dir, filename)
+            partial_path = final_path + ".part"
+
             print("Downloading file: %s" % url)
-            # Stream and write in chunks (avoid large memory usage)
-            r = requests.get(url, stream=True)
-            file_size = int(r.headers.get("Content-Length", 0))
-            if file_size < 245:
+
+            # Configure retry parameters
+            max_retries = 10
+            backoff_factor = 2
+            block_size = 512 * 512 * 10  # Download chunk size
+
+            # Try to get total file size
+            try:
+                head_response = requests.head(url, timeout=30)
+                head_response.raise_for_status()
+                total_size = int(head_response.headers.get("Content-Length", 0))
+            except Exception as e:
+                warnings.warn(f"Could not get file size for {url}: {e}")
+                total_size = 0
+
+            if total_size < 245 and total_size > 0:
                 warnings.warn(f"{url} file size unexpectedly small.")
-            # Download this size chunk at a time; reasonable guess
-            block_size = 512 * 512 * 10
-            progress_bar = tqdm(total=file_size, unit="iB", unit_scale=True, disable=tdqm_disable)
-            print(f"Writing to {os.path.join(data_dir, filename)}")
-            with open(os.path.join(data_dir, filename), "wb") as f:
-                for chunk in r.iter_content(chunk_size=block_size):
-                    progress_bar.update(len(chunk))
-                    f.write(chunk)
-            progress_bar.close()
+
+            # Check for existing partial download
+            if os.path.exists(partial_path):
+                downloaded_size = os.path.getsize(partial_path)
+                print(f"Found partial download: {downloaded_size} / {total_size} bytes")
+
+                # Check if already complete
+                if total_size > 0 and downloaded_size >= total_size:
+                    print("Partial download is complete, renaming to final file")
+                    os.rename(partial_path, final_path)
+                    # Skip to unpacking
+                    unpack_archive(final_path, data_dir)
+                    os.remove(final_path)
+                    versions[key] = file_dict[key]
+                    continue
+            else:
+                downloaded_size = 0
+
+            # Retry loop
+            download_successful = False
+            for attempt in range(max_retries):
+                try:
+                    # Prepare request with resume headers if needed
+                    headers = {}
+                    file_mode = "wb"
+                    initial_position = 0
+
+                    if downloaded_size > 0:
+                        headers["Range"] = f"bytes={downloaded_size}-"
+                        file_mode = "ab"
+                        initial_position = downloaded_size
+                        print(f"Resuming download from byte {downloaded_size}")
+
+                    # Make streaming request
+                    response = requests.get(url, headers=headers, stream=True, timeout=30)
+                    response.raise_for_status()
+
+                    # Update total size if we got it from response
+                    if "Content-Length" in response.headers:
+                        content_length = int(response.headers["Content-Length"])
+                        if headers:  # If resuming, add the content length to downloaded size
+                            effective_total = downloaded_size + content_length
+                        else:
+                            effective_total = content_length
+                        if total_size == 0:
+                            total_size = effective_total
+
+                    # Setup progress bar
+                    progress_bar = tqdm(
+                        total=total_size,
+                        initial=initial_position,
+                        unit="iB",
+                        unit_scale=True,
+                        disable=tdqm_disable,
+                    )
+
+                    print(f"Writing to {partial_path}")
+
+                    # Download in chunks
+                    with open(partial_path, file_mode) as f:
+                        for chunk in response.iter_content(chunk_size=block_size):
+                            if chunk:
+                                f.write(chunk)
+                                progress_bar.update(len(chunk))
+
+                    progress_bar.close()
+
+                    # Verify download completed
+                    final_size = os.path.getsize(partial_path)
+                    if total_size > 0 and final_size < total_size:
+                        raise IOError(f"Download incomplete: {final_size} / {total_size} bytes")
+
+                    # Download successful! Rename to final path
+                    print(f"Download complete, renaming to {final_path}")
+                    os.rename(partial_path, final_path)
+                    download_successful = True
+                    break
+
+                except (
+                    ConnectionError,
+                    Timeout,
+                    ChunkedEncodingError,
+                    requests.exceptions.HTTPError,
+                    IOError,
+                ) as e:
+                    # Update downloaded size for next attempt
+                    if os.path.exists(partial_path):
+                        downloaded_size = os.path.getsize(partial_path)
+
+                    if attempt < max_retries - 1:
+                        wait_time = backoff_factor**attempt
+                        print(f"Download failed: {e}")
+                        print(f"Retrying in {wait_time}s... (Attempt {attempt + 1}/{max_retries})")
+                        time.sleep(wait_time)
+                    else:
+                        print(f"Download failed after {max_retries} attempts: {e}")
+                        print(f"Partial download saved at: {partial_path}")
+                        raise
+
+            if not download_successful:
+                raise RuntimeError(f"Failed to download {filename} after {max_retries} attempts")
+
             # untar in place
-            unpack_archive(os.path.join(data_dir, filename), data_dir)
-            os.remove(os.path.join(data_dir, filename))
+            unpack_archive(final_path, data_dir)
+            os.remove(final_path)
             versions[key] = file_dict[key]
 
     # Write out the new version info to the data directory
