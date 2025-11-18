@@ -972,8 +972,8 @@ class TargetoO:
 
     Parameters
     ----------
-    tooid : `int`
-        Unique ID for the ToO.
+    tooid : `str`
+        Unique ID for the ToO. Probably using `source` from EFD.
     footprints : `np.array`
         np.array healpix maps. 1 for areas to observe, 0 for no observe.
         Can use np.nan for no-observe pixels, but that will be interpreted

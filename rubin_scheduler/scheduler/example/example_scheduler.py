@@ -174,7 +174,6 @@ def gen_scheduler(
     dbroot = args.dbroot
     nside = args.nside
     mjd_plus = args.mjd_plus
-    split_long = args.split_long
     snapshot_dir = args.snapshot_dir
     too = not args.no_too
 
@@ -347,7 +346,6 @@ def gen_scheduler(
             nside=nside,
             detailer_list=detailer_list,
             too_footprint=too_footprint,
-            split_long=split_long,
             n_snaps=NEXP,
         )
         surveys = [
@@ -425,12 +423,6 @@ def sched_argparser() -> argparse.ArgumentParser:
         type=float,
         default=0,
         help="number of days to add to the mjd start",
-    )
-    parser.add_argument(
-        "--split_long",
-        dest="split_long",
-        action="store_true",
-        help="Split long ToO exposures into standard visit lengths",
     )
     parser.add_argument(
         "--snapshot_dir",

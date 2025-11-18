@@ -1,6 +1,8 @@
 __all__ = (
     "BaseDetailer",
     "ZeroRotDetailer",
+    "NSnapsFromExptimeDetailer",
+    "SplitLongExp",
     "Comcam90rotDetailer",
     "Rottep2RotspDesiredDetailer",
     "CloseAltDetailer",
@@ -102,6 +104,44 @@ class BaseDetailer:
         """
 
         return ObservationArray()
+
+
+class NSnapsFromExptimeDetailer(BaseDetailer):
+    """If exposure time is low, force number of snaps to be 1.
+
+    Parameters
+    ----------
+    min_exptime : `float`
+        The minimum exposure time. Set anything below
+        to have nexp=1. Default 29 (seconds).
+    """
+
+    def __init__(self, min_exptime=29.0):
+        self.min_exptime = min_exptime
+
+    def __call__(self, observation_array, conditions):
+        indx = np.where(observation_array["exptime"] < self.min_exptime)
+        observation_array["nexp"][indx] = 1
+        return observation_array
+
+
+class SplitLongExp(BaseDetailer):
+    """Split long exposure times into multiple nexp"""
+
+    def __init__(
+        self,
+        split_long_max=30.0,
+        split_long_div=60.0,
+    ):
+        self.split_long_max = split_long_max
+        self.split_long_div = split_long_div
+
+    def __call__(self, observation_array, conditions):
+        indx = np.where(observation_array["exptime"] > self.split_long_max)
+        observation_array["nexp"][indx] = np.ceil(
+            observation_array["exptime"][indx] / self.split_long_div
+        ).astype(int)
+        return observation_array
 
 
 class IndexNoteDetailer(BaseDetailer):
