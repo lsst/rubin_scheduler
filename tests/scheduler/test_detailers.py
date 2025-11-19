@@ -59,6 +59,7 @@ class TestDetailers(unittest.TestCase):
             detailers.IndexNoteDetailer,
             detailers.NSnapsFromExptimeDetailer,
             detailers.SplitLongExp,
+            detailers.BandSubstitudeDetailer,
         ]
 
         for det in det_list:

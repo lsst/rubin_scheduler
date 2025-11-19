@@ -375,11 +375,6 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
                         ras, decs = self._tesselate(hpid_to_observe)
 
                     for bandname in bandnames:
-                        # Subsitute y for z if needed on first observation
-                        if i == 0:
-                            if (bandname == "z") & (bandname not in conditions.mounted_bands):
-                                bandname = "y"
-
                         if bandname == "u":
                             nexp = self.n_usnaps
                         else:
@@ -401,7 +396,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
                         obs["HA_max"] = self.HA_max
                         obs["HA_min"] = self.HA_min
                         obs["scheduler_note"] = (
-                            f"{self.survey_name}, {target_o_o.id}_t{time*24:.2f}_i{index:.0f}"
+                            f"{self.survey_name}, {bandname}, {target_o_o.id}_t{time*24:.2f}_i{index:.0f}"
                         )
                         obs["observation_reason"] = (
                             f"too_{self.target_name_base}_{target_o_o.id}_i{index:.0f}"

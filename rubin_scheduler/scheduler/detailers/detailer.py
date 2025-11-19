@@ -2,6 +2,7 @@ __all__ = (
     "BaseDetailer",
     "ZeroRotDetailer",
     "NSnapsFromExptimeDetailer",
+    "BandSubstitudeDetailer",
     "SplitLongExp",
     "Comcam90rotDetailer",
     "Rottep2RotspDesiredDetailer",
@@ -126,7 +127,17 @@ class NSnapsFromExptimeDetailer(BaseDetailer):
 
 
 class SplitLongExp(BaseDetailer):
-    """Split long exposure times into multiple nexp"""
+    """Split long exposure times into multiple nexp
+
+    Parameters
+    ----------
+    split_long_max : `float`
+        Maximum exposure time. Default 30 (seconds).
+    split_long_div : `float`
+        Used to determine how many snaps to break
+        visit into. Probably should be 2x split_long_max.
+        Default 60 (seconds).
+    """
 
     def __init__(
         self,
@@ -141,6 +152,28 @@ class SplitLongExp(BaseDetailer):
         observation_array["nexp"][indx] = np.ceil(
             observation_array["exptime"][indx] / self.split_long_div
         ).astype(int)
+        return observation_array
+
+
+class BandSubstitudeDetailer(BaseDetailer):
+    """Substitute a band if desired band not mounted
+
+    Parameters
+    ----------
+    band_original : `str`
+        The band to be replaced if not available. Default "z"
+    band_replacement : `str`
+        Band to use as a replacement. Default "y"
+    """
+
+    def __init__(self, band_original="z", band_replacement="y"):
+        self.band_original = band_original
+        self.band_replacement = band_replacement
+
+    def __call__(self, observation_array, conditions):
+        if self.band_original not in conditions.mounted_bands:
+            indx = np.where(observation_array["band"] == self.band_original)
+            observation_array["band"][indx] = self.band_replacement
         return observation_array
 
 

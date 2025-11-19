@@ -338,6 +338,7 @@ def gen_scheduler(
             detailers.CameraRotDetailer(min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits))
         )
         detailer_list.append(detailers.LabelRegionsAndDDFs())
+        detailer_list.append(detailers.BandSubstitudeDetailer(band_original="z", band_replacement="y"))
         # Let's make a footprint to follow up ToO events
         too_footprint = footprints_hp["r"] * 0 + np.nan
         too_footprint[np.where(footprints_hp["r"] > 0)[0]] = 1.0

@@ -137,14 +137,15 @@ class ScriptedSurvey(BaseSurvey):
                     detailer.add_observation(observation, **kwargs)
                 self.reward_checked = False
 
-                key = observation["scheduler_note"][0] + observation["band"][0]
-                try:
+                indx = np.where(
+                    (self.obs_wanted["scheduler_note"] == observation["scheduler_note"][0])
+                    & (self.obs_wanted["observed"] == False)
+                )[0]
+
+                if np.size(indx) > 0:
                     # Could add an additional check here for if the observation
                     # is in the desired mjd window.
-                    self.obs_wanted["observed"][self.note_band_dict[key]] = True
-                # If the key does not exist, nothing to do
-                except KeyError:
-                    return
+                    self.obs_wanted["observed"][np.min(indx)] = True
 
     def calc_reward_function(self, conditions):
         """If there is an observation ready to go, execute it,
@@ -348,12 +349,6 @@ class ScriptedSurvey(BaseSurvey):
         # Here is the attribute that core scheduler checks to
         # broadcast scheduled observations in the conditions object.
         self.scheduled_obs = self.obs_wanted["mjd"]
-
-        # Generate a dict so it can be fast to check if an observation matches
-        # the combination of scheduler_note and band
-        self.note_band_dict = {}
-        for i, obs in enumerate(self.obs_wanted):
-            self.note_band_dict[obs["scheduler_note"] + obs["band"]] = i
 
     def generate_observations_rough(self, conditions):
         # if we have already called for this mjd, no need to repeat.
