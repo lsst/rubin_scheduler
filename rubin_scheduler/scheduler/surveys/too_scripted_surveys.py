@@ -107,10 +107,16 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         return_n_limit=500,
         simple_single_tesselate=True,
         dither_per_visit=True,
+        split_long=None,
     ):
         if filters_at_times is not None:
             warnings.warn("filters_at_times deprecated in favor of bands_at_times", FutureWarning)
             bands_at_times = filters_at_times
+
+        if split_long is not None:
+            warnings.warn(
+                "kwarg split_long deprecated in favor of splitting visits with detailers", FutureWarning
+            )
         # Make sure lists all match
         check = np.unique([len(bands_at_times), len(times), len(nvis), len(exptimes)])
         if np.size(check) > 1:
