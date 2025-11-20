@@ -1,3 +1,5 @@
+__all__ = ("BandPickToODetailer",)
+
 import warnings
 
 import numpy as np
