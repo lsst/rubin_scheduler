@@ -28,6 +28,7 @@ __all__ = (
     "LabelRegionsAndDDFs",
     "RollBandMatchDetailer",
     "IndexNoteDetailer",
+    "GrabSettingDetailer",
 )
 
 import copy
@@ -37,7 +38,7 @@ import healpy as hp
 import numpy as np
 
 import rubin_scheduler.scheduler.features as features
-from rubin_scheduler.scheduler.utils import CurrentAreaMap, HpInLsstFov, IntRounded, ObservationArray
+from rubin_scheduler.scheduler.utils import CurrentAreaMap, HpInLsstFov, IntRounded, ObservationArray, order_observations
 from rubin_scheduler.utils import (
     DEFAULT_NSIDE,
     _angular_separation,
@@ -105,6 +106,7 @@ class BaseDetailer:
         return ObservationArray()
 
 
+<<<<<<< HEAD
 class BandSubstituteDetailer(BaseDetailer):
     """Substitute a band if desired band not mounted
 
@@ -125,6 +127,76 @@ class BandSubstituteDetailer(BaseDetailer):
             indx = np.where(observation_array["band"] == self.band_original)
             observation_array["band"][indx] = self.band_replacement
         return observation_array
+=======
+class GrabSettingDetailer(BaseDetailer):
+    """Reorder observations so pointings that might set soon are first.
+
+    Parameters
+    ----------
+
+    """
+    def __init__(self, visit_block_size=20, hour_angle_action=2,
+                 band_order="ugrizy", loaded_first=True):
+        self.visit_block_size = visit_block_size
+        self.loaded_first = loaded_first
+        self.hour_angle_action = hour_angle_action
+        self.band_order = band_order
+
+    def _band_spatial_order(self, observation_array, conditions, hour_angle):
+        """Return index array that sorts observation_array 
+        by self.band_order and spatial orders
+        """
+        order_to_set = copy(self.band_order)
+        if self.loaded_first:
+            order_to_set = order_to_set.replace(conditions.current_band, "")
+            order_to_set = conditions.current_band + order_to_set
+
+        indices = []
+
+        for bandname in order_to_set:
+            in_filt = np.where(observation_array["band"] == bandname)[0]
+            # Now to put those in a good spatial order
+            spatial_order = order_observations(observation_array["RA"][in_filt],
+                                               observation_array["dec"][in_filt])
+            # highes HA goes first in the new path
+            roll_to = np.min(np.where(hour_angle[in_filt[spatial_order]] == np.max(hour_angle[in_filt[spatial_order]])))
+            spatial_order = np.roll(spatial_order, roll_to)
+
+            indices.append(in_filt[spatial_order])
+
+        indices = np.concatenate(indices)
+        return indices
+
+    def __call__(self, observation_array, conditions):
+
+        # Find HA for all the observations, 0-24
+        hour_angle_now = (np.max(conditions.lmst) - observation_array["RA"] * 12.0 / np.pi) % 24
+
+        # visits we need to bump up and get before they set
+        bump_indx = np.where((hour_angle_now > self.hour_angle_action) & (hour_angle_now < 12.))[0]
+
+        # Nothing getting close to setting, just return
+        if np.size(bump_indx) == 0:
+            return observation_array
+
+        if bump_indx.size > self.visit_block_size:
+            order = np.argsort(hour_angle_now[bump_indx])
+            bump_indx = bump_indx[order[0:self.visit_block_size]]
+
+        # Take visits we are bumping up and order intelligently
+        ordered = self._band_spatial_order(observation_array[bump_indx], hour_angle_now[bump_indx])
+        bump_indx = bump_indx[ordered]
+
+        all_indx = np.arange(observation_array.size)
+        non_bumped = all_indx[np.isin(all_indx, bump_indx, assume_unique=True, invert=True)]
+        # make sure the observations we aren't bumping are well ordered as well
+        non_bumped_order = self._band_spatial_order(observation_array[non_bumped], hour_angle_now[non_bumped])
+        non_bumped = non_bumped[non_bumped_order]
+
+        final_ordered_indx = np.concatenate([bump_indx, non_bumped])
+
+        return observation_array[final_ordered_indx]
+>>>>>>> c0974f4 (Priorituze setting detailer)
 
 
 class IndexNoteDetailer(BaseDetailer):
