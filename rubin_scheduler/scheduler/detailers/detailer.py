@@ -1,6 +1,9 @@
 __all__ = (
     "BaseDetailer",
     "ZeroRotDetailer",
+    "NSnapsFromExptimeDetailer",
+    "BandSubstitudeDetailer",
+    "SplitLongExp",
     "Comcam90rotDetailer",
     "Rottep2RotspDesiredDetailer",
     "CloseAltDetailer",
@@ -102,6 +105,76 @@ class BaseDetailer:
         """
 
         return ObservationArray()
+
+
+class NSnapsFromExptimeDetailer(BaseDetailer):
+    """If exposure time is low, force number of snaps to be 1.
+
+    Parameters
+    ----------
+    min_exptime : `float`
+        The minimum exposure time. Set anything below
+        to have nexp=1. Default 29 (seconds).
+    """
+
+    def __init__(self, min_exptime=29.0):
+        self.min_exptime = min_exptime
+
+    def __call__(self, observation_array, conditions):
+        indx = np.where(observation_array["exptime"] < self.min_exptime)
+        observation_array["nexp"][indx] = 1
+        return observation_array
+
+
+class SplitLongExp(BaseDetailer):
+    """Split long exposure times into multiple nexp
+
+    Parameters
+    ----------
+    split_long_max : `float`
+        Maximum exposure time. Default 30 (seconds).
+    split_long_div : `float`
+        Used to determine how many snaps to break
+        visit into. Probably should be 2x split_long_max.
+        Default 60 (seconds).
+    """
+
+    def __init__(
+        self,
+        split_long_max=30.0,
+        split_long_div=60.0,
+    ):
+        self.split_long_max = split_long_max
+        self.split_long_div = split_long_div
+
+    def __call__(self, observation_array, conditions):
+        indx = np.where(observation_array["exptime"] > self.split_long_max)
+        observation_array["nexp"][indx] = np.ceil(
+            observation_array["exptime"][indx] / self.split_long_div
+        ).astype(int)
+        return observation_array
+
+
+class BandSubstitudeDetailer(BaseDetailer):
+    """Substitute a band if desired band not mounted
+
+    Parameters
+    ----------
+    band_original : `str`
+        The band to be replaced if not available. Default "z"
+    band_replacement : `str`
+        Band to use as a replacement. Default "y"
+    """
+
+    def __init__(self, band_original="z", band_replacement="y"):
+        self.band_original = band_original
+        self.band_replacement = band_replacement
+
+    def __call__(self, observation_array, conditions):
+        if self.band_original not in conditions.mounted_bands:
+            indx = np.where(observation_array["band"] == self.band_original)
+            observation_array["band"][indx] = self.band_replacement
+        return observation_array
 
 
 class IndexNoteDetailer(BaseDetailer):
