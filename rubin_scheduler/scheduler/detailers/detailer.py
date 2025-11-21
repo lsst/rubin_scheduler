@@ -139,7 +139,18 @@ class GrabSettingDetailer(BaseDetailer):
 
     Parameters
     ----------
-
+    visit_block_size : `int`
+        The number of observations to potentially bump to the start
+        of the array. Default 20.
+    hour_angle_action : `float`
+        The hour angle observations need to have to be considered for
+        moving to the start of the array. Default 2 (hours).
+    loaded_first : `bool`
+        If there are multiple filters, move observations matching
+        the currently loaded filter to the start to potentially
+        avoid a filter swap. Default True.
+    band_order : `str`
+        What order should bands be taken in. Defualt "ugrizy"
     """
 
     def __init__(self, visit_block_size=20, hour_angle_action=2, band_order="ugrizy", loaded_first=True):
@@ -150,7 +161,8 @@ class GrabSettingDetailer(BaseDetailer):
 
     def _band_spatial_order(self, observation_array, conditions, hour_angle):
         """Return index array that sorts observation_array
-        by self.band_order and spatial orders
+        by self.band_order and spatially orders to minimize
+        slew distance.
         """
         order_to_set = copy.copy(self.band_order)
         if self.loaded_first:
@@ -183,7 +195,7 @@ class GrabSettingDetailer(BaseDetailer):
         # Find HA for all the observations, 0-24
         hour_angle_now = (np.max(conditions.lmst) - observation_array["RA"] * 12.0 / np.pi) % 24
 
-        # visits we need to bump up and get before they set
+        # visits we want to bump up and get before they set
         bump_indx = np.where((hour_angle_now > self.hour_angle_action) & (hour_angle_now < 12.0))[0]
 
         # Nothing getting close to setting, just return
