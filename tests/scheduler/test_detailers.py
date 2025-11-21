@@ -58,6 +58,7 @@ class TestDetailers(unittest.TestCase):
             detailers.TruncatePreTwiDetailer,
             detailers.IndexNoteDetailer,
             detailers.BandSubstituteDetailer,
+            detailers.GrabSettingDetailer,
         ]
 
         for det in det_list:
