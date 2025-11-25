@@ -57,8 +57,6 @@ class TestDetailers(unittest.TestCase):
             detailers.LabelDDFDetailer,
             detailers.TruncatePreTwiDetailer,
             detailers.IndexNoteDetailer,
-            detailers.NSnapsFromExptimeDetailer,
-            detailers.SplitLongExp,
             detailers.BandSubstituteDetailer,
         ]
 
@@ -573,24 +571,6 @@ class TestDetailers(unittest.TestCase):
 
         for bn in orig_order:
             assert bn in o2["band"]
-
-    def test_split_long(self):
-        det = detailers.SplitLongExp(split_long_max=30.0)
-        obs = ObservationArray(n=6)
-        obs["exptime"] = 30
-        for i, bn in enumerate("ugrizy"):
-            obs["band"][i] = bn
-        obs[0]["exptime"] = 60
-        obs[2]["exptime"] = 120
-
-        output = det(obs, None)
-
-        assert np.where(output["band"] == "u")[0].size == 2
-        assert np.where(output["band"] == "r")[0].size == 4
-        # Check that we inserted at the right point
-        for bn in "ugrizy":
-            indx = np.where(output["band"] == bn)[0]
-            assert np.max(indx) - np.min(indx) == np.size(indx) - 1
 
 
 if __name__ == "__main__":

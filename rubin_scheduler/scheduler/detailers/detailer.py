@@ -1,9 +1,7 @@
 __all__ = (
     "BaseDetailer",
     "ZeroRotDetailer",
-    "NSnapsFromExptimeDetailer",
     "BandSubstituteDetailer",
-    "SplitLongExp",
     "Comcam90rotDetailer",
     "Rottep2RotspDesiredDetailer",
     "CloseAltDetailer",
@@ -105,60 +103,6 @@ class BaseDetailer:
         """
 
         return ObservationArray()
-
-
-class NSnapsFromExptimeDetailer(BaseDetailer):
-    """If exposure time is low, force number of snaps to be 1.
-
-    Parameters
-    ----------
-    min_exptime : `float`
-        The minimum exposure time. Set anything below
-        to have nexp=1. Default 30 (seconds).
-    """
-
-    def __init__(self, min_exptime=30.0):
-        self.min_exptime = min_exptime
-
-    def __call__(self, observation_array, conditions):
-        indx = np.where(observation_array["exptime"] < self.min_exptime)
-        observation_array["nexp"][indx] = 1
-        return observation_array
-
-
-class SplitLongExp(BaseDetailer):
-    """Split long exposure times into multiple visits.
-    Cuts long exposure times in half until
-    nothing is over the limit.
-
-    Parameters
-    ----------
-    split_long_max : `float`
-        Maximum exposure time. Default 30 (seconds).
-    """
-
-    def __init__(
-        self,
-        split_long_max=30.0,
-    ):
-        self.split_long_max = split_long_max
-
-    def __call__(self, observation_array, conditions):
-        while np.max(observation_array["exptime"] > self.split_long_max):
-            indx = np.where(observation_array["exptime"] > self.split_long_max)[0]
-            observation_array["exptime"][indx] /= 2.0
-            new_obs = observation_array[indx].copy()
-            expanded_array = ObservationArray(n=observation_array.size + new_obs.size)
-            # Insert the new observations next to the ones that were split.
-            insert_indices = indx + np.arange(indx.size)
-            all_indices = np.arange(expanded_array.size)
-            prev_indices = np.isin(all_indices, insert_indices, invert=True, assume_unique=True)
-
-            expanded_array[prev_indices] = observation_array
-            expanded_array[insert_indices] = new_obs
-            observation_array = expanded_array
-
-        return observation_array
 
 
 class BandSubstituteDetailer(BaseDetailer):
