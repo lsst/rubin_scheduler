@@ -38,6 +38,10 @@ class ScriptedSurvey(BaseSurvey):
     band_change_time : `float`
         The time needed to change bands. Default 120 seconds. Only
         used if before_twi_check is True.
+    check_band_mounted : `bool`
+        Only pass observations through if the band desired is mounted.
+        Default True. Might want to set to False if you have detailers
+        that can substitute bands.
     """
 
     def __init__(
@@ -55,6 +59,7 @@ class ScriptedSurvey(BaseSurvey):
         band_change_time=120,
         filter_change_time=None,
         science_program=None,
+        check_band_mounted=True,
     ):
         if filter_change_time is not None:
             warnings.warn("filter_change_time deprecated in favor of band_change_time", FutureWarning)
@@ -66,6 +71,7 @@ class ScriptedSurvey(BaseSurvey):
         self.reward = -np.inf
         self.id_start = id_start
         self.return_n_limit = return_n_limit
+        self.check_band_mounted = check_band_mounted
         self.band_change_time = band_change_time / 3600 / 24.0  # to days
         if basis_weights is None:
             self.basis_weights = np.zeros(len(basis_functions))
@@ -247,9 +253,10 @@ class ScriptedSurvey(BaseSurvey):
                 pass_checks = self._check_alts_ha(self.obs_wanted[in_time_window], conditions)
                 matches = in_time_window[pass_checks]
 
-                # Also check that the bands are mounted
-                match2 = np.isin(self.obs_wanted["band"][matches], conditions.mounted_bands)
-                matches = matches[match2]
+                if self.check_band_mounted:
+                    # Also check that the bands are mounted
+                    match2 = np.isin(self.obs_wanted["band"][matches], conditions.mounted_bands)
+                    matches = matches[match2]
 
             else:
                 matches = []

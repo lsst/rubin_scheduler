@@ -108,6 +108,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         simple_single_tesselate=True,
         dither_per_visit=True,
         split_long=None,
+        check_band_mounted=False
     ):
         if filters_at_times is not None:
             warnings.warn("filters_at_times deprecated in favor of bands_at_times", FutureWarning)
@@ -152,6 +153,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         self.extra_basis_functions = {}
         self.simple_single_tesselate = simple_single_tesselate
         self.dither_per_visit = dither_per_visit
+        self.check_band_mounted = check_band_mounted
         if detailers is None:
             self.detailers = []
         else:
@@ -400,7 +402,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
                         obs["HA_max"] = self.HA_max
                         obs["HA_min"] = self.HA_min
                         obs["scheduler_note"] = (
-                            f"{self.survey_name}, {bandname}, {target_o_o.id}_t{time*24:.2f}_i{index:.0f}"
+                            f"{self.survey_name}, {bandname}, {target_o_o.id}_i{index:.0f}"
                         )
                         obs["observation_reason"] = (
                             f"too_{self.target_name_base}_{target_o_o.id}_i{index:.0f}"
