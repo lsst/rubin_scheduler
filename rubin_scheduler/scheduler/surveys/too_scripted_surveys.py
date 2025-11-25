@@ -114,9 +114,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
             bands_at_times = filters_at_times
 
         if split_long is not None:
-            warnings.warn(
-                "kwarg split_long deprecated in favor of splitting visits with detailers", FutureWarning
-            )
+            warnings.warn("kwarg split_long deprecated", FutureWarning)
         # Make sure lists all match
         check = np.unique([len(bands_at_times), len(times), len(nvis), len(exptimes)])
         if np.size(check) > 1:
@@ -409,6 +407,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
                         )
                         obs["target_name"] = f"{self.target_name_base}_{target_o_o.id}"
                         obs_list.append(obs)
+
             observations = np.concatenate(obs_list)
             for detailer in self.event_gen_detailers:
                 observations = detailer(observations, conditions, target_o_o=target_o_o)

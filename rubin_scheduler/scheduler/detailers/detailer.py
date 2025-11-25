@@ -2,7 +2,7 @@ __all__ = (
     "BaseDetailer",
     "ZeroRotDetailer",
     "NSnapsFromExptimeDetailer",
-    "BandSubstitudeDetailer",
+    "BandSubstituteDetailer",
     "SplitLongExp",
     "Comcam90rotDetailer",
     "Rottep2RotspDesiredDetailer",
@@ -114,10 +114,10 @@ class NSnapsFromExptimeDetailer(BaseDetailer):
     ----------
     min_exptime : `float`
         The minimum exposure time. Set anything below
-        to have nexp=1. Default 29 (seconds).
+        to have nexp=1. Default 30 (seconds).
     """
 
-    def __init__(self, min_exptime=29.0):
+    def __init__(self, min_exptime=30.0):
         self.min_exptime = min_exptime
 
     def __call__(self, observation_array, conditions):
@@ -127,35 +127,41 @@ class NSnapsFromExptimeDetailer(BaseDetailer):
 
 
 class SplitLongExp(BaseDetailer):
-    """Split long exposure times into multiple nexp
+    """Split long exposure times into multiple visits.
+    Cuts long exposure times in half until
+    nothing is over the limit.
 
     Parameters
     ----------
     split_long_max : `float`
         Maximum exposure time. Default 30 (seconds).
-    split_long_div : `float`
-        Used to determine how many snaps to break
-        visit into. Probably should be 2x split_long_max.
-        Default 60 (seconds).
     """
 
     def __init__(
         self,
         split_long_max=30.0,
-        split_long_div=60.0,
     ):
         self.split_long_max = split_long_max
-        self.split_long_div = split_long_div
 
     def __call__(self, observation_array, conditions):
-        indx = np.where(observation_array["exptime"] > self.split_long_max)
-        observation_array["nexp"][indx] = np.ceil(
-            observation_array["exptime"][indx] / self.split_long_div
-        ).astype(int)
+        while np.max(observation_array["exptime"] > self.split_long_max):
+            indx = np.where(observation_array["exptime"] > self.split_long_max)[0]
+            observation_array["exptime"][indx] /= 2.0
+            new_obs = observation_array[indx].copy()
+            expanded_array = ObservationArray(n=observation_array.size + new_obs.size)
+            # Insert the new observations next to the ones that were split.
+            insert_indices = indx + np.arange(indx.size)
+            all_indices = np.arange(expanded_array.size)
+            prev_indices = np.isin(all_indices, insert_indices, invert=True, assume_unique=True)
+
+            expanded_array[prev_indices] = observation_array
+            expanded_array[insert_indices] = new_obs
+            observation_array = expanded_array
+
         return observation_array
 
 
-class BandSubstitudeDetailer(BaseDetailer):
+class BandSubstituteDetailer(BaseDetailer):
     """Substitute a band if desired band not mounted
 
     Parameters

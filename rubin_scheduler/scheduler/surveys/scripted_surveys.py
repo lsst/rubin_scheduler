@@ -337,11 +337,9 @@ class ScriptedSurvey(BaseSurvey):
             self.obs_wanted = obs_wanted
 
         # check that we have valid unique keys for observations
-        potential_keys = np.char.add(self.obs_wanted["scheduler_note"], self.obs_wanted["band"])
-        if np.size(np.unique(potential_keys)) < np.size(self.obs_wanted):
+        if np.size(np.unique(self.obs_wanted["scheduler_note"])) < np.size(self.obs_wanted):
             msg = (
-                "Scripted observations do not have unique scheduler_note "
-                "+ band values. Consider setting add_index=True"
+                "Scripted observations do not have unique scheduler_note. " "Consider setting add_index=True"
             )
             raise ValueError(msg)
 
