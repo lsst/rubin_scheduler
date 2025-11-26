@@ -1,6 +1,8 @@
 __all__ = (
     "BaseDetailer",
     "ZeroRotDetailer",
+    "NSnapsFromExptimeDetailer",
+    "BandSubstituteDetailer",
     "Comcam90rotDetailer",
     "Rottep2RotspDesiredDetailer",
     "CloseAltDetailer",
@@ -102,6 +104,47 @@ class BaseDetailer:
         """
 
         return ObservationArray()
+
+
+class NSnapsFromExptimeDetailer(BaseDetailer):
+    """If exposure time is low, force number of snaps to be 1.
+
+    Parameters
+    ----------
+    min_exptime : `float`
+        The minimum exposure time. Set anything below
+        to have nexp=1. Default 30 (seconds).
+    """
+
+    def __init__(self, min_exptime=30.0):
+        self.min_exptime = min_exptime
+
+    def __call__(self, observation_array, conditions):
+        indx = np.where(observation_array["exptime"] < self.min_exptime)
+        observation_array["nexp"][indx] = 1
+        return observation_array
+
+
+class BandSubstituteDetailer(BaseDetailer):
+    """Substitute a band if desired band not mounted
+
+    Parameters
+    ----------
+    band_original : `str`
+        The band to be replaced if not available. Default "z"
+    band_replacement : `str`
+        Band to use as a replacement. Default "y"
+    """
+
+    def __init__(self, band_original="z", band_replacement="y"):
+        self.band_original = band_original
+        self.band_replacement = band_replacement
+
+    def __call__(self, observation_array, conditions):
+        if self.band_original not in conditions.mounted_bands:
+            indx = np.where(observation_array["band"] == self.band_original)
+            observation_array["band"][indx] = self.band_replacement
+        return observation_array
 
 
 class IndexNoteDetailer(BaseDetailer):

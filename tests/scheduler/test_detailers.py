@@ -57,6 +57,8 @@ class TestDetailers(unittest.TestCase):
             detailers.LabelDDFDetailer,
             detailers.TruncatePreTwiDetailer,
             detailers.IndexNoteDetailer,
+            detailers.NSnapsFromExptimeDetailer,
+            detailers.BandSubstituteDetailer,
         ]
 
         for det in det_list:
