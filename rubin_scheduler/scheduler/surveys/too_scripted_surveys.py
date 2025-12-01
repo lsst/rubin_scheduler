@@ -17,11 +17,7 @@ from rubin_scheduler.scheduler.utils import (
     xyz2thetaphi,
 )
 from rubin_scheduler.site_models import _read_fields
-from rubin_scheduler.utils import (
-    DEFAULT_NSIDE,
-    _build_tree,
-    _hpid2_ra_dec,
-)
+from rubin_scheduler.utils import DEFAULT_NSIDE, _build_tree, _hpid2_ra_dec, _ra_dec2_hpid
 
 DEFAULT_EXP_TIME = 29.2
 
@@ -103,21 +99,23 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         npositions=20000,
         n_snaps=2,
         n_usnaps=1,
-        id_start=1,
         detailers=None,
+        id_start=1,
         too_types_to_follow=[""],
-        split_long=False,
-        split_long_max=30.0,
-        split_long_div=60.0,
         filters_at_times=None,
         event_gen_detailers=None,
         return_n_limit=500,
         simple_single_tesselate=True,
         dither_per_visit=True,
+        split_long=None,
+        check_band_mounted=False,
     ):
         if filters_at_times is not None:
             warnings.warn("filters_at_times deprecated in favor of bands_at_times", FutureWarning)
             bands_at_times = filters_at_times
+
+        if split_long is not None:
+            warnings.warn("kwarg split_long deprecated", FutureWarning)
         # Make sure lists all match
         check = np.unique([len(bands_at_times), len(times), len(nvis), len(exptimes)])
         if np.size(check) > 1:
@@ -155,6 +153,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         self.extra_basis_functions = {}
         self.simple_single_tesselate = simple_single_tesselate
         self.dither_per_visit = dither_per_visit
+        self.check_band_mounted = check_band_mounted
         if detailers is None:
             self.detailers = []
         else:
@@ -167,10 +166,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         self.id_start = id_start
         self.last_mjd = -1
         self.too_types_to_follow = too_types_to_follow
-        self.split_long = split_long
         self.target_name_base = target_name_base
-        self.split_long_max = split_long_max
-        self.split_long_div = split_long_div
 
         self.camera = camera
         # Load the OpSim field tesselation and map healpix to fields
@@ -348,6 +344,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
             target_area = self.followup_footprint * matched_target_o_o_fp
             # generate a list of pointings for that area
             hpid_to_observe = np.where(target_area > 0)[0]
+            ras = None
             if hpid_to_observe.size > 0:
                 # If there are multiple healpixes - tesselate
                 ras, decs = self._tesselate(hpid_to_observe)
@@ -355,23 +352,18 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
                 # Need to properly account for RA wrap. (convert to xyz?)
             else:
                 # Otherwise, point directly at ra/dec center.
-                ras = np.array([target_o_o.ra_rad_center])
-                decs = np.array([target_o_o.dec_rad_center])
+                hpid = _ra_dec2_hpid(self.nside, target_o_o.ra_rad_center, target_o_o.dec_rad_center)
+                if self.followup_footprint[hpid] > 0:
+                    ras = np.array([target_o_o.ra_rad_center])
+                    decs = np.array([target_o_o.dec_rad_center])
 
-            # Figure out an MJD start time for the object
-            # if it is still rising and low.
-            # HA = np.max(conditions.lmst) -
-            #      target_o_o.ra_rad_center * 12.0 / np.pi
-            #
-            # if (HA < self.HA_max) & (HA > self.HA_min):
-            #     t_to_rise = (self.HA_max - HA) / 24.0
-            #     mjd0 = conditions.mjd + t_to_rise
-            # else:
-            #     mjd0 = conditions.mjd + 0.0
+            # If we have nothing in the followup footprint, return
+            if ras is None:
+                return
 
             # For now - just start asap.
             # Should revisit if block up RA values.
-            mjd0 = conditions.mjd
+            mjd0 = target_o_o.mjd_start
 
             obs_list = []
             for time, bandnames, nv, exptime, index in zip(
@@ -389,26 +381,10 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
                         ras, decs = self._tesselate(hpid_to_observe)
 
                     for bandname in bandnames:
-                        # Subsitute y for z if needed on first observation
-                        if i == 0:
-                            if (bandname == "z") & (bandname not in conditions.mounted_bands):
-                                bandname = "y"
-
                         if bandname == "u":
                             nexp = self.n_usnaps
                         else:
                             nexp = self.n_snaps
-
-                        # If we are doing a short exposure
-                        # need to be 1 snap for shutter limits
-                        if exptime < 29.0:
-                            nexp = 1
-
-                        # check if we should break
-                        # long exposures into multiple
-                        if self.split_long:
-                            if exptime > self.split_long_max:
-                                nexp = int(np.ceil(exptime / self.split_long_div))
 
                         obs = ScheduledObservationArray(ras.size)
                         obs["RA"] = ras
@@ -426,13 +402,14 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
                         obs["HA_max"] = self.HA_max
                         obs["HA_min"] = self.HA_min
                         obs["scheduler_note"] = (
-                            f"{self.survey_name}, {target_o_o.id}_t{time*24:.2f}_i{index:.0f}"
+                            f"{self.survey_name}, {bandname}, {target_o_o.id}_i{index:.0f}"
                         )
                         obs["observation_reason"] = (
                             f"too_{self.target_name_base}_{target_o_o.id}_i{index:.0f}"
                         )
                         obs["target_name"] = f"{self.target_name_base}_{target_o_o.id}"
                         obs_list.append(obs)
+
             observations = np.concatenate(obs_list)
             for detailer in self.event_gen_detailers:
                 observations = detailer(observations, conditions, target_o_o=target_o_o)

@@ -38,6 +38,10 @@ class ScriptedSurvey(BaseSurvey):
     band_change_time : `float`
         The time needed to change bands. Default 120 seconds. Only
         used if before_twi_check is True.
+    check_band_mounted : `bool`
+        Only pass observations through if the band desired is mounted.
+        Default True. Might want to set to False if you have detailers
+        that can substitute bands.
     """
 
     def __init__(
@@ -55,6 +59,7 @@ class ScriptedSurvey(BaseSurvey):
         band_change_time=120,
         filter_change_time=None,
         science_program=None,
+        check_band_mounted=True,
     ):
         if filter_change_time is not None:
             warnings.warn("filter_change_time deprecated in favor of band_change_time", FutureWarning)
@@ -66,6 +71,7 @@ class ScriptedSurvey(BaseSurvey):
         self.reward = -np.inf
         self.id_start = id_start
         self.return_n_limit = return_n_limit
+        self.check_band_mounted = check_band_mounted
         self.band_change_time = band_change_time / 3600 / 24.0  # to days
         if basis_weights is None:
             self.basis_weights = np.zeros(len(basis_functions))
@@ -137,14 +143,15 @@ class ScriptedSurvey(BaseSurvey):
                     detailer.add_observation(observation, **kwargs)
                 self.reward_checked = False
 
-                key = observation["scheduler_note"][0] + observation["band"][0]
-                try:
+                indx = np.where(
+                    (self.obs_wanted["scheduler_note"] == observation["scheduler_note"][0])
+                    & (self.obs_wanted["observed"] == False)
+                )[0]
+
+                if np.size(indx) > 0:
                     # Could add an additional check here for if the observation
                     # is in the desired mjd window.
-                    self.obs_wanted["observed"][self.note_band_dict[key]] = True
-                # If the key does not exist, nothing to do
-                except KeyError:
-                    return
+                    self.obs_wanted["observed"][np.min(indx)] = True
 
     def calc_reward_function(self, conditions):
         """If there is an observation ready to go, execute it,
@@ -246,9 +253,10 @@ class ScriptedSurvey(BaseSurvey):
                 pass_checks = self._check_alts_ha(self.obs_wanted[in_time_window], conditions)
                 matches = in_time_window[pass_checks]
 
-                # Also check that the bands are mounted
-                match2 = np.isin(self.obs_wanted["band"][matches], conditions.mounted_bands)
-                matches = matches[match2]
+                if self.check_band_mounted:
+                    # Also check that the bands are mounted
+                    match2 = np.isin(self.obs_wanted["band"][matches], conditions.mounted_bands)
+                    matches = matches[match2]
 
             else:
                 matches = []
@@ -336,11 +344,9 @@ class ScriptedSurvey(BaseSurvey):
             self.obs_wanted = obs_wanted
 
         # check that we have valid unique keys for observations
-        potential_keys = np.char.add(self.obs_wanted["scheduler_note"], self.obs_wanted["band"])
-        if np.size(np.unique(potential_keys)) < np.size(self.obs_wanted):
+        if np.size(np.unique(self.obs_wanted["scheduler_note"])) < np.size(self.obs_wanted):
             msg = (
-                "Scripted observations do not have unique scheduler_note "
-                "+ band values. Consider setting add_index=True"
+                "Scripted observations do not have unique scheduler_note. " "Consider setting add_index=True"
             )
             raise ValueError(msg)
 
@@ -348,12 +354,6 @@ class ScriptedSurvey(BaseSurvey):
         # Here is the attribute that core scheduler checks to
         # broadcast scheduled observations in the conditions object.
         self.scheduled_obs = self.obs_wanted["mjd"]
-
-        # Generate a dict so it can be fast to check if an observation matches
-        # the combination of scheduler_note and band
-        self.note_band_dict = {}
-        for i, obs in enumerate(self.obs_wanted):
-            self.note_band_dict[obs["scheduler_note"] + obs["band"]] = i
 
     def generate_observations_rough(self, conditions):
         # if we have already called for this mjd, no need to repeat.
