@@ -1,4 +1,4 @@
-__all__ = ("CoreScheduler",)
+__all__ = ("CoreScheduler", "BaseQueueManager")
 
 import logging
 import time
@@ -12,7 +12,83 @@ import pandas as pd
 from astropy.time import Time
 
 from rubin_scheduler.scheduler.utils import HpInComcamFov, HpInLsstFov, IntRounded, ObservationArray
-from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD, _hpid2_ra_dec, rotation_converter
+from rubin_scheduler.utils import (DEFAULT_NSIDE, SURVEY_START_MJD,
+                                   _hpid2_ra_dec, rotation_converter, _ra_dec2_hpid)
+
+
+class BaseQueueManager:
+    """Class for managing a queue of desired observations.
+
+    Parameters
+    ----------
+    nside : `int`
+       HEALpix nside
+    """
+    def __init__(self, nside=DEFAULT_NSIDE):
+        self.desired_observations_array = None
+        self.need_observing = None
+        self.obs_hpid = None
+        self.nside = nside
+
+    def flush_queue(self):
+        self.desired_observations_array = None
+        self.need_observing = None
+        self.obs_hpid = None
+
+    def set_queue(self, observation_array):
+        self.desired_observations_array = observation_array
+        self.need_observing = np.ones(observation_array.size)
+        self.obs_hpid = _ra_dec2_hpid(self.nside, self.desired_observations_array["RA"],
+                                      self.desired_observations_array["dec"])
+
+    def add_observation(self, observation):
+        match_indx = np.where(self.desired_observations_array["ID"] == observation["ID"])
+        self.need_observing[match_indx] = False
+
+    def add_observations_array(self, observation_array):
+        indx = np.isin(self.desired_observations_array["ID"], observation_array["ID"])
+        self.need_observing[indx] = False
+
+    def find_valid_indx(self, conditions):
+        """Return the indices of observations that can be observed
+        """
+
+        valid = np.where(self.need_observing)[0]
+
+        return valid
+
+    def _check_queue_mjd_only(self, mjd):
+        pass
+
+    def request_observation(self, conditions, mjd=None, whole_queue=False, n_return=1):
+        """
+        Parameters
+        ----------
+        conditions : ``
+            Conditions object
+        mjd : `float`
+            Current mjd
+        whole_queue : `bool`
+            If True, return all desired observations with no check if
+            they are accessible.
+        n_return : `int`
+            Number of observations to return.
+        """
+
+        if whole_queue:
+            return self.desired_observations_array[self.need_observing]
+
+        indx = self.find_valid_indx(conditions)
+
+        if indx.size >= n_return:
+            indx = indx[0:n_return]
+
+        return self.desired_observations_array[indx]
+
+    def return_active_queue(self):
+        """Return array of observations that are waiting to be executed
+        """
+        return self.desired_observations_array[self.need_observing]
 
 
 class CoreScheduler:
