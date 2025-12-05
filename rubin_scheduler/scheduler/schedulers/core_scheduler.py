@@ -12,8 +12,7 @@ import pandas as pd
 from astropy.time import Time
 
 from rubin_scheduler.scheduler.utils import HpInComcamFov, HpInLsstFov, IntRounded, ObservationArray
-from rubin_scheduler.utils import (DEFAULT_NSIDE, SURVEY_START_MJD,
-                                   _hpid2_ra_dec, rotation_converter, _ra_dec2_hpid)
+from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD, _hpid2_ra_dec, rotation_converter
 
 
 class BaseQueueManager:
@@ -21,8 +20,6 @@ class BaseQueueManager:
 
     Parameters
     ----------
-    nside : `int`
-        HEALpix nside
     detailers : `list`
         List of detailers to apply to observations as they are
         selected from the queue. Mostly for setting camera
@@ -30,7 +27,8 @@ class BaseQueueManager:
         that have become clouded out or gotten close to zenith.
 
     """
-    def __init__(self, nside=DEFAULT_NSIDE, detailers=None, basis_functions=None):
+
+    def __init__(self, detailers=None, basis_functions=None):
         if detailers is None:
             self.detailers = []
         else:
@@ -43,27 +41,24 @@ class BaseQueueManager:
         # Array to track which desired_observations_array
         # have been observed
         self.need_observing = False
-        self.obs_hpid = None
-        self.nside = nside
 
     def flush_queue(self):
         self.desired_observations_array = None
         self.need_observing = False
-        self.obs_hpid = None
 
     def set_queue(self, observation_array):
         self.desired_observations_array = observation_array
         self.need_observing = np.ones(observation_array.size, dtype=bool)
-        self.obs_hpid = _ra_dec2_hpid(self.nside, self.desired_observations_array["RA"],
-                                      self.desired_observations_array["dec"])
 
     def add_observation(self, observation):
-        match_indx = np.where(self.desired_observations_array["target_id"] == observation["target_id"])
-        self.need_observing[match_indx] = False
+        if self.desired_observations_array is not None:
+            match_indx = np.where(self.desired_observations_array["target_id"] == observation["target_id"])
+            self.need_observing[match_indx] = False
 
     def add_observations_array(self, observation_array):
-        indx = np.isin(self.desired_observations_array["target_id"], observation_array["target_id"])
-        self.need_observing[indx] = False
+        if self.desired_observations_array is not None:
+            indx = np.isin(self.desired_observations_array["target_id"], observation_array["target_id"])
+            self.need_observing[indx] = False
 
     def compute_reward(self, conditions):
         reward = 0
@@ -97,9 +92,10 @@ class BaseQueueManager:
     def _check_queue_mjd_only(self, mjd):
         result = False
         if np.sum(self.need_observing) > 0:
-            if np.any(IntRounded(mjd) < IntRounded(self.desired_observations_array[self.need_observing]["flush_by_mjd"])) | (
-                np.any(self.desired_observations_array[self.need_observing]["flush_by_mjd"] == 0)
-            ):
+            if np.any(
+                IntRounded(mjd)
+                < IntRounded(self.desired_observations_array[self.need_observing]["flush_by_mjd"])
+            ) | (np.any(self.desired_observations_array[self.need_observing]["flush_by_mjd"] == 0)):
                 result = True
         return result
 
@@ -135,8 +131,7 @@ class BaseQueueManager:
         return result
 
     def return_active_queue(self):
-        """Return array of observations that are waiting to be executed
-        """
+        """Return array of observations that are waiting to be executed"""
         return self.desired_observations_array[self.need_observing]
 
 
@@ -448,9 +443,7 @@ class CoreScheduler:
         if np.sum(self.queue_manager.need_observing) == 0:
             return None
         else:
-            result = self.queue_manager.request_observation(self.conditions,
-                                                            mjd=mjd,
-                                                            whole_queue=whole_queue)
+            result = self.queue_manager.request_observation(self.conditions, mjd=mjd, whole_queue=whole_queue)
             # TODO : Remove this hack which is for use with ts_scheduler
             # version <=v2.3 .. remove ts_scheduler actually drops "note".
             result["note"] = result["scheduler_note"]

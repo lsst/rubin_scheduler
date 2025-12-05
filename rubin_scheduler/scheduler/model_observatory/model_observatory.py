@@ -746,7 +746,7 @@ class ModelObservatory:
 
         # Compute what alt,az we have tracked to (or are parked at)
         start_alt, start_az, start_rot_tel_pos = self.observatory.current_alt_az(self.mjd)
-        # Slew to new position and execute observation. Use 
+        # Slew to new position and execute observation. Use
         # obsevation['rotSkyPos'] and not rotTelPos be ignored.
         slewtime, visittime = self.observatory.observe(
             observation,
