@@ -85,7 +85,7 @@ class BaseQueueManager:
                 lonlat=True,
             )
             sub_valid_reward = np.isfinite(reward_interp)
-            valid = valid[sub_valid_reward]
+            valid = np.ravel(valid[sub_valid_reward])
 
         return valid
 
@@ -125,8 +125,9 @@ class BaseQueueManager:
 
         result = self.desired_observations_array[indx].copy()
 
-        for det in self.detailers:
-            result = det(result, conditions)
+        if np.size(result) > 0:
+            for det in self.detailers:
+                result = det(result, conditions)
 
         return result
 
@@ -444,6 +445,12 @@ class CoreScheduler:
             return None
         else:
             result = self.queue_manager.request_observation(self.conditions, mjd=mjd, whole_queue=whole_queue)
+
+            # Queue manager may have killed everything and we need to refill
+            if np.size(result) == 0:
+                self._fill_queue()
+                result = self.queue_manager.request_observation(self.conditions, mjd=mjd, whole_queue=whole_queue)
+
             # TODO : Remove this hack which is for use with ts_scheduler
             # version <=v2.3 .. remove ts_scheduler actually drops "note".
             result["note"] = result["scheduler_note"]
