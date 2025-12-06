@@ -2,6 +2,7 @@ __all__ = ("CoreScheduler", "BaseQueueManager")
 
 import logging
 import time
+import warnings
 from collections import OrderedDict
 from copy import deepcopy
 from io import StringIO
@@ -449,8 +450,12 @@ class CoreScheduler:
             # Queue manager may have killed everything and we need to refill
             if np.size(result) == 0:
                 self._fill_queue()
-                result = self.queue_manager.request_observation(self.conditions, mjd=mjd, whole_queue=whole_queue)
-
+                result = self.queue_manager.request_observation(
+                    self.conditions, mjd=mjd, whole_queue=whole_queue
+                )
+                if np.size(result) == 0:
+                    warnings.warn("Looks like the queue manager rejected everything from a survey.")
+                    return None
             # TODO : Remove this hack which is for use with ts_scheduler
             # version <=v2.3 .. remove ts_scheduler actually drops "note".
             result["note"] = result["scheduler_note"]
