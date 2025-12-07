@@ -130,7 +130,6 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         self.basis_weights = [0] * len(basis_functions)
         self.survey_name = survey_name
         self.followup_footprint = followup_footprint
-        self.last_event_id = -1
         self.night = -1
         self.reward_val = reward_val
         self.times = np.array(times) / 24.0  # to days
@@ -404,7 +403,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
                         obs["HA_max"] = self.HA_max
                         obs["HA_min"] = self.HA_min
                         obs["scheduler_note"] = (
-                            f"{self.survey_name}, {bandname}, {target_o_o.id}_i{index:.0f}"
+                            f"{self.survey_name}, {bandname}, {target_o_o.id}, i{index:.0f}"
                         )
                         obs["observation_reason"] = (
                             f"too_{self.target_name_base}_{target_o_o.id}_i{index:.0f}"
@@ -415,14 +414,12 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
             observations = np.concatenate(obs_list)
             for detailer in self.event_gen_detailers:
                 observations = detailer(observations, conditions, target_o_o=target_o_o)
-            self.set_script(observations)
+            self.set_script(observations, add_index=True)
 
     def update_conditions(self, conditions):
         if conditions.targets_of_opportunity is not None:
             for target_o_o in conditions.targets_of_opportunity:
-                if target_o_o.id > self.last_event_id:
-                    self._new_event(target_o_o, conditions)
-                    self.last_event_id = target_o_o.id
+                self._new_event(target_o_o, conditions)
 
     def calc_reward_function(self, conditions):
         """If there is an observation ready to go, execute it,
