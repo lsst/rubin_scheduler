@@ -134,8 +134,8 @@ class ObservationArray(np.ndarray):
             ("mjd", float),
             ("flush_by_mjd", float),
             ("exptime", float),
-            ("band", "U40"),
-            ("filter", "U40"),
+            ("band", "U10"),
+            ("filter", "U10"),
             ("rotSkyPos", float),
             ("rotSkyPos_desired", float),
             ("nexp", int),
@@ -156,8 +156,8 @@ class ObservationArray(np.ndarray):
             ("clouds", float),
             ("moonAlt", float),
             ("sunAlt", float),
-            ("scheduler_note", "U40"),
-            ("target_name", "U40"),
+            ("scheduler_note", "U60"),
+            ("target_name", "U60"),
             ("target_id", int),
             ("lmst", float),
             ("rotTelPos", float),
@@ -172,12 +172,12 @@ class ObservationArray(np.ndarray):
             ("solarElong", float),
             ("moonPhase", float),
             ("cummTelAz", float),
-            ("observation_reason", "U40"),
-            ("science_program", "U40"),
+            ("observation_reason", "U60"),
+            ("science_program", "U60"),
             ("cloud_extinction", float),
             # TODO : Remove this hack which is for use with ts_scheduler
             # version <=v2.3 .. remove ts_scheduler actually drops "note".
-            ("note", "U40"),
+            ("note", "U60"),
         ]
         obj = np.zeros(n, dtype=dtypes).view(cls)
         return obj
@@ -277,10 +277,10 @@ class ScheduledObservationArray(ObservationArray):
             ("rotTelPos_backup", float),
             ("rotSkyPos_desired", float),
             ("nexp", int),
-            ("scheduler_note", "U40"),
-            ("target_name", "U40"),
-            ("science_program", "U40"),
-            ("observation_reason", "U40"),
+            ("scheduler_note", "U60"),
+            ("target_name", "U60"),
+            ("science_program", "U60"),
+            ("observation_reason", "U60"),
         ]
 
         # New things not in standard ObservationArray
