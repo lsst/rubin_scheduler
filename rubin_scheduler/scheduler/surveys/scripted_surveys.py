@@ -82,10 +82,12 @@ class ScriptedSurvey(BaseSurvey):
                 raise ValueError("Length of Basis function weights should match length of basis_functions.")
             self.basis_weights = basis_weights
         self.before_twi_check = before_twi_check
-        # Attribute to cache results into
-        self.observations = None
+        # Attributes to cache results into
+        self.observations_rough = []
+        self.observations = []
         # Track when the last call to generate_observations_rough was.
         self.last_mjd = -1
+        self.last_mjd_rough = -1
         super(ScriptedSurvey, self).__init__(
             basis_functions=basis_functions,
             ignore_obs=ignore_obs,
@@ -239,7 +241,7 @@ class ScriptedSurvey(BaseSurvey):
 
     def _check_list(self, conditions):
         """Check to see if the current mjd is good"""
-        observations = None
+        observations = []
         if self.obs_wanted.size > 0:
             # Scheduled observations that are in the right time
             # window and have not been executed
@@ -285,7 +287,7 @@ class ScriptedSurvey(BaseSurvey):
                     valid_reward = np.isfinite(reward_interp)
                     observations = observations[valid_reward]
                 if len(observations) == 0:
-                    observations = None
+                    observations = []
         return observations
 
     def clear_script(self):
@@ -355,16 +357,29 @@ class ScriptedSurvey(BaseSurvey):
         # broadcast scheduled observations in the conditions object.
         self.scheduled_obs = self.obs_wanted["mjd"]
 
-    def generate_observations_rough(self, conditions):
-        # if we have already called for this mjd, no need to repeat.
+    def generate_observations(self, conditions):
+        # If we have already called for this mjd, no need to repeat.
         if self.last_mjd == conditions.mjd:
             return self.observations
 
+        observations = self.generate_observations_rough(conditions)
+        if np.size(observations) > 0:
+            for detailer in self.detailers:
+                observations = detailer(observations, conditions)
+        self.observations = observations
+        self.last_mjd = conditions.mjd
+        return self.observations
+
+    def generate_observations_rough(self, conditions):
+        # If we have already called for this mjd, no need to repeat.
+        if self.last_mjd_rough == conditions.mjd:
+            return self.observations_rough
+
         observations = self._check_list(conditions)
-        if observations is None:
-            self.observations = []
-            self.last_mjd = conditions.mjd
-            return self.observations
+        if len(observations) == 0:
+            self.observations_rough = []
+            self.last_mjd_rough = conditions.mjd
+            return self.observations_rough
 
         n_band_changes = np.sum(observations[1:]["band"] == observations[:-1]["band"])
 
@@ -380,11 +395,11 @@ class ScriptedSurvey(BaseSurvey):
             time_before_twi = conditions.sun_n18_rising - conditions.mjd
             # Not enough time, wipe out the observations
             if tot_time_needed > time_before_twi:
-                self.observations = []
+                self.observations_rough = []
                 self.last_mjd = conditions.mjd
-                return self.observations
+                return self.observations_rough
 
-        self.last_mjd = conditions.mjd
+        self.last_mjd_rough = conditions.mjd
         # Cache results, convert to ObservationArray
-        self.observations = observations.to_observation_array()
-        return self.observations
+        self.observations_rough = observations.to_observation_array()
+        return self.observations_rough
