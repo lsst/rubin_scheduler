@@ -234,10 +234,12 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
     def flush_script(self, conditions):
         """Remove things from the script that aren't needed anymore"""
         if self.obs_wanted is not None:
-            still_relevant = np.where(
-                np.logical_not(self.obs_wanted["observed"])
-                & (self.obs_wanted["flush_by_mjd"] > conditions.mjd)
-            )[0]
+            still_relevant = []
+            if np.size(self.obs_wanted) > 0:
+                still_relevant = np.where(
+                    np.logical_not(self.obs_wanted["observed"])
+                    & (self.obs_wanted["flush_by_mjd"] > conditions.mjd)
+                )[0]
 
             if np.size(still_relevant) > 0:
                 observations = self.obs_wanted[still_relevant]
