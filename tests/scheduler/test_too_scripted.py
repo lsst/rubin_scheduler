@@ -34,6 +34,138 @@ class TestToO(unittest.TestCase):
 
         assert ra1 == ra2
 
+    def test_positions(self):
+        """Test tesselation rotates as expected"""
+
+        nside = 32
+        times = [1, 24, 48]
+        bands_at_times = ["i", "i", "i"]
+        nvis = [1, 1, 1]
+        exptimes = [30, 30, 30]
+
+        too_footprint = np.ones(hp.nside2npix(nside))
+
+        survey = ToOScriptedSurvey(
+            [],
+            nside=nside,
+            followup_footprint=too_footprint,
+            times=times,
+            bands_at_times=bands_at_times,
+            nvis=nvis,
+            exptimes=exptimes,
+            detailers=[],
+            too_types_to_follow=["test_too"],
+            survey_name="ToO, test",
+            flushtime=48.0,
+            n_snaps=1,
+            target_name_base="ToO_test",
+            observation_reason="too_test",
+        )
+
+        # Generate a ToO event
+        target_map = np.zeros(hp.nside2npix(nside))
+        ra, dec = hpid2_ra_dec(nside, np.arange(target_map.size))
+        target_map[np.where(dec < -85)[0]] = 1
+        too_event = TargetoO(
+            100, target_map, 6500, 100, ra_rad_center=None, dec_rad_center=None, too_type="test_too"
+        )
+        conditions = Conditions()
+        conditions.targets_of_opportunity = [too_event]
+
+        # Give ToO to survey
+        survey.update_conditions(conditions)
+
+        # All pointings should be unique
+        n_unique = np.size(np.unique(survey.obs_wanted["RA"]))
+        n_all = np.size(survey.obs_wanted)
+
+        assert n_unique > 1
+        assert n_unique == n_all
+
+        # Check if we have multiple filters, they are at same position
+        bands_at_times = ["ig", "ig", "ig"]
+        survey = ToOScriptedSurvey(
+            [],
+            nside=nside,
+            followup_footprint=too_footprint,
+            times=times,
+            bands_at_times=bands_at_times,
+            nvis=nvis,
+            exptimes=exptimes,
+            detailers=[],
+            too_types_to_follow=["test_too"],
+            survey_name="ToO, test",
+            flushtime=48.0,
+            n_snaps=1,
+            target_name_base="ToO_test",
+            observation_reason="too_test",
+        )
+
+        survey.update_conditions(conditions)
+
+        n_unique = np.size(np.unique(survey.obs_wanted["RA"]))
+        n_all = np.size(survey.obs_wanted)
+
+        assert n_unique > 1
+        assert n_unique == n_all / 2
+
+        # Check if we have multiple filters, and multiple nvis
+        bands_at_times = ["ig", "ig", "ig"]
+        nvis = [2, 2, 2]
+        survey = ToOScriptedSurvey(
+            [],
+            nside=nside,
+            followup_footprint=too_footprint,
+            times=times,
+            bands_at_times=bands_at_times,
+            nvis=nvis,
+            exptimes=exptimes,
+            detailers=[],
+            too_types_to_follow=["test_too"],
+            survey_name="ToO, test",
+            flushtime=48.0,
+            n_snaps=1,
+            target_name_base="ToO_test",
+            observation_reason="too_test",
+        )
+
+        survey.update_conditions(conditions)
+
+        n_unique = np.size(np.unique(survey.obs_wanted["RA"]))
+        n_all = np.size(survey.obs_wanted)
+
+        assert n_unique > 1
+        assert n_unique == n_all / 2
+
+        # Turn dither off
+        survey = ToOScriptedSurvey(
+            [],
+            nside=nside,
+            followup_footprint=too_footprint,
+            times=times,
+            bands_at_times=bands_at_times,
+            nvis=nvis,
+            exptimes=exptimes,
+            detailers=[],
+            too_types_to_follow=["test_too"],
+            survey_name="ToO, test",
+            flushtime=48.0,
+            n_snaps=1,
+            target_name_base="ToO_test",
+            observation_reason="too_test",
+            dither_per_visit=False,
+        )
+
+        # Give ToO to survey
+        survey.update_conditions(conditions)
+
+        # Now pointings should repeat
+        n_unique = np.size(np.unique(survey.obs_wanted["RA"]))
+        n_all = np.size(survey.obs_wanted)
+
+        assert n_unique > 1
+        assert n_unique < n_all
+
     def test_events(self):
         """Test the ToO events, make sure each one generates"""
 
