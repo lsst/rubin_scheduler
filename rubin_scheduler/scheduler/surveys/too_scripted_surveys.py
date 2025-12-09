@@ -373,11 +373,9 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
                 self.exptimes,
                 np.arange(np.size(self.times)),
             ):
-                # Could potentially throw in a dither change here
-                # so it is different at each time as well?
                 for i in range(nv):
-                    # let's dither each pointing
-                    if (i != 0) & (hpid_to_observe.size > 0) & (self.dither_per_visit):
+                    # Dither each pointing
+                    if (hpid_to_observe.size > 0) & (self.dither_per_visit):
                         ras, decs = self._tesselate(hpid_to_observe)
 
                     for bandname in bandnames:
