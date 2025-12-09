@@ -154,6 +154,9 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         self.simple_single_tesselate = simple_single_tesselate
         self.dither_per_visit = dither_per_visit
         self.check_band_mounted = check_band_mounted
+        # Attributes to cache results into
+        self.observations_rough = []
+        self.observations = []
         if detailers is None:
             self.detailers = []
         else:
@@ -165,6 +168,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         self.dither = dither
         self.id_start = id_start
         self.last_mjd = -1
+        self.last_mjd_rough = -1
         self.too_types_to_follow = too_types_to_follow
         self.target_name_base = target_name_base
 
@@ -427,19 +431,4 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         # check if any new event has come in
         self.update_conditions(conditions)
 
-        observation = self.generate_observations_rough(conditions)
-
-        if (observation is None) | (len(observation) == 0):
-            self.reward = -np.inf
-        else:
-            self.reward = self.reward_val
-        return self.reward
-
-    def generate_observations(self, conditions):
-        observations = self.generate_observations_rough(conditions)
-
-        if len(observations) > 0:
-            for detailer in self.detailers:
-                observations = detailer(observations, conditions)
-
-        return observations
+        return super().calc_reward_function(conditions)
