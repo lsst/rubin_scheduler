@@ -121,7 +121,6 @@ class BaseQueueManager:
             indx = indx[0:n_return]
 
         result = self.desired_observations_array[indx].copy()
-
         if np.size(result) > 0:
             for det in self.detailers:
                 result = det(result, conditions)
