@@ -59,6 +59,7 @@ class TestDetailers(unittest.TestCase):
             detailers.IndexNoteDetailer,
             detailers.BandSubstituteDetailer,
             detailers.ChunkByHADetailer,
+            detailers.RotspUpdateDetailer,
         ]
 
         for det in det_list:
