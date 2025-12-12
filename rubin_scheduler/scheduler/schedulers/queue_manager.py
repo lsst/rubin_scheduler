@@ -3,16 +3,18 @@ __all__ = ("BaseQueueManager",)
 import healpy as hp
 import numpy as np
 
-from rubin_scheduler.scheduler.utils import IntRounded
+from rubin_scheduler.scheduler.utils import ObservationArray
 
 
 class BaseQueueManager:
     """Class for managing a queue of desired observations.
 
     NOTE: If using masking basis functions, one should
-    ensure Survey objects are using the same masks, else
-    one will end up in a loop where surveys propose visits
-    that the QueueManager always rejects.
+    ensure Survey objects are using the same masks as the
+    QueueManager, else one will end up in a loop where
+    surveys propose visits that the QueueManager always rejects.
+    E.g., if the surveys don't mask clouds, all their observations
+    can be rejected by the QueueManager.
 
     Parameters
     ----------
@@ -36,28 +38,39 @@ class BaseQueueManager:
             self.basis_functions = []
         else:
             self.basis_functions = basis_functions
-        self.desired_observations_array = None
+        self.desired_observations_array = ObservationArray(n=0)
         # Array to track which desired_observations_array
         # have been observed
-        self.need_observing = False
+        self.need_observing = []
 
     def flush_queue(self):
-        self.desired_observations_array = None
-        self.need_observing = False
+        self.desired_observations_array = ObservationArray(n=0)
+        self.need_observing = []
 
     def set_queue(self, observation_array):
         self.desired_observations_array = observation_array
         self.need_observing = np.ones(observation_array.size, dtype=bool)
 
-    def add_observation(self, observation):
+    def add_observation(self, observation, **kwargs):
         if self.desired_observations_array is not None:
             match_indx = np.where(self.desired_observations_array["target_id"] == observation["target_id"])
             self.need_observing[match_indx] = False
+        for bf in self.basis_functions:
+            bf.add_observation(observation, **kwargs)
+        for detailer in self.detailers:
+            detailer.add_observation(observation, **kwargs)
 
-    def add_observations_array(self, observation_array):
+    def add_observations_array(self, observation_array, observations_hpid_in):
         if self.desired_observations_array is not None:
             indx = np.isin(self.desired_observations_array["target_id"], observation_array["target_id"])
             self.need_observing[indx] = False
+
+            good = np.isin(observations_hpid_in["ID"], observation_array["ID"])
+            observations_hpid = observations_hpid_in[good]
+            for bf in self.basis_functions:
+                bf.add_observations_array(observation_array, observations_hpid)
+            for detailer in self.detailers:
+                detailer.add_observations_array(observation_array, observations_hpid)
 
     def compute_reward(self, conditions):
         reward = 0
@@ -65,7 +78,7 @@ class BaseQueueManager:
             reward += bf(conditions)
         return reward
 
-    def find_valid_indx(self, conditions):
+    def find_valid_observations_indx(self, conditions):
         """Return the indices of desired_observations_array
         that can be observed
         """
@@ -88,16 +101,6 @@ class BaseQueueManager:
 
         return valid
 
-    def _check_queue_mjd_only(self, mjd):
-        result = False
-        if np.sum(self.need_observing) > 0:
-            if np.any(
-                IntRounded(mjd)
-                < IntRounded(self.desired_observations_array[self.need_observing]["flush_by_mjd"])
-            ) | (np.any(self.desired_observations_array[self.need_observing]["flush_by_mjd"] == 0)):
-                result = True
-        return result
-
     def request_observation(self, conditions, whole_queue=False, n_return=1):
         """
         Parameters
@@ -113,12 +116,11 @@ class BaseQueueManager:
 
         # Everything that needs observing
         if whole_queue:
-            return self.desired_observations_array[self.need_observing]
-
-        indx = self.find_valid_indx(conditions)
-
-        if indx.size > n_return:
-            indx = indx[0:n_return]
+            indx = np.where(self.need_observing)[0]
+        else:
+            indx = self.find_valid_observations_indx(conditions)
+            if indx.size > n_return:
+                indx = indx[0:n_return]
 
         result = self.desired_observations_array[indx].copy()
         if np.size(result) > 0:
