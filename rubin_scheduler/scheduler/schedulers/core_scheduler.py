@@ -194,7 +194,7 @@ class CoreScheduler:
         if np.max(obs["target_id"]) >= self.target_id_counter:
             self.target_id_counter = np.max(obs["target_id"]) + 1
 
-        self.queue_manager.add_observations_array(obs)
+        self.queue_manager.add_observations_array(obs, obs_array_hpid)
 
     def add_observation(self, observation):
         """
