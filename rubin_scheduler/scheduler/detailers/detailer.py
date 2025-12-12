@@ -2,6 +2,7 @@ __all__ = (
     "BaseDetailer",
     "ZeroRotDetailer",
     "BandSubstituteDetailer",
+    "ChunkByHADetailer",
     "Comcam90rotDetailer",
     "Rottep2RotspDesiredDetailer",
     "CloseAltDetailer",
@@ -28,7 +29,6 @@ __all__ = (
     "LabelRegionsAndDDFs",
     "RollBandMatchDetailer",
     "IndexNoteDetailer",
-    "GrabSettingDetailer",
 )
 
 import copy
@@ -134,30 +134,26 @@ class BandSubstituteDetailer(BaseDetailer):
         return observation_array
 
 
-class GrabSettingDetailer(BaseDetailer):
-    """Reorder observations so pointings that might set soon are first.
+class ChunkByHADetailer(BaseDetailer):
+    """Divide observations into bins of hour angle and
+    order by hour angle bin, west-to-east.
 
     Parameters
     ----------
-    visit_block_size : `int`
-        The number of observations to potentially bump to the start
-        of the array. Default 20.
-    hour_angle_thresh : `float`
-        The hour angle observations need to have to be considered for
-        moving to the start of the array. Default 2 (hours).
-    loaded_first : `bool`
-        If there are multiple filters, move observations matching
-        the currently loaded filter to the start to potentially
-        avoid a filter swap. Default True.
-    band_order : `str`
-        What order should bands be taken in. Default "ugrizy"
+
     """
 
-    def __init__(self, visit_block_size=80, hour_angle_thresh=2, band_order="ugrizy", loaded_first=True):
-        self.visit_block_size = visit_block_size
-        self.loaded_first = loaded_first
-        self.hour_angle_thresh = hour_angle_thresh
+    def __init__(self, alt_limit=25.0, band_order="ugrizy", n_min=3, ha_bin_width=3.0):
+        self.alt_limit = np.radians(alt_limit)
         self.band_order = band_order
+        self.band_order_orig = band_order
+        self.n_min = n_min
+        self.ha_bin_width = ha_bin_width
+
+    def _set_bins(self, hour_angles):
+        """ """
+        n_bins = (hour_angles.max() - hour_angles.min()) / self.ha_bin_width
+        return np.ceil(n_bins).astype(int)
 
     def _band_spatial_order(self, observation_array, conditions, hour_angle, band_order=None):
         """Return index array that sorts observation_array
@@ -202,45 +198,62 @@ class GrabSettingDetailer(BaseDetailer):
         # Find HA for all the observations, 0-24
         hour_angle_now = (np.max(conditions.lmst) - observation_array["RA"] * 12.0 / np.pi) % 24
 
-        # visits we want to bump up and get before they set
-        bump_indx = np.where((hour_angle_now > self.hour_angle_thresh) & (hour_angle_now < 12.0))[0]
+        # convert to -12 to +12 hour angle
+        indx_over12 = np.where(hour_angle_now > 12.0)[0]
+        hour_angle_now[indx_over12] = hour_angle_now[indx_over12] - 24
 
-        # Nothing getting close to setting, just return
-        if np.size(bump_indx) == 0:
-            return observation_array
-
-        if bump_indx.size > self.visit_block_size:
-            order = np.argsort(hour_angle_now[bump_indx])[::-1]
-            bump_indx = bump_indx[order[0 : self.visit_block_size]]
-
-        # Take visits we are bumping up and order intelligently
-        ordered = self._band_spatial_order(
-            observation_array[bump_indx], conditions, hour_angle_now[bump_indx]
+        # Above alt limit
+        alt, az = _approx_ra_dec2_alt_az(
+            observation_array["RA"],
+            observation_array["dec"],
+            conditions.site.latitude_rad,
+            conditions.site.longitude_rad,
+            conditions.mjd,
         )
-        bump_indx = bump_indx[ordered]
 
-        all_indx = np.arange(observation_array.size)
-        non_bumped = all_indx[np.isin(all_indx, bump_indx, assume_unique=True, invert=True)]
+        above_limit_indx = np.where(alt > self.alt_limit)[0]
 
-        # find the band we ended with on bumped up observations
-        if self.loaded_first:
-            last_band = observation_array[bump_indx[-1]]["band"]
+        # Let's put the observations into hour angle bins
+        n_bins = self._set_bins(hour_angle_now[above_limit_indx])
 
-            new_band_order = copy.copy(self.band_order)
-            new_band_order = new_band_order.replace(last_band, "")
-            new_band_order = last_band + new_band_order
+        # Put things in HA order west-to-east
+        order_ha_indx = np.argsort(hour_angle_now[above_limit_indx])[::-1]
+        above_limit_indx = above_limit_indx[order_ha_indx]
+
+        # Not enough observations to care about, just return
+        # ordered by HA.
+        if np.size(above_limit_indx) <= self.n_min:
+            return observation_array[above_limit_indx]
+
+        # Break up the observations into chunks based on HA
+        if n_bins > 1:
+            n_per_group = int(np.ceil(above_limit_indx.size / n_bins))
+            index_bins = []
+            for i in range(n_bins - 1):
+                index_bins.append(above_limit_indx[i * n_per_group : (i + 1) * n_per_group])
+            index_bins.append(above_limit_indx[(n_bins - 1) * n_per_group :])
         else:
-            new_band_order = copy.copy(self.band_order)
+            index_bins = [above_limit_indx]
 
-        # make sure the observations we aren't bumping are well ordered as well
-        non_bumped_order = self._band_spatial_order(
-            observation_array[non_bumped], conditions, hour_angle_now[non_bumped], band_order=new_band_order
-        )
-        non_bumped = non_bumped[non_bumped_order]
-
-        final_ordered_indx = np.concatenate([bump_indx, non_bumped])
-
-        return observation_array[final_ordered_indx]
+        # Order each HA chunk somewhat intelligently
+        final_order = []
+        self.band_order = self.band_order.replace(conditions.current_band, "")
+        self.band_order = conditions.current_band + self.band_order
+        for indices in index_bins:
+            if np.size(indices) > 0:
+                indx = self._band_spatial_order(
+                    observation_array[indices],
+                    conditions,
+                    hour_angle_now[indices],
+                    band_order=self.band_order,
+                )
+                final_order.append(indices[indx])
+                last_band = observation_array["band"][indices[indx[-1]]]
+                self.band_order = copy.copy(self.band_order_orig)
+                self.band_order = self.band_order.replace(last_band, "")
+                self.band_order = last_band + self.band_order
+        final_order = np.concatenate(final_order)
+        return observation_array[final_order]
 
 
 class IndexNoteDetailer(BaseDetailer):
