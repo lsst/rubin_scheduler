@@ -32,22 +32,29 @@ class SummitWrapper:
         # are out of sync?
         self.need_reset = False
 
+    def flush_queue(self):
+        self.core_scheduler.flush_queue()
+        self.clear_ahead()
+
     def add_observation(self, observation):
 
         self.core_scheduler.add_observation(observation)
 
         # If this observation is in the core.queue, need to
-        # remove it from there. 
-        # Would probably be better to do this via target_id match
+        # remove it from there.
         if len(self.core_scheduler.queue) > 0:
-            _temp = self.core_scheduler.queue.pop(0)
+            # Ugh, kind of a pain that observations have been converted to a list
+            target_ids = [obs["target_id"] for obs in self.core_scheduler.queue]
+            match = np.where(target_ids == observation["target_id"])[0].max()
+            if np.size(match) > 0:
+                del self.core_scheduler.queue[match.astype(int)]
 
         # Assume everything up to the ID has been observed.
         # Should be ok to add out of order, as long as everything up
         # to the largest ID is added before request_observation is called.
-        indx = np.searchsorted(self.requested_but_unadded_ids,
-                               observation["target_id"].view(np.ndarray).max(),
-                               side="right")
+        indx = np.searchsorted(
+            self.requested_but_unadded_ids, observation["target_id"].view(np.ndarray).max(), side="right"
+        )
 
         # Should this delete everything up to the indx?
         # I think that's ok if we assume things will get added in order
@@ -122,7 +129,7 @@ class SummitWrapper:
             self.core_scheduler.queue.append(result_plain.copy())
             if len(self.ahead_scheduler.queue) > 0:
                 self.core_scheduler.queue += self.ahead_scheduler.queue
- 
+
         obs_filled = self._fill_obs_values(result_plain.copy())
         self.requested_but_unadded_ids.append(obs_filled["target_id"].view(np.ndarray).max())
         self.requested_but_unadded_obs.append(obs_filled)
