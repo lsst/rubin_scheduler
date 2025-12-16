@@ -3,7 +3,7 @@ __all__ = ("BaseQueueManager",)
 import healpy as hp
 import numpy as np
 
-from rubin_scheduler.scheduler.utils import ObservationArray
+from rubin_scheduler.scheduler.utils import IntRounded, ObservationArray
 
 
 class BaseQueueManager:
@@ -53,8 +53,9 @@ class BaseQueueManager:
 
     def add_observation(self, observation, **kwargs):
         if self.desired_observations_array is not None:
-            match_indx = np.where(self.desired_observations_array["target_id"] == observation["target_id"])
-            self.need_observing[match_indx] = False
+            match_indx = np.where(self.desired_observations_array["target_id"] == observation["target_id"])[0]
+            if np.size(match_indx) > 0:
+                self.need_observing[match_indx] = False
         for bf in self.basis_functions:
             bf.add_observation(observation, **kwargs)
         for detailer in self.detailers:
@@ -63,7 +64,8 @@ class BaseQueueManager:
     def add_observations_array(self, observation_array, observations_hpid_in):
         if self.desired_observations_array is not None:
             indx = np.isin(self.desired_observations_array["target_id"], observation_array["target_id"])
-            self.need_observing[indx] = False
+            if np.size(indx) > 0:
+                self.need_observing[indx] = False
 
             good = np.isin(observations_hpid_in["ID"], observation_array["ID"])
             observations_hpid = observations_hpid_in[good]
@@ -78,11 +80,38 @@ class BaseQueueManager:
             reward += bf(conditions)
         return reward
 
-    def find_valid_observations_indx(self, conditions):
+    def _check_queue_mjd_only(self, mjd, conditions):
+        """
+        Check if there are things in the queue that can be executed
+        using only MJD and not full conditions.
+        This is primarily used by sim_runner to reduce calls calculating
+        updated conditions when they are not needed.
+        """
+
+        # With queue manager doing cloud dodging, need full conditions
+        # now. Go ahead and use stale conditions, but update the
+        # mjd so things get flushed if needed.
+        valid_obs = self.find_valid_observations_indx(conditions, mjd=mjd)
+
+        return np.size(valid_obs) > 0
+
+    def find_valid_observations_indx(self, conditions, mjd=None):
         """Return the indices of desired_observations_array
         that can be observed
         """
+
+        if mjd is None:
+            mjd = conditions.mjd
+
+        # Still valid date
+        mjd_ok = np.where(
+            (IntRounded(mjd) < IntRounded(self.desired_observations_array["flush_by_mjd"]))
+            | (self.desired_observations_array["flush_by_mjd"] == 0)
+        )[0]
+
         valid = np.where(self.need_observing)[0]
+
+        valid = np.intersect1d(mjd_ok, valid)
 
         # Compute reward from basis functions
         reward = self.compute_reward(conditions)
