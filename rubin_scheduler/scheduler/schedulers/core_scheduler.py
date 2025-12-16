@@ -285,7 +285,9 @@ class CoreScheduler:
         updated conditions when they are not needed.
         """
 
-        return self.queue_manager._check_queue_mjd_only(mjd)
+        # Because we are checking cloud maps, need to pass the
+        # full conditions still.
+        return self.queue_manager._check_queue_mjd_only(mjd, self.conditions)
 
     def request_observation(self, mjd=None, whole_queue=False):
         """

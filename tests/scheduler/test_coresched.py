@@ -34,7 +34,7 @@ class TestCoreSched(unittest.TestCase):
 
         # Check that we can flush the Queue
         scheduler.flush_queue()
-        assert scheduler.queue_manager.desired_observations_array is None
+        assert np.size(scheduler.queue_manager.desired_observations_array) == 0
 
         # Check that we can add an observation
         scheduler.add_observation(obs)
