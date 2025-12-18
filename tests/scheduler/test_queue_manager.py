@@ -68,9 +68,9 @@ class TestQM(unittest.TestCase):
         active_queue = qm.return_active_queue()
         assert active_queue.size == 3
 
-        # Does no check for visibility
+        # Does check for visibility
         all_valid_obs = qm.request_observation(conditions, whole_queue=True)
-        assert np.size(all_valid_obs) == 3
+        assert np.size(all_valid_obs) < 3
 
         # Does check that should toss one for being out of footprint
         all_valid_obs = qm.request_observation(conditions, n_return=4)

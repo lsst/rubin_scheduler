@@ -137,17 +137,15 @@ class BaseQueueManager:
         conditions : ``
             Conditions object
         whole_queue : `bool`
-            If True, return all desired observations with no check if
-            they are accessible.
+            If True, return all desired observations that
+            pass basis function checks. Default False.
         n_return : `int`
-            Number of observations to return.
+            Number of observations to return. Ignored
+            if whole_queue is True.
         """
 
-        # Everything that needs observing
-        if whole_queue:
-            indx = np.where(self.need_observing)[0]
-        else:
-            indx = self.find_valid_observations_indx(conditions)
+        indx = self.find_valid_observations_indx(conditions)
+        if not whole_queue:
             if indx.size > n_return:
                 indx = indx[0:n_return]
 
