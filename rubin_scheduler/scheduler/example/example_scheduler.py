@@ -19,7 +19,7 @@ import rubin_scheduler
 import rubin_scheduler.scheduler.detailers as detailers
 from rubin_scheduler.scheduler import sim_runner
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory, tma_movement
-from rubin_scheduler.scheduler.schedulers import CoreScheduler, SimpleBandSched
+from rubin_scheduler.scheduler.schedulers import BaseQueueManager, CoreScheduler, SimpleBandSched
 from rubin_scheduler.scheduler.targetofo import gen_all_events
 from rubin_scheduler.scheduler.utils import (
     CurrentAreaMap,
@@ -377,7 +377,10 @@ def gen_scheduler(
         event_table = None
         fileroot = fileroot.replace("baseline", "no_too")
 
-    scheduler = CoreScheduler(surveys, nside=nside, survey_start_mjd=survey_start_mjd)
+    # Set up queue manager
+    qm = BaseQueueManager(detailers=[detailers.RotspUpdateDetailer()])
+
+    scheduler = CoreScheduler(surveys, nside=nside, survey_start_mjd=survey_start_mjd, queue_manager=qm)
 
     if args.setup_only:
         return scheduler
