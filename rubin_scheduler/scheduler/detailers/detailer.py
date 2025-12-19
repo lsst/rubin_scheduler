@@ -117,6 +117,14 @@ class RotspUpdateDetailer(BaseDetailer):
     """Update the rotSkyPos value if conditions have changed
     such that rotTelPos would be out of range.
 
+    Logic flow is:
+
+    If rotSkyPos set, check that it is still
+    within rotator limits. If not within limits,
+    use rotTelPos to calculate a new rotSkyPos value.
+
+    If no rotSkyPos set, use rotTelPos to set it.
+
     Parameters
     ----------
     rot_limits : `list`
@@ -144,7 +152,9 @@ class RotspUpdateDetailer(BaseDetailer):
         # This is wrapped to -pi to pi
         rottelpos = self.rc._rotskypos2rottelpos(observation_array["rotSkyPos"], obs_pa)
         rot_too_far_indx = np.where(
-            (rottelpos > self.rot_limits.max()) | (rottelpos < self.rot_limits.min())
+            (rottelpos > self.rot_limits.max())
+            | (rottelpos < self.rot_limits.min())
+            | (~np.isfinite(observation_array["rotSkyPos"]))
         )[0]
 
         if np.size(rot_too_far_indx) == 0:
