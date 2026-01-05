@@ -2,6 +2,7 @@ __all__ = (
     "BaseDetailer",
     "ZeroRotDetailer",
     "BandSubstituteDetailer",
+    "ChunkByHADetailer",
     "Comcam90rotDetailer",
     "Rottep2RotspDesiredDetailer",
     "CloseAltDetailer",
@@ -37,7 +38,13 @@ import healpy as hp
 import numpy as np
 
 import rubin_scheduler.scheduler.features as features
-from rubin_scheduler.scheduler.utils import CurrentAreaMap, HpInLsstFov, IntRounded, ObservationArray
+from rubin_scheduler.scheduler.utils import (
+    CurrentAreaMap,
+    HpInLsstFov,
+    IntRounded,
+    ObservationArray,
+    order_observations,
+)
 from rubin_scheduler.utils import (
     DEFAULT_NSIDE,
     _angular_separation,
@@ -125,6 +132,128 @@ class BandSubstituteDetailer(BaseDetailer):
             indx = np.where(observation_array["band"] == self.band_original)
             observation_array["band"][indx] = self.band_replacement
         return observation_array
+
+
+class ChunkByHADetailer(BaseDetailer):
+    """Divide observations into bins of hour angle and
+    order by hour angle bin, west-to-east.
+
+    Parameters
+    ----------
+
+    """
+
+    def __init__(self, alt_limit=25.0, band_order="ugrizy", n_min=3, ha_bin_width=3.0):
+        self.alt_limit = np.radians(alt_limit)
+        self.band_order = band_order
+        self.band_order_orig = band_order
+        self.n_min = n_min
+        self.ha_bin_width = ha_bin_width
+
+    def _set_bins(self, hour_angles):
+        """ """
+        n_bins = (hour_angles.max() - hour_angles.min()) / self.ha_bin_width
+        return np.ceil(n_bins).astype(int)
+
+    def _band_spatial_order(self, observation_array, conditions, hour_angle, band_order=None):
+        """Return index array that sorts observation_array
+        by self.band_order and spatially orders to minimize
+        slew distance.
+        """
+
+        if band_order is None:
+            order_to_set = copy.copy(self.band_order)
+            if self.loaded_first:
+                order_to_set = order_to_set.replace(conditions.current_band, "")
+                order_to_set = conditions.current_band + order_to_set
+        else:
+            order_to_set = band_order
+
+        indices = []
+
+        for bandname in order_to_set:
+            in_filt = np.where(observation_array["band"] == bandname)[0]
+            # Now to put those in a good spatial order
+            if np.size(in_filt) > 0:
+                spatial_order = order_observations(
+                    observation_array["RA"][in_filt].view(np.ndarray),
+                    observation_array["dec"][in_filt].view(np.ndarray),
+                )
+                # highest setting HA goes first in the new path
+                setting_ha = hour_angle[in_filt][
+                    np.where((hour_angle[in_filt] > 0) & (hour_angle[in_filt] < 12))[0]
+                ]
+                if np.size(setting_ha) == 0:
+                    setting_ha = np.max(hour_angle[in_filt])
+                roll_to = np.min(np.where(hour_angle[in_filt[spatial_order]] == np.max(setting_ha)))
+                indx = in_filt[spatial_order]
+                indx = np.roll(indx, -roll_to)
+                indices.append(indx)
+
+        indices = np.concatenate(indices)
+        return indices
+
+    def __call__(self, observation_array, conditions):
+
+        # Find HA for all the observations, 0-24
+        hour_angle_now = (np.max(conditions.lmst) - observation_array["RA"] * 12.0 / np.pi) % 24
+
+        # convert to -12 to +12 hour angle
+        indx_over12 = np.where(hour_angle_now > 12.0)[0]
+        hour_angle_now[indx_over12] = hour_angle_now[indx_over12] - 24
+
+        # Above alt limit
+        alt, az = _approx_ra_dec2_alt_az(
+            observation_array["RA"],
+            observation_array["dec"],
+            conditions.site.latitude_rad,
+            conditions.site.longitude_rad,
+            conditions.mjd,
+        )
+
+        above_limit_indx = np.where(alt > self.alt_limit)[0]
+
+        # Let's put the observations into hour angle bins
+        n_bins = self._set_bins(hour_angle_now[above_limit_indx])
+
+        # Put things in HA order west-to-east
+        order_ha_indx = np.argsort(hour_angle_now[above_limit_indx])[::-1]
+        above_limit_indx = above_limit_indx[order_ha_indx]
+
+        # Not enough observations to care about, just return
+        # ordered by HA.
+        if np.size(above_limit_indx) <= self.n_min:
+            return observation_array[above_limit_indx]
+
+        # Break up the observations into chunks based on HA
+        if n_bins > 1:
+            n_per_group = int(np.ceil(above_limit_indx.size / n_bins))
+            index_bins = []
+            for i in range(n_bins - 1):
+                index_bins.append(above_limit_indx[i * n_per_group : (i + 1) * n_per_group])
+            index_bins.append(above_limit_indx[(n_bins - 1) * n_per_group :])
+        else:
+            index_bins = [above_limit_indx]
+
+        # Order each HA chunk somewhat intelligently
+        final_order = []
+        self.band_order = self.band_order.replace(conditions.current_band, "")
+        self.band_order = conditions.current_band + self.band_order
+        for indices in index_bins:
+            if np.size(indices) > 0:
+                indx = self._band_spatial_order(
+                    observation_array[indices],
+                    conditions,
+                    hour_angle_now[indices],
+                    band_order=self.band_order,
+                )
+                final_order.append(indices[indx])
+                last_band = observation_array["band"][indices[indx[-1]]]
+                self.band_order = copy.copy(self.band_order_orig)
+                self.band_order = self.band_order.replace(last_band, "")
+                self.band_order = last_band + self.band_order
+        final_order = np.concatenate(final_order)
+        return observation_array[final_order]
 
 
 class IndexNoteDetailer(BaseDetailer):

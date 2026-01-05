@@ -262,11 +262,8 @@ class ScriptedSurvey(BaseSurvey):
 
             else:
                 matches = []
-
             if np.size(matches) > 0:
-                # Do not return too many observations
-                if np.size(matches) > self.return_n_limit:
-                    matches = matches[0 : self.return_n_limit]
+
                 observations = self.obs_wanted[matches]
                 # Need to check that none of these are masked by basis
                 # functions
@@ -286,6 +283,18 @@ class ScriptedSurvey(BaseSurvey):
                     )
                     valid_reward = np.isfinite(reward_interp)
                     observations = observations[valid_reward]
+
+                # Do not return too many observations
+                if np.size(observations) > self.return_n_limit:
+                    # sort by hour angle before truncating
+                    hour_angle = (np.max(conditions.lmst) - observations["RA"] * 12.0 / np.pi) % 24
+                    # convert to -12 to +12 hour angle
+                    indx_over12 = np.where(hour_angle > 12.0)[0]
+                    hour_angle[indx_over12] = hour_angle[indx_over12] - 24
+                    # Reverse so west-to-east
+                    order_indx = np.argsort(hour_angle)[::-1]
+                    observations = observations[order_indx[0 : self.return_n_limit]]
+
                 if len(observations) == 0:
                     observations = []
         return observations
