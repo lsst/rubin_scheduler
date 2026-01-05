@@ -641,9 +641,9 @@ class ParallacticRotationDetailer(BaseDetailer):
             conditions.mjd,
         )
         obs_pa = _approx_altaz2pa(alt, az, conditions.site.latitude_rad)
-        observation_array["rotSkyPos_desired"] = obs_pa
+        observation_array["rotSkyPos"] = obs_pa
 
-        resulting_rot_tel_pos = self.rc._rotskypos2rottelpos(observation_array["rotSkyPos_desired"], obs_pa)
+        resulting_rot_tel_pos = self.rc._rotskypos2rottelpos(observation_array["rotSkyPos"], obs_pa)
 
         indx = np.where(resulting_rot_tel_pos > np.max(limits))[0]
         resulting_rot_tel_pos[indx] -= 2 * np.pi
@@ -655,10 +655,8 @@ class ParallacticRotationDetailer(BaseDetailer):
         indx = np.where(resulting_rot_tel_pos > np.max(limits))
         resulting_rot_tel_pos[indx] -= np.pi
 
-        # The rotTelPos overides everything else.
+        # The rotTelPos works as a backup value.
         observation_array["rotTelPos"] = resulting_rot_tel_pos
-        # if the rotSkyPos_desired isn't possible, fall back to this.
-        observation_array["rotTelPos_backup"] = 0
 
         return observation_array
 
@@ -667,6 +665,7 @@ class Rottep2RotspDesiredDetailer(BaseDetailer):
     """Convert all the rotTelPos values to rotSkyPos_desired"""
 
     def __init__(self, telescope="rubin"):
+        warnings.warn("Deprecated no longer using rotSkyPos_desired and rotTelPos_backup", FutureWarning)
         self.rc = rotation_converter(telescope=telescope)
         self.survey_features = {}
 

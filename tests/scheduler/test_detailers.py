@@ -37,7 +37,6 @@ class TestDetailers(unittest.TestCase):
             detailers.VaryExptDetailer,
             detailers.ZeroRotDetailer,
             detailers.Comcam90rotDetailer,
-            detailers.Rottep2RotspDesiredDetailer,
             detailers.CloseAltDetailer,
             detailers.TakeAsPairsDetailer,
             detailers.TwilightTripleDetailer,
