@@ -42,6 +42,10 @@ class ScriptedSurvey(BaseSurvey):
         Only pass observations through if the band desired is mounted.
         Default True. Might want to set to False if you have detailers
         that can substitute bands.
+    sort_potential_result : `str`
+        If there are too many potential observations, how they should be
+        sorted before truncating to return_n_limit. Possible values
+        of "HA". Default None does no additional sorting.
     """
 
     def __init__(
@@ -60,6 +64,7 @@ class ScriptedSurvey(BaseSurvey):
         filter_change_time=None,
         science_program=None,
         check_band_mounted=True,
+        sort_potential_result=None,
     ):
         if filter_change_time is not None:
             warnings.warn("filter_change_time deprecated in favor of band_change_time", FutureWarning)
@@ -73,6 +78,7 @@ class ScriptedSurvey(BaseSurvey):
         self.return_n_limit = return_n_limit
         self.check_band_mounted = check_band_mounted
         self.band_change_time = band_change_time / 3600 / 24.0  # to days
+        self.sort_potential_result = sort_potential_result
         if basis_weights is None:
             self.basis_weights = np.zeros(len(basis_functions))
         else:
@@ -285,15 +291,25 @@ class ScriptedSurvey(BaseSurvey):
                     observations = observations[valid_reward]
 
                 # Do not return too many observations
-                if np.size(observations) > self.return_n_limit:
-                    # sort by hour angle before truncating
-                    hour_angle = (np.max(conditions.lmst) - observations["RA"] * 12.0 / np.pi) % 24
-                    # convert to -12 to +12 hour angle
-                    indx_over12 = np.where(hour_angle > 12.0)[0]
-                    hour_angle[indx_over12] = hour_angle[indx_over12] - 24
-                    # Reverse so west-to-east
-                    order_indx = np.argsort(hour_angle)[::-1]
-                    observations = observations[order_indx[0 : self.return_n_limit]]
+                if self.sort_potential_result == "HA":
+                    if np.size(observations) > self.return_n_limit:
+                        # sort by hour angle before truncating
+                        hour_angle = (np.max(conditions.lmst) - observations["RA"] * 12.0 / np.pi) % 24
+                        # convert to -12 to +12 hour angle
+                        indx_over12 = np.where(hour_angle > 12.0)[0]
+                        hour_angle[indx_over12] = hour_angle[indx_over12] - 24
+                        temp_array = np.empty(
+                            hour_angle.size, dtype=list(zip(["HA_w_to_e", "band"], [float, str]))
+                        )
+                        # Convert HA to go west-to-east
+                        temp_array["HA_w_to_e"] = -1 * hour_angle
+                        temp_array["band"] = observations["band"]
+                        order_indx = np.argsort(temp_array, order=["band", "HA_w_to_e"])
+                        observations = observations[order_indx[0 : self.return_n_limit]]
+                elif self.sort_potential_result is None:
+                    observations = observations[0 : self.return_n_limit]
+                else:
+                    raise ValueError("Unknown sort_potential_result value of %s" % self.sort_potential_result)
 
                 if len(observations) == 0:
                     observations = []
