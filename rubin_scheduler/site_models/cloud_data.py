@@ -27,7 +27,8 @@ class CloudData:
         which will use the database stored in the module
         (site_models/clouds_ctio_1975_2022.db).
     offset_year : float, optional
-        Offset into the cloud database by 'offset_year' years. Default 0.
+        Offset into the cloud database by 'offset_year' years. Default 36
+        aligns the simulation with the latest time period of the clouds..
     scale : float (1e6)
         Enforce machine precision for cross-platform repeatability by
         scaling and rounding date values.
@@ -38,9 +39,14 @@ class CloudData:
         if self.cloud_db is None:
             self.cloud_db = os.path.join(get_data_dir(), "site_models", "clouds_ctio_1975_2022.db")
 
-        # Cloud database starts in Jan 01 of the year of the
-        # start of the simulation.
-        year_start = start_time.datetime.year + offset_year
+        # Cloud database starts in Jan 01 of the year of the start of the
+        # simulation; however we can choose to offset to different timespans.
+        # Because our default database starts in 1975, a default offset would
+        # be 1974 - 2025 = -50 .. however the default database also ends in
+        # 2022 so really the latest we want to use is -37.
+        # The 'sign' of the offset is that the start of the *database* will
+        # be shifted backwards by the offset.
+        year_start = start_time.datetime.year - offset_year
         self.start_time = Time("%d-01-01" % year_start, format="isot", scale="tai")
 
         self.cloud_dates = None
@@ -66,7 +72,7 @@ class CloudData:
             steps of 8ths) closest to the specified time.
         """
         delta_time = (time - self.start_time).sec
-        dbdate = delta_time % self.time_range + self.min_time
+        dbdate = delta_time % self.time_range
         if self.scale is not None:
             dbdate = np.round(dbdate * self.scale).astype(int)
         idx = np.searchsorted(self.cloud_dates, dbdate)
@@ -115,11 +121,13 @@ class CloudData:
         # increasing).
         ordidx = self.cloud_dates.argsort()
         self.cloud_dates = self.cloud_dates[ordidx]
-        # Record this information, in case the cloud database does not
-        # start at t=0.
+        # Keep this info for caution
         self.min_time = self.cloud_dates[0]
         self.max_time = self.cloud_dates[-1]
-        self.time_range = self.max_time - self.min_time
+        # To mod appropriately year over year - this needs to be
+        # the nearest complete year
+        sec_to_year = 1 / 60 / 60 / 24 / 365.25
+        self.time_range = np.floor((self.max_time - self.min_time) * sec_to_year) / sec_to_year
         if self.scale is not None:
             self.cloud_dates = np.round(self.cloud_dates * self.scale).astype(int)
         self.cloud_values = self.cloud_values[ordidx]
