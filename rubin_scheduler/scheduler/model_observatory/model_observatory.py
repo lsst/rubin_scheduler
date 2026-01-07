@@ -746,14 +746,13 @@ class ModelObservatory:
 
         # Compute what alt,az we have tracked to (or are parked at)
         start_alt, start_az, start_rot_tel_pos = self.observatory.current_alt_az(self.mjd)
-        # Slew to new position and execute observation. Use the
-        # requested rotTelPos position, obsevation['rotSkyPos'] will
-        # be ignored.
+        # Slew to new position and execute observation. Use
+        # obsevation['rotSkyPos'] and rotTelPos is ignored.
         slewtime, visittime = self.observatory.observe(
             observation,
             self.mjd,
-            rot_tel_pos=observation["rotTelPos"],
             lax_dome=self.lax_dome,
+            rot_tel_pos=None,
         )
 
         # inf slewtime means the observation failed (probably outside

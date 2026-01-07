@@ -2,6 +2,7 @@ __all__ = ("CoreScheduler",)
 
 import logging
 import time
+import warnings
 from collections import OrderedDict
 from copy import deepcopy
 from io import StringIO
@@ -11,8 +12,10 @@ import numpy as np
 import pandas as pd
 from astropy.time import Time
 
-from rubin_scheduler.scheduler.utils import HpInComcamFov, HpInLsstFov, IntRounded, ObservationArray
+from rubin_scheduler.scheduler.utils import HpInComcamFov, HpInLsstFov, ObservationArray
 from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD, _hpid2_ra_dec, rotation_converter
+
+from .queue_manager import BaseQueueManager
 
 
 class CoreScheduler:
@@ -50,7 +53,10 @@ class CoreScheduler:
         specified. Default of None maps 'ugrizy' to the same. Empty dict
         will do no mapping for missing "filter" values.
     survey_start_mjd : `float`
-            The starting MJD of the survey.
+        The starting MJD of the survey.
+    queue_manager : `BaseQueueManager`
+        A queue manager object. Default None will use the default
+        base class.
     """
 
     def __init__(
@@ -64,7 +70,12 @@ class CoreScheduler:
         target_id_counter=0,
         band_to_filter=None,
         survey_start_mjd=SURVEY_START_MJD,
+        queue_manager=None,
     ):
+        if queue_manager is None:
+            self.queue_manager = BaseQueueManager()
+        else:
+            self.queue_manager = queue_manager
         self.keep_rewards = keep_rewards
         self.survey_start_mjd = survey_start_mjd
         # Use integer ns just to be sure there are no rounding issues.
@@ -75,8 +86,6 @@ class CoreScheduler:
         else:
             self.log = log.getChild(type(self).__name__)
 
-        # initialize a queue of observations to request
-        self.queue = []
         # The indices of self.survey_lists that provided
         # the last addition(s) to the queue
         self.survey_index = [None, None]
@@ -141,7 +150,7 @@ class CoreScheduler:
 
     def flush_queue(self):
         """Like it sounds, clear any currently queued desired observations."""
-        self.queue = []
+        self.queue_manager.flush_queue()
         self.survey_index = [None, None]
 
     def add_observations_array(self, obs):
@@ -185,6 +194,8 @@ class CoreScheduler:
         if np.max(obs["target_id"]) >= self.target_id_counter:
             self.target_id_counter = np.max(obs["target_id"]) + 1
 
+        self.queue_manager.add_observations_array(obs, obs_array_hpid)
+
     def add_observation(self, observation):
         """
         Record a completed observation and update features accordingly.
@@ -219,6 +230,8 @@ class CoreScheduler:
         if np.max(observation["target_id"]) >= self.target_id_counter:
             self.target_id_counter = np.max(observation["target_id"]) + 1
 
+        self.queue_manager.add_observation(observation)
+
     def update_conditions(self, conditions_in):
         """
         Parameters
@@ -233,8 +246,9 @@ class CoreScheduler:
         # Use our own def of survey start
         self.conditions.survey_start_mjd = self.survey_start_mjd
 
+        # XXX--does anything use this?
         # put the local queue in the conditions
-        self.conditions.queue = self.queue
+        # self.conditions.queue = self.queue
 
         # Update conditions in all survey objects so they
         # can generate scheduled observations for any new ToO events
@@ -270,13 +284,10 @@ class CoreScheduler:
         This is primarily used by sim_runner to reduce calls calculating
         updated conditions when they are not needed.
         """
-        result = False
-        if len(self.queue) > 0:
-            if (IntRounded(mjd) < IntRounded(self.queue[0]["flush_by_mjd"])) | (
-                self.queue[0]["flush_by_mjd"] == 0
-            ):
-                result = True
-        return result
+
+        # Because we are checking cloud maps, need to pass the
+        # full conditions still.
+        return self.queue_manager._check_queue_mjd_only(mjd, self.conditions)
 
     def request_observation(self, mjd=None, whole_queue=False):
         """
@@ -311,32 +322,24 @@ class CoreScheduler:
         """
         if mjd is None:
             mjd = self.conditions.mjd
-        if len(self.queue) == 0:
+        if np.sum(self.queue_manager.need_observing) == 0:
             self._fill_queue()
 
-        if len(self.queue) == 0:
+        if np.sum(self.queue_manager.need_observing) == 0:
             return None
         else:
-            # If the queue has gone stale, flush and refill.
-            # Zero means no flush_by was set.
-            if (IntRounded(mjd) > IntRounded(self.queue[0]["flush_by_mjd"])) & (
-                self.queue[0]["flush_by_mjd"] != 0
-            ):
-                self.flushed += len(self.queue)
-                self.flush_queue()
-                self._fill_queue()
-            if len(self.queue) == 0:
-                return None
-            if whole_queue:
-                result = deepcopy(self.queue)
-                self.flush_queue()
-            else:
-                result = self.queue.pop(0)
+            result = self.queue_manager.request_observation(self.conditions, whole_queue=whole_queue)
 
+            # Queue manager may have killed everything and we need to refill
+            if np.size(result) == 0:
+                self._fill_queue()
+                result = self.queue_manager.request_observation(self.conditions, whole_queue=whole_queue)
+                if np.size(result) == 0:
+                    warnings.warn("Looks like the queue manager rejected everything from a survey.")
+                    return None
             # TODO : Remove this hack which is for use with ts_scheduler
             # version <=v2.3 .. remove ts_scheduler actually drops "note".
-            for obs in result:
-                obs["note"] = obs["scheduler_note"]
+            result["note"] = result["scheduler_note"]
             return result
 
     def _fill_queue(self):
@@ -400,11 +403,11 @@ class CoreScheduler:
                 for indx in need_filtername_indx:
                     result[indx]["filter"] = self.band_to_filter_dict[result[indx]["band"]]
 
-            # Convert to a list for the queue
-            self.queue = result.tolist()
+            # Put in the queue manager
+            self.queue_manager.set_queue(result)
             self.queue_filled = self.conditions.mjd
 
-        if len(self.queue) == 0:
+        if np.sum(self.queue_manager.need_observing) == 0:
             self.log.warning(f"Failed to fill queue at time {self.conditions.mjd}")
 
     def get_basis_functions(self, survey_index=None, conditions=None):
@@ -556,9 +559,9 @@ class CoreScheduler:
 
         print("", file=output)
         print("## Queue", file=output)
-        if len(self.queue) > 0:
+        if np.sum(self.queue_manager.need_observing) > 0:
             print(
-                pd.concat(pd.DataFrame(q) for q in self.queue)[
+                pd.concat(pd.DataFrame(q) for q in self.queue_manager.return_active_queue())[
                     ["ID", "flush_by_mjd", "RA", "dec", "filter", "exptime", "note"]
                 ]
                 .set_index("ID")

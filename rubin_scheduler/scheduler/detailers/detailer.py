@@ -1,5 +1,6 @@
 __all__ = (
     "BaseDetailer",
+    "RotspUpdateDetailer",
     "ZeroRotDetailer",
     "BandSubstituteDetailer",
     "ChunkByHADetailer",
@@ -110,6 +111,61 @@ class BaseDetailer:
         """
 
         return ObservationArray()
+
+
+class RotspUpdateDetailer(BaseDetailer):
+    """Update the rotSkyPos value if conditions have changed
+    such that rotTelPos would be out of range.
+
+    Logic flow is:
+
+    If rotSkyPos set, check that it is still
+    within rotator limits. If not within limits,
+    use rotTelPos to calculate a new rotSkyPos value.
+
+    If no rotSkyPos set, use rotTelPos to set it.
+
+    Parameters
+    ----------
+    rot_limits : `list`
+        Rotator limits for the camera. Default
+        [-90, 90] degrees.
+    telescope : `str`
+        Telescope name. Default `rubin`.
+    """
+
+    def __init__(self, rot_limits=[-90, 90], telescope="rubin"):
+        self.rot_limits = np.radians(rot_limits)
+
+        # Rotation converter
+        self.rc = rotation_converter(telescope=telescope)
+
+    def __call__(self, observation_array, conditions):
+        alt, az = _approx_ra_dec2_alt_az(
+            observation_array["RA"],
+            observation_array["dec"],
+            conditions.site.latitude_rad,
+            conditions.site.longitude_rad,
+            conditions.mjd,
+        )
+        obs_pa = _approx_altaz2pa(alt, az, conditions.site.latitude_rad)
+        # This is wrapped to -pi to pi
+        rottelpos = self.rc._rotskypos2rottelpos(observation_array["rotSkyPos"], obs_pa)
+        rot_too_far_indx = np.where(
+            (rottelpos > self.rot_limits.max())
+            | (rottelpos < self.rot_limits.min())
+            | (~np.isfinite(observation_array["rotSkyPos"]))
+        )[0]
+
+        if np.size(rot_too_far_indx) == 0:
+            return observation_array
+
+        new_rsp_vals = self.rc._rottelpos2rotskypos(
+            observation_array["rotTelPos"][rot_too_far_indx], obs_pa[rot_too_far_indx]
+        )
+
+        observation_array["rotSkyPos"][rot_too_far_indx] = new_rsp_vals
+        return observation_array
 
 
 class BandSubstituteDetailer(BaseDetailer):
@@ -585,9 +641,9 @@ class ParallacticRotationDetailer(BaseDetailer):
             conditions.mjd,
         )
         obs_pa = _approx_altaz2pa(alt, az, conditions.site.latitude_rad)
-        observation_array["rotSkyPos_desired"] = obs_pa
+        observation_array["rotSkyPos"] = obs_pa
 
-        resulting_rot_tel_pos = self.rc._rotskypos2rottelpos(observation_array["rotSkyPos_desired"], obs_pa)
+        resulting_rot_tel_pos = self.rc._rotskypos2rottelpos(observation_array["rotSkyPos"], obs_pa)
 
         indx = np.where(resulting_rot_tel_pos > np.max(limits))[0]
         resulting_rot_tel_pos[indx] -= 2 * np.pi
@@ -599,10 +655,8 @@ class ParallacticRotationDetailer(BaseDetailer):
         indx = np.where(resulting_rot_tel_pos > np.max(limits))
         resulting_rot_tel_pos[indx] -= np.pi
 
-        # The rotTelPos overides everything else.
+        # The rotTelPos works as a backup value.
         observation_array["rotTelPos"] = resulting_rot_tel_pos
-        # if the rotSkyPos_desired isn't possible, fall back to this.
-        observation_array["rotTelPos_backup"] = 0
 
         return observation_array
 
@@ -611,6 +665,7 @@ class Rottep2RotspDesiredDetailer(BaseDetailer):
     """Convert all the rotTelPos values to rotSkyPos_desired"""
 
     def __init__(self, telescope="rubin"):
+        warnings.warn("Deprecated no longer using rotSkyPos_desired and rotTelPos_backup", FutureWarning)
         self.rc = rotation_converter(telescope=telescope)
         self.survey_features = {}
 
