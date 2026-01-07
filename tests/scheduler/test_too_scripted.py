@@ -198,6 +198,69 @@ class TestToO(unittest.TestCase):
                 assert np.size(survey.obs_wanted.shape) > 0
                 survey.obs_wanted = np.array([])
 
+    def test_sort(self):
+        """Test the sorting works ok"""
+
+        nside = 32
+        times = [1, 24, 48]
+        bands_at_times = ["i", "i", "i"]
+        nvis = [1, 1, 1]
+        exptimes = [30, 30, 30]
+
+        too_footprint = np.ones(hp.nside2npix(nside))
+
+        # Check if we have multiple filters, and multiple nvis
+        bands_at_times = ["ig", "ig", "ig"]
+        nvis = [2, 2, 2]
+        survey = ToOScriptedSurvey(
+            [],
+            nside=nside,
+            followup_footprint=too_footprint,
+            times=times,
+            bands_at_times=bands_at_times,
+            nvis=nvis,
+            exptimes=exptimes,
+            detailers=[],
+            too_types_to_follow=["test_too"],
+            survey_name="ToO, test",
+            flushtime=48.0,
+            n_snaps=1,
+            target_name_base="ToO_test",
+            observation_reason="too_test",
+            return_n_limit=2,
+        )
+
+        # Generate a ToO event
+        target_map = np.zeros(hp.nside2npix(nside))
+        ra, dec = hpid2_ra_dec(nside, np.arange(target_map.size))
+        target_map[np.where(dec < -85)[0]] = 1
+        too_event = TargetoO(
+            100, target_map, 6500, 100, ra_rad_center=None, dec_rad_center=None, too_type="test_too"
+        )
+        conditions = Conditions()
+        conditions.targets_of_opportunity = [too_event]
+
+        # Give ToO to survey
+        survey.update_conditions(conditions)
+        conditions.mjd = survey.mjd_start + 0.01
+        # Sun and moon out of the way
+        conditions.moon_ra = 0.0
+        conditions.moon_dec = np.pi / 2
+        conditions.sun_alt = -np.pi / 2.0
+
+        conditions.tel_alt_limits = [-np.pi / 2, np.pi / 2]
+        conditions.tel_az_limits = [-3 * np.pi, 3 * np.pi]
+        conditions.mounted_bands = ["u", "g", "r", "i", "z", "y"]
+
+        survey.obs_wanted["HA_min"] = 12
+        survey.obs_wanted["HA_max"] = 12
+
+        obs = survey._check_list(conditions)
+
+        assert obs.size == 2
+
+        assert np.size(np.unique(obs["band"])) == 1
+
 
 if __name__ == "__main__":
     unittest.main()

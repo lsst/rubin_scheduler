@@ -242,7 +242,6 @@ class ScriptedSurvey(BaseSurvey):
         # Check that band needed is mounted
         good = np.isin(observation["band"][in_range], conditions.mounted_bands)
         in_range = in_range[good]
-
         return in_range
 
     def _check_list(self, conditions):
@@ -299,13 +298,14 @@ class ScriptedSurvey(BaseSurvey):
                         indx_over12 = np.where(hour_angle > 12.0)[0]
                         hour_angle[indx_over12] = hour_angle[indx_over12] - 24
                         temp_array = np.empty(
-                            hour_angle.size, dtype=list(zip(["HA_w_to_e", "band"], [float, str]))
+                            hour_angle.size, dtype=list(zip(["HA_w_to_e", "band"], [float, "<U1"]))
                         )
                         # Convert HA to go west-to-east
                         temp_array["HA_w_to_e"] = -1 * hour_angle
                         temp_array["band"] = observations["band"]
                         order_indx = np.argsort(temp_array, order=["band", "HA_w_to_e"])
                         observations = observations[order_indx[0 : self.return_n_limit]]
+
                 elif self.sort_potential_result is None:
                     observations = observations[0 : self.return_n_limit]
                 else:
