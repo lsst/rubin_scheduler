@@ -69,6 +69,10 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         If nvis > 1, randomize the tesselation between each visit.
         Probably what you want to do if you're searching for an event
         and worried about chip and raft gaps. Default True.
+    sort_potential_result : `str`
+        If there are too many potential observations, how they should be
+        sorted before truncating to return_n_limit. Possible values
+        of "HA". Default None does no additional sorting.
     """
 
     def __init__(
@@ -109,6 +113,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         dither_per_visit=True,
         split_long=None,
         check_band_mounted=False,
+        sort_potential_result="HA",
     ):
         if filters_at_times is not None:
             warnings.warn("filters_at_times deprecated in favor of bands_at_times", FutureWarning)
@@ -170,6 +175,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         self.last_mjd_rough = -1
         self.too_types_to_follow = too_types_to_follow
         self.target_name_base = target_name_base
+        self.sort_potential_result = sort_potential_result
 
         self.camera = camera
         # Load the OpSim field tesselation and map healpix to fields
