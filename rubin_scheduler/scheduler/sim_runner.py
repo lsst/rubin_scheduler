@@ -149,6 +149,9 @@ def sim_runner(
             with gzip.open(snapshot_fname, "wb", compresslevel=1) as pio:
                 pickle.dump([scheduler, observatory.return_conditions()], file=pio)
 
+        if not hasattr(scheduler, "conditions"):
+            scheduler.update_conditions(observatory.return_conditions())
+
         if not scheduler._check_queue_mjd_only(observatory.mjd):
             scheduler.update_conditions(observatory.return_conditions())
 

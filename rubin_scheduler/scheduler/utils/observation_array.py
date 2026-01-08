@@ -66,23 +66,15 @@ class ObservationArray(np.ndarray):
         The physical filter name.
     rotSkyPos : `float`
         The rotation angle of the camera relative to the sky E of N
-        (Radians). Will be ignored if rotTelPos is finite.
-        If rotSkyPos is set to NaN, rotSkyPos_desired is used.
+        (Radians).
+        If rotSkyPos is set to NaN, rotTelPos is used.
     rotTelPos : `float`
         The rotation angle of the camera relative to the telescope
-        (radians). Set to np.nan to force rotSkyPos to be used.
+        (radians). Ignored if rotSkyPos is set.
     rotSkyPos_desired : `float`
-        If both rotSkyPos and rotTelPos are None/NaN, then
-        rotSkyPos_desired (radians) is used. If rotSkyPos_desired
-        results in a valid rotTelPos, rotSkyPos is set to
-        rotSkyPos_desired. If rotSkyPos and rotTelPos are both NaN,
-        and rotSkyPos_desired results in an out of range value for the
-        camera rotator, then rotTelPos_backup is used.
+        Deprecated.
     rotTelPos_backup : `float`
-        Rotation angle of the camera relative to the telescope (radians).
-        Only used as a last resort if rotSkyPos and rotTelPos are set
-        to NaN and rotSkyPos_desired results in an out of range rotator
-        value.
+        Deprecated
     nexp : `int`
         Number of exposures in the visit.
     flush_by_mjd : `float`

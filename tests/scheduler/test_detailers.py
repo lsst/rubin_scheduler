@@ -37,7 +37,6 @@ class TestDetailers(unittest.TestCase):
             detailers.VaryExptDetailer,
             detailers.ZeroRotDetailer,
             detailers.Comcam90rotDetailer,
-            detailers.Rottep2RotspDesiredDetailer,
             detailers.CloseAltDetailer,
             detailers.TakeAsPairsDetailer,
             detailers.TwilightTripleDetailer,
@@ -59,6 +58,7 @@ class TestDetailers(unittest.TestCase):
             detailers.IndexNoteDetailer,
             detailers.BandSubstituteDetailer,
             detailers.ChunkByHADetailer,
+            detailers.RotspUpdateDetailer,
         ]
 
         for det in det_list:
