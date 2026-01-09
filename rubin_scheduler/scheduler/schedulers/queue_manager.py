@@ -41,11 +41,16 @@ class BaseQueueManager:
         self.desired_observations_array = ObservationArray(n=0)
         # Array to track which desired_observations_array
         # have been observed
-        self.need_observing = []
+        self.need_observing = np.zeros(0, dtype=bool)
 
     def flush_queue(self):
         self.desired_observations_array = ObservationArray(n=0)
-        self.need_observing = []
+        self.need_observing = np.zeros(0, dtype=bool)
+
+    def append_to_queue(self, observation_array):
+        need_observing = np.ones(observation_array.size, dtype=bool)
+        self.need_observing = np.concatenate([self.need_observing, need_observing])
+        self.desired_observations_array = np.concatenate([self.desired_observations_array, observation_array])
 
     def set_queue(self, observation_array):
         self.desired_observations_array = observation_array
@@ -159,3 +164,10 @@ class BaseQueueManager:
     def return_active_queue(self):
         """Return array of observations that are waiting to be executed"""
         return self.desired_observations_array[self.need_observing]
+
+    def mark_observation_completed(self, observation):
+        """Mark something in the queue as completed.
+        Matches on target_id only.
+        """
+        match = np.where(self.desired_observations_array["target_id"] == observation["target_id"])[0]
+        self.need_observing[match] = False
