@@ -30,7 +30,7 @@ class SummitWrapper:
         # Have we added observations so
         # self.core_scheduler and self.ahead_scheduler
         # are out of sync?
-        self.need_reset = False
+        self.need_replay = False
 
     def flush_queue(self):
         self.core_scheduler.flush_queue()
@@ -39,11 +39,6 @@ class SummitWrapper:
     def add_observation(self, observation):
 
         self.core_scheduler.add_observation(observation)
-
-        # If this observation is in the core.queue, need to
-        # mark it completed.
-        if self.core_scheduler.return_active_queue().size > 0:
-            self.core_scheduler.mark_observation_completed(observation)
 
         # Assume everything up to the ID has been observed.
         # Should be ok to add out of order, as long as everything up
@@ -58,7 +53,7 @@ class SummitWrapper:
             self.requested_but_unadded_ids = self.requested_but_unadded_ids[indx:]
             self.requested_but_unadded_obs = self.requested_but_unadded_obs[indx:]
 
-        self.need_reset = True
+        self.need_replay = True
 
     def _check_queue_mjd_only(self, mjd):
         """
@@ -112,11 +107,11 @@ class SummitWrapper:
         if mjd is None:
             mjd = self.conditions.mjd
 
-        if self.need_reset:
+        if self.need_replay:
             self.ahead_scheduler = copy.deepcopy(self.core_scheduler)
             for obs in self.requested_but_unadded_obs:
                 self.ahead_scheduler.add_observation(obs)
-            self.need_reset = False
+            self.need_replay = False
             self.ahead_scheduler.update_conditions(self.conditions)
 
         # If we fill the queue, need to add that to the core scheduler
@@ -124,8 +119,8 @@ class SummitWrapper:
         if self.ahead_scheduler.return_active_queue().size > 0:
             result_plain = self.ahead_scheduler.request_observation(mjd=mjd)
         else:
-            # Now, we have either refilled the queue or
-            # generated a one-off and have an empty queue.
+            # Now, we either refill the queue or
+            # generate a one-off new observation and have an empty queue.
             result_plain = self.ahead_scheduler.request_observation(mjd=mjd)
             self.core_scheduler.append_to_queue(result_plain.copy())
             ahead_active_queue = self.ahead_scheduler.return_active_queue()
@@ -138,7 +133,7 @@ class SummitWrapper:
 
         # Add requested observation to the ahead
         # scheduler, so if we call request_observation again,
-        # it will know this has been done.
+        # it will think this has been completed.
         self.ahead_scheduler.add_observation(obs_filled)
 
         return result_plain

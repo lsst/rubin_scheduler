@@ -57,7 +57,7 @@ class BaseQueueManager:
         self.need_observing = np.ones(observation_array.size, dtype=bool)
 
     def add_observation(self, observation, **kwargs):
-        if self.desired_observations_array is not None:
+        if self.desired_observations_array.size > 0:
             match_indx = np.where(self.desired_observations_array["target_id"] == observation["target_id"])[0]
             if np.size(match_indx) > 0:
                 self.need_observing[match_indx] = False
@@ -67,7 +67,7 @@ class BaseQueueManager:
             detailer.add_observation(observation, **kwargs)
 
     def add_observations_array(self, observation_array, observations_hpid_in):
-        if self.desired_observations_array is not None:
+        if self.desired_observations_array.size > 0:
             indx = np.isin(self.desired_observations_array["target_id"], observation_array["target_id"])
             if np.size(indx) > 0:
                 self.need_observing[indx] = False
