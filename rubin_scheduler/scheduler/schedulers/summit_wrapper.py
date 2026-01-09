@@ -30,7 +30,7 @@ class SummitWrapper:
         # Have we added observations so
         # self.core_scheduler and self.ahead_scheduler
         # are out of sync?
-        self.need_reset = False
+        self.need_replay = False
 
     def flush_queue(self):
         self.core_scheduler.flush_queue()
@@ -39,16 +39,6 @@ class SummitWrapper:
     def add_observation(self, observation):
 
         self.core_scheduler.add_observation(observation)
-
-        # If this observation is in the core.queue, need to
-        # remove it from there.
-        if len(self.core_scheduler.queue) > 0:
-            # Ugh, kind of a pain that observations have
-            # been converted to a list.
-            target_ids = [obs["target_id"] for obs in self.core_scheduler.queue]
-            match = np.where(target_ids == observation["target_id"])[0].max()
-            if np.size(match) > 0:
-                del self.core_scheduler.queue[match.astype(int)]
 
         # Assume everything up to the ID has been observed.
         # Should be ok to add out of order, as long as everything up
@@ -63,7 +53,7 @@ class SummitWrapper:
             self.requested_but_unadded_ids = self.requested_but_unadded_ids[indx:]
             self.requested_but_unadded_obs = self.requested_but_unadded_obs[indx:]
 
-        self.need_reset = True
+        self.need_replay = True
 
     def _check_queue_mjd_only(self, mjd):
         """
@@ -73,10 +63,11 @@ class SummitWrapper:
         updated conditions when they are not needed.
         """
         result = False
-        if len(self.ahead_scheduler.queue) > 0:
-            if (IntRounded(mjd) < IntRounded(self.ahead_scheduler.queue[0]["flush_by_mjd"])) | (
-                self.ahead_scheduler.queue[0]["flush_by_mjd"] == 0
-            ):
+        if np.sum(self.ahead_scheduler.queue_manager.need_observing) > 0:
+            fb_mjd = self.ahead_scheduler.return_active_queue()["flush_by_mjd"]
+            not_flushed_yet = np.where(IntRounded(mjd) < IntRounded(fb_mjd))[0]
+            no_flush_set = np.where(fb_mjd == 0)[0]
+            if (np.size(not_flushed_yet) > 0) | (np.size(no_flush_set) > 0):
                 result = True
         return result
 
@@ -88,7 +79,7 @@ class SummitWrapper:
 
     def _fill_obs_values(self, observation):
         """Fill in values of an observation assuming it will be
-        observed now or very soon
+        observed approximately now.
         """
 
         # Nearest neighbor from conditions maps
@@ -97,8 +88,8 @@ class SummitWrapper:
         # XXX--Need to go through and formally list the columns
         # that are minimally required for adding observations to Features.
         # This seems to work, but nothing stopping someone from asking for
-        # something like moon phase and then it will fail. Maybe
-        # set all un-defined columns to np.nan so it's clear they
+        # something random like moon phase and then it will fail. Maybe
+        # should set all un-defined columns to np.nan so it's clear they
         # can't be used unless this method is updated.
         observation["mjd"] = self.conditions.mjd
         observation["FWHMeff"] = self.conditions.fwhm_eff[observation["band"][0]][hpid]
@@ -116,26 +107,25 @@ class SummitWrapper:
         if mjd is None:
             mjd = self.conditions.mjd
 
-        if self.need_reset:
+        if self.need_replay:
             self.ahead_scheduler = copy.deepcopy(self.core_scheduler)
             for obs in self.requested_but_unadded_obs:
                 self.ahead_scheduler.add_observation(obs)
-            self.need_reset = False
+            self.need_replay = False
             self.ahead_scheduler.update_conditions(self.conditions)
 
         # If we fill the queue, need to add that to the core scheduler
         # so it knows about it
-
-        # If ahead has things in the queue, it'll just pop it off
-        if len(self.ahead_scheduler.queue) > 0:
+        if self.ahead_scheduler.return_active_queue().size > 0:
             result_plain = self.ahead_scheduler.request_observation(mjd=mjd)
         else:
-            # Now, we have either refilled the queue and popped one, or
-            # generated a one-off and have an empty queue.
+            # Now, we either refill the queue or
+            # generate a one-off new observation and have an empty queue.
             result_plain = self.ahead_scheduler.request_observation(mjd=mjd)
-            self.core_scheduler.queue.append(result_plain.copy())
-            if len(self.ahead_scheduler.queue) > 0:
-                self.core_scheduler.queue += self.ahead_scheduler.queue
+            self.core_scheduler.append_to_queue(result_plain.copy())
+            ahead_active_queue = self.ahead_scheduler.return_active_queue()
+            if ahead_active_queue.size > 0:
+                self.core_scheduler.append_to_queue(ahead_active_queue)
 
         obs_filled = self._fill_obs_values(result_plain.copy())
         self.requested_but_unadded_ids.append(obs_filled["target_id"].view(np.ndarray).max())
@@ -143,7 +133,7 @@ class SummitWrapper:
 
         # Add requested observation to the ahead
         # scheduler, so if we call request_observation again,
-        # it will know this has been done.
+        # it will think this has been completed.
         self.ahead_scheduler.add_observation(obs_filled)
 
         return result_plain
