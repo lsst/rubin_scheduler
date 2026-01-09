@@ -58,9 +58,8 @@ class BaseQueueManager:
 
     def add_observation(self, observation, **kwargs):
         if self.desired_observations_array.size > 0:
-            match_indx = np.where(self.desired_observations_array["target_id"] == observation["target_id"])[0]
-            if np.size(match_indx) > 0:
-                self.need_observing[match_indx] = False
+            self.mark_observation_completed(observation)
+
         for bf in self.basis_functions:
             bf.add_observation(observation, **kwargs)
         for detailer in self.detailers:
