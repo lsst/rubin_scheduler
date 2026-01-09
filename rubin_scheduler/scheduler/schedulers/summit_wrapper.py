@@ -121,12 +121,10 @@ class SummitWrapper:
 
         # If we fill the queue, need to add that to the core scheduler
         # so it knows about it
-
-        # If ahead has things in the queue, it'll just pop it off
         if self.ahead_scheduler.return_active_queue().size > 0:
             result_plain = self.ahead_scheduler.request_observation(mjd=mjd)
         else:
-            # Now, we have either refilled the queue and popped one, or
+            # Now, we have either refilled the queue or
             # generated a one-off and have an empty queue.
             result_plain = self.ahead_scheduler.request_observation(mjd=mjd)
             self.core_scheduler.append_to_queue(result_plain.copy())
