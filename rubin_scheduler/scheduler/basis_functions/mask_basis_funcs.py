@@ -693,7 +693,12 @@ class MapCloudBasisFunction(BaseBasisFunction):
 
         result = self.result.copy()
 
-        clouded = np.where(self.max_cloud_map <= conditions.bulk_cloud)
+        if conditions.cloud_maps is None:
+            return 1
+
+        extinction_map = conditions.cloud_maps.extinction_closest(conditions.mjd)
+
+        clouded = np.where(extinction_map >= self.max_cloud_map)
         result[clouded] = self.out_of_bounds_val
 
         return result

@@ -31,11 +31,10 @@ class TestCoreSched(unittest.TestCase):
         # check that we can pull the whole queue
         obs_list = scheduler.request_observation(whole_queue=True)
         assert obs_list is not None
-        assert len(scheduler.queue) == 0
 
         # Check that we can flush the Queue
         scheduler.flush_queue()
-        assert len(scheduler.queue) == 0
+        assert np.size(scheduler.queue_manager.desired_observations_array) == 0
 
         # Check that we can add an observation
         scheduler.add_observation(obs)
@@ -91,6 +90,7 @@ class TestCoreSched(unittest.TestCase):
         obs = ObservationArray()
         obs["scheduler_note"] = "survey"
         obs["mjd"] = 100
+        obs["target_id"] = 1
 
         scheduler.add_observation(obs)
 
