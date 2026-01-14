@@ -17,7 +17,7 @@ class TestCloudModel(unittest.TestCase):
         cloud_data = CloudData(self.th, cloud_db=self.cloud_db)
         self.assertEqual(cloud_data.start_time, self.th)
         cloud_data = CloudData(self.th, cloud_db=self.cloud_db, offset_year=1)
-        self.assertEqual(cloud_data.start_time, Time("2021-01-01", format="isot", scale="tai"))
+        self.assertEqual(cloud_data.start_time, Time("2019-01-01", format="isot", scale="tai"))
 
     def test_information_after_initialization(self):
         # Test setting cloud_db explicitly.
