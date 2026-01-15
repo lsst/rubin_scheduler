@@ -289,6 +289,22 @@ class CoreScheduler:
         # full conditions still.
         return self.queue_manager._check_queue_mjd_only(mjd, self.conditions)
 
+    def return_active_queue(self):
+        """Return the active queue"""
+        return self.queue_manager.return_active_queue()
+
+    def append_to_queue(self, observation_array):
+        """
+        Add an observation(s) to the internal queue
+        """
+        self.queue_manager.append_to_queue(observation_array)
+
+    def mark_observation_completed(self, observation):
+        """Mark something in the queue as completed.
+        Matches on target_id only.
+        """
+        self.queue_manager.mark_observation_completed(observation)
+
     def request_observation(self, mjd=None, whole_queue=False):
         """
         Ask the scheduler what it wants to observe next
