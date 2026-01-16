@@ -548,7 +548,7 @@ class CameraRotDetailer(BaseDetailer):
 
 class CameraSmallRotPerObservationListDetailer(BaseDetailer):
     """
-    Randomly set the camera rotation for each observation list.
+    Randomly set the camera rotation for each observation.
 
     Generates a small sequential offset for sequential visits
     in the same band; adds a random offset for each band change.
@@ -613,24 +613,24 @@ class CameraSmallRotPerObservationListDetailer(BaseDetailer):
         offsets = np.where(offsets > self.max_rot, self.max_rot, offsets)
         return offsets
 
-    def __call__(self, observation_list, conditions):
+    def __call__(self, observation_array, conditions):
         # Generate offsets in camera rotator
-        band_list = [np.asarray(obs["band"]).item() for obs in observation_list]
-        offsets = self._generate_offsets_band_change(band_list, conditions.mjd, conditions.rot_tel_pos)
+        offsets = self._generate_offsets_band_change(
+            observation_array["band"], conditions.mjd, conditions.rot_tel_pos
+        )
 
-        for i, obs in enumerate(observation_list):
-            alt, az = _approx_ra_dec2_alt_az(
-                obs["RA"],
-                obs["dec"],
-                conditions.site.latitude_rad,
-                conditions.site.longitude_rad,
-                conditions.mjd,
-            )
-            obs_pa = _approx_altaz2pa(alt, az, conditions.site.latitude_rad)
-            obs["rotSkyPos"] = self.rc._rottelpos2rotskypos(offsets[i], obs_pa)
-            obs["rotTelPos"] = offsets[i]
+        alt, az = _approx_ra_dec2_alt_az(
+            observation_array["RA"],
+            observation_array["dec"],
+            conditions.site.latitude_rad,
+            conditions.site.longitude_rad,
+            conditions.mjd,
+        )
+        obs_pa = _approx_altaz2pa(alt, az, conditions.site.latitude_rad)
+        observation_array["rotSkyPos"] = self.rc._rottelpos2rotskypos(offsets, obs_pa)
+        observation_array["rotTelPos"] = offsets
 
-        return observation_list
+        return observation_array
 
 
 class ComCamGridDitherDetailer(BaseDetailer):
@@ -712,16 +712,16 @@ class ComCamGridDitherDetailer(BaseDetailer):
 
         return np.vstack(offsets)
 
-    def __call__(self, observation_list, conditions):
-        if len(observation_list) == 0:
-            return observation_list
+    def __call__(self, observation_array, conditions):
+        if len(observation_array) == 0:
+            return observation_array
 
-        band_list = [np.asarray(obs["band"]).item() for obs in observation_list]
+        band_list = observation_array["band"]
 
         # Initial estimate of rotSkyPos corresponding to desired rotTelPos
         alt, az, pa = _approx_ra_dec2_alt_az(
-            observation_list[0]["RA"],
-            observation_list[0]["dec"],
+            observation_array[0]["RA"],
+            observation_array[0]["dec"],
             conditions.site.latitude_rad,
             conditions.site.longitude_rad,
             conditions.mjd,
@@ -730,29 +730,27 @@ class ComCamGridDitherDetailer(BaseDetailer):
         rotSkyPos = self.rc._rottelpos2rotskypos(self.rotTelPosDesired, pa)
 
         # Generate offsets in RA and Dec
-        offsets = self._generate_offsets(len(observation_list), band_list, rotSkyPos)
+        offsets = self._generate_offsets(len(observation_array), band_list, rotSkyPos)
 
         # Project offsets onto sky
-        obs_array = np.concatenate(observation_list)
         new_ra, new_dec = gnomonic_project_tosky(
-            offsets[:, 0], offsets[:, 1], obs_array["RA"], obs_array["dec"]
+            offsets[:, 0], offsets[:, 1], observation_array["RA"], observation_array["dec"]
         )
         new_ra, new_dec = wrap_ra_dec(new_ra, new_dec)
 
         # Update observations
-        for ii in range(0, len(observation_list)):
-            observation_list[ii]["RA"] = new_ra[ii]
-            observation_list[ii]["dec"] = new_dec[ii]
+        observation_array["RA"] = new_ra
+        observation_array["dec"] = new_dec
 
-            alt, az, pa = _approx_ra_dec2_alt_az(
-                new_ra[ii],
-                new_dec[ii],
-                conditions.site.latitude_rad,
-                conditions.site.longitude_rad,
-                conditions.mjd,
-                return_pa=True,
-            )
-            observation_list[ii]["rotSkyPos"] = rotSkyPos
-            observation_list[ii]["rotTelPos"] = self.rc._rotskypos2rottelpos(rotSkyPos, pa)
+        alt, az, pa = _approx_ra_dec2_alt_az(
+            new_ra,
+            new_dec,
+            conditions.site.latitude_rad,
+            conditions.site.longitude_rad,
+            conditions.mjd,
+            return_pa=True,
+        )
+        observation_array["rotSkyPos"] = rotSkyPos
+        observation_array["rotTelPos"] = self.rc._rotskypos2rottelpos(rotSkyPos, pa)
 
-        return observation_list
+        return observation_array
