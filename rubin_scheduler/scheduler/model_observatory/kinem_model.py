@@ -739,10 +739,6 @@ class KinemModel:
         # calculation above (it might be inf, not nan, so let's swap).
         slew_time = np.where(np.isfinite(slew_time), slew_time, np.nan)
 
-        # Recreate how this happened to work previously with single targets
-        if len(slew_time) == 1 and rot_tel_pos is not None:
-            slew_time = slew_time[0]
-
         # Update the internal attributes to note that we are now pointing
         # and tracking at the requested RA,Dec,rot_sky_pos
         if update_tracking and np.isfinite(slew_time):
@@ -884,5 +880,8 @@ class KinemModel:
         # to be applied to next slewtime calculation.
         if ~np.isnan(slewtime):
             self.overhead = np.maximum(self.readtime, self.shutter_stall(observation))
+
+        slewtime = np.asarray(slewtime).item()
+        visit_time = np.asarray(visit_time).item()
 
         return slewtime, visit_time
