@@ -59,6 +59,7 @@ class TestKinematicModel(unittest.TestCase):
             slew_while_changing_filter=False,
             update_tracking=True,
         )
+        slewtime = slewtime[0]
         # This first slew should be about 96.74s with 40% tma
         self.assertEqual(96.74, round(slewtime, 2))
         # A second slew to the same position should be 0s
@@ -74,6 +75,7 @@ class TestKinematicModel(unittest.TestCase):
             slew_while_changing_filter=False,
             update_tracking=True,
         )
+        slewtime = slewtime[0]
         self.assertEqual(slewtime, 0)
         # Unless we set the overhead (from readout from the previous obs)
         # then minimum slewtime would be overhead value
@@ -89,6 +91,7 @@ class TestKinematicModel(unittest.TestCase):
             slew_while_changing_filter=False,
             update_tracking=True,
         )
+        slewtime = slewtime[0]
         self.assertEqual(slewtime, kinematic_model.readtime)
         # And a third slew with a rotator change
         #  Slew to this starting position
@@ -105,6 +108,7 @@ class TestKinematicModel(unittest.TestCase):
             slew_while_changing_filter=False,
             update_tracking=True,
         )
+        slewtime = slewtime[0]
         self.assertEqual(rotator_move, round(slewtime, 2))
         # Assert that if we change the filter while slewing
         # We get the base filter change time of 120s
@@ -119,6 +123,7 @@ class TestKinematicModel(unittest.TestCase):
             slew_while_changing_filter=True,
             update_tracking=True,
         )
+        slewtime = slewtime[0]
         self.assertEqual(kinematic_model.band_changetime, (round(slewtime, 2)))
         # And if we change the filter while slewing,
         # we still get the base filter change time (because this includes
@@ -134,6 +139,7 @@ class TestKinematicModel(unittest.TestCase):
             slew_while_changing_filter=False,
             update_tracking=True,
         )
+        slewtime = slewtime[0]
         self.assertEqual(kinematic_model.band_changetime, (round(slewtime, 2)))
         # And then use better_band_change_time which calculates rotator + FES
         mjd1 += slewtime / 60 / 60 / 24
@@ -148,6 +154,7 @@ class TestKinematicModel(unittest.TestCase):
             constant_band_changetime=False,
             update_tracking=True,
         )
+        slewtime = slewtime[0]
         self.assertNotEqual(kinematic_model.band_changetime, (round(slewtime, 2)))
         # Slew to new position without tracking the slew
         # but vary lax dome or not
