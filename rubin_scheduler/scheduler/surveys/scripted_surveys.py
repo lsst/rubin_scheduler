@@ -42,6 +42,10 @@ class ScriptedSurvey(BaseSurvey):
         Only pass observations through if the band desired is mounted.
         Default True. Might want to set to False if you have detailers
         that can substitute bands.
+    check_band_active : `bool`
+        Only pass observations to be executed if the band is currently
+        active, i.e., don't execute scripted observations if it would
+        require a filter change. Default False.
     sort_potential_result : `str`
         If there are too many potential observations, how they should be
         sorted before truncating to return_n_limit. Possible values
@@ -64,6 +68,7 @@ class ScriptedSurvey(BaseSurvey):
         filter_change_time=None,
         science_program=None,
         check_band_mounted=True,
+        check_band_active=False,
         sort_potential_result=None,
     ):
         if filter_change_time is not None:
@@ -77,6 +82,7 @@ class ScriptedSurvey(BaseSurvey):
         self.id_start = id_start
         self.return_n_limit = return_n_limit
         self.check_band_mounted = check_band_mounted
+        self.check_band_active = check_band_active
         self.band_change_time = band_change_time / 3600 / 24.0  # to days
         self.sort_potential_result = sort_potential_result
         if basis_weights is None:
@@ -239,9 +245,6 @@ class ScriptedSurvey(BaseSurvey):
             ir = np.where((az[in_range] - conditions.tel_az_limits[0]) % (2 * np.pi) <= az_range)[0]
             in_range = in_range[ir]
 
-        # Check that band needed is mounted
-        good = np.isin(observation["band"][in_range], conditions.mounted_bands)
-        in_range = in_range[good]
         return in_range
 
     def _check_list(self, conditions):
@@ -263,6 +266,10 @@ class ScriptedSurvey(BaseSurvey):
                 if self.check_band_mounted:
                     # Also check that the bands are mounted
                     match2 = np.isin(self.obs_wanted["band"][matches], conditions.mounted_bands)
+                    matches = matches[match2]
+
+                if self.check_band_active:
+                    match2 = np.isin(self.obs_wanted["band"][matches], conditions.current_band)
                     matches = matches[match2]
 
             else:
