@@ -97,11 +97,11 @@ class BaseDetailer:
             for feature in self.survey_features:
                 self.survey_features[feature].add_observation(observation, indx=indx)
 
-    def __call__(self, observation_list, conditions):
+    def __call__(self, observation_array, conditions):
         """
         Parameters
         ----------
-        observation_list : `list` of observations
+        observation_array : ObservationArray
             The observations to detail.
         conditions : `rubin_scheduler.scheduler.conditions` object
 
