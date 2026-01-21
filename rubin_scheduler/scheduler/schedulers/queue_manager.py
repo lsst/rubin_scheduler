@@ -109,7 +109,7 @@ class BaseQueueManager:
 
         # Still valid date
         mjd_ok = np.where(
-            (IntRounded(mjd) < IntRounded(self.desired_observations_array["flush_by_mjd"]))
+            (IntRounded(mjd) <= IntRounded(self.desired_observations_array["flush_by_mjd"]))
             | (self.desired_observations_array["flush_by_mjd"] == 0)
         )[0]
 
