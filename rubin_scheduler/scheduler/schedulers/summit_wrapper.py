@@ -1,6 +1,7 @@
 __all__ = ("SummitWrapper",)
 
 import copy
+import warnings
 
 import numpy as np
 
@@ -128,6 +129,12 @@ class SummitWrapper:
         if self.need_replay:
             self.ahead_scheduler = copy.deepcopy(self.core_scheduler)
             for obs in self.requested_but_unadded_obs:
+                if mjd < obs["mjd"]:
+                    msg = f"""Adding observation with MJD={obs["mjd"]}, but think it is
+                          currently MJD={mjd}, so we are adding observations
+                          from the future. That seems like it shouldn't be possible.
+                          """
+                    warnings.warn(msg)
                 self.ahead_scheduler.add_observation(obs)
             self.need_replay = False
             self.ahead_scheduler.update_conditions(self.conditions)
