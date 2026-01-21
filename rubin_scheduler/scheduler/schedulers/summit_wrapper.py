@@ -11,9 +11,18 @@ from rubin_scheduler.utils import _ra_dec2_hpid
 class SummitWrapper:
     """Wrap a core scheduler so observations can be requested
     and are assumed to be completed.
+
+    Parameters
+    ----------
+    core_scheduler : `rubin_scheduler.scheduler.schedulers.CoreScheduler`
+        A CoreScheduler object.
     """
 
     def __init__(self, core_scheduler):
+
+        # A standard CoreScheduler object that
+        # is only given observations that have been
+        # completed.
         self.core_scheduler = core_scheduler
         self.conditions = None
         self.clear_ahead()
@@ -24,6 +33,12 @@ class SummitWrapper:
 
     def clear_ahead(self):
         """Reset the ahead scheduler and pending observations"""
+
+        # The ahead_scheduler acts as a copy of
+        # core scheduler, but will assume any requested
+        # observations are completed instantly, so requesting
+        # multiple observations does not risk getting the same
+        # observation multiple times.
         self.ahead_scheduler = copy.deepcopy(self.core_scheduler)
         self.requested_but_unadded_ids = []
         self.requested_but_unadded_obs = []
@@ -37,6 +52,7 @@ class SummitWrapper:
         self.clear_ahead()
 
     def add_observation(self, observation):
+        """Add actually completed observations."""
 
         self.core_scheduler.add_observation(observation)
 
@@ -107,6 +123,8 @@ class SummitWrapper:
         if mjd is None:
             mjd = self.conditions.mjd
 
+        # If observations have been added, need to
+        # rebuild ahead_scheduler
         if self.need_replay:
             self.ahead_scheduler = copy.deepcopy(self.core_scheduler)
             for obs in self.requested_but_unadded_obs:
