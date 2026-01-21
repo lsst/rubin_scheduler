@@ -10,12 +10,7 @@ from rubin_scheduler.scheduler.detailers import BandPickToODetailer
 from rubin_scheduler.scheduler.surveys import ToOScriptedSurvey
 from rubin_scheduler.utils import DEFAULT_NSIDE
 
-from .lsst_surveys import (
-    EXPTIME,
-    NEXP,
-    SCIENCE_PROGRAM,
-    safety_masks,
-)
+from .lsst_surveys import EXPTIME, NEXP, SCIENCE_PROGRAM, safety_masks
 
 
 def gen_too_surveys(

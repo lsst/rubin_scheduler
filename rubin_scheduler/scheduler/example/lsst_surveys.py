@@ -17,17 +17,8 @@ import numpy.typing as npt
 
 import rubin_scheduler.scheduler.basis_functions as bf
 import rubin_scheduler.scheduler.detailers as detailers
-from rubin_scheduler.scheduler.surveys import (
-    BlobSurvey,
-    GreedySurvey,
-    LongGapSurvey,
-    ScriptedSurvey,
-)
-from rubin_scheduler.scheduler.utils import (
-    ConstantFootprint,
-    Footprints,
-    ecliptic_area,
-)
+from rubin_scheduler.scheduler.surveys import BlobSurvey, GreedySurvey, LongGapSurvey, ScriptedSurvey
+from rubin_scheduler.scheduler.utils import ConstantFootprint, Footprints, ecliptic_area
 from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD
 
 # Set up values to use as kwarg defaults.

@@ -2,11 +2,7 @@ import unittest
 
 from astropy.coordinates import SkyCoord
 
-from rubin_scheduler.utils import (
-    ddf_locations,
-    ddf_locations_pre3_5,
-    special_locations,
-)
+from rubin_scheduler.utils import ddf_locations, ddf_locations_pre3_5, special_locations
 
 
 class LocationsTests(unittest.TestCase):
