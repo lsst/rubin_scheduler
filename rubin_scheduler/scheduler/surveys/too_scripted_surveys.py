@@ -113,6 +113,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         dither_per_visit=True,
         split_long=None,
         check_band_mounted=False,
+        check_band_active=False,
         sort_potential_result="HA",
     ):
         if filters_at_times is not None:
@@ -158,6 +159,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         self.simple_single_tesselate = simple_single_tesselate
         self.dither_per_visit = dither_per_visit
         self.check_band_mounted = check_band_mounted
+        self.check_band_active = check_band_active
         # Attributes to cache results into
         self.observations_rough = []
         self.observations = []
