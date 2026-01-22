@@ -112,7 +112,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         simple_single_tesselate=True,
         dither_per_visit=True,
         split_long=None,
-        check_band_mounted=False,
+        check_band_mounted=True,
         check_band_active=False,
         sort_potential_result="HA",
     ):
