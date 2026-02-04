@@ -355,8 +355,6 @@ class ScriptedSurvey(BaseSurvey):
         band = np.char.rstrip(obs_wanted["filter"][missing_band], chars="_0123456789")
         obs_wanted["band"][missing_band] = band
 
-        obs_wanted.sort(order=["mjd", "band"])
-
         if add_index:
             sep = [", "] * obs_wanted.size
             indx = np.arange(self.id_start, self.id_start + obs_wanted.size, 1).astype(str)
@@ -373,7 +371,6 @@ class ScriptedSurvey(BaseSurvey):
 
         if append & (self.obs_wanted is not None):
             self.obs_wanted = np.concatenate([self.obs_wanted, obs_wanted])
-            self.obs_wanted.sort(order=["mjd", "band"])
         else:
             self.obs_wanted = obs_wanted
 
