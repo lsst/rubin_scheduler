@@ -102,14 +102,15 @@ class SeeingData:
             float : The FWHM of the atmospheric PSF (in arcseconds) at
             zenith.
         """
-        with sqlite3.connect(self.seeing_db) as conn:
-            cur = conn.cursor()
-            query = "select s_date, seeing from Seeing order by s_date;"
-            cur.execute(query)
-            results = np.array(cur.fetchall())
-            self.seeing_dates = np.hsplit(results, 2)[0].flatten()
-            self.seeing_values = np.hsplit(results, 2)[1].flatten()
-            cur.close()
+        conn = sqlite3.connect(self.seeing_db)
+        cur = conn.cursor()
+        query = "select s_date, seeing from Seeing order by s_date;"
+        cur.execute(query)
+        results = np.array(cur.fetchall())
+        self.seeing_dates = np.hsplit(results, 2)[0].flatten()
+        self.seeing_values = np.hsplit(results, 2)[1].flatten()
+        cur.close()
+        conn.close()
         # Make sure seeing dates are ordered appropriately
         # (monotonically increasing).
         ordidx = self.seeing_dates.argsort()

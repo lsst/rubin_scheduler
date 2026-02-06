@@ -110,14 +110,15 @@ class CloudData:
         cloud
             float : The cloud coverage (in steps of 8ths) of the sky.
         """
-        with sqlite3.connect(self.cloud_db) as conn:
-            cur = conn.cursor()
-            query = "select c_date, cloud from Cloud order by c_date;"
-            cur.execute(query)
-            results = np.array(cur.fetchall())
-            self.cloud_dates = np.hsplit(results, 2)[0].flatten()
-            self.cloud_values = np.hsplit(results, 2)[1].flatten()
-            cur.close()
+        conn = sqlite3.connect(self.cloud_db)
+        cur = conn.cursor()
+        query = "select c_date, cloud from Cloud order by c_date;"
+        cur.execute(query)
+        results = np.array(cur.fetchall())
+        self.cloud_dates = np.hsplit(results, 2)[0].flatten()
+        self.cloud_values = np.hsplit(results, 2)[1].flatten()
+        cur.close()
+        conn.close()
         # Make sure seeing dates are ordered appropriately (monotonically
         # increasing).
         ordidx = self.cloud_dates.argsort()

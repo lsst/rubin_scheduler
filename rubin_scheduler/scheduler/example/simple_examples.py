@@ -501,8 +501,6 @@ def simple_pairs_survey(
             min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits), dither=camera_dither
         )
     )
-    # Convert rotTelPos to rotSkyPos_desired
-    detailer_list.append(detailers.Rottep2RotspDesiredDetailer(telescope="rubin"))
     # Reorder visits in a blob so that closest to current altitude is first.
     detailer_list.append(detailers.CloseAltDetailer())
     # Sets a flush-by date to avoid running into prescheduled visits.
@@ -666,8 +664,6 @@ def simple_greedy_survey(
             dither=camera_dither,
         )
     )
-    # Convert rotTelPos to rotSkyPos_desired
-    detailer_list.append(detailers.Rottep2RotspDesiredDetailer(telescope="rubin"))
     # Reorder visits in a blob so that closest to current altitude is first.
     detailer_list.append(detailers.CloseAltDetailer())
     # Sets a flush-by date to avoid running into prescheduled visits.
