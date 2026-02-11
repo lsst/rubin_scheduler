@@ -950,7 +950,7 @@ class ConsDBVisits(ABC):
         fwhm : `pd.Series`
             Effective PSF FWHM (arcseconds).
         """
-        return self.consdb_visits[self._psf_sigma_column] * GAUSSIAN_FWHM_OVER_SIGMA * self.pixel_scale
+        return SeeingModel.fwhm_geom_to_fwhm_eff(self.fwhm_geom)
 
     @cached_property
     def fwhm_geom(self) -> pd.Series:
@@ -961,7 +961,7 @@ class ConsDBVisits(ABC):
         fwhm : `pd.Series`
             Geometric PSF FWHM (arcseconds).
         """
-        return SeeingModel.fwhm_eff_to_fwhm_geom(self.fwhm_eff)
+        return self.consdb_visits[self._psf_sigma_column] * GAUSSIAN_FWHM_OVER_SIGMA * self.pixel_scale
 
     @cached_property
     @abstractmethod
