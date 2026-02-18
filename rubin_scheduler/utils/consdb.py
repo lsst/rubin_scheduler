@@ -950,7 +950,9 @@ class ConsDBVisits(ABC):
         fwhm : `pd.Series`
             Effective PSF FWHM (arcseconds).
         """
-        return SeeingModel.fwhm_geom_to_fwhm_eff(self.fwhm_geom)
+        # Use equation 33 of SNR-LSE-40.pdf
+        # https://docushare.lsstcorp.org/docushare/dsweb/ImageStoreViewer/LSE-40
+        return 0.663 * self.pixel_scale * np.sqrt(self.consdb_visits.psf_area_median)
 
     @cached_property
     def fwhm_geom(self) -> pd.Series:
