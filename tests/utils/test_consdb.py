@@ -12,7 +12,7 @@ from rubin_scheduler.utils.consdb import ConsDBVisits, load_consdb_visits
 
 class TestConsdb(unittest.TestCase):
 
-    @unittest.skip("avoid requiring access to consdb for tests.")
+    #    @unittest.skip("avoid requiring access to consdb for tests.")
     def test_consdb_read_visits_lsstcam(self):
         day_obs: str = "2025-07-01"
         consdb_visits: ConsDBVisits = load_consdb_visits("lsstcam", day_obs)
@@ -24,7 +24,7 @@ class TestConsdb(unittest.TestCase):
         obs: np.recarray = consdb_visits.obs
         schema_converter.obs2opsim(obs)
 
-    @unittest.skip("avoid requiring access to consdb for tests.")
+    #    @unittest.skip("avoid requiring access to consdb for tests.")
     def test_consdb_read_visits_with_constraints(self):
         day_obs: str = "2025-07-01"
         constraints = "band = 'z'"
@@ -33,7 +33,7 @@ class TestConsdb(unittest.TestCase):
         assert len(opsim) > 0
         assert np.all(opsim.band == "z")
 
-    @unittest.skip("avoid requiring access to consdb for tests.")
+    #    @unittest.skip("avoid requiring access to consdb for tests.")
     def test_consdb_read_visits_comcamsim(self):
         day_obs: str = "2024-06-26"
         consdb_visits: ConsDBVisits = load_consdb_visits("lsstcomcamsim", day_obs)
@@ -45,7 +45,7 @@ class TestConsdb(unittest.TestCase):
         obs: np.recarray = consdb_visits.obs
         schema_converter.obs2opsim(obs)
 
-    @unittest.skip("avoid requiring access to consdb for tests.")
+    #    @unittest.skip("avoid requiring access to consdb for tests.")
     def test_consdb_read_visits_comcam(self):
         day_obs: str = "2024-12-10"
         consdb_visits: ConsDBVisits = load_consdb_visits("lsstcomcam", day_obs)
@@ -57,7 +57,7 @@ class TestConsdb(unittest.TestCase):
         obs: np.recarray = consdb_visits.obs
         schema_converter.obs2opsim(obs)
 
-    @unittest.skip("avoid requiring access to consdb for tests.")
+    #    @unittest.skip("avoid requiring access to consdb for tests.")
     def test_consdb_read_visits_latiss(self):
         day_obs: str = "2025-03-03"
         consdb_visits: ConsDBVisits = load_consdb_visits("latiss", day_obs)
@@ -69,7 +69,7 @@ class TestConsdb(unittest.TestCase):
         obs: np.recarray = consdb_visits.obs
         schema_converter.obs2opsim(obs)
 
-    @unittest.skip("avoid requiring access to consdb for tests.")
+    #    @unittest.skip("avoid requiring access to consdb for tests.")
     def test_consdb_read_visits_with_token_file(self):
         if "ACCESS_TOKEN" in os.environ:
             token = os.environ["ACCESS_TOKEN"]
