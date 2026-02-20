@@ -19,7 +19,7 @@ from astropy.coordinates.earth import EarthLocation
 from astropy.time import Time
 
 from rubin_scheduler.scheduler.utils import SchemaConverter
-from rubin_scheduler.site_models import Almanac, SeeingModel
+from rubin_scheduler.site_models import Almanac
 from rubin_scheduler.utils import (
     SURVEY_START_MJD,
     Site,
@@ -892,6 +892,11 @@ class ConsDBVisits(ABC):
         raise NotImplementedError
 
     @cached_property
+    @abstractmethod
+    def _psf_area_column(self) -> str:
+        raise NotImplementedError
+
+    @cached_property
     def sky_e_per_pixel(self) -> pd.Series:
         """Median sky background of each visit (in electons).
 
@@ -950,7 +955,13 @@ class ConsDBVisits(ABC):
         fwhm : `pd.Series`
             Effective PSF FWHM (arcseconds).
         """
-        return self.consdb_visits[self._psf_sigma_column] * GAUSSIAN_FWHM_OVER_SIGMA * self.pixel_scale
+        # Use equation 33 of SNR-LSE-40.pdf
+        # https://docushare.lsstcorp.org/docushare/dsweb/ImageStoreViewer/LSE-40
+        if self._have_numeric_values(self._psf_area_column):
+            fwhm = 0.663 * self.pixel_scale * np.sqrt(self.consdb_visits[self._psf_area_column])
+        else:
+            fwhm = pd.Series(np.nan, index=self.consdb_visits.index)
+        return fwhm
 
     @cached_property
     def fwhm_geom(self) -> pd.Series:
@@ -961,7 +972,7 @@ class ConsDBVisits(ABC):
         fwhm : `pd.Series`
             Geometric PSF FWHM (arcseconds).
         """
-        return SeeingModel.fwhm_eff_to_fwhm_geom(self.fwhm_eff)
+        return self.consdb_visits[self._psf_sigma_column] * GAUSSIAN_FWHM_OVER_SIGMA * self.pixel_scale
 
     @cached_property
     @abstractmethod
@@ -1222,6 +1233,10 @@ class LSSTCamConsDBVisits(SimonyiConsDBVisits):
         return "sky_bg_median"
 
     @cached_property
+    def _psf_area_column(self) -> str:
+        return "psf_area_median"
+
+    @cached_property
     def _seeing_zenith_500nm_column(self) -> str:
         return "seeing_zenith_500nm_median"
 
@@ -1301,6 +1316,10 @@ class LATISSConsDBVisits(AuxTelConsDBVisits):
     @cached_property
     def _sky_bg_column(self) -> str:
         return "sky_bg"
+
+    @cached_property
+    def _psf_area_column(self) -> str:
+        return "psf_area"
 
     @cached_property
     def _seeing_zenith_500nm_column(self) -> str:
