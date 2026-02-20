@@ -292,7 +292,7 @@ class NObservations(BaseSurveyFeature):
         The scheduler_note value to match.
         Deprecated in favor of scheduler_note, but provided for backward
         compatibility. Will be removed in the future.
-    seeing_limit : `float`
+    seeing_limit : `float` or np.NDarray
         The limit to apply on accepting image quality.
     seeing_fill_value : `float`
         Value to use if observations have non-finite values for FWHMeff.
@@ -314,7 +314,11 @@ class NObservations(BaseSurveyFeature):
         self.bandname = bandname
         self.seeing_limit = seeing_limit
         if self.seeing_limit is not None:
-            self.seeing_limit = IntRounded(self.seeing_limit)
+            if not np.size(self.seeing_limit) > 1:
+                self.seeing_limit = IntRounded(self.seeing_limit)
+            else:
+                if hp.npix2nside(np.size(self.seeing_limit)) != nside:
+                    raise ValueError("seeing_limit nside does not match.")
         self.seeing_fill_value = seeing_fill_value
         if scheduler_note is None and survey_name is not None:
             self.scheduler_note = survey_name
@@ -327,7 +331,13 @@ class NObservations(BaseSurveyFeature):
         if self.seeing_limit is not None:
             seeing_vals = observations_hpid["FWHMeff"].copy()
             seeing_vals[~np.isfinite(observations_hpid["FWHMeff"])] = self.seeing_fill_value
-            valid_indx[np.where(IntRounded(seeing_vals) >= self.seeing_limit)[0]] = False
+
+            if np.size(self.seeing_limit) > 1:
+                valid_indx[
+                    np.where(IntRounded(seeing_vals) >= IntRounded(self.seeing_limit[observations_hpid]))[0]
+                ] = False
+            else:
+                valid_indx[np.where(IntRounded(seeing_vals) >= self.seeing_limit)[0]] = False
             if np.any(~np.isfinite(observations_hpid["FWHMeff"])):
                 warnings.warn("Adding observations with invalid FWHMeff values")
 
@@ -350,7 +360,11 @@ class NObservations(BaseSurveyFeature):
             if ~np.isfinite(seeing_val):
                 seeing_val = self.seeing_fill_value
                 warnings.warn("Adding observation with invalid FWHMeff value: %f" % observation["FWHMeff"])
-            seeing_check = IntRounded(seeing_val) <= self.seeing_limit
+            if np.size(self.seeing_limit) > 1:
+                seeing_check = np.any(IntRounded(seeing_val) <= IntRounded(self.seeing_limit[indx]))
+                indx = np.array(indx)[seeing_check]
+            else:
+                seeing_check = IntRounded(seeing_val) <= self.seeing_limit
 
         if self.bandname is None or observation["band"][0] in self.bandname:
             if seeing_check:
@@ -452,6 +466,11 @@ class NObservationsCurrentSeason(BaseSurveyFeature):
     ):
         self.nside = nside
         self.seeing_fwhm_max = seeing_fwhm_max
+
+        if np.size(self.seeing_fwhm_max) > 1:
+            if hp.npix2nside(np.size(self.seeing_fwhm_max)) != nside:
+                raise ValueError("seeing_fwhm_max does not match nside.")
+
         self.bandname = bandname
         self.m5_penalty_max = m5_penalty_max
         # If bandname not set, then we can't set m5_penalty_max.
@@ -552,7 +571,17 @@ class NObservationsCurrentSeason(BaseSurveyFeature):
 
         # Rule out the observations with seeing fwhmeff > limit
         if self.seeing_fwhm_max is not None:
-            check[np.where(observations_array["FWHMeff"] > self.seeing_fwhm_max)] = False
+            if np.size(self.seeing_fwhm_max) > 1:
+                check[
+                    np.where(
+                        IntRounded(observations_array["FWHMeff"])
+                        > IntRounded(self.seeing_fwhm_max[observations_hpid])
+                    )
+                ] = False
+            else:
+                check[
+                    np.where(IntRounded(observations_array["FWHMeff"]) > IntRounded(self.seeing_fwhm_max))
+                ] = False
 
         # Rule out observations which are not in the desired band
         if self.bandname is not None:
@@ -612,7 +641,14 @@ class NObservationsCurrentSeason(BaseSurveyFeature):
 
         # Check if seeing is good enough.
         if self.seeing_fwhm_max is not None:
-            check = observation["FWHMeff"] <= self.seeing_fwhm_max
+            if np.size(self.seeing_fwhm_max) > 1:
+                check_full = IntRounded(observation["FWHMeff"]) <= IntRounded(
+                    self.seeing_fwhm_max[this_season_indx]
+                )
+                check = np.any(check_full)
+                this_season_indx = this_season_indx[check]
+            else:
+                check = IntRounded(observation["FWHMeff"]) <= IntRounded(self.seeing_fwhm_max)
         else:
             check = True
 
