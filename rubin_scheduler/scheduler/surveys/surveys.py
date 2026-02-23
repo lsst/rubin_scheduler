@@ -501,7 +501,7 @@ class BlobSurvey(GreedySurvey):
             observations["nexp"] = self.nexp_dict[self.bandname1]
         observations["exptime"] = self.exptime
         # Tag with the block size we are going for
-        observations["scheduler_note"] = self.scheduler_note + '_bs_%i' % self.nvisit_block
+        observations["scheduler_note"] = self.scheduler_note + ', bs_%i' % self.nvisit_block
         observations["flush_by_mjd"] = flush_time
 
         return observations
