@@ -1377,14 +1377,14 @@ class AvoidDirectWind(BaseBasisFunction):
         self.wind_speed_minimum = wind_speed_minimum
 
     def _calc_value(self, conditions, indx=None):
+        reward_map = np.zeros(hp.nside2npix(self.nside))
+
         if (
             conditions.wind_speed is None
             or conditions.wind_direction is None
             or conditions.wind_speed < self.wind_speed_minimum
         ):
-            return 0
-
-        reward_map = np.zeros(hp.nside2npix(self.nside))
+            return reward_map
 
         wind_pressure = conditions.wind_speed * np.cos(conditions.az - conditions.wind_direction)
 
