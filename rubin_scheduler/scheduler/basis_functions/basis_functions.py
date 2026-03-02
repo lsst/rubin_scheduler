@@ -1360,17 +1360,17 @@ class AvoidDirectWind(BaseBasisFunction):
 
     Parameters
     ----------
-    wind_speed_minimum : `float`, optional
-        If wind speed lower, do not bother constructing a full
-        reward map and return 0. (m/s)
     wind_speed_maximum : `float`, optional
         Wind speed to mark regions as unobservable (in m/s).
     nside : `int`, optional
         The nside for the basis function. Default None uses
         `set_default_nside()`.
+    wind_speed_minimum : `float`, optional
+        If wind speed lower, do not bother constructing a full
+        reward map and return 0. (m/s)
     """
 
-    def __init__(self, wind_speed_minimum=0.0, wind_speed_maximum=20.0, nside=DEFAULT_NSIDE):
+    def __init__(self, wind_speed_maximum=20.0, nside=DEFAULT_NSIDE, wind_speed_minimum=0.0):
         super().__init__(nside=nside)
 
         self.wind_speed_maximum = wind_speed_maximum
