@@ -1366,15 +1366,20 @@ class AvoidDirectWind(BaseBasisFunction):
         `set_default_nside()`.
     """
 
-    def __init__(self, wind_speed_maximum=20.0, nside=DEFAULT_NSIDE):
+    def __init__(self, wind_speed_minimum=0.0, wind_speed_maximum=20.0, nside=DEFAULT_NSIDE):
         super().__init__(nside=nside)
 
         self.wind_speed_maximum = wind_speed_maximum
+        self.wind_speed_minimum = wind_speed_minimum
 
     def _calc_value(self, conditions, indx=None):
         reward_map = np.zeros(hp.nside2npix(self.nside))
 
-        if conditions.wind_speed is None or conditions.wind_direction is None:
+        if (
+            conditions.wind_speed is None
+            or conditions.wind_direction is None
+            or conditions.wind_speed < conditions.wind_speed_minimum
+        ):
             return reward_map
 
         wind_pressure = conditions.wind_speed * np.cos(conditions.az - conditions.wind_direction)
