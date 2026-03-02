@@ -1373,6 +1373,12 @@ class AvoidDirectWind(BaseBasisFunction):
     def __init__(self, wind_speed_maximum=20.0, nside=DEFAULT_NSIDE, wind_speed_minimum=0.0):
         super().__init__(nside=nside)
 
+        if wind_speed_maximum < wind_speed_minimum:
+            raise ValueError(
+                "wind_speed_maximum of %f m/s is less than wind_speed_minimum value of %f m/s."
+                % (wind_speed_maximum, wind_speed_minimum)
+            )
+
         self.wind_speed_maximum = wind_speed_maximum
         self.wind_speed_minimum = wind_speed_minimum
 
