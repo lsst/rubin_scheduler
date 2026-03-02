@@ -1355,10 +1355,14 @@ class VisitGap(BaseBasisFunction):
 
 
 class AvoidDirectWind(BaseBasisFunction):
-    """Mask the sky where the wind pressure exceeds `wind_speed_maximum`.
+    """Mask the sky where the wind pressure exceeds `wind_speed_maximum` and
+       weight regions where wind pressure is low.
 
     Parameters
     ----------
+    wind_speed_minimum : `float`, optional
+        If wind speed lower, do not bother constructing a full
+        reward map and return 0. (m/s)
     wind_speed_maximum : `float`, optional
         Wind speed to mark regions as unobservable (in m/s).
     nside : `int`, optional
@@ -1373,14 +1377,14 @@ class AvoidDirectWind(BaseBasisFunction):
         self.wind_speed_minimum = wind_speed_minimum
 
     def _calc_value(self, conditions, indx=None):
-        reward_map = np.zeros(hp.nside2npix(self.nside))
-
         if (
             conditions.wind_speed is None
             or conditions.wind_direction is None
-            or conditions.wind_speed < conditions.wind_speed_minimum
+            or conditions.wind_speed < self.wind_speed_minimum
         ):
-            return reward_map
+            return 0
+
+        reward_map = np.zeros(hp.nside2npix(self.nside))
 
         wind_pressure = conditions.wind_speed * np.cos(conditions.az - conditions.wind_direction)
 
