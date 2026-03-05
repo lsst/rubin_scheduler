@@ -111,7 +111,7 @@ class LongGapSurvey(BaseSurvey):
         # in most recent night.
         # note, np.where doesn't support using scalars
         if np.size(observations) == 1:
-            if (observations["scheduler_note"] == self.blob_survey.scheduler_note + ", b") & (
+            if (self.blob_survey.scheduler_note + ", b" in observations["scheduler_note"][0]) & (
                 observations["night"] == np.max(observations["night"])
             ):
                 need_to_observe = np.array([0])
@@ -119,7 +119,11 @@ class LongGapSurvey(BaseSurvey):
                 need_to_observe = np.array([])
         else:
             need_to_observe = np.where(
-                (observations["scheduler_note"] == self.blob_survey.scheduler_note + ", b")
+                (
+                    np.strings.startswith(
+                        observations["scheduler_note"], self.blob_survey.scheduler_note + ", b"
+                    )
+                )
                 & (observations["night"] == np.max(observations["night"]))
             )[0]
 

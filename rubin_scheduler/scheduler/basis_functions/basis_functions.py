@@ -334,7 +334,7 @@ class NObsPerYearBasisFunction(BaseBasisFunction):
         nside=DEFAULT_NSIDE,
         footprint=None,
         n_obs=3,
-        season=300.,
+        season=300.0,
         season_start_hour=-4.0,
         season_end_hour=2.0,
         night_max=365,

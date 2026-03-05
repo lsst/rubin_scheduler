@@ -284,6 +284,51 @@ class TestSurveys(unittest.TestCase):
         df = survey.make_reward_df(conditions)
         assert len(df) == len(survey.weights)
 
+    def test_long_gap(self):
+        scripted = surveys.ScriptedSurvey(
+            [],
+            nside=DEFAULT_NSIDE,
+            ignore_obs=["blob", "DDF", "twi", "pair", "templates", "ToO"],
+            science_program="test_program",
+            detailers=[detailers.LabelRegionsAndDDFs()],
+        )
+
+        bfs = []
+        bfs.append(basis_functions.M5DiffBasisFunction(bandname="r", nside=DEFAULT_NSIDE))
+        bfs.append(basis_functions.SlewtimeBasisFunction(bandname="r", nside=DEFAULT_NSIDE))
+
+        weights = [1.0, 1.0]
+
+        blob = surveys.BlobSurvey(
+            bfs,
+            weights,
+            bandname1="r",
+            bandname2="r",
+            exptime=30,
+            ideal_pair_time=42,
+            detailers=[detailers.TakeAsPairsDetailer(bandname="r")],
+        )
+
+        lgs = surveys.LongGapSurvey(blob, scripted, gap_range=[2 - 7], avoid_zenith=True)
+
+        observatory = ModelObservatory()
+        conditions = observatory.return_conditions()
+
+        reward = lgs.calc_reward_function(conditions)
+        obs = lgs.generate_observations(conditions)
+
+        # Pretend something got observed
+        obs[-1]["night"] = 3
+        obs[-1]["mjd"] = 222
+
+        # Cut this way to make sure stays ObsArray object
+        obs = obs[-2:-1]
+
+        # Should trigger
+        lgs.add_observation(obs)
+
+        assert np.size(lgs.scripted_survey.obs_wanted) > 0
+
     def test_roi(self):
         random_seed = 6563
         infeasible_hpix = 123
