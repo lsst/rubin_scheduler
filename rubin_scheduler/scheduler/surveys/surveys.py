@@ -160,6 +160,10 @@ class BlobSurvey(GreedySurvey):
         the reward function. (degrees) Note that traveling salesman
         solver can have rare failures if this is set too large (probably
         issue with projection effects or something).
+    observation_reason : `str`
+        String added to observation_reason field. Default value of
+        'generate_obs_reason' will result in auto-generated string
+        like 'pairs{bandname1}{bnadname2}_{ideal_pair_time}'.
 
     Notes
     -----
@@ -204,7 +208,7 @@ class BlobSurvey(GreedySurvey):
         alt_max=-9999,
         az_range=-9999,
         target_name=None,
-        observation_reason=None,
+        observation_reason="generate_obs_reason",
         science_program=None,
         filtername1=None,
         filtername2=None,
@@ -241,7 +245,7 @@ class BlobSurvey(GreedySurvey):
         else:
             self.survey_name = survey_name
 
-        if observation_reason is None:
+        if observation_reason == "generate_obs_reason":
             b2 = self.bandname2 if self.bandname2 is not None else ""
             observation_reason = f"pairs_{self.bandname1}{b2}_{self.ideal_pair_time}"
 
