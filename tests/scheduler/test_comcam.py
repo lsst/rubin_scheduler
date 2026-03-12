@@ -7,7 +7,7 @@ import rubin_scheduler.scheduler.basis_functions as bf
 import rubin_scheduler.scheduler.detailers as dets
 from rubin_scheduler.scheduler import sim_runner
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
-from rubin_scheduler.scheduler.schedulers import CoreScheduler, BaseQueueManager
+from rubin_scheduler.scheduler.schedulers import BaseQueueManager, CoreScheduler
 from rubin_scheduler.scheduler.surveys import BlobSurvey
 from rubin_scheduler.scheduler.utils import Footprint
 

@@ -38,7 +38,7 @@ class BaseQueueManager:
                 "No detailers provided, adding RotspUpdateDetailer "
                 "that will update rotSkyPos values that result in an "
                 "invalid rotTelPos value. Set kwarg detailers=[] "
-                "if you truely want no detialers applied."
+                "if you truely want no detailers applied."
             )
             warnings.warn(msg)
             self.detailers.append(dets.RotspUpdateDetailer())

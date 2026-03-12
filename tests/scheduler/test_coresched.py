@@ -5,10 +5,11 @@ import numpy as np
 import pandas as pd
 
 import rubin_scheduler.scheduler.basis_functions as basis_functions
+import rubin_scheduler.scheduler.detailers as dets
 import rubin_scheduler.scheduler.surveys as surveys
 from rubin_scheduler.scheduler.example import simple_greedy_survey
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
-from rubin_scheduler.scheduler.schedulers import CoreScheduler
+from rubin_scheduler.scheduler.schedulers import BaseQueueManager, CoreScheduler
 from rubin_scheduler.scheduler.utils import ObservationArray
 
 
@@ -17,7 +18,8 @@ class TestCoreSched(unittest.TestCase):
         # Just set up a very simple survey, one band
         survey = simple_greedy_survey(bandname="r")
 
-        scheduler = CoreScheduler([survey])
+        qm = BaseQueueManager(detailers=[dets.RotspUpdateDetailer()])
+        scheduler = CoreScheduler([survey], queue_manager=qm)
 
         observatory = ModelObservatory()
 
@@ -68,7 +70,8 @@ class TestCoreSched(unittest.TestCase):
         surveys[0].basis_functions.append(new_basis_function)
         surveys[0].basis_weights.append(1)
 
-        scheduler = CoreScheduler(surveys, keep_rewards=True)
+        qm = BaseQueueManager(detailers=[dets.RotspUpdateDetailer()])
+        scheduler = CoreScheduler(surveys, keep_rewards=True, queue_manager=qm)
         observatory = ModelObservatory()
         scheduler.update_conditions(observatory.return_conditions())
 
@@ -85,7 +88,8 @@ class TestCoreSched(unittest.TestCase):
 
         bfs = [basis_functions.ForceDelayBasisFunction(days_delay=3.0, scheduler_note="survey")]
         survey = surveys.GreedySurvey(bfs, [0.0])
-        scheduler = CoreScheduler([survey])
+        qm = BaseQueueManager(detailers=[dets.RotspUpdateDetailer()])
+        scheduler = CoreScheduler([survey], queue_manager=qm)
 
         obs = ObservationArray()
         obs["scheduler_note"] = "survey"
@@ -101,7 +105,8 @@ class TestCoreSched(unittest.TestCase):
 
         bfs = [basis_functions.ForceDelayBasisFunction(days_delay=3.0, scheduler_note="survey")]
         survey = surveys.GreedySurvey(bfs, [0.0])
-        scheduler = CoreScheduler([survey])
+        qm = BaseQueueManager(detailers=[dets.RotspUpdateDetailer()])
+        scheduler = CoreScheduler([survey], queue_manager=qm)
 
         # Again, but now add just the row rather than full array
         scheduler.add_observation(obs[0])

@@ -45,3 +45,7 @@ class TestSnapshots(unittest.TestCase):
                 scheduler_snapshot, conditions_snapshot = pickle.load(pio)
             assert isinstance(scheduler_snapshot, CoreScheduler)
             assert isinstance(conditions_snapshot, Conditions)
+
+
+if __name__ == "__main__":
+    unittest.main()

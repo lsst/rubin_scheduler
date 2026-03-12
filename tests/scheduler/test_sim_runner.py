@@ -3,10 +3,11 @@ import unittest
 
 import numpy as np
 
+import rubin_scheduler.scheduler.detailers as dets
 import rubin_scheduler.utils as utils
 from rubin_scheduler.scheduler import sim_runner
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
-from rubin_scheduler.scheduler.schedulers import CoreScheduler
+from rubin_scheduler.scheduler.schedulers import BaseQueueManager, CoreScheduler
 from rubin_scheduler.scheduler.surveys import BaseSurvey
 
 
@@ -25,7 +26,8 @@ class TestSimRunner(unittest.TestCase):
         nside = 32
         survey_length = 1.5  # days
 
-        scheduler = CoreScheduler([NoObsSurvey([], detailers=[])])
+        qm = BaseQueueManager(detailers=[dets.RotspUpdateDetailer()])
+        scheduler = CoreScheduler([NoObsSurvey([], detailers=[])], queue_manager=qm)
         observatory = ModelObservatory(nside=nside, mjd_start=mjd_start)
         # Turn off noisy log warnings
         logging.disable(logging.CRITICAL)
