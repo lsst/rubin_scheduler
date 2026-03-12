@@ -4,9 +4,10 @@ import healpy as hp
 import numpy as np
 
 import rubin_scheduler.scheduler.basis_functions as bf
+import rubin_scheduler.scheduler.detailers as dets
 from rubin_scheduler.scheduler import sim_runner
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
-from rubin_scheduler.scheduler.schedulers import CoreScheduler
+from rubin_scheduler.scheduler.schedulers import CoreScheduler, BaseQueueManager
 from rubin_scheduler.scheduler.surveys import BlobSurvey
 from rubin_scheduler.scheduler.utils import Footprint
 
@@ -36,7 +37,7 @@ class TestComCam(unittest.TestCase):
         footprint_weight = 1.0
         m5_weight = 0.0
 
-        detailers = []
+        detailers = [dets.ZeroRotDetailer()]
 
         red_fp_basis = bf.FootprintBasisFunction(bandname="r", footprint=fp, nside=nside)
         m5_basis_r = bf.M5DiffBasisFunction(bandname="r", nside=nside)
@@ -49,7 +50,7 @@ class TestComCam(unittest.TestCase):
             camera="comcam",
             grow_blob=False,
             detailers=detailers,
-            dither=False,
+            dither="night",
             twilight_scale=False,
         )
 
@@ -64,11 +65,11 @@ class TestComCam(unittest.TestCase):
             camera="comcam",
             grow_blob=False,
             detailers=detailers,
-            dither=False,
+            dither="night",
             twilight_scale=False,
         )
-
-        scheduler = CoreScheduler([red_survey, blue_survey], nside=nside, camera="comcam")
+        qm = BaseQueueManager(detailers=[dets.RotspUpdateDetailer()])
+        scheduler = CoreScheduler([red_survey, blue_survey], nside=nside, camera="comcam", queue_manager=qm)
 
         mo, scheduler, observations = sim_runner(mo, scheduler, sim_duration=0.5, verbose=True)
 
