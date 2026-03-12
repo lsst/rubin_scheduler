@@ -7,10 +7,11 @@ import pandas as pd
 
 import rubin_scheduler.scheduler.basis_functions as basis_functions
 import rubin_scheduler.scheduler.detailers as detailers
+import rubin_scheduler.scheduler.detailers as dets
 import rubin_scheduler.scheduler.surveys as surveys
 from rubin_scheduler.scheduler.basis_functions import SimpleArrayBasisFunction
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
-from rubin_scheduler.scheduler.schedulers import CoreScheduler
+from rubin_scheduler.scheduler.schedulers import BaseQueueManager, CoreScheduler
 from rubin_scheduler.scheduler.utils import HpInLsstFov, ObservationArray, ScheduledObservationArray
 from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD
 
@@ -235,7 +236,8 @@ class TestSurveys(unittest.TestCase):
         survey = surveys.ScriptedSurvey([])
         observations["scheduler_note"] = ["a", "a", "c", "d", "a"]
         survey.set_script(observations)
-        sched = CoreScheduler([survey])
+        qm = BaseQueueManager(detailers=[dets.RotspUpdateDetailer()])
+        sched = CoreScheduler([survey], queue_manager=qm)
         # Add full array at once
         sched.add_observations_array(completed_observations)
         assert np.sum(survey.obs_wanted["observed"]) == 3

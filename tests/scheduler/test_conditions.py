@@ -67,7 +67,6 @@ class TestConditions(unittest.TestCase):
         # Test that conditions.night is set as expected
         current_mjd = 60914.73382326572
         conditions.mjd = current_mjd
-        print(conditions.mjd, conditions.night)
         expected_night = np.floor(current_mjd - 0.5) - np.floor(SURVEY_START_MJD - 0.5)
         self.assertEqual(expected_night, conditions.night)
         # Test that warning is raised if you try to set night directly
