@@ -3,6 +3,7 @@ import unittest
 import numpy as np
 from astropy.time import Time
 
+import rubin_scheduler.scheduler.detailers as dets
 from rubin_scheduler.scheduler import sim_runner
 from rubin_scheduler.scheduler.example import (
     get_ideal_model_observatory,
@@ -11,7 +12,7 @@ from rubin_scheduler.scheduler.example import (
     simple_pairs_survey,
     update_model_observatory_sunset,
 )
-from rubin_scheduler.scheduler.schedulers import ComCamBandSched, CoreScheduler
+from rubin_scheduler.scheduler.schedulers import BaseQueueManager, ComCamBandSched, CoreScheduler
 from rubin_scheduler.utils import SURVEY_START_MJD
 
 
@@ -49,7 +50,8 @@ class TestSurveyConveniences(unittest.TestCase):
         # Just test that it still instantiates and provides observations.
         observatory = get_ideal_model_observatory(dayobs=self.day_obs_start, survey_start=self.survey_start)
         greedy = [simple_greedy_survey(bandname="r")]
-        scheduler = CoreScheduler(greedy)
+        qm = BaseQueueManager(detailers=[dets.RotspUpdateDetailer()])
+        scheduler = CoreScheduler(greedy, queue_manager=qm)
         observatory, scheduler, observations = sim_runner(
             observatory, scheduler, band_scheduler=None, sim_duration=0.7
         )
@@ -75,7 +77,8 @@ class TestSurveyConveniences(unittest.TestCase):
         # Just test that it still instantiates and provides observations.
         observatory = get_ideal_model_observatory(dayobs=self.day_obs_start, survey_start=self.survey_start)
         pairs = [simple_pairs_survey(bandname="r", bandname2="i")]
-        scheduler = CoreScheduler(pairs)
+        qm = BaseQueueManager(detailers=[dets.RotspUpdateDetailer()])
+        scheduler = CoreScheduler(pairs, queue_manager=qm)
         observatory, scheduler, observations = sim_runner(
             observatory, scheduler, band_scheduler=None, sim_duration=0.7
         )
@@ -112,7 +115,8 @@ class TestSurveyConveniences(unittest.TestCase):
         # Add a greedy survey backup because of the visit gap requirement in
         # the default field survey
         greedy = [simple_greedy_survey(bandname="r")]
-        scheduler = CoreScheduler([field, greedy])
+        qm = BaseQueueManager(detailers=[dets.RotspUpdateDetailer()])
+        scheduler = CoreScheduler([field, greedy], queue_manager=qm)
         observatory, scheduler, observations = sim_runner(
             observatory, scheduler, band_scheduler=None, sim_duration=0.7
         )

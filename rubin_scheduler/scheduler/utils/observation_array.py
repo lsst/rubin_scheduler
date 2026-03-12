@@ -103,13 +103,11 @@ class ObservationArray(np.ndarray):
     Notes
     -----
 
-    On the camera rotator angle. Order of priority goes:
-    rotTelPos > rotSkyPos > rotSkyPos_desired > rotTelPos_backup
-    where if rotTelPos is NaN, it checks rotSkyPos. If rotSkyPos is set,
-    but not at an accessible rotTelPos, the observation will fail.
-    If rotSkyPos is NaN, then rotSkyPos_desired is used. If
-    rotSkyPos_desired is at an inaccessbile rotTelPos, the observation
-    does not fail, but falls back to the value in rotTelPos_backup.
+    On the camera rotator angle: We expect rotSkyPos to be what is
+    used by the model and real observatory. If both rotSkyPos and
+    rotTelPos are set, then there should be a warning that only
+    rotSkyPos is being used.
+
 
     Lots of additional fields that get filled in by the model observatory
     when the observation is completed.
