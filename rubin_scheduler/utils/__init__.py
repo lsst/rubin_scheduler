@@ -4,6 +4,7 @@ from .binned_stats import *
 from .camera_footprint import *
 from .constants import *
 from .coordinate_transformations import *
+from .dayobs import *
 from .ddf_locations import *
 from .file_maps import *
 from .get_package_dir import *
