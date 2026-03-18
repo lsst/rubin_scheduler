@@ -1,8 +1,11 @@
 __all__ = ("BaseQueueManager",)
 
+import warnings
+
 import healpy as hp
 import numpy as np
 
+import rubin_scheduler.scheduler.detailers as dets
 from rubin_scheduler.scheduler.utils import IntRounded, ObservationArray
 
 
@@ -32,6 +35,14 @@ class BaseQueueManager:
     def __init__(self, detailers=None, basis_functions=None):
         if detailers is None:
             self.detailers = []
+            msg = (
+                "No detailers provided, adding RotspUpdateDetailer "
+                "that will update rotSkyPos values that result in an "
+                "invalid rotTelPos value. Set kwarg detailers=[] "
+                "if you truely want no detailers applied."
+            )
+            warnings.warn(msg)
+            self.detailers.append(dets.RotspUpdateDetailer())
         else:
             self.detailers = detailers
         if basis_functions is None:

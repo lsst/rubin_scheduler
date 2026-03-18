@@ -5,7 +5,6 @@ __all__ = (
     "BandSubstituteDetailer",
     "ChunkByHADetailer",
     "Comcam90rotDetailer",
-    "Rottep2RotspDesiredDetailer",
     "CloseAltDetailer",
     "TakeAsPairsDetailer",
     "TwilightTripleDetailer",
@@ -659,34 +658,6 @@ class ParallacticRotationDetailer(BaseDetailer):
         observation_array["rotTelPos"] = resulting_rot_tel_pos
 
         return observation_array
-
-
-class Rottep2RotspDesiredDetailer(BaseDetailer):
-    """Convert all the rotTelPos values to rotSkyPos_desired"""
-
-    def __init__(self, telescope="rubin"):
-        warnings.warn("Deprecated no longer using rotSkyPos_desired and rotTelPos_backup", FutureWarning)
-        self.rc = rotation_converter(telescope=telescope)
-        self.survey_features = {}
-
-    def __call__(self, obs_array, conditions):
-        alt, az = _approx_ra_dec2_alt_az(
-            obs_array["RA"],
-            obs_array["dec"],
-            conditions.site.latitude_rad,
-            conditions.site.longitude_rad,
-            conditions.mjd,
-        )
-        obs_pa = _approx_altaz2pa(alt, az, conditions.site.latitude_rad)
-
-        rot_sky_pos_desired = self.rc._rotskypos2rottelpos(obs_array["rotTelPos"], obs_pa)
-
-        obs_array["rotTelPos_backup"] = obs_array["rotTelPos"] + 0
-        obs_array["rotTelPos"] = np.nan
-        obs_array["rotSkyPos"] = np.nan
-        obs_array["rotSkyPos_desired"] = rot_sky_pos_desired
-
-        return obs_array
 
 
 class ZeroRotDetailer(BaseDetailer):

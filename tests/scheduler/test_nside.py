@@ -3,13 +3,14 @@ import unittest
 
 import numpy as np
 
+import rubin_scheduler.scheduler.detailers as dets
 import rubin_scheduler.utils as utils
 from rubin_scheduler.data import get_data_dir
 from rubin_scheduler.scheduler import sim_runner
 from rubin_scheduler.scheduler.basis_functions import SunAltLimitBasisFunction
 from rubin_scheduler.scheduler.example import simple_greedy_survey, simple_pairs_survey
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
-from rubin_scheduler.scheduler.schedulers import CoreScheduler
+from rubin_scheduler.scheduler.schedulers import BaseQueueManager, CoreScheduler
 
 SAMPLE_BIG_DATA_FILE = os.path.join(get_data_dir(), "scheduler/dust_maps/dust_nside_32.npz")
 
@@ -43,7 +44,8 @@ class TestNside(unittest.TestCase):
             simple_greedy_survey(bandname="z", nside=nside),
         ]
 
-        scheduler = CoreScheduler([pairs_surveys, greedy_surveys], nside=nside)
+        qm = BaseQueueManager(detailers=[dets.RotspUpdateDetailer()])
+        scheduler = CoreScheduler([pairs_surveys, greedy_surveys], nside=nside, queue_manager=qm)
 
         observatory, scheduler, observations = sim_runner(
             observatory, scheduler, sim_duration=survey_length, filename=None
