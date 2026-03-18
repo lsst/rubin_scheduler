@@ -1355,7 +1355,8 @@ class VisitGap(BaseBasisFunction):
 
 
 class AvoidDirectWind(BaseBasisFunction):
-    """Mask the sky where the wind pressure exceeds `wind_speed_maximum`.
+    """Mask the sky where the wind pressure exceeds `wind_speed_maximum` and
+       weight regions where wind pressure is low.
 
     Parameters
     ----------
@@ -1364,17 +1365,31 @@ class AvoidDirectWind(BaseBasisFunction):
     nside : `int`, optional
         The nside for the basis function. Default None uses
         `set_default_nside()`.
+    wind_speed_minimum : `float`, optional
+        If wind speed lower, do not bother constructing a full
+        reward map and return 0. (m/s)
     """
 
-    def __init__(self, wind_speed_maximum=20.0, nside=DEFAULT_NSIDE):
+    def __init__(self, wind_speed_maximum=20.0, nside=DEFAULT_NSIDE, wind_speed_minimum=0.0):
         super().__init__(nside=nside)
 
+        if wind_speed_maximum < wind_speed_minimum:
+            raise ValueError(
+                "wind_speed_maximum of %f m/s is less than wind_speed_minimum value of %f m/s."
+                % (wind_speed_maximum, wind_speed_minimum)
+            )
+
         self.wind_speed_maximum = wind_speed_maximum
+        self.wind_speed_minimum = wind_speed_minimum
 
     def _calc_value(self, conditions, indx=None):
         reward_map = np.zeros(hp.nside2npix(self.nside))
 
-        if conditions.wind_speed is None or conditions.wind_direction is None:
+        if (
+            conditions.wind_speed is None
+            or conditions.wind_direction is None
+            or conditions.wind_speed < self.wind_speed_minimum
+        ):
             return reward_map
 
         wind_pressure = conditions.wind_speed * np.cos(conditions.az - conditions.wind_direction)
