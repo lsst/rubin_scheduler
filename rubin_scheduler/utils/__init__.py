@@ -12,6 +12,7 @@ from .healpy_utils import *
 from .htm_module import *
 from .m5_flat_sed import *
 from .parallel_utils import *
+from .plot_utils import *
 from .projections import *
 from .rotskypos import *
 from .sampling_functions import *
