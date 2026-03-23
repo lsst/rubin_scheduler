@@ -91,6 +91,29 @@ class TestSurveys(unittest.TestCase):
             )
             assert len(w) >= 1
 
+    def test_blobpairs(self):
+        """Test BlobPairs"""
+        nside = 32
+        bfs = []
+        bfs.append(basis_functions.M5DiffBasisFunction(nside=nside))
+
+        survey1 = surveys.BlobPairsSurvey(bfs, [1], bandname1="g", bandname2="r")
+        survey2 = surveys.BlobPairsSurvey(bfs, [1], bandname1="g", bandname2="g")
+
+        for survey, nb in zip([survey1, survey2], [2, 1]):
+            observatory = ModelObservatory()
+            conditions = observatory.return_conditions()
+
+            obs = survey.generate_observations(conditions)
+
+            # Tesselation should spin, so no repeat positions
+            for key in ["RA", "dec"]:
+                u_key = np.unique(obs[key])
+                assert np.size(u_key) == np.size(obs)
+
+            n_bands = np.size(np.unique(obs["band"]))
+            assert n_bands == nb
+
     def test_field_survey(self):
         nside = 32
 
