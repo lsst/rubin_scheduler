@@ -292,7 +292,7 @@ class NObservations(BaseSurveyFeature):
         The scheduler_note value to match.
         Deprecated in favor of scheduler_note, but provided for backward
         compatibility. Will be removed in the future.
-    seeing_limit : `float` or np.NDarray
+    seeing_limit : `float` or `np.NDarray`
         The limit to apply on accepting image quality.
     seeing_fill_value : `float`
         Value to use if observations have non-finite values for FWHMeff.
