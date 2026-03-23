@@ -1,4 +1,4 @@
-__all__ = ("GreedySurvey", "BlobSurvey")
+__all__ = ("GreedySurvey", "BlobSurvey", "BlobPairsSurvey")
 
 import warnings
 
@@ -506,5 +506,91 @@ class BlobSurvey(GreedySurvey):
         observations["exptime"] = self.exptime
         observations["scheduler_note"] = self.scheduler_note
         observations["flush_by_mjd"] = flush_time
+
+        return observations
+
+
+class BlobPairsSurvey(BlobSurvey):
+    """Handle taking pairs in the survey so dithering can be incorporated"""
+
+    def __init__(self, basis_functions, basis_weights, n_visits=2, dither="call", **kwargs):
+
+        super().__init__(basis_functions, basis_weights, dither=dither, **kwargs)
+        self.n_visits = n_visits
+
+    def generate_observations_rough(self, conditions):
+        """
+        Find a good block of observations.
+        """
+
+        super().generate_observations_rough(conditions)
+
+        # Mask off pixels that are far away from the maximum.
+        max_reward_indx = np.min(np.where(self.reward == np.nanmax(self.reward)))
+        distances = _angular_separation(
+            self.ra, self.dec, self.ra[max_reward_indx], self.dec[max_reward_indx]
+        )
+
+        self.reward[np.where(distances > self.max_radius_peak)] = np.nan
+
+        all_observations = []
+        bandname = self.bandname1
+        for i in range(self.n_visits):
+            if i == 1:
+                bandname = self.bandname2
+            elif i > 1:
+                warnings.warn("Setting more than 2 blobs, using bandname=%s" % self.bandname1)
+
+            if i != 0:
+                # This should spin tesselation if needed
+                super().generate_observations_rough(conditions)
+
+            if self.grow_blob:
+                # Note, returns highest first
+                ordered_hp = hp_grow_argsort(self.reward)
+                ordered_fields = self.hp2fields[ordered_hp]
+                orig_order = np.arange(ordered_fields.size)
+                # Remove duplicate field pointings
+                _u_of, u_indx = np.unique(ordered_fields, return_index=True)
+                new_order = np.argsort(orig_order[u_indx], kind="mergesort")
+                best_fields = ordered_fields[u_indx[new_order]]
+
+                if np.size(best_fields) < self.nvisit_block:
+                    # Let's fall back to the simple sort
+                    self.simple_order_sort()
+                else:
+                    self.best_fields = best_fields[0 : self.nvisit_block]
+            else:
+                self.simple_order_sort()
+
+            if len(self.best_fields) == 0:
+                # everything was nans, or self.nvisit_block was zero
+                return []
+
+            better_order = order_observations(
+                self.fields["RA"][self.best_fields], self.fields["dec"][self.best_fields]
+            )
+
+            # XXX-TODO: Could try to roll better_order to start at
+            # the nearest/fastest slew from current position.
+            flush_time = conditions.mjd + self.time_needed + self.flush_time
+
+            observations = ObservationArray(n=len(better_order))
+            fields = self.best_fields[better_order]
+
+            observations["RA"] = self.fields["RA"][fields]
+            observations["dec"] = self.fields["dec"][fields]
+            observations["rotSkyPos"] = 0.0
+            observations["band"] = bandname
+            if self.nexp_dict is None:
+                observations["nexp"] = self.nexp
+            else:
+                observations["nexp"] = self.nexp_dict[bandname]
+            observations["exptime"] = self.exptime
+            observations["scheduler_note"] = self.scheduler_note
+            observations["flush_by_mjd"] = flush_time
+
+            all_observations.append(observations)
+        observations = np.concatenate(all_observations)
 
         return observations
