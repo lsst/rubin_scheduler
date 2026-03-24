@@ -163,7 +163,7 @@ class BlobSurvey(GreedySurvey):
     observation_reason : `str`
         String added to observation_reason field. Default value of
         'generate_obs_reason' will result in auto-generated string
-        like 'pairs{bandname1}{bnadname2}_{ideal_pair_time}'.
+        like 'pairs_{bandname1}{bandname2}_{ideal_pair_time}'.
 
     Notes
     -----
@@ -247,7 +247,7 @@ class BlobSurvey(GreedySurvey):
 
         if observation_reason == "generate_obs_reason":
             b2 = self.bandname2 if self.bandname2 is not None else ""
-            observation_reason = f"pairs_{self.bandname1}{b2}_{self.ideal_pair_time}"
+            observation_reason = f"pairs_{self.bandname1}{b2}_{self.ideal_pair_time:0.1f}"
 
         super(BlobSurvey, self).__init__(
             basis_functions=basis_functions,

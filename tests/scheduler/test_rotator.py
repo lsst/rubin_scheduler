@@ -1,10 +1,11 @@
 import unittest
 
 import numpy as np
+
+from rubin_scheduler.scheduler.model_observatory import ModelObservatory
+from rubin_scheduler.scheduler.schedulers import BaseQueueManager, CoreScheduler
 from rubin_scheduler.scheduler.surveys import BaseSurvey
 from rubin_scheduler.scheduler.utils import ObservationArray
-from rubin_scheduler.scheduler.model_observatory import ModelObservatory
-from rubin_scheduler.scheduler.schedulers import CoreScheduler, BaseQueueManager
 from rubin_scheduler.utils import (
     _approx_altaz2pa,
     _approx_ra_dec2_alt_az,

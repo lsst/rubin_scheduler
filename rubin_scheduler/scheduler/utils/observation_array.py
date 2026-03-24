@@ -104,10 +104,9 @@ class ObservationArray(np.ndarray):
     -----
 
     On the camera rotator angle: We expect rotSkyPos to be what is
-    used by the model and real observatory. If both rotSkyPos and
-    rotTelPos are set, then there should be a warning that only
-    rotSkyPos is being used.
-
+    used by the model and real observatory. Default detailer in
+    the QueueManager will fill in rotSkyPos if only rotTelPos
+    is set.
 
     Lots of additional fields that get filled in by the model observatory
     when the observation is completed.
