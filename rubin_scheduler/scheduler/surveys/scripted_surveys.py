@@ -160,6 +160,7 @@ class ScriptedSurvey(BaseSurvey):
                 indx = np.where(
                     (self.obs_wanted["scheduler_note"] == observation["scheduler_note"][0])
                     & (self.obs_wanted["observed"] == False)
+                    & (self.obs_wanted["band"] == observation["band"])
                 )[0]
 
                 if np.size(indx) > 0:
