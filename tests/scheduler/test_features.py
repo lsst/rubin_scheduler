@@ -79,7 +79,6 @@ class TestFeatures(unittest.TestCase):
                 test_featureA.add_observation(obs, indx=indx)
             test_featureB = ff()
             test_featureB.add_observations_array(observations_array, observations_hpid)
-            print(test_featureA.__class__.__name__)
             if isinstance(test_featureA.feature, (float, int)):
                 self.assertTrue(test_featureA.feature == test_featureB.feature)
             elif isinstance(test_featureA.feature, ObservationArray):

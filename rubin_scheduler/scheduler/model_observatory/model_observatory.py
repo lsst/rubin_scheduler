@@ -677,9 +677,6 @@ class ModelObservatory:
         obs_pa = _approx_altaz2pa(alt, az, self.site.latitude_rad)
 
         if self.resolve_rotskypos:
-            if not np.isfinite(observation["rotSkyPos"]):
-                warnings.warn("No finite rotSkyPos value, using rotSkyPos_desired")
-                observation["rotSkyPos"] = observation["rotSkyPos_desired"]
             rottelpos = self.rc._rotskypos2rottelpos(observation["rotSkyPos"], obs_pa)
 
             if (rottelpos < rot_limit[0]) | (rottelpos > rot_limit[1]):
@@ -707,19 +704,11 @@ class ModelObservatory:
             # use it to compute rotSkyPos
             if np.isfinite(observation["rotTelPos"]):
                 observation["rotSkyPos"] = self.rc._rottelpos2rotskypos(observation["rotTelPos"], obs_pa)
-                observation["rotTelPos"] = np.nan
             else:
-                # Try to fall back to rotSkyPos_desired
-                possible_rot_tel_pos = self.rc._rotskypos2rottelpos(observation["rotSkyPos_desired"], obs_pa)
-                # If in range, use rotSkyPos_desired for rotSkyPos
-                if (possible_rot_tel_pos > rot_limit[0]) & (possible_rot_tel_pos < rot_limit[1]):
-                    observation["rotSkyPos"] = observation["rotSkyPos_desired"]
-                    observation["rotTelPos"] = np.nan
-                else:
-                    # Fall back to the backup rotation angle if needed.
-                    observation["rotSkyPos"] = np.nan
-                    observation["rotTelPos"] = observation["rotTelPos_backup"]
+                raise ValueError("No valid camera rotation set from rotSkyPos or rotTelPos.")
 
+        # Fill in the rotTelPos value
+        observation["rotTelPos"] = self.rc._rotskypos2rottelpos(observation["rotSkyPos"], obs_pa)
         return observation
 
     def observe(self, observation):
@@ -774,11 +763,10 @@ class ModelObservatory:
             self.mjd = self.mjd + slewtime / 24.0 / 3600.0
             # Reach into the observatory model to pull out the
             # relevant data it has calculated
-            # Not bothering to fetch alt,az,pa,rottelpos as those
+            # Not bothering to fetch alt,az,pa, as those
             # were computed before the slew was executed
             # so will be off by seconds to minutes. And they
             # shouldn't be needed by the scheduler.
-
             observation["rotSkyPos"] = self.observatory.current_rot_sky_pos_rad
             observation["cummTelAz"] = self.observatory.cumulative_azimuth_rad
 
