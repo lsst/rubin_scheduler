@@ -592,5 +592,10 @@ class BlobPairsSurvey(BlobSurvey):
 
             all_observations.append(observations)
         observations = np.concatenate(all_observations)
+        # Update note so order of visits tagged.
+        observations["scheduler_note"] = np.char.add(observations["scheduler_note"], ", ")
+        observations["scheduler_note"] = np.char.add(
+            observations["scheduler_note"], np.arange(observations.size).astype(str)
+        )
 
         return observations
