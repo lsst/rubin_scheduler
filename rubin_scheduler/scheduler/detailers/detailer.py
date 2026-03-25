@@ -122,7 +122,7 @@ class RotspUpdateDetailer(BaseDetailer):
     within rotator limits. If not within limits,
     use rotTelPos to calculate a new rotSkyPos value.
 
-    If no rotSkyPos set, use rotTelPos to set it.
+    If rotSkyPos is NaN, use rotTelPos to set it.
 
     Parameters
     ----------
@@ -150,20 +150,23 @@ class RotspUpdateDetailer(BaseDetailer):
         obs_pa = _approx_altaz2pa(alt, az, conditions.site.latitude_rad)
         # This is wrapped to -pi to pi
         rottelpos = self.rc._rotskypos2rottelpos(observation_array["rotSkyPos"], obs_pa)
+        # Check if any rotator values out of bounds or rotSkyPos unset (NaN)
         rot_too_far_indx = np.where(
             (rottelpos > self.rot_limits.max())
             | (rottelpos < self.rot_limits.min())
             | (~np.isfinite(observation_array["rotSkyPos"]))
         )[0]
 
+        # All rotSkyPos values valid, just return
+        # original array
         if np.size(rot_too_far_indx) == 0:
             return observation_array
 
-        new_rsp_vals = self.rc._rottelpos2rotskypos(
+        # Replace rotSkyPos values that are invalid
+        observation_array["rotSkyPos"][rot_too_far_indx] = self.rc._rottelpos2rotskypos(
             observation_array["rotTelPos"][rot_too_far_indx], obs_pa[rot_too_far_indx]
         )
 
-        observation_array["rotSkyPos"][rot_too_far_indx] = new_rsp_vals
         return observation_array
 
 
