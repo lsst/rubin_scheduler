@@ -8,6 +8,7 @@ __all__ = (
     "moc2array",
     "hp_grow_argsort",
     "_hp_grow_mask",
+    "match_hp_resolution",
 )
 
 import warnings
@@ -414,3 +415,26 @@ def _hp_grow_mask(nside, masked_indx_tuple, grow_size=np.radians(2.0), scale=100
     u_indx = np.unique(np.concatenate(lists_of_neighbors))
 
     return u_indx
+
+
+def match_hp_resolution(in_map, nside_out, unseen2nan=True):
+    """Utility to convert healpix map resolution if needed and
+    change hp.UNSEEN values to np.nan.
+
+    Parameters
+    ----------
+    in_map : np.array
+        A valie healpix map
+    nside_out : int
+        The desired resolution to convert in_map to
+    unseen2nan : bool (True)
+        If True, convert any hp.UNSEEN values to np.nan
+    """
+    current_nside = hp.npix2nside(np.size(in_map))
+    if current_nside != nside_out:
+        out_map = hp.ud_grade(in_map, nside_out=nside_out)
+    else:
+        out_map = in_map
+    if unseen2nan:
+        out_map[np.where(out_map == hp.UNSEEN)] = np.nan
+    return out_map

@@ -3,8 +3,7 @@ __all__ = ("CloudMap",)
 import healpy as hp
 import numpy as np
 
-from rubin_scheduler.scheduler.utils import match_hp_resolution
-from rubin_scheduler.utils import DEFAULT_NSIDE
+from rubin_scheduler.utils import DEFAULT_NSIDE, match_hp_resolution
 
 
 class CloudMap(object):
