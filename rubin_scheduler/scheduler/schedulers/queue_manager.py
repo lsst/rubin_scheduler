@@ -5,7 +5,7 @@ import warnings
 import healpy as hp
 import numpy as np
 
-import rubin_scheduler.scheduler.detailers as dets
+from rubin_scheduler.scheduler.detailers import RotspUpdateDetailer
 from rubin_scheduler.scheduler.utils import IntRounded, ObservationArray
 
 
@@ -39,10 +39,10 @@ class BaseQueueManager:
                 "No detailers provided, adding RotspUpdateDetailer "
                 "that will update rotSkyPos values that result in an "
                 "invalid rotTelPos value. Set kwarg detailers=[] "
-                "if you truely want no detailers applied."
+                "if you truly want no detailers applied."
             )
             warnings.warn(msg)
-            self.detailers.append(dets.RotspUpdateDetailer())
+            self.detailers.append(RotspUpdateDetailer())
         else:
             self.detailers = detailers
         if basis_functions is None:
