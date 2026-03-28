@@ -6,7 +6,6 @@ __all__ = (
     "HpInComcamFov",
     "HpInLsstFov",
     "hp_kd_tree",
-    "match_hp_resolution",
     "TargetoO",
     "SimTargetooServer",
     "restore_scheduler",
@@ -387,29 +386,6 @@ def gnomonic_project_tosky(x, y, r_acen, deccen):
     RA = r_acen + np.arctan2(x, denom)
     dec = np.arctan2(np.sin(deccen) + y * np.cos(deccen), np.sqrt(x * x + denom * denom))
     return RA, dec
-
-
-def match_hp_resolution(in_map, nside_out, unseen2nan=True):
-    """Utility to convert healpix map resolution if needed and
-    change hp.UNSEEN values to np.nan.
-
-    Parameters
-    ----------
-    in_map : np.array
-        A valie healpix map
-    nside_out : int
-        The desired resolution to convert in_map to
-    unseen2nan : bool (True)
-        If True, convert any hp.UNSEEN values to np.nan
-    """
-    current_nside = hp.npix2nside(np.size(in_map))
-    if current_nside != nside_out:
-        out_map = hp.ud_grade(in_map, nside_out=nside_out)
-    else:
-        out_map = in_map
-    if unseen2nan:
-        out_map[np.where(out_map == hp.UNSEEN)] = np.nan
-    return out_map
 
 
 def raster_sort(x0, order=["x", "y"], xbin=1.0):

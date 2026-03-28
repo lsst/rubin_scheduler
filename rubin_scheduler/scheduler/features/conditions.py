@@ -9,7 +9,7 @@ import healpy as hp
 import numpy as np
 import pandas as pd
 
-from rubin_scheduler.scheduler.utils import match_hp_resolution, smallest_signed_angle
+from rubin_scheduler.scheduler.utils import smallest_signed_angle
 from rubin_scheduler.utils import (
     DEFAULT_NSIDE,
     SURVEY_START_MJD,
@@ -20,6 +20,7 @@ from rubin_scheduler.utils import (
     _hpid2_ra_dec,
     calc_lmst,
     m5_flat_sed,
+    match_hp_resolution,
 )
 
 

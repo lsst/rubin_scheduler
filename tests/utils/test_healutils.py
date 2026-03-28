@@ -131,6 +131,27 @@ class TestHealUtils(unittest.TestCase):
         to_mask = utils._hp_grow_mask(nside, nan_indx, grow_size=0, scale=None)
         assert np.size(to_mask) == np.size(nan_indx)
 
+    def test_match_hp_resolution(self):
+        """Test up and downscaling of healpix resolution."""
+        nside_in = 64
+        nside_out = 32
+        in_map = np.arange(0, hp.nside2npix(nside_in), 1.0)
+        # Check that we rescale map appropriately
+        out_map = utils.match_hp_resolution(in_map, nside_out, unseen2nan=True)
+        assert np.size(out_map) == hp.nside2npix(nside_out)
+        assert np.size(out_map[np.where(out_map == hp.UNSEEN)]) == 0
+        in_map[::2] = hp.UNSEEN
+        # And that when the map includes unseen we rescale and replace
+        out_map = utils.match_hp_resolution(in_map, nside_out, unseen2nan=True)
+        assert np.size(np.isnan(out_map)) > 0
+        # Check that not scaling and not replacing unseen changes nothing
+        out_map = utils.match_hp_resolution(in_map, nside_in, unseen2nan=False)
+        assert np.all(in_map == out_map)
+        # Check that not scaling but replacing unseen changes appropriately
+        out_map = utils.match_hp_resolution(in_map, nside_in, unseen2nan=True)
+        assert np.all(in_map[1::2] == out_map[1::2])
+        assert np.all(np.isnan(out_map[::2]))
+
 
 if __name__ == "__main__":
     unittest.main()

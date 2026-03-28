@@ -33,8 +33,8 @@ import numpy as np
 
 from rubin_scheduler.scheduler import features
 from rubin_scheduler.scheduler.basis_functions import BaseBasisFunction
-from rubin_scheduler.scheduler.utils import IntRounded, match_hp_resolution
-from rubin_scheduler.utils import DEFAULT_NSIDE, _angular_separation, ra_dec2_hpid
+from rubin_scheduler.scheduler.utils import IntRounded
+from rubin_scheduler.utils import DEFAULT_NSIDE, _angular_separation, match_hp_resolution, ra_dec2_hpid
 
 
 def send_unused_deprecation_warning(name):
