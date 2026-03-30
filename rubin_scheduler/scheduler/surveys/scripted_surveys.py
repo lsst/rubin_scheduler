@@ -133,18 +133,15 @@ class ScriptedSurvey(BaseSurvey):
                 detailer.add_observations_array(observations_array, observations_hpid)
 
             if (self.obs_wanted is not None) & (np.size(self.obs_wanted) > 0):
-                full_note_in = np.char.add(
-                    observations_array_in["scheduler_note"], observations_array_in["band"]
-                )
-                full_note_queue = np.char.add(self.obs_wanted["scheduler_note"], self.obs_wanted["band"])
-
-                indx = np.isin(full_note_queue, full_note_in)
+                indx = np.isin(self.obs_wanted["scheduler_note"], observations_array_in["scheduler_note"])
 
                 self.obs_wanted["observed"][indx] = True
                 self.scheduled_obs = self.obs_wanted["mjd"][~self.obs_wanted["observed"]]
 
     def add_observation(self, observation, indx=None, **kwargs):
-        """Check if observation matches a scripted observation"""
+        """Check if observation matches a scripted observation.
+        Matching on scheduler_note field only. Subclass and update method
+        to use different matching logic."""
         if (self.obs_wanted is not None) & (np.size(self.obs_wanted) > 0):
             # From base class
             checks = [io not in str(observation["scheduler_note"]) for io in self.ignore_obs]
