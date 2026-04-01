@@ -14,6 +14,7 @@ __all__ = (
     "MaskAfterNObsBasisFunction",
     "MaskPoorSeeing",
     "MaskAfterNObsSeeingBasisFunction",
+    "MaskDirectWindBasisFunction",
 )
 
 import warnings
@@ -25,6 +26,35 @@ import rubin_scheduler.scheduler.features as features
 from rubin_scheduler.scheduler.basis_functions import BaseBasisFunction
 from rubin_scheduler.scheduler.utils import CurrentAreaMap, HpInLsstFov, IntRounded
 from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD, _angular_separation, _hp_grow_mask
+
+
+class MaskDirectWindBasisFunction(BaseBasisFunction):
+    """Mask area looking into the wind
+
+    Parameters
+    ----------
+    wind_speed_maximum : `float`, optional
+        Wind speed to mark regions as unobservable (in m/s).
+    nside : `int`, optional
+        The nside for the basis function. Default None uses
+        `set_default_nside()`.
+    """
+
+    def __init__(self, wind_speed_maximum=20.0, nside=DEFAULT_NSIDE):
+        super().__init__(nside=nside)
+
+        self.wind_speed_maximum = wind_speed_maximum
+
+    def _calc_value(self, conditions, indx=None):
+        reward_map = np.zeros(hp.nside2npix(self.nside))
+
+        if conditions.wind_speed is None or conditions.wind_direction is None:
+            return reward_map
+
+        mask = conditions.wind_pressure > self.wind_speed_maximum
+        reward_map[mask] = np.nan
+
+        return reward_map
 
 
 class MaskPoorSeeing(BaseBasisFunction):

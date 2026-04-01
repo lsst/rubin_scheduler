@@ -33,7 +33,6 @@ class TestBasis(unittest.TestCase):
             basis_functions.NearSunHighAirmassBasisFunction,
             basis_functions.EclipticBasisFunction,
             basis_functions.NGoodSeeingBasisFunction,
-            basis_functions.AvoidDirectWind,
             basis_functions.BandDistBasisFunction,
             basis_functions.RewardRisingBasisFunction,
             basis_functions.BandLoadedBasisFunction,
@@ -66,6 +65,8 @@ class TestBasis(unittest.TestCase):
             basis_functions.NInNightMaskBasisFunction,
             basis_functions.OnlyBeforeNightBasisFunction,
             basis_functions.MaskAfterNObsBasisFunction,
+            basis_functions.WindPressureBasisFunction,
+            basis_functions.MaskDirectWindBasisFunction,
         ]
 
         obs = ObservationArray()
@@ -493,6 +494,7 @@ class TestBasis(unittest.TestCase):
             basis_functions.StrictFilterBasisFunction,
             basis_functions.FilterChangeBasisFunction,
             basis_functions.FilterDistBasisFunction,
+            basis_functions.AvoidDirectWind,
         ]
         for dep_bf in deprecated_basis_functions:
             with warnings.catch_warnings(record=True) as w:

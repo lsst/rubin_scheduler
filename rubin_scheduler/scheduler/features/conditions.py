@@ -231,6 +231,8 @@ class Conditions:
             for each healpixel (radians)
         night : `int`
             The current night number (days).
+        wind_pressure : `np.ndarray`
+            The pressure from the wind.
 
         Attributes (set by the scheduler)
         -------------------------------
@@ -284,6 +286,7 @@ class Conditions:
 
         self.wind_speed = None
         self.wind_direction = None
+        self._wind_pressure = None
 
         # Upcoming scheduled observations
         self.scheduled_observations = np.array([], dtype=float)
@@ -543,6 +546,15 @@ class Conditions:
 
     def calc_solar_elongation(self):
         self._solar_elongation = _angular_separation(self.ra, self.dec, self.sun_ra, self.sun_dec)
+
+    @property
+    def wind_pressure(self):
+        if self._wind_pressure is None:
+            self.calc_wind_pressure()
+        return self._wind_pressure
+
+    def calc_wind_pressure(self):
+        self._wind_pressure = self.wind_speed * np.cos(self.az - self.wind_direction)
 
     @property
     def solar_elongation(self):
