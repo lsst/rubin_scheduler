@@ -536,6 +536,69 @@ class BlobSurvey(GreedySurvey):
 class BlobPairsSurvey(BlobSurvey):
     """Handle taking pairs in the survey so dithering can be incorporated"""
 
-    def __init__(self, basis_functions, basis_weights, n_visits=2, dither="call", **kwargs):
+    def __init__(
+        self,
+        basis_functions,
+        basis_weights,
+        n_visits=2,
+        dither="call",
+        additional_masks=None,
+        additional_areas=None,
+        **kwargs,
+    ):
         super().__init__(basis_functions, basis_weights, dither=dither, **kwargs)
         self.n_visits = n_visits
+        if additional_areas is not None:
+            self.additional_areas = np.array(additional_areas) * (np.pi / 180.0) ** 2  # To steradians
+        else:
+            self.additional_areas = None
+        if additional_masks is None:
+            self.additional_masks = []
+        else:
+            self.additional_masks = additional_masks
+
+    def _check_area(self, reward, area_required):
+        # Are there any valid reward pixels remaining
+        result = True
+        if np.sum(np.isfinite(reward)) > 0:
+            max_reward_indx = np.min(np.where(reward == np.nanmax(reward)))
+            distances = _angular_separation(
+                self.ra, self.dec, self.ra[max_reward_indx], self.dec[max_reward_indx]
+            )
+            valid_pix = np.where(np.logical_not(np.isnan(reward)) & (distances < self.max_radius_peak))[0]
+            if np.size(valid_pix) * self.pixarea < area_required:
+                result = False
+        else:
+            result = False
+        return result
+
+    def _check_feasibility(self, conditions):
+        """
+        Check if the survey is feasable in the current conditions
+
+        Extend to have multiple checks
+        """
+        for bf in self.basis_functions:
+            result = bf.check_feasibility(conditions)
+            if not result:
+                return result
+        # If we need to check that the reward function has enough
+        # area available
+        if self.area_required is not None:
+            reward = self.calc_reward_basic(conditions)
+            result = self._check_area(reward, self.area_required)
+
+        # We have enough area, go ahead and return
+        if result:
+            return result
+
+        # Check if we apply more masks, we meet other area constraints
+        if self.additional_areas is not None:
+            passed = []
+            reward = self.calc_reward_basic(conditions)
+            for area_required, bf in zip(self.additional_areas, self.additional_masks):
+                masked_reward = reward * bf(conditions)
+                passed.append(self._check_area(masked_reward, area_required))
+            result = np.any(passed)
+
+        return result
