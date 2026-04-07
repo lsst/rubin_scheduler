@@ -466,6 +466,7 @@ class BlobSurvey(GreedySurvey):
         self.reward[np.where(distances > self.max_radius_peak)] = np.nan
         all_observations = []
         bandname = self.bandname1
+        track_n_in_nvisit = []
         for i in range(self.n_visits):
             if i == 1:
                 bandname = self.bandname2
@@ -521,9 +522,15 @@ class BlobSurvey(GreedySurvey):
             observations["scheduler_note"] = self.scheduler_note
             observations["flush_by_mjd"] = flush_time
             all_observations.append(observations)
+            track_n_in_nvisit.append(np.arange(observations.size))
         observations = np.concatenate(all_observations)
 
         if self.n_visits > 1:
+            track_n_in_nvisit = np.concatenate(track_n_in_nvisit)
+            observations["scheduler_note"] = np.char.add(observations["scheduler_note"], ", ")
+            observations["scheduler_note"] = np.char.add(
+                observations["scheduler_note"], track_n_in_nvisit.astype(str)
+            )
             # Update scheduler_note so order of visits tagged.
             observations["scheduler_note"] = np.char.add(observations["scheduler_note"], ", ")
             observations["scheduler_note"] = np.char.add(
@@ -534,7 +541,27 @@ class BlobSurvey(GreedySurvey):
 
 
 class BlobPairsSurvey(BlobSurvey):
-    """Handle taking pairs in the survey so dithering can be incorporated"""
+    """Handle taking pairs in the survey so dithering can be incorporated
+
+    Parameters
+    ----------
+    all the usual BlobSurvey paramters
+
+    n_visits : `int`
+        The number of times to repeat the selected blob area.
+        Default 2.
+    dither : `str`
+        When should the sky tesselation be rotated. Default
+        of "call" changes tesselation on each pass of the blob.
+    additional_masks : `list`
+        List of additional rubin_scheduler.scheduler.basis_functions
+        to be applied.
+    additional_area_limits : `list`
+        List of floats of minimum area requierments to apply after
+        a mask from additional_masks is used on the reward function.
+        Default None, should be in square degrees.
+
+    """
 
     def __init__(
         self,
@@ -543,15 +570,17 @@ class BlobPairsSurvey(BlobSurvey):
         n_visits=2,
         dither="call",
         additional_masks=None,
-        additional_areas=None,
+        additional_area_limits=None,
         **kwargs,
     ):
         super().__init__(basis_functions, basis_weights, dither=dither, **kwargs)
         self.n_visits = n_visits
-        if additional_areas is not None:
-            self.additional_areas = np.array(additional_areas) * (np.pi / 180.0) ** 2  # To steradians
+        if additional_area_limits is not None:
+            self.additional_area_limits = (
+                np.array(additional_area_limits) * (np.pi / 180.0) ** 2
+            )  # To steradians
         else:
-            self.additional_areas = None
+            self.additional_area_limits = None
         if additional_masks is None:
             self.additional_masks = []
         else:
@@ -571,6 +600,24 @@ class BlobPairsSurvey(BlobSurvey):
         else:
             result = False
         return result
+
+    def calc_reward_function(self, conditions):
+        # Set the number of observations we are going to try and take
+        self._set_block_size(conditions)
+        #  Computing reward like usual with basis functions and weights
+        if self._check_feasibility(conditions):
+            self.reward = self.calc_reward_basic(conditions)
+            if self.smoothing_kernel is not None:
+                self.smooth_reward()
+        else:
+            self.reward_checked = True
+            self.reward = -np.inf
+            return self.reward
+
+        # Removing the self.max_radius_peak check here.
+
+        self.reward_checked = True
+        return self.reward
 
     def _check_feasibility(self, conditions):
         """
@@ -593,10 +640,10 @@ class BlobPairsSurvey(BlobSurvey):
             return result
 
         # Check if we apply more masks, we meet other area constraints
-        if self.additional_areas is not None:
+        if self.additional_area_limits is not None:
             passed = []
             reward = self.calc_reward_basic(conditions)
-            for area_required, bf in zip(self.additional_areas, self.additional_masks):
+            for area_required, bf in zip(self.additional_area_limits, self.additional_masks):
                 masked_reward = reward * bf(conditions)
                 passed.append(self._check_area(masked_reward, area_required))
             result = np.any(passed)
