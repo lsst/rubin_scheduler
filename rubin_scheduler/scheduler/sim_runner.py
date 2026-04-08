@@ -176,9 +176,7 @@ def sim_runner(
 
         if completed_obs is not None:
             if anomalous_overhead_func is not None:
-                observatory.mjd += (
-                    anomalous_overhead_func(obs=completed_obs) / 86400
-                )
+                observatory.mjd += anomalous_overhead_func(obs=completed_obs) / 86400
 
             scheduler.add_observation(completed_obs)
             observations[counter] = completed_obs[0]
