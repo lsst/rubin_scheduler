@@ -1,4 +1,4 @@
-__all__ = ("GreedySurvey", "BlobSurvey")
+__all__ = ("GreedySurvey", "BlobSurvey", "BlobPairsSurvey")
 
 import warnings
 
@@ -317,6 +317,9 @@ class BlobSurvey(GreedySurvey):
         if (self.bandname2 is None) | (self.bandname1 == self.bandname2):
             self.bandname = self.bandname1
 
+        # Value used by future subclasses
+        self.n_visits = 1
+
     def _generate_survey_name(self):
         self.survey_name = "Pairs"
         self.survey_name += f" {self.ideal_pair_time :.1f}"
@@ -461,50 +464,188 @@ class BlobSurvey(GreedySurvey):
         )
 
         self.reward[np.where(distances > self.max_radius_peak)] = np.nan
+        all_observations = []
+        bandname = self.bandname1
+        track_n_in_nvisit = []
+        for i in range(self.n_visits):
+            if i == 1:
+                bandname = self.bandname2
+            elif i > 1:
+                warnings.warn("Setting more than 2 blobs, using bandname=%s" % self.bandname1)
 
-        if self.grow_blob:
-            # Note, returns highest first
-            ordered_hp = hp_grow_argsort(self.reward)
-            ordered_fields = self.hp2fields[ordered_hp]
-            orig_order = np.arange(ordered_fields.size)
-            # Remove duplicate field pointings
-            _u_of, u_indx = np.unique(ordered_fields, return_index=True)
-            new_order = np.argsort(orig_order[u_indx], kind="mergesort")
-            best_fields = ordered_fields[u_indx[new_order]]
+            if i != 0:
+                # This should spin tesselation if needed
+                super().generate_observations_rough(conditions)
 
-            if np.size(best_fields) < self.nvisit_block:
-                # Let's fall back to the simple sort
-                self.simple_order_sort()
+            if self.grow_blob:
+                # Note, returns highest first
+                ordered_hp = hp_grow_argsort(self.reward)
+                ordered_fields = self.hp2fields[ordered_hp]
+                orig_order = np.arange(ordered_fields.size)
+                # Remove duplicate field pointings
+                _u_of, u_indx = np.unique(ordered_fields, return_index=True)
+                new_order = np.argsort(orig_order[u_indx], kind="mergesort")
+                best_fields = ordered_fields[u_indx[new_order]]
+
+                if np.size(best_fields) < self.nvisit_block:
+                    # Let's fall back to the simple sort
+                    self.simple_order_sort()
+                else:
+                    self.best_fields = best_fields[0 : self.nvisit_block]
             else:
-                self.best_fields = best_fields[0 : self.nvisit_block]
-        else:
-            self.simple_order_sort()
+                self.simple_order_sort()
 
-        if len(self.best_fields) == 0:
-            # everything was nans, or self.nvisit_block was zero
-            return []
+            if len(self.best_fields) == 0:
+                # everything was nans, or self.nvisit_block was zero
+                return []
 
-        better_order = order_observations(
-            self.fields["RA"][self.best_fields], self.fields["dec"][self.best_fields]
-        )
+            better_order = order_observations(
+                self.fields["RA"][self.best_fields], self.fields["dec"][self.best_fields]
+            )
 
-        # XXX-TODO: Could try to roll better_order to start at
-        # the nearest/fastest slew from current position.
-        flush_time = conditions.mjd + self.time_needed + self.flush_time
+            # XXX-TODO: Could try to roll better_order to start at
+            # the nearest/fastest slew from current position.
+            flush_time = conditions.mjd + self.time_needed + self.flush_time
 
-        observations = ObservationArray(n=len(better_order))
-        fields = self.best_fields[better_order]
+            observations = ObservationArray(n=len(better_order))
+            fields = self.best_fields[better_order]
 
-        observations["RA"] = self.fields["RA"][fields]
-        observations["dec"] = self.fields["dec"][fields]
-        observations["rotSkyPos"] = 0.0
-        observations["band"] = self.bandname1
-        if self.nexp_dict is None:
-            observations["nexp"] = self.nexp
-        else:
-            observations["nexp"] = self.nexp_dict[self.bandname1]
-        observations["exptime"] = self.exptime
-        observations["scheduler_note"] = self.scheduler_note
-        observations["flush_by_mjd"] = flush_time
+            observations["RA"] = self.fields["RA"][fields]
+            observations["dec"] = self.fields["dec"][fields]
+            observations["rotSkyPos"] = 0.0
+            observations["band"] = bandname
+            if self.nexp_dict is None:
+                observations["nexp"] = self.nexp
+            else:
+                observations["nexp"] = self.nexp_dict[bandname]
+            observations["exptime"] = self.exptime
+            observations["scheduler_note"] = self.scheduler_note
+            observations["flush_by_mjd"] = flush_time
+            all_observations.append(observations)
+            track_n_in_nvisit.append(np.arange(observations.size))
+        observations = np.concatenate(all_observations)
+
+        if self.n_visits > 1:
+            track_n_in_nvisit = np.concatenate(track_n_in_nvisit)
+            observations["scheduler_note"] = np.char.add(observations["scheduler_note"], ", ")
+            observations["scheduler_note"] = np.char.add(
+                observations["scheduler_note"], track_n_in_nvisit.astype(str)
+            )
+            # Update scheduler_note so order of visits tagged.
+            observations["scheduler_note"] = np.char.add(observations["scheduler_note"], ", ")
+            observations["scheduler_note"] = np.char.add(
+                observations["scheduler_note"], np.arange(observations.size).astype(str)
+            )
 
         return observations
+
+
+class BlobPairsSurvey(BlobSurvey):
+    """Handle taking pairs in the survey so dithering can be incorporated
+
+    Parameters
+    ----------
+    all the usual BlobSurvey paramters
+
+    n_visits : `int`
+        The number of times to repeat the selected blob area.
+        Default 2.
+    dither : `str`
+        When should the sky tesselation be rotated. Default
+        of "call" changes tesselation on each pass of the blob.
+    additional_masks : `list`
+        List of additional rubin_scheduler.scheduler.basis_functions
+        to be applied.
+    additional_area_limits : `list`
+        List of floats of minimum area requierments to apply after
+        a mask from additional_masks is used on the reward function.
+        Default None, should be in square degrees.
+
+    """
+
+    def __init__(
+        self,
+        basis_functions,
+        basis_weights,
+        n_visits=2,
+        dither="call",
+        additional_masks=None,
+        additional_area_limits=None,
+        **kwargs,
+    ):
+        super().__init__(basis_functions, basis_weights, dither=dither, **kwargs)
+        self.n_visits = n_visits
+        if additional_area_limits is not None:
+            self.additional_area_limits = (
+                np.array(additional_area_limits) * (np.pi / 180.0) ** 2
+            )  # To steradians
+        else:
+            self.additional_area_limits = None
+        if additional_masks is None:
+            self.additional_masks = []
+        else:
+            self.additional_masks = additional_masks
+
+    def _check_area(self, reward, area_required):
+        # Are there any valid reward pixels remaining
+        result = True
+        if np.sum(np.isfinite(reward)) > 0:
+            max_reward_indx = np.min(np.where(reward == np.nanmax(reward)))
+            distances = _angular_separation(
+                self.ra, self.dec, self.ra[max_reward_indx], self.dec[max_reward_indx]
+            )
+            valid_pix = np.where(np.logical_not(np.isnan(reward)) & (distances < self.max_radius_peak))[0]
+            if np.size(valid_pix) * self.pixarea < area_required:
+                result = False
+        else:
+            result = False
+        return result
+
+    def calc_reward_function(self, conditions):
+        # Set the number of observations we are going to try and take
+        self._set_block_size(conditions)
+        #  Computing reward like usual with basis functions and weights
+        if self._check_feasibility(conditions):
+            self.reward = self.calc_reward_basic(conditions)
+            if self.smoothing_kernel is not None:
+                self.smooth_reward()
+        else:
+            self.reward_checked = True
+            self.reward = -np.inf
+            return self.reward
+
+        # Removing the self.max_radius_peak check here.
+
+        self.reward_checked = True
+        return self.reward
+
+    def _check_feasibility(self, conditions):
+        """
+        Check if the survey is feasable in the current conditions
+
+        Extend to have multiple checks
+        """
+        for bf in self.basis_functions:
+            result = bf.check_feasibility(conditions)
+            if not result:
+                return result
+        # If we need to check that the reward function has enough
+        # area available
+        if self.area_required is not None:
+            reward = self.calc_reward_basic(conditions)
+            result = self._check_area(reward, self.area_required)
+
+        # We have enough area, go ahead and return
+        if result:
+            return result
+
+        # Check if we apply more masks, we meet other area constraints
+        if self.additional_area_limits is not None:
+            passed = []
+            reward = self.calc_reward_basic(conditions)
+            for area_required, bf in zip(self.additional_area_limits, self.additional_masks):
+                masked_reward = reward * bf(conditions)
+                passed.append(self._check_area(masked_reward, area_required))
+            result = np.any(passed)
+
+        return result

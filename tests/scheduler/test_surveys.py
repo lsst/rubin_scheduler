@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 import rubin_scheduler.scheduler.basis_functions as basis_functions
+import rubin_scheduler.scheduler.basis_functions as bf
 import rubin_scheduler.scheduler.detailers as detailers
 import rubin_scheduler.scheduler.detailers as dets
 import rubin_scheduler.scheduler.surveys as surveys
@@ -91,6 +92,71 @@ class TestSurveys(unittest.TestCase):
                 bfs, detailers=detailer_list, survey_name="test", science_program=science_program
             )
             assert len(w) >= 1
+
+    def test_blobpairs(self):
+        """Test BlobPairs"""
+        nside = 32
+        bfs = []
+        bfs.append(basis_functions.M5DiffBasisFunction(nside=nside))
+
+        survey1 = surveys.BlobPairsSurvey(bfs, [1], bandname1="g", bandname2="r")
+        survey2 = surveys.BlobPairsSurvey(bfs, [1], bandname1="g", bandname2="g")
+
+        for survey, nb in zip([survey1, survey2], [2, 1]):
+            observatory = ModelObservatory()
+            conditions = observatory.return_conditions()
+
+            obs = survey.generate_observations(conditions)
+
+            # Tesselation should spin, so no repeat positions
+            for key in ["RA", "dec"]:
+                u_key = np.unique(obs[key])
+                assert np.size(u_key) == np.size(obs)
+
+            n_bands = np.size(np.unique(obs["band"]))
+            assert n_bands == nb
+
+        # Check area cut works
+
+        bfs = []
+        bfs.append(basis_functions.M5DiffBasisFunction(nside=nside))
+        bfs.append(bf.RevHaMaskBasisFunction(ha_min=2.5, ha_max=24 - 2.5, nside=nside))
+
+        masks = []
+        masks.append(bf.RevHaMaskBasisFunction(ha_min=2.5, ha_max=24 - 2.5, nside=nside))
+        masks.append(bf.RevHaMaskBasisFunction(ha_min=1.5, ha_max=24 - 1.5, nside=nside))
+
+        # Demand huge areas, should not return anything
+        survey1 = surveys.BlobPairsSurvey(
+            bfs,
+            [1, 0],
+            bandname1="g",
+            bandname2="r",
+            area_required=1e10,
+            additional_masks=masks,
+            additional_area_limits=[1e10, 1e10],
+        )
+
+        reward = survey1.calc_reward_function(conditions)
+        assert not np.isfinite(reward)
+        assert not survey1._check_feasibility(conditions)
+
+        # Now have a mask and area that is feasible
+        survey1 = surveys.BlobPairsSurvey(
+            bfs,
+            [1, 0],
+            bandname1="g",
+            bandname2="r",
+            area_required=1e10,
+            additional_masks=masks,
+            additional_area_limits=[1e10, 10],
+        )
+
+        assert survey1._check_feasibility(conditions)
+
+        reward = survey1.calc_reward_basic(conditions)
+        obs = survey1.generate_observations(conditions)
+        assert np.size(obs) > 1
 
     def test_field_survey(self):
         nside = 32
