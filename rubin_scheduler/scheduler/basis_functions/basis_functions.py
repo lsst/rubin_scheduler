@@ -1399,7 +1399,7 @@ class WindPressureBasisFunction(BaseBasisFunction):
     wind_speed_maximum : `float`, optional
         Wind speed to mark regions as unobservable (in m/s).
     wind_speed_minimum : `float`, optional
-        If wind speed blow this level, return no effective reward
+        If wind speed below this level, return no effective reward
         map. Default 0 (m/s).
     nside : `int`, optional
         The nside for the basis function. Default None uses

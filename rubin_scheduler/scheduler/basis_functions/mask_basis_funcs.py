@@ -29,7 +29,7 @@ from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD, _angular_sepa
 
 
 class MaskDirectWindBasisFunction(BaseBasisFunction):
-    """Mask area looking into the wind
+    """Mask azimuth where effective wind speed exceeds the maximum.
 
     Parameters
     ----------
