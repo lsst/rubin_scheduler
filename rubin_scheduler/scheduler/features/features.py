@@ -334,7 +334,9 @@ class NObservations(BaseSurveyFeature):
 
             if np.size(self.seeing_limit) > 1:
                 valid_indx[
-                    np.where(IntRounded(seeing_vals) >= IntRounded(self.seeing_limit[observations_hpid]))[0]
+                    np.where(
+                        IntRounded(seeing_vals) >= IntRounded(self.seeing_limit[observations_hpid["hpid"]])
+                    )[0]
                 ] = False
             else:
                 valid_indx[np.where(IntRounded(seeing_vals) >= self.seeing_limit)[0]] = False
@@ -567,33 +569,25 @@ class NObservationsCurrentSeason(BaseSurveyFeature):
         self.season_update(observation=observations_array[-1])
 
         # Start assuming 'check' is all True, for all observations.
-        check = np.ones(observations_array.size, dtype=bool)
+        check = np.ones(observations_hpid.size, dtype=bool)
 
         # Rule out the observations with seeing fwhmeff > limit
         if self.seeing_fwhm_max is not None:
             if np.size(self.seeing_fwhm_max) > 1:
                 check[
                     np.where(
-                        IntRounded(observations_array["FWHMeff"])
-                        > IntRounded(self.seeing_fwhm_max[observations_hpid])
+                        IntRounded(observations_hpid["FWHMeff"])
+                        > IntRounded(self.seeing_fwhm_max[observations_hpid["hpid"]])
                     )
                 ] = False
             else:
                 check[
-                    np.where(IntRounded(observations_array["FWHMeff"]) > IntRounded(self.seeing_fwhm_max))
+                    np.where(IntRounded(observations_hpid["FWHMeff"]) > IntRounded(self.seeing_fwhm_max))
                 ] = False
 
         # Rule out observations which are not in the desired band
         if self.bandname is not None:
-            check[np.where(observations_array["band"] != self.bandname)] = False
-
-        # Convert the "check" array on observations_array into a
-        # "check" array on the hpids so we can evaluate healpix-level items
-        check_hpid_indxs = np.isin(observations_hpid["ID"], observations_array["ID"][check])
-        # Set up a new valid/not valid flag, now on observations_hpid
-        check_hp = np.zeros(len(observations_hpid), dtype=bool)
-        # Set all observations which passed simpler tests above to True
-        check_hp[check_hpid_indxs] = True
+            check[np.where(observations_hpid["band"] != self.bandname)] = False
 
         hpids = observations_hpid["hpid"]
 
@@ -611,7 +605,7 @@ class NObservationsCurrentSeason(BaseSurveyFeature):
             )
         )
         season_change = self.season[hpids] - seasons
-        check_hp = np.where(season_change != 0, False, check_hp)
+        check_hp = np.where(season_change != 0, False, check)
         # And check for m5_penalty_map
         if self.m5_penalty_max is not None:
             penalty = self.dark_map[hpids] - observations_hpid["fivesigmadepth"]
