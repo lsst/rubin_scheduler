@@ -33,6 +33,7 @@ __all__ = (
     "FilterDistBasisFunction",
     "RewardRisingBasisFunction",
     "send_unused_deprecation_warning",
+    "WindPressureBasisFunction",
 )
 
 import warnings
@@ -1367,6 +1368,8 @@ class AvoidDirectWind(BaseBasisFunction):
     """
 
     def __init__(self, wind_speed_maximum=20.0, nside=DEFAULT_NSIDE):
+        message = "AvoidDirectWind deprecated, use MaskDirectWindBasisFunction and WindPressureBasisFunction."
+        warnings.warn(message, FutureWarning)
         super().__init__(nside=nside)
 
         self.wind_speed_maximum = wind_speed_maximum
@@ -1384,6 +1387,47 @@ class AvoidDirectWind(BaseBasisFunction):
         mask = wind_pressure > self.wind_speed_maximum
 
         reward_map[mask] = np.nan
+
+        return reward_map
+
+
+class WindPressureBasisFunction(BaseBasisFunction):
+    """Have negaitive reward for wind pressure squared.
+
+    Parameters
+    ----------
+    wind_speed_maximum : `float`, optional
+        Wind speed to mark regions as unobservable (in m/s).
+    wind_speed_minimum : `float`, optional
+        If wind speed below this level, return no effective reward
+        map. Default 0 (m/s).
+    nside : `int`, optional
+        The nside for the basis function. Default None uses
+        `set_default_nside()`.
+    """
+
+    def __init__(self, wind_speed_maximum=20.0, wind_speed_minimum=0.0, nside=DEFAULT_NSIDE):
+
+        if wind_speed_maximum < wind_speed_minimum:
+            raise ValueError(
+                "wind_speed_maximum of %f m/s is less than wind_speed_minimum value of %f m/s."
+                % (wind_speed_maximum, wind_speed_minimum)
+            )
+        super().__init__(nside=nside)
+        self.wind_speed_maximum = wind_speed_maximum
+        self.wind_speed_minimum = wind_speed_minimum
+
+    def _calc_value(self, conditions, indx=None):
+        reward_map = np.zeros(hp.nside2npix(self.nside))
+
+        if (
+            conditions.wind_speed is None
+            or conditions.wind_direction is None
+            or conditions.wind_speed < self.wind_speed_minimum
+        ):
+            return reward_map
+
+        reward_map -= conditions.wind_pressure**2.0
 
         return reward_map
 
