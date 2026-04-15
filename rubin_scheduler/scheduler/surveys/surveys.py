@@ -6,7 +6,7 @@ import healpy as hp
 import numpy as np
 
 from rubin_scheduler.scheduler.surveys import BaseMarkovSurvey
-from rubin_scheduler.scheduler.utils import ObservationArray, int_binned_stat, order_observations
+from rubin_scheduler.scheduler.utils import IntRounded, ObservationArray, int_binned_stat, order_observations
 from rubin_scheduler.utils import DEFAULT_NSIDE, _angular_separation, _hpid2_ra_dec, hp_grow_argsort
 
 
@@ -338,7 +338,7 @@ class BlobSurvey(GreedySurvey):
         if self.twilight_scale:
             available_time = conditions.sun_n18_rising - conditions.mjd
             available_time *= 24.0 * 60.0  # to minutes
-            n_ideal_blocks = available_time / self.ideal_pair_time
+            n_ideal_blocks = np.round(available_time / self.ideal_pair_time)
         else:
             n_ideal_blocks = 4
 
@@ -347,7 +347,7 @@ class BlobSurvey(GreedySurvey):
             if len(conditions.scheduled_observations) > 0:
                 available_time = np.min(conditions.scheduled_observations) - conditions.mjd
                 available_time *= 24.0 * 60.0  # to minutes
-                n_blocks = available_time / self.ideal_pair_time
+                n_blocks = np.round(available_time / self.ideal_pair_time)
                 if n_blocks < n_ideal_blocks:
                     n_ideal_blocks = n_blocks
 
@@ -360,7 +360,7 @@ class BlobSurvey(GreedySurvey):
             times = times[np.where(times > 0)]
             available_time = np.min(times) if len(times) > 0 else 0.0
             available_time *= 24.0 * 60.0  # to minutes
-            n_blocks = available_time / self.ideal_pair_time
+            n_blocks = np.round(available_time / self.ideal_pair_time)
             if n_blocks < n_ideal_blocks:
                 n_ideal_blocks = n_blocks
 
@@ -418,9 +418,9 @@ class BlobSurvey(GreedySurvey):
                     self.ra[max_reward_indx],
                     self.dec[max_reward_indx],
                 )
-                good_area = np.where((np.abs(self.reward) >= 0) & (distances < self.max_radius_peak))[
-                    0
-                ].size * hp.nside2pixarea(self.nside)
+                good_area = np.where(
+                    (np.abs(self.reward) >= 0) & (IntRounded(distances) < IntRounded(self.max_radius_peak))
+                )[0].size * hp.nside2pixarea(self.nside)
                 if good_area < self.area_required:
                     self.reward = -np.inf
 
@@ -594,7 +594,9 @@ class BlobPairsSurvey(BlobSurvey):
             distances = _angular_separation(
                 self.ra, self.dec, self.ra[max_reward_indx], self.dec[max_reward_indx]
             )
-            valid_pix = np.where(np.logical_not(np.isnan(reward)) & (distances < self.max_radius_peak))[0]
+            valid_pix = np.where(
+                np.logical_not(np.isnan(reward)) & (IntRounded(distances) < IntRounded(self.max_radius_peak))
+            )[0]
             if np.size(valid_pix) * self.pixarea < area_required:
                 result = False
         else:
