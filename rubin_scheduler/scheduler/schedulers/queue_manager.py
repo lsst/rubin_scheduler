@@ -7,6 +7,7 @@ import numpy as np
 
 from rubin_scheduler.scheduler.detailers import RotspUpdateDetailer
 from rubin_scheduler.scheduler.utils import IntRounded, ObservationArray
+from rubin_scheduler.utils import _ra_dec2_hpid
 
 
 class BaseQueueManager:
@@ -134,12 +135,17 @@ class BaseQueueManager:
         # need to interpolate to the actual positions we want.
         # now to interpolate to the reward positions
         if np.size(reward) > 1:
-            reward_interp = hp.get_interp_val(
-                reward,
-                np.degrees(self.desired_observations_array["RA"][valid]),
-                np.degrees(self.desired_observations_array["dec"][valid]),
-                lonlat=True,
+            # hp.get_interp_val uses 4 nearest neighbors, so that can
+            # go nan if a farther helpix is masked. This uses the
+            # HEALpix the RA,dec falls in. Technically should probably be
+            # the nearest neighbor HEALpix center.
+            nside = hp.npix2nside(reward.size)
+            hpids = _ra_dec2_hpid(
+                nside,
+                self.desired_observations_array["RA"][valid],
+                self.desired_observations_array["dec"][valid],
             )
+            reward_interp = reward[hpids]
             sub_valid_reward = np.isfinite(reward_interp)
             valid = np.ravel(valid[sub_valid_reward])
 
