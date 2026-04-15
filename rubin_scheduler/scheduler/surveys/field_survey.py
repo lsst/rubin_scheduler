@@ -106,9 +106,6 @@ class FieldSurvey(BaseSurvey):
         self.survey_name = survey_name
         if self.survey_name is None:
             self._generate_survey_name(target_name=target_name)
-        # Backfill target name if it wasn't set
-        if target_name is None:
-            target_name = self.survey_name
 
         super().__init__(
             nside=nside,
