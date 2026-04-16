@@ -164,6 +164,9 @@ class BlobSurvey(GreedySurvey):
         String added to observation_reason field. Default value of
         'generate_obs_reason' will result in auto-generated string
         like 'pairs_{bandname1}{bandname2}_{ideal_pair_time}'.
+    note_block_size : `bool`
+        Add to the scheduler note what the final block size was for
+        the blob. Default True.
 
     Notes
     -----
@@ -213,6 +216,7 @@ class BlobSurvey(GreedySurvey):
         filtername1=None,
         filtername2=None,
         filter_change_approx=None,
+        note_block_size=True,
     ):
         if filtername1 is not None:
             warnings.warn("filtername1 deprecated in favor of bandname1", FutureWarning)
@@ -279,6 +283,7 @@ class BlobSurvey(GreedySurvey):
         self.in_twilight = in_twilight
         self.grow_blob = grow_blob
         self.max_radius_peak = np.radians(max_radius_peak)
+        self.note_block_size = note_block_size
 
         if self.twilight_scale & self.in_twilight:
             warnings.warn("Both twilight_scale and in_twilight are set to True. That is probably wrong.")
@@ -520,6 +525,8 @@ class BlobSurvey(GreedySurvey):
                 observations["nexp"] = self.nexp_dict[bandname]
             observations["exptime"] = self.exptime
             observations["scheduler_note"] = self.scheduler_note
+            if self.note_block_size:
+                observations["scheduler_note"] += ", block_size %i" % self.nvisit_block
             observations["flush_by_mjd"] = flush_time
             all_observations.append(observations)
             track_n_in_nvisit.append(np.arange(observations.size))
