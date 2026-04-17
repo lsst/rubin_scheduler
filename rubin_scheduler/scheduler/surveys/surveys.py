@@ -136,6 +136,8 @@ class BlobSurvey(GreedySurvey):
     ideal_pair_time : `float`
         The ideal time gap wanted between observations to the same
         pointing (minutes)
+    max_pair_time : `float`
+        Maximum pair time to allow. Default 40 (minutes)
     flush_time : `float`
         The time past the final expected exposure to flush the queue.
         Keeps observations from lingering past when they should be
@@ -190,6 +192,7 @@ class BlobSurvey(GreedySurvey):
         nexp=2,
         nexp_dict=None,
         ideal_pair_time=22.0,
+        max_pair_time=40.0,
         flush_time=30.0,
         smoothing_kernel=None,
         nside=DEFAULT_NSIDE,
@@ -243,6 +246,7 @@ class BlobSurvey(GreedySurvey):
         self.bandname2 = bandname2
 
         self.ideal_pair_time = ideal_pair_time
+        self.max_pair_time = max_pair_time
 
         if survey_name is None:
             self._generate_survey_name()
@@ -381,11 +385,13 @@ class BlobSurvey(GreedySurvey):
             # Now we can stretch or contract the block size to
             # allocate the
             # remainder time until twilight starts
-            # We can take the remaining time and try to do 1,2,
-            # or 3 blocks.
+            # We can take the remaining time and try 1-3 blocks
+            # XXX--magic number
             possible_times = available_time / np.arange(1, 4)
             diff = np.abs(self.ideal_pair_time - possible_times)
             best_block_time = np.max(possible_times[np.where(diff == np.min(diff))])
+            if best_block_time > self.max_pair_time:
+                best_block_time = self.max_pair_time
             self.nvisit_block = int(
                 np.floor(
                     best_block_time
@@ -525,12 +531,14 @@ class BlobSurvey(GreedySurvey):
                 observations["nexp"] = self.nexp_dict[bandname]
             observations["exptime"] = self.exptime
             observations["scheduler_note"] = self.scheduler_note
-            if self.note_block_size:
-                observations["scheduler_note"] += ", block_size %i" % self.nvisit_block
             observations["flush_by_mjd"] = flush_time
             all_observations.append(observations)
             track_n_in_nvisit.append(np.arange(observations.size))
         observations = np.concatenate(all_observations)
+        if self.note_block_size:
+            observations["scheduler_note"] = np.char.add(
+                observations["scheduler_note"], ", bs %i" % observations.size
+            )
 
         if self.n_visits > 1:
             track_n_in_nvisit = np.concatenate(track_n_in_nvisit)

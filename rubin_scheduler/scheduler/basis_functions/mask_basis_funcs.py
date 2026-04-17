@@ -120,8 +120,7 @@ class MaskAfterNObsSeeingBasisFunction(BaseBasisFunction):
             self.survey_features["nobs"] = features.NObservations(
                 nside=nside,
                 bandname=bandname,
-                mjd_start=mjd_start,
-                seeing_fwhm_max=seeing_fwhm_max,
+                seeing_limit=seeing_fwhm_max,
             )
         self.result = np.zeros(hp.nside2npix(self.nside), dtype=float)
 
