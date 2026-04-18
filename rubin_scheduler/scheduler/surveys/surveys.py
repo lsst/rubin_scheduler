@@ -219,7 +219,7 @@ class BlobSurvey(GreedySurvey):
         filtername1=None,
         filtername2=None,
         filter_change_approx=None,
-        note_block_size=True,
+        note_block_size=False,
     ):
         if filtername1 is not None:
             warnings.warn("filtername1 deprecated in favor of bandname1", FutureWarning)
