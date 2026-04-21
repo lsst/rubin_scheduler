@@ -21,24 +21,24 @@ import numpy as np
 from .tree_utils import _build_tree, _xyz_from_ra_dec
 
 
-def ra_dec_nearest_interp(nside, in_array, ra, dec):
+def ra_dec_nearest_interp(ra, dec, in_array):
     """Interpolate using nearest neighbor for a given RA,dec.
     Averages results if more than one HEALpix center is equally close.
 
     Parameters
     ----------
-    nside : `int`
-        HEALpix nside
-    in_array : `np.NDarray`
-        A valid HEALpix array
     ra : `float`
         RA value(s) to interpolate in_array to using nearest neighbor.
+        Degrees.
     dec : `float`
         Dec value(s) to interpolate in_array to using nearest neighbor.
+        Degrees.
+    in_array : `np.NDarray`
+        A valid HEALpix array
     """
 
     # returns the 4 closest
-    hpid, weights = hp.get_interp_weights(nside, ra, dec, lonlat=True)
+    hpid, weights = hp.get_interp_weights(hp.npix2nside(np.size(in_array)), ra, dec, lonlat=True)
 
     # Find the max weight for each RA,dec
     m_weight = np.max(weights, axis=0) * np.ones(weights.shape)

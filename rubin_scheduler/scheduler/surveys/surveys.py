@@ -192,7 +192,7 @@ class BlobSurvey(GreedySurvey):
         nexp=2,
         nexp_dict=None,
         ideal_pair_time=22.0,
-        max_pair_time=40.0,
+        max_pair_time=None,
         flush_time=30.0,
         smoothing_kernel=None,
         nside=DEFAULT_NSIDE,
@@ -390,8 +390,9 @@ class BlobSurvey(GreedySurvey):
             possible_times = available_time / np.arange(1, 4)
             diff = np.abs(self.ideal_pair_time - possible_times)
             best_block_time = np.max(possible_times[np.where(diff == np.min(diff))])
-            if best_block_time > self.max_pair_time:
-                best_block_time = self.max_pair_time
+            if self.max_pair_time is not None:
+                if best_block_time > self.max_pair_time:
+                    best_block_time = self.max_pair_time
             self.nvisit_block = int(
                 np.floor(
                     best_block_time
