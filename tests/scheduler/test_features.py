@@ -61,6 +61,7 @@ class TestFeatures(unittest.TestCase):
         # Generic test that add_observations_array equals add_observations
         # Under the default conditions.
         # Tests for each feature should still check on non-default kwargs
+        observation_lists = []
         observations_list = make_observations_list(20)
         for i, obs in enumerate(observations_list):
             if i % 2 == 0:
@@ -71,30 +72,41 @@ class TestFeatures(unittest.TestCase):
                 observations_list[i]["scheduler_note"] = "b"
             if i > 10:
                 observations_list[i]["band"] = "g"
-        observations_array, observations_hpid, list_of_hpids = make_observations_arrays(observations_list)
+            observations_list[i]["mjd"] = SURVEY_START_MJD + (i * 60.0)
+
+        observation_lists.append(observations_list)
+
+        # Include a case where we have single-element array
+        single = ObservationArray(n=1)
+        single["band"] = "g"
+        observation_lists.append([single])
+
         features_to_test = features.BaseSurveyFeature.__subclasses__()
-        for ff in features_to_test:
-            test_featureA = ff()
-            for obs, indx in zip(observations_list, list_of_hpids):
-                test_featureA.add_observation(obs, indx=indx)
-            test_featureB = ff()
-            test_featureB.add_observations_array(observations_array, observations_hpid)
-            if isinstance(test_featureA.feature, (float, int)):
-                self.assertTrue(test_featureA.feature == test_featureB.feature)
-            elif isinstance(test_featureA.feature, ObservationArray):
-                self.assertTrue(test_featureA.feature == test_featureB.feature)
-            else:
-                # Test nans (if present) are in the same places
-                nanA = np.where(np.isnan(test_featureA.feature), 1, 0)
-                nanB = np.where(np.isnan(test_featureB.feature), 1, 0)
-                self.assertTrue(np.all(nanA == nanB))
-                # Test equal where not nan
-                self.assertTrue(
-                    np.all(
-                        test_featureA.feature[np.where(nanA == 0)]
-                        == test_featureB.feature[np.where(nanA == 0)]
+
+        for observation_list in observation_lists:
+            observations_array, observations_hpid, list_of_hpids = make_observations_arrays(observations_list)
+            for ff in features_to_test:
+                test_featureA = ff()
+                for obs, indx in zip(observations_list, list_of_hpids):
+                    test_featureA.add_observation(obs, indx=indx)
+                test_featureB = ff()
+                test_featureB.add_observations_array(observations_array, observations_hpid)
+                if isinstance(test_featureA.feature, (float, int)):
+                    self.assertTrue(test_featureA.feature == test_featureB.feature)
+                elif isinstance(test_featureA.feature, ObservationArray):
+                    self.assertTrue(test_featureA.feature == test_featureB.feature)
+                else:
+                    # Test nans (if present) are in the same places
+                    nanA = np.where(np.isnan(test_featureA.feature), 1, 0)
+                    nanB = np.where(np.isnan(test_featureB.feature), 1, 0)
+                    self.assertTrue(np.all(nanA == nanB))
+                    # Test equal where not nan
+                    self.assertTrue(
+                        np.all(
+                            test_featureA.feature[np.where(nanA == 0)]
+                            == test_featureB.feature[np.where(nanA == 0)]
+                        )
                     )
-                )
 
     def test_pair_in_night(self):
         pin = features.PairInNight(gap_min=25.0, gap_max=45.0)
