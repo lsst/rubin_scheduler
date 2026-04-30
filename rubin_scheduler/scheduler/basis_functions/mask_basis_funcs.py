@@ -84,8 +84,7 @@ class MaskPoorSeeing(BaseBasisFunction):
 
 
 class MaskAfterNObsSeeingBasisFunction(BaseBasisFunction):
-    """Mask after a HEALpix has been observed N times. In a
-    season.
+    """Mask after a HEALpix has been observed N times.
 
     Parameters
     ----------
@@ -95,6 +94,8 @@ class MaskAfterNObsSeeingBasisFunction(BaseBasisFunction):
         The bandname. Default None uses all bands.
     seeing_fwhm_max : `float`
         The seeing limit to use when counting observations (arcsec).
+    reset_per_season : `bool`
+        Should the mask reset each season. Default True.
     """
 
     def __init__(
@@ -103,16 +104,24 @@ class MaskAfterNObsSeeingBasisFunction(BaseBasisFunction):
         nside=DEFAULT_NSIDE,
         bandname=None,
         seeing_fwhm_max=1.3,
+        reset_per_season=True,
         mjd_start=SURVEY_START_MJD,
     ):
         super().__init__(nside=nside)
         self.n_max = n_max
-        self.survey_features["nobs"] = features.NObservationsCurrentSeason(
-            nside=nside,
-            bandname=bandname,
-            mjd_start=mjd_start,
-            seeing_fwhm_max=seeing_fwhm_max,
-        )
+        if reset_per_season:
+            self.survey_features["nobs"] = features.NObservationsCurrentSeason(
+                nside=nside,
+                bandname=bandname,
+                mjd_start=mjd_start,
+                seeing_fwhm_max=seeing_fwhm_max,
+            )
+        else:
+            self.survey_features["nobs"] = features.NObservations(
+                nside=nside,
+                bandname=bandname,
+                seeing_limit=seeing_fwhm_max,
+            )
         self.result = np.zeros(hp.nside2npix(self.nside), dtype=float)
 
     def _calc_value(self, conditions, indx=None):

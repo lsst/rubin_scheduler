@@ -136,6 +136,8 @@ class BlobSurvey(GreedySurvey):
     ideal_pair_time : `float`
         The ideal time gap wanted between observations to the same
         pointing (minutes)
+    max_pair_time : `float`
+        Maximum pair time to allow. Default 40 (minutes)
     flush_time : `float`
         The time past the final expected exposure to flush the queue.
         Keeps observations from lingering past when they should be
@@ -164,6 +166,9 @@ class BlobSurvey(GreedySurvey):
         String added to observation_reason field. Default value of
         'generate_obs_reason' will result in auto-generated string
         like 'pairs_{bandname1}{bandname2}_{ideal_pair_time}'.
+    note_block_size : `bool`
+        Add to the scheduler note what the final block size was for
+        the blob. Default True.
 
     Notes
     -----
@@ -187,6 +192,7 @@ class BlobSurvey(GreedySurvey):
         nexp=2,
         nexp_dict=None,
         ideal_pair_time=22.0,
+        max_pair_time=None,
         flush_time=30.0,
         smoothing_kernel=None,
         nside=DEFAULT_NSIDE,
@@ -213,6 +219,7 @@ class BlobSurvey(GreedySurvey):
         filtername1=None,
         filtername2=None,
         filter_change_approx=None,
+        note_block_size=False,
     ):
         if filtername1 is not None:
             warnings.warn("filtername1 deprecated in favor of bandname1", FutureWarning)
@@ -239,6 +246,7 @@ class BlobSurvey(GreedySurvey):
         self.bandname2 = bandname2
 
         self.ideal_pair_time = ideal_pair_time
+        self.max_pair_time = max_pair_time
 
         if survey_name is None:
             self._generate_survey_name()
@@ -279,6 +287,7 @@ class BlobSurvey(GreedySurvey):
         self.in_twilight = in_twilight
         self.grow_blob = grow_blob
         self.max_radius_peak = np.radians(max_radius_peak)
+        self.note_block_size = note_block_size
 
         if self.twilight_scale & self.in_twilight:
             warnings.warn("Both twilight_scale and in_twilight are set to True. That is probably wrong.")
@@ -376,11 +385,14 @@ class BlobSurvey(GreedySurvey):
             # Now we can stretch or contract the block size to
             # allocate the
             # remainder time until twilight starts
-            # We can take the remaining time and try to do 1,2,
-            # or 3 blocks.
+            # We can take the remaining time and try 1-3 blocks
+            # XXX--magic number
             possible_times = available_time / np.arange(1, 4)
             diff = np.abs(self.ideal_pair_time - possible_times)
             best_block_time = np.max(possible_times[np.where(diff == np.min(diff))])
+            if self.max_pair_time is not None:
+                if best_block_time > self.max_pair_time:
+                    best_block_time = self.max_pair_time
             self.nvisit_block = int(
                 np.floor(
                     best_block_time
@@ -524,6 +536,10 @@ class BlobSurvey(GreedySurvey):
             all_observations.append(observations)
             track_n_in_nvisit.append(np.arange(observations.size))
         observations = np.concatenate(all_observations)
+        if self.note_block_size:
+            observations["scheduler_note"] = np.char.add(
+                observations["scheduler_note"], ", bs %i" % observations.size
+            )
 
         if self.n_visits > 1:
             track_n_in_nvisit = np.concatenate(track_n_in_nvisit)

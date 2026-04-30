@@ -346,8 +346,10 @@ class CoreScheduler:
         else:
             result = self.queue_manager.request_observation(self.conditions, whole_queue=whole_queue)
 
-            # Queue manager may have killed everything and we need to refill
+            # Queue manager may have killed everything and we need to
+            # flush and refill
             if np.size(result) == 0:
+                self.queue_manager.flush_queue()
                 self._fill_queue()
                 result = self.queue_manager.request_observation(self.conditions, whole_queue=whole_queue)
                 if np.size(result) == 0:

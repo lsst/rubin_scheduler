@@ -9,6 +9,7 @@ __all__ = (
     "hp_grow_argsort",
     "_hp_grow_mask",
     "match_hp_resolution",
+    "ra_dec_nearest_interp",
 )
 
 import warnings
@@ -18,6 +19,38 @@ import healpy as hp
 import numpy as np
 
 from .tree_utils import _build_tree, _xyz_from_ra_dec
+
+
+def ra_dec_nearest_interp(ra, dec, in_array):
+    """Interpolate using nearest neighbor for a given RA,dec.
+    Averages results if more than one HEALpix center is equally close.
+
+    Parameters
+    ----------
+    ra : `float`
+        RA value(s) to interpolate in_array to using nearest neighbor.
+        Degrees.
+    dec : `float`
+        Dec value(s) to interpolate in_array to using nearest neighbor.
+        Degrees.
+    in_array : `np.NDarray`
+        A valid HEALpix array
+    """
+
+    # returns the 4 closest
+    hpid, weights = hp.get_interp_weights(hp.npix2nside(np.size(in_array)), ra, dec, lonlat=True)
+
+    # Find the max weight for each RA,dec
+    m_weight = np.max(weights, axis=0) * np.ones(weights.shape)
+
+    final_weights = np.ones(weights.shape)
+    # Anything less than the max, set to zero weight
+    final_weights[np.where(weights < m_weight)] = 0
+    # Normalize in case there was more than one at the max value
+    final_weights = final_weights / np.sum(final_weights, axis=0)
+
+    result = np.sum(in_array[hpid] * final_weights, axis=0)
+    return result
 
 
 def _hpid2_ra_dec(nside, hpids, **kwargs):
