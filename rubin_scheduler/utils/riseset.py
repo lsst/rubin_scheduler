@@ -16,7 +16,7 @@ def riseset_times(  # pylint: disable=too-many-locals
     which_direction="down",
     which_night="nearest",
     alt=-14.0,
-    location=astropy.coordinates.EarthLocation.of_site("Cerro Pachon"),
+    location="Cerro Pachon",
     body="sun",
     tolerance=1e-8,
     max_iter=10,
@@ -35,6 +35,7 @@ def riseset_times(  # pylint: disable=too-many-locals
         alt : `float`
             altitude of twilight, in degrees
         location : `astropy.coordinates.EarthLocation`
+            or `str`. Defaults to "Cerro Pachon"
             location for site
         tolerance : `float`
             tolerance for twilight altitude, in degrees
@@ -45,6 +46,9 @@ def riseset_times(  # pylint: disable=too-many-locals
         numpy array of mjds
 
     """
+
+    if isinstance(location, str):
+        location = astropy.coordinates.EarthLocation.of_site(location)
 
     # the astropy sidereal time routines often fail because they rely on
     # online updates to the IERS table, which is usually pointless
