@@ -223,7 +223,14 @@ def gen_lensed_BNS(mjd_start=O5_START_MJD, mjd_end=O5_END_MJD, scale=1, seed=45)
     return events
 
 
-def gen_sso_events(n_events=900, twi_fraction=0.75, seed=52, radius=2.0, mjd_start=SURVEY_START_MJD):
+def gen_sso_events(
+    n_events=900,
+    twi_fraction=0.75,
+    seed=52,
+    radius=2.0,
+    mjd_start=SURVEY_START_MJD,
+    mjd_end=SURVEY_START_MJD + 3652,
+):
     """Generate solar system ToO events
 
     Originally set to 300 events, swapped to a more approximate
@@ -253,6 +260,8 @@ def gen_sso_events(n_events=900, twi_fraction=0.75, seed=52, radius=2.0, mjd_sta
     elong_std = np.radians(2.05)
     pad = np.radians(0.5)
 
+    n_nights = int(mjd_end - mjd_start)
+
     # Then ecliptic latitude between -40 and +15
 
     rng = np.random.default_rng(seed=seed)
@@ -275,7 +284,7 @@ def gen_sso_events(n_events=900, twi_fraction=0.75, seed=52, radius=2.0, mjd_sta
 
     n_inner = int(n_events * twi_fraction)
     # We want to trigger on nights divisible by 4+1
-    potential_mjds = np.arange(0, 3652, 4) + mjd_start + 1
+    potential_mjds = np.arange(0, n_nights, 4) + mjd_start + 1
     twi_events["mjd_start"] = rng.choice(potential_mjds, size=n_inner, replace=False)
 
     times = Time(twi_events["mjd_start"], format="mjd")
@@ -300,7 +309,7 @@ def gen_sso_events(n_events=900, twi_fraction=0.75, seed=52, radius=2.0, mjd_sta
 
     reg_events = np.zeros(int(n_events - twi_events.size), dtype=list(zip(names, types)))
 
-    potential_mjds = np.arange(0, 3652) + mjd_start
+    potential_mjds = np.arange(0, n_nights) + mjd_start
     reg_events["mjd_start"] = rng.choice(potential_mjds, size=reg_events.size, replace=False)
     times = Time(reg_events["mjd_start"], format="mjd")
     sun = get_sun(times)
@@ -332,7 +341,15 @@ def gen_sso_events(n_events=900, twi_fraction=0.75, seed=52, radius=2.0, mjd_sta
     return events
 
 
-def gen_all_events(scale=1, nside=DEFAULT_NSIDE, include_gw=True, include_neutrino=True, include_ss=True):
+def gen_all_events(
+    scale=1,
+    nside=DEFAULT_NSIDE,
+    include_gw=True,
+    include_neutrino=True,
+    include_ss=True,
+    mjd_start=SURVEY_START_MJD,
+    mjd_end=SURVEY_START_MJD + 3652.5,
+):
     """Function to generate ToO events
 
     Parameters
@@ -362,10 +379,12 @@ def gen_all_events(scale=1, nside=DEFAULT_NSIDE, include_gw=True, include_neutri
         events.append(gen_lensed_BNS(scale=3.0 * scale))
     # Not varying the number of neutrino events
     if include_neutrino:
-        events.append(gen_neutrino_events())
+        n_events = np.round(160 / 3652.5 * (mjd_end - mjd_start))
+        events.append(gen_neutrino_events(mjd_start=mjd_start, mjd_end=mjd_end))
     # Not varying the number of SSO events
     if include_ss:
-        events.append(gen_sso_events())
+        n_events = np.round(900 / 3652.5 * (mjd_end - mjd_start))
+        events.append(gen_sso_events(n_events=n_events, mjd_start=mjd_start, mjd_end=mjd_end))
     event_table = np.concatenate(events)
 
     event_table.sort(order="mjd_start")
