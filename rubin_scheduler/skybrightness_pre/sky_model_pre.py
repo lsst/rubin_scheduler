@@ -1,6 +1,7 @@
 __all__ = ("SkyModelPre", "interp_angle")
 
 import abc
+import gc
 import glob
 import os
 import urllib
@@ -120,7 +121,7 @@ class SkyModelPreBase(abc.ABC):
     init_load_length : `int` (10)
         The length of time (days) to load from disk initially.
         Set to something small for fast reads.
-    load_length : `int` (365)
+    load_length : `int` (182)
         The number of days to load after the initial load.
     mjd0 : `float` (None)
         The starting MJD to load on initilization (days). Uses
@@ -137,7 +138,7 @@ class SkyModelPreBase(abc.ABC):
         self,
         data_path=None,
         init_load_length=10,
-        load_length=365,
+        load_length=182,
         verbose=False,
         mjd0=None,
         location=None,
@@ -278,6 +279,10 @@ class SkyModelPreBase(abc.ABC):
             del self.timestep_max
         except AttributeError:
             pass
+
+        # Try to force garbage collection to make sure
+        # deleted sky is removed from memory.
+        gc.collect()
 
         indxs = np.where((mjds >= mjd) & (mjds <= (mjd + self.load_length)))
         indxs = [np.min(indxs), np.max(indxs)]
