@@ -160,6 +160,10 @@ class CoreScheduler:
         the observation array and constructed observations + healpix id
         to each survey.
         """
+        if len(obs) == 1:
+            self.add_observation(obs)
+            return
+
         # Need to add "band" here if it wasn't populated
         missing_band = np.where(obs["band"] == "")
         band = np.char.rstrip(obs["filter"][missing_band], chars="_0123456789")
