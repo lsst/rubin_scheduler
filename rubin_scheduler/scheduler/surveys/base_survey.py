@@ -205,15 +205,17 @@ class BaseSurvey:
             not_ignore = np.where(np.char.find(observations_hpid["scheduler_note"], ig) == -1)[0]
             observations_hpid = observations_hpid[not_ignore]
 
-        for feature in self.extra_features:
-            self.extra_features[feature].add_observations_array(observations_array, observations_hpid)
-        for bf in self.extra_basis_functions:
-            self.extra_basis_functions[bf].add_observations_array(observations_array, observations_hpid)
-        for bf in self.basis_functions:
-            bf.add_observations_array(observations_array, observations_hpid)
-        for detailer in self.detailers:
-            detailer.add_observations_array(observations_array, observations_hpid)
-        self.reward_checked = False
+        if len(observations_array) > 0:
+            # Only add observations when they were not all ignored.
+            for feature in self.extra_features:
+                self.extra_features[feature].add_observations_array(observations_array, observations_hpid)
+            for bf in self.extra_basis_functions:
+                self.extra_basis_functions[bf].add_observations_array(observations_array, observations_hpid)
+            for bf in self.basis_functions:
+                bf.add_observations_array(observations_array, observations_hpid)
+            for detailer in self.detailers:
+                detailer.add_observations_array(observations_array, observations_hpid)
+            self.reward_checked = False
 
     def add_observation(self, observation, **kwargs):
         # Check each posible ignore string
