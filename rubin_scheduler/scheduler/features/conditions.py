@@ -581,6 +581,8 @@ class Conditions:
             self.calc_az_to_antisun()
         return self._az_to_antisun
 
+    # Setting maxsize to 5 since we don't expect
+    # more than that many shadow mask configs.
     @functools.lru_cache(maxsize=5)
     def alt_az_shadow_mask(
         self,

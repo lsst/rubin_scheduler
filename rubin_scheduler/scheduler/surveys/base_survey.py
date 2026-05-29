@@ -177,6 +177,18 @@ class BaseSurvey:
     def get_scheduled_obs(self):
         return self.scheduled_obs
 
+    def sub_objects_add_observations_array(self, observations_array, observations_hpid):
+        # Only add observations when they were not all ignored.
+        for feature in self.extra_features:
+            self.extra_features[feature].add_observations_array(observations_array, observations_hpid)
+        for bf in self.extra_basis_functions:
+            self.extra_basis_functions[bf].add_observations_array(observations_array, observations_hpid)
+        for bf in self.basis_functions:
+            bf.add_observations_array(observations_array, observations_hpid)
+        for detailer in self.detailers:
+            detailer.add_observations_array(observations_array, observations_hpid)
+        self.reward_checked = False
+
     def add_observations_array(self, observations_array_in, observations_hpid_in):
         """Add an array of observations rather than one at a time
 
@@ -207,16 +219,7 @@ class BaseSurvey:
             observations_hpid = observations_hpid[not_ignore]
 
         if len(observations_array) > 0:
-            # Only add observations when they were not all ignored.
-            for feature in self.extra_features:
-                self.extra_features[feature].add_observations_array(observations_array, observations_hpid)
-            for bf in self.extra_basis_functions:
-                self.extra_basis_functions[bf].add_observations_array(observations_array, observations_hpid)
-            for bf in self.basis_functions:
-                bf.add_observations_array(observations_array, observations_hpid)
-            for detailer in self.detailers:
-                detailer.add_observations_array(observations_array, observations_hpid)
-            self.reward_checked = False
+            self.sub_objects_add_observations_array(observations_array, observations_hpid)
 
     def check_good_note(self, observation):
         """Check if observation should be ignored based on scheduler_note.
@@ -225,6 +228,10 @@ class BaseSurvey:
         """
         # Check each posible ignore string
         if len(self.ignore_obs_array) > 0:
+            # Find if strings in self.ignore_obs_array are anywhere in
+            # observation["scheduler_note"]. Thus, self.ignore_obs_array
+            # of "pair" is considered matching "pairs", "pair_33", or
+            # "ack, ackpair,ack"
             sub_str_indx = np.strings.find(observation["scheduler_note"][0], self.ignore_obs_array)
             # if all -1, then there was no match, and we should return True
             # otherwise there was a match, so return False so we
@@ -234,7 +241,7 @@ class BaseSurvey:
             checks = True
         return checks
 
-    def add_loops(self, observation, **kwargs):
+    def sub_objects_add_observation(self, observation, **kwargs):
         """Loop over all components that need to run
         add_observation method.
         """
@@ -251,7 +258,7 @@ class BaseSurvey:
     def add_observation(self, observation, **kwargs):
         checks = self.check_good_note(observation)
         if checks:
-            self.add_loops(observation, **kwargs)
+            self.sub_objects_add_observation(observation, **kwargs)
 
     def _check_feasibility(self, conditions):
         """

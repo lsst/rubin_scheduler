@@ -460,6 +460,11 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
 
     def _calc_value(self, conditions, indx=None):
 
+        # Computation of the actual alt/az mask is done in the
+        # conditions object this lets the result of the computation
+        # be cached and shared among the surveys which have
+        # the same kwargs.
+
         result = conditions.alt_az_shadow_mask(
             conditions.mjd,
             self.nside,
