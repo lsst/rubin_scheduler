@@ -586,16 +586,43 @@ class Conditions:
         self,
         mjd,
         nside,
-        min_alt=20.0,
-        max_alt=86.5,
-        min_az=0,
-        max_az=360,
+        min_alt=np.radians(20.0),
+        max_alt=np.radians(86.5),
+        min_az=np.radians(0),
+        max_az=np.radians(360),
         shadow_time=40.0 / 60.0 / 24.0,
-        pad=3.0,
+        pad=np.radians(3.0),
         scale=1000,
         time_step=10.0 / 60.0 / 24.0,
     ):
-        """Compute a mask"""
+        """Compute a mask for now and projected into the future
+        Since this is used by lots of surveys, it's a method
+        on the conditions object so it can be cached for speed.
+
+        Parameters
+        ----------
+        mdj : float
+            MJD
+        nside : int
+            HEALpix nside.
+        min_alt : float
+            Minimum altitude (radians).
+        max_alt : float
+            Maximum altitude (radians).
+        min_az : float
+            Minimum azimuth (radians)
+        max_az : float
+            Maximum azimuth (radians).
+        shadow_time : float
+            The time forward to project the alt,az mask (days).
+        pad : float
+            The amount to pad thee mask (radians)
+        scale : float
+            Passed to _hp_grow_mask, then to _build_tree for
+            cross-platform repeatability.
+        time_step : float
+            Time steps to use when computing masks (days).
+        """
         result = np.zeros(hp.nside2npix(nside), dtype=float)
         r_min_alt = IntRounded(min_alt)
         r_max_alt = IntRounded(max_alt)
