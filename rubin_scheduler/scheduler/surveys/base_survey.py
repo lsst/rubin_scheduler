@@ -91,6 +91,7 @@ class BaseSurvey:
             self.scheduler_note = survey_name
 
         self.ignore_obs = ignore_obs
+        self.ignore_obs_array = np.array(self.ignore_obs)
 
         self.reward = None
         self.survey_index = None
@@ -219,10 +220,15 @@ class BaseSurvey:
 
     def add_observation(self, observation, **kwargs):
         # Check each posible ignore string
-        checks = [io not in str(observation["scheduler_note"]) for io in self.ignore_obs]
-        # ugh, I think here I have to assume observation is an
-        # array and not a dict.
-        if all(checks):
+        if len(self.ignore_obs_array) > 0:
+            sub_str_indx = np.strings.find(observation["scheduler_note"][0], self.ignore_obs_array)
+            # if all -1, then there was no match, and we should return True
+            # otherwise there was a match, so return False so we ignore observation
+            checks = np.max(sub_str_indx) < 0
+        else:
+            checks = True
+
+        if checks:
             for feature in self.extra_features:
                 self.extra_features[feature].add_observation(observation, **kwargs)
             for bf in self.extra_basis_functions:

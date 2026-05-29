@@ -144,8 +144,14 @@ class ScriptedSurvey(BaseSurvey):
         to use different matching logic."""
         if (self.obs_wanted is not None) & (np.size(self.obs_wanted) > 0):
             # From base class
-            checks = [io not in str(observation["scheduler_note"]) for io in self.ignore_obs]
-            if all(checks):
+            if len(self.ignore_obs_array) > 0:
+                sub_str_indx = np.strings.find(observation["scheduler_note"][0], self.ignore_obs_array)
+                # if all -1, then there was no match, and we should return True
+                # otherwise there was a match, so return False so we ignore observation
+                checks = np.max(sub_str_indx) < 0
+            else:
+                checks = True
+            if checks:
                 for feature in self.extra_features:
                     self.extra_features[feature].add_observation(observation, **kwargs)
                 for bf in self.basis_functions:
