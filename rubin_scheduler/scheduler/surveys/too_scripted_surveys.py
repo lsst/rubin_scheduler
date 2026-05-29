@@ -131,6 +131,9 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
 
         if ignore_obs is None:
             ignore_obs = []
+        if isinstance(ignore_obs, str):
+            ignore_obs = [ignore_obs]
+
 
         self.basis_functions = basis_functions
         self.basis_weights = [0] * len(basis_functions)
@@ -153,6 +156,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         self.HA_min = HA_min
         self.HA_max = HA_max
         self.ignore_obs = ignore_obs
+        self.ignore_obs_array = np.array(self.ignore_obs)
         self.return_n_limit = return_n_limit
         self.extra_features = {}
         self.extra_basis_functions = {}
