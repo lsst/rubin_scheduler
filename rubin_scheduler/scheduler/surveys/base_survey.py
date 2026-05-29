@@ -91,6 +91,7 @@ class BaseSurvey:
             self.scheduler_note = survey_name
 
         self.ignore_obs = ignore_obs
+        self.ignore_obs_array = np.array(self.ignore_obs)
 
         self.reward = None
         self.survey_index = None
@@ -219,7 +220,12 @@ class BaseSurvey:
 
     def add_observation(self, observation, **kwargs):
         # Check each posible ignore string
-        checks = [io not in str(observation["scheduler_note"]) for io in self.ignore_obs]
+        import pdb ; pdb.set_trace()
+
+        sub_str_indx = np.strings.find(observation["scheduler_note"][0], self.ignore_obs_array)
+        checks = 0 in sub_str_indx
+
+        #checks = [io not in str(observation["scheduler_note"]) for io in self.ignore_obs]
         # ugh, I think here I have to assume observation is an
         # array and not a dict.
         if all(checks):
