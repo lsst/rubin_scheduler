@@ -218,26 +218,40 @@ class BaseSurvey:
                 detailer.add_observations_array(observations_array, observations_hpid)
             self.reward_checked = False
 
-    def add_observation(self, observation, **kwargs):
+    def check_good_note(self, observation):
+        """Check if observation should be ignored based on scheduler_note.
+        Returns True if observation should be counted, False if it
+        should be ignored.
+        """
         # Check each posible ignore string
         if len(self.ignore_obs_array) > 0:
             sub_str_indx = np.strings.find(observation["scheduler_note"][0], self.ignore_obs_array)
             # if all -1, then there was no match, and we should return True
-            # otherwise there was a match, so return False so we ignore observation
+            # otherwise there was a match, so return False so we
+            # ignore observation
             checks = np.max(sub_str_indx) < 0
         else:
             checks = True
+        return checks
 
+    def add_loops(self, observation, **kwargs):
+        """Loop over all components that need to run
+        add_observation method.
+        """
+        for feature in self.extra_features:
+            self.extra_features[feature].add_observation(observation, **kwargs)
+        for bf in self.extra_basis_functions:
+            self.extra_basis_functions[bf].add_observation(observation, **kwargs)
+        for bf in self.basis_functions:
+            bf.add_observation(observation, **kwargs)
+        for detailer in self.detailers:
+            detailer.add_observation(observation, **kwargs)
+        self.reward_checked = False
+
+    def add_observation(self, observation, **kwargs):
+        checks = self.check_good_note(observation)
         if checks:
-            for feature in self.extra_features:
-                self.extra_features[feature].add_observation(observation, **kwargs)
-            for bf in self.extra_basis_functions:
-                self.extra_basis_functions[bf].add_observation(observation, **kwargs)
-            for bf in self.basis_functions:
-                bf.add_observation(observation, **kwargs)
-            for detailer in self.detailers:
-                detailer.add_observation(observation, **kwargs)
-            self.reward_checked = False
+            self.add_loops(observation, **kwargs)
 
     def _check_feasibility(self, conditions):
         """
