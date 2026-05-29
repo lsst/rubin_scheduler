@@ -123,14 +123,7 @@ class ScriptedSurvey(BaseSurvey):
             good = np.isin(observations_hpid_in["ID"], observations_array["ID"])
             observations_hpid = observations_hpid_in[good]
 
-            for feature in self.extra_features:
-                self.extra_features[feature].add_observations_array(observations_array, observations_hpid)
-            for bf in self.extra_basis_functions:
-                self.extra_basis_functions[bf].add_observations_array(observations_array, observations_hpid)
-            for bf in self.basis_functions:
-                bf.add_observations_array(observations_array, observations_hpid)
-            for detailer in self.detailers:
-                detailer.add_observations_array(observations_array, observations_hpid)
+            self.sub_objects_add_observations_array(observations_array, observations_hpid)
 
             if (self.obs_wanted is not None) & (np.size(self.obs_wanted) > 0):
                 indx = np.isin(self.obs_wanted["scheduler_note"], observations_array_in["scheduler_note"])
@@ -143,16 +136,9 @@ class ScriptedSurvey(BaseSurvey):
         Matching on scheduler_note field only. Subclass and update method
         to use different matching logic."""
         if (self.obs_wanted is not None) & (np.size(self.obs_wanted) > 0):
-            # From base class
-            checks = [io not in str(observation["scheduler_note"]) for io in self.ignore_obs]
-            if all(checks):
-                for feature in self.extra_features:
-                    self.extra_features[feature].add_observation(observation, **kwargs)
-                for bf in self.basis_functions:
-                    bf.add_observation(observation, **kwargs)
-                for detailer in self.detailers:
-                    detailer.add_observation(observation, **kwargs)
-                self.reward_checked = False
+            checks = self.check_good_note(observation)
+            if checks:
+                self.sub_objects_add_observation(observation, **kwargs)
 
                 indx = np.where(
                     (self.obs_wanted["scheduler_note"] == observation["scheduler_note"][0])

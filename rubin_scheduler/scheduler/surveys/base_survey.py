@@ -91,6 +91,7 @@ class BaseSurvey:
             self.scheduler_note = survey_name
 
         self.ignore_obs = ignore_obs
+        self.ignore_obs_array = np.array(self.ignore_obs)
 
         self.reward = None
         self.survey_index = None
@@ -176,6 +177,18 @@ class BaseSurvey:
     def get_scheduled_obs(self):
         return self.scheduled_obs
 
+    def sub_objects_add_observations_array(self, observations_array, observations_hpid):
+        # Only add observations when they were not all ignored.
+        for feature in self.extra_features:
+            self.extra_features[feature].add_observations_array(observations_array, observations_hpid)
+        for bf in self.extra_basis_functions:
+            self.extra_basis_functions[bf].add_observations_array(observations_array, observations_hpid)
+        for bf in self.basis_functions:
+            bf.add_observations_array(observations_array, observations_hpid)
+        for detailer in self.detailers:
+            detailer.add_observations_array(observations_array, observations_hpid)
+        self.reward_checked = False
+
     def add_observations_array(self, observations_array_in, observations_hpid_in):
         """Add an array of observations rather than one at a time
 
@@ -206,32 +219,46 @@ class BaseSurvey:
             observations_hpid = observations_hpid[not_ignore]
 
         if len(observations_array) > 0:
-            # Only add observations when they were not all ignored.
-            for feature in self.extra_features:
-                self.extra_features[feature].add_observations_array(observations_array, observations_hpid)
-            for bf in self.extra_basis_functions:
-                self.extra_basis_functions[bf].add_observations_array(observations_array, observations_hpid)
-            for bf in self.basis_functions:
-                bf.add_observations_array(observations_array, observations_hpid)
-            for detailer in self.detailers:
-                detailer.add_observations_array(observations_array, observations_hpid)
-            self.reward_checked = False
+            self.sub_objects_add_observations_array(observations_array, observations_hpid)
+
+    def check_good_note(self, observation):
+        """Check if observation should be ignored based on scheduler_note.
+        Returns True if observation should be counted, False if it
+        should be ignored.
+        """
+        # Check each posible ignore string
+        if len(self.ignore_obs_array) > 0:
+            # Find if strings in self.ignore_obs_array are anywhere in
+            # observation["scheduler_note"]. Thus, self.ignore_obs_array
+            # of "pair" is considered matching "pairs", "pair_33", or
+            # "ack, ackpair,ack"
+            sub_str_indx = np.strings.find(observation["scheduler_note"][0], self.ignore_obs_array)
+            # if all -1, then there was no match, and we should return True
+            # otherwise there was a match, so return False so we
+            # ignore observation
+            checks = np.max(sub_str_indx) < 0
+        else:
+            checks = True
+        return checks
+
+    def sub_objects_add_observation(self, observation, **kwargs):
+        """Loop over all components that need to run
+        add_observation method.
+        """
+        for feature in self.extra_features:
+            self.extra_features[feature].add_observation(observation, **kwargs)
+        for bf in self.extra_basis_functions:
+            self.extra_basis_functions[bf].add_observation(observation, **kwargs)
+        for bf in self.basis_functions:
+            bf.add_observation(observation, **kwargs)
+        for detailer in self.detailers:
+            detailer.add_observation(observation, **kwargs)
+        self.reward_checked = False
 
     def add_observation(self, observation, **kwargs):
-        # Check each posible ignore string
-        checks = [io not in str(observation["scheduler_note"]) for io in self.ignore_obs]
-        # ugh, I think here I have to assume observation is an
-        # array and not a dict.
-        if all(checks):
-            for feature in self.extra_features:
-                self.extra_features[feature].add_observation(observation, **kwargs)
-            for bf in self.extra_basis_functions:
-                self.extra_basis_functions[bf].add_observation(observation, **kwargs)
-            for bf in self.basis_functions:
-                bf.add_observation(observation, **kwargs)
-            for detailer in self.detailers:
-                detailer.add_observation(observation, **kwargs)
-            self.reward_checked = False
+        checks = self.check_good_note(observation)
+        if checks:
+            self.sub_objects_add_observation(observation, **kwargs)
 
     def _check_feasibility(self, conditions):
         """

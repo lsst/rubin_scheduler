@@ -357,6 +357,8 @@ class TestBasis(unittest.TestCase):
         self.assertTrue(np.all(result[good] == 0))
         # And set altitude limits from the conditions
         conditions.sky_alt_limits = [[np.radians(40), np.radians(60)]]
+        # Clear the cache since we changed conditions
+        conditions.alt_az_shadow_mask.cache_clear()
         bf = basis_functions.AltAzShadowMaskBasisFunction(
             nside=nside, min_alt=0, max_alt=90, min_az=0, max_az=360, shadow_minutes=0
         )
@@ -367,6 +369,7 @@ class TestBasis(unittest.TestCase):
         self.assertTrue(np.all(result[good] == 0))
         # Set multiple altitude limits from the conditions
         conditions.sky_alt_limits = [[np.radians(40), np.radians(60)], [np.radians(80), np.radians(90)]]
+        conditions.alt_az_shadow_mask.cache_clear()
         bf = basis_functions.AltAzShadowMaskBasisFunction(
             nside=nside, min_alt=-90, max_alt=90, min_az=0, max_az=360, shadow_minutes=0, pad=3
         )
@@ -385,6 +388,7 @@ class TestBasis(unittest.TestCase):
         # Set azimuth limits
         conditions.sky_alt_limits = None
         conditions.sky_az_limits = [[np.radians(270), np.radians(90)]]
+        conditions.alt_az_shadow_mask.cache_clear()
         bf = basis_functions.AltAzShadowMaskBasisFunction(
             nside=nside, min_alt=-90, max_alt=90, min_az=0, max_az=360, shadow_minutes=0
         )
@@ -400,6 +404,7 @@ class TestBasis(unittest.TestCase):
         # Set azimuth limits, direction sensitive
         conditions.sky_alt_limits = None
         conditions.sky_az_limits = [[np.radians(90), np.radians(270)]]
+        conditions.alt_az_shadow_mask.cache_clear()
         bf = basis_functions.AltAzShadowMaskBasisFunction(
             nside=nside, min_alt=-90, max_alt=90, min_az=0, max_az=360, shadow_minutes=0, pad=2
         )
@@ -419,6 +424,7 @@ class TestBasis(unittest.TestCase):
         conditions.sky_alt_limits = None
         conditions.tel_alt_limits = [np.radians(20), np.radians(86.5)]
         conditions.sky_az_limits = None
+        conditions.alt_az_shadow_mask.cache_clear()
         bf = basis_functions.AltAzShadowMaskBasisFunction(
             nside=nside, min_alt=-90, max_alt=90, min_az=0, max_az=360, shadow_minutes=0
         )
@@ -435,6 +441,7 @@ class TestBasis(unittest.TestCase):
         conditions.sky_az_limits = None
         conditions.tel_az_limits = [np.radians(90), np.radians(270)]
         conditions.tel_alt_limits = [np.radians(-100), np.radians(100)]
+        conditions.alt_az_shadow_mask.cache_clear()
         bf = basis_functions.AltAzShadowMaskBasisFunction(
             nside=nside, min_alt=-90, max_alt=90, min_az=0, max_az=360, shadow_minutes=0
         )
@@ -457,6 +464,7 @@ class TestBasis(unittest.TestCase):
         conditions.sky_az_limits = None
         conditions.tel_az_limits = [np.radians(-250), np.radians(250)]
         conditions.tel_alt_limits = [np.radians(-100), np.radians(100)]
+        conditions.alt_az_shadow_mask.cache_clear()
         bf = basis_functions.AltAzShadowMaskBasisFunction(
             nside=nside, min_alt=20, max_alt=85, min_az=0, max_az=360, shadow_minutes=0
         )

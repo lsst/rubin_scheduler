@@ -25,7 +25,7 @@ import numpy as np
 import rubin_scheduler.scheduler.features as features
 from rubin_scheduler.scheduler.basis_functions import BaseBasisFunction
 from rubin_scheduler.scheduler.utils import CurrentAreaMap, HpInLsstFov, IntRounded
-from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD, _angular_separation, _hp_grow_mask
+from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD, _angular_separation
 
 
 class MaskDirectWindBasisFunction(BaseBasisFunction):
@@ -459,110 +459,24 @@ class AltAzShadowMaskBasisFunction(BaseBasisFunction):
         self.scale = scale
 
     def _calc_value(self, conditions, indx=None):
-        # Basis function value will be 0 except where masked (then np.nan)
-        result = np.zeros(hp.nside2npix(self.nside), dtype=float)
 
-        # For backwards compatiibility:
-        try:
-            n_steps = np.floor(self.shadow_time / self.time_step)
-        except AttributeError:
-            n_steps = 0
+        # Computation of the actual alt/az mask is done in the
+        # conditions object this lets the result of the computation
+        # be cached and shared among the surveys which have
+        # the same kwargs.
 
-        if n_steps > 0:
-            times = np.arange(n_steps) * self.time_step
-            times = times.tolist()
-            if self.shadow_time not in times:
-                times.append(self.shadow_time)
-        else:
-            times = [self.shadow_time]
-
-        for time in times:
-            # Compute the alt,az values in the future. Use the conditions
-            # object so the results are cached and can be used by other
-            # surveys is needed. Technically this could fail if the masked
-            # region is very narrow or shadow time is very large.
-            future_alt, future_az = conditions.future_alt_az(float(np.max(conditions.mjd)) + time)
-            r_future_alt = IntRounded(future_alt)
-            r_current_alt = IntRounded(conditions.alt)
-
-            # Check the basis function altitude limits, now and future
-            result[np.where(r_current_alt < self.r_min_alt)] = np.nan
-            result[np.where(r_current_alt > self.r_max_alt)] = np.nan
-            result[np.where(r_future_alt < self.r_min_alt)] = np.nan
-            result[np.where(r_future_alt > self.r_max_alt)] = np.nan
-
-            # Check the conditions objects 'sky_alt_limit', now and future
-            if (conditions.sky_alt_limits is not None) and (len(conditions.sky_alt_limits) > 0):
-                combined = np.zeros(hp.nside2npix(self.nside), dtype=float)
-                for limits in conditions.sky_alt_limits:
-                    # For conditions-based limits, must add pad
-                    # And remember that discontinuous areas can be allowed
-                    in_bounds = np.ones(hp.nside2npix(self.nside), dtype=float)
-                    min_alt = IntRounded(limits[0])
-                    max_alt = IntRounded(limits[1])
-                    in_bounds[np.where(r_current_alt < min_alt)] = 0
-                    in_bounds[np.where(r_current_alt > max_alt)] = 0
-                    in_bounds[np.where(r_future_alt < min_alt)] = 0
-                    in_bounds[np.where(r_future_alt > max_alt)] = 0
-                    combined += in_bounds
-                result[np.where(combined == 0)] = np.nan
-            # And check against the telescope 'tel_alt_limits'.
-            # The tel_alt_limits could be combined with the sky_alt_limits,
-            # but it's a bit tricky because sky_alt_limits are (potentially)
-            # disjoint allowable areas, while the tel_alt_limits are a single
-            # wide set of allowable area which explicitly disallows anything
-            # outside that range. The az limits versions are similar.
-            if conditions.tel_alt_limits is not None:
-                min_alt = IntRounded(conditions.tel_alt_limits[0])
-                max_alt = IntRounded(conditions.tel_alt_limits[1])
-                result[np.where(r_current_alt < min_alt)] = np.nan
-                result[np.where(r_current_alt > max_alt)] = np.nan
-                result[np.where(r_future_alt < min_alt)] = np.nan
-                result[np.where(r_future_alt > max_alt)] = np.nan
-
-            # note that % (mod) is not supported for IntRounded
-            two_pi = 2 * np.pi
-            # Check the basis function azimuth limits, now and future
-            if np.abs(self.max_az - self.min_az) < two_pi:
-                az_range = (self.max_az - self.min_az) % (two_pi)
-                out_of_bounds = np.where((conditions.az - self.min_az) % (two_pi) > az_range)[0]
-                result[out_of_bounds] = np.nan
-                out_of_bounds = np.where((future_az - self.min_az) % (two_pi) > az_range)[0]
-                result[out_of_bounds] = np.nan
-            # Check the conditions objects azimuth limits, now and future
-            if (conditions.sky_az_limits is not None) and (len(conditions.sky_az_limits) > 0):
-                combined = np.zeros(hp.nside2npix(self.nside), dtype=float)
-                for limits in conditions.sky_az_limits:
-                    in_bounds = np.ones(hp.nside2npix(self.nside), dtype=float)
-                    min_az = limits[0]
-                    max_az = limits[1]
-                    if np.abs(max_az - min_az) < two_pi:
-                        az_range = (max_az - min_az) % (two_pi)
-                        out_of_bounds = np.where((conditions.az - min_az) % (two_pi) > az_range)[0]
-                        in_bounds[out_of_bounds] = 0
-                        out_of_bounds = np.where((future_az - min_az) % (two_pi) > az_range)[0]
-                        in_bounds[out_of_bounds] = 0
-                    combined += in_bounds
-                result[np.where(combined == 0)] = np.nan
-            # Check against the kinematic hard limits.
-            if conditions.tel_az_limits is not None:
-                if np.abs(conditions.tel_az_limits[1] - conditions.tel_az_limits[0]) < two_pi:
-                    az_range = (conditions.tel_az_limits[1] - conditions.tel_az_limits[0]) % (two_pi)
-                    out_of_bounds = np.where(
-                        (conditions.az - conditions.tel_az_limits[0]) % (two_pi) > az_range
-                    )[0]
-                    result[out_of_bounds] = np.nan
-                    out_of_bounds = np.where((future_az - conditions.tel_az_limits[0]) % (two_pi) > az_range)[
-                        0
-                    ]
-                    result[out_of_bounds] = np.nan
-
-        # Grow the resulting mask by self.pad, to avoid field centers
-        # falling outside the boundaries of what is actually reachable.
-        if self.pad > 0:
-            mask_indx = np.where(np.isnan(result))[0]
-            to_mask_indx = _hp_grow_mask(self.nside, tuple(mask_indx), scale=self.scale, grow_size=self.pad)
-            result[to_mask_indx] = np.nan
+        result = conditions.alt_az_shadow_mask(
+            conditions.mjd,
+            self.nside,
+            min_alt=self.min_alt,
+            max_alt=self.max_alt,
+            min_az=self.min_az,
+            max_az=self.max_az,
+            shadow_time=self.shadow_time,
+            pad=self.pad,
+            scale=self.scale,
+            time_step=self.time_step,
+        )
 
         return result
 
