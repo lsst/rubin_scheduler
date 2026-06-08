@@ -1,6 +1,7 @@
 import unittest
 import warnings
 
+import healpy as hp
 import numpy as np
 import pandas as pd
 
@@ -10,7 +11,17 @@ import rubin_scheduler.scheduler.surveys as surveys
 from rubin_scheduler.scheduler.example import simple_greedy_survey
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
 from rubin_scheduler.scheduler.schedulers import BaseQueueManager, CoreScheduler
-from rubin_scheduler.scheduler.utils import ObservationArray
+from rubin_scheduler.scheduler.utils import ObservationArray, TargetoO
+
+
+class DummySurvey(surveys.BaseSurvey):
+    def __init__(self):
+        super().__init__([], [])
+
+    def generate_observations(self, *args, **kwargs):
+        result = ObservationArray(n=10)
+        result["band"] = "r"
+        return result
 
 
 class TestCoreSched(unittest.TestCase):
@@ -114,6 +125,61 @@ class TestCoreSched(unittest.TestCase):
 
         assert recorded["mjd"] == 100
         assert recorded["scheduler_note"] == "survey"
+
+    def test_too_flush(self):
+        """Test that the queue will flush if a new ToO comes in"""
+        observatory = ModelObservatory()
+
+        conditions = observatory.return_conditions()
+        survey = DummySurvey()
+        sched = CoreScheduler([survey], flush_for_new_too=True)
+        sched.update_conditions(conditions)
+        sched._fill_queue()
+
+        # Make sure we have things in the queue
+        assert len(sched.queue_manager.desired_observations_array) > 0
+
+        new_too_event = TargetoO(1, np.ones(hp.nside2npix(conditions.nside)), conditions.mjd, 2)
+        conditions.targets_of_opportunity = [new_too_event]
+
+        sched.update_conditions(conditions)
+        # New ToO should result in queue being cleared
+        assert len(sched.queue_manager.desired_observations_array) == 0
+
+        # Check that sending in a same ID ToO doesn't result in a new flush
+        sched._fill_queue()
+        # Check there is something in the queue
+        assert len(sched.queue_manager.desired_observations_array) > 0
+        # Update conditions. There is a ToO in the list, but
+        # scheduler should recognize it's already seen it and not flush.
+        sched.update_conditions(conditions)
+        assert len(sched.queue_manager.desired_observations_array) > 0
+
+        # Now make a ToO with a new ID
+        new_too_event = TargetoO(10, np.ones(hp.nside2npix(conditions.nside)), conditions.mjd, 2)
+        conditions.targets_of_opportunity = [new_too_event]
+        # Make sure we have something in the queue
+        assert len(sched.queue_manager.desired_observations_array) > 0
+        sched.update_conditions(conditions)
+        # Sending that in should have cleared the queue
+        assert len(sched.queue_manager.desired_observations_array) == 0
+
+        # Again, but set to not flush on new ToO
+        conditions = observatory.return_conditions()
+        survey = DummySurvey()
+        sched = CoreScheduler([survey], flush_for_new_too=False)
+        sched.update_conditions(conditions)
+        sched._fill_queue()
+
+        # Make sure we have something in the queue
+        assert len(sched.queue_manager.desired_observations_array) > 0
+
+        new_too_event = TargetoO(1, np.ones(hp.nside2npix(conditions.nside)), conditions.mjd, 2)
+        conditions.targets_of_opportunity = [new_too_event]
+
+        sched.update_conditions(conditions)
+        # We sent in a new ToO, but should not have flushed.
+        assert len(sched.queue_manager.desired_observations_array) > 0
 
 
 if __name__ == "__main__":
