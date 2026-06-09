@@ -40,6 +40,7 @@ from rubin_scheduler import __version__
 from rubin_scheduler.scheduler.utils.observation_array import ObservationArray
 from rubin_scheduler.utils import (
     DEFAULT_NSIDE,
+    _approx_ra_dec2_alt_az,
     _build_tree,
     _hpid2_ra_dec,
     _xyz_from_ra_dec,
@@ -966,6 +967,13 @@ class TargetoO:
         The type of ToO that is made.
     posterior_distance : `float`
         The posterior distance of the event. (kpc)
+    interrupt_queue : `bool`
+        This ToO is urgent, so if it is high enoug in the
+        sky, the scheduler should flush its queue so ToO
+        observations can start without waiting.
+    alt_limit : `float`
+        Altitude limit that some part of the ToO footprint
+        must be above to trigger a queue flush (degrees).
     """
 
     def __init__(
@@ -978,6 +986,8 @@ class TargetoO:
         dec_rad_center=None,
         too_type=None,
         posterior_distance=None,
+        interrupt_queue=True,
+        alt_limit=-20,
     ):
         self.footprint = footprint
         self.duration = duration
@@ -987,6 +997,40 @@ class TargetoO:
         self.dec_rad_center = dec_rad_center
         self.too_type = too_type
         self.posterior_distance = posterior_distance
+
+        self.alt_limit = np.radians(alt_limit)
+        self.interrupt_queue = interrupt_queue
+
+    def queue_should_flush(self, conditions):
+        """Given current conditions, is the ToO
+        probably visible and should interrupt the queue
+        """
+
+        # Kwarg set saying don't interrupt
+        if not self.interrupt_queue:
+            return False
+
+        result = True
+
+        # If we have a ra,dec center, check it is above alt limit
+        if self.ra_rad_center is not None:
+            alt, az = _approx_ra_dec2_alt_az(
+                self.ra_rad_center,
+                self.dec_rad_center,
+                conditions.site.latitude_rad,
+                conditions.site.longitude_rad,
+                conditions.mjd,
+            )
+            if alt < self.alt_limit:
+                result = False
+        # No ra,dec center, check if any part of footprint
+        # is above alt limit.
+        else:
+            indx = np.where(conditions.alt >= self.alt_limit)[0]
+            if np.max(self.footprint[indx]) == 0:
+                result = False
+
+        return result
 
 
 class SimTargetooServer:

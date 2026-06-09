@@ -164,6 +164,27 @@ class TestCoreSched(unittest.TestCase):
         # Sending that in should have cleared the queue
         assert len(sched.queue_manager.desired_observations_array) == 0
 
+        # Set the ToO to not interrupt
+        new_too_event = TargetoO(
+            12, np.ones(hp.nside2npix(conditions.nside)), conditions.mjd, 2, interrupt_queue=False
+        )
+        conditions.targets_of_opportunity = [new_too_event]
+        sched._fill_queue()
+        # Check there is something in the queue
+        assert len(sched.queue_manager.desired_observations_array) > 0
+        # Add ToOs that should not interrupt
+        sched.update_conditions(conditions)
+        assert len(sched.queue_manager.desired_observations_array) > 0
+
+        # Event that wants to interrupt, but has all zero footprint, so
+        # should not flush
+        new_too_event = TargetoO(
+            13, np.zeros(hp.nside2npix(conditions.nside)), conditions.mjd, 2, interrupt_queue=True
+        )
+        conditions.targets_of_opportunity = [new_too_event]
+        sched.update_conditions(conditions)
+        assert len(sched.queue_manager.desired_observations_array) > 0
+
         # Again, but set to not flush on new ToO
         conditions = observatory.return_conditions()
         survey = DummySurvey()

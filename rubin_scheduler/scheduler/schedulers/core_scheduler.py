@@ -254,12 +254,15 @@ class CoreScheduler:
         if self.flush_for_new_too:
             if conditions_in.targets_of_opportunity is not None:
                 if len(conditions_in.targets_of_opportunity) > 0:
-                    current_ids = set([too.id for too in conditions_in.targets_of_opportunity])
-                    new_ids = current_ids.difference(self.too_alert_ids_set)
-                    if len(new_ids) > 0:
-                        self.flush_queue()
-                        for new_id in new_ids:
-                            self.too_alert_ids_set.add(new_id)
+                    current_ids = np.array([too.id for too in conditions_in.targets_of_opportunity])
+                    new_ids = set(current_ids).difference(self.too_alert_ids_set)
+                    for new_id in new_ids:
+                        self.too_alert_ids_set.add(new_id)
+                        # See if this ToO says we should flush the queue
+                        indx = np.where(current_ids == new_id)[0]
+                        for ind in indx:
+                            if conditions_in.targets_of_opportunity[ind].queue_should_flush(conditions_in):
+                                self.flush_queue()
 
         # Add the current queue and scheduled queue to the conditions
         self.conditions = conditions_in
