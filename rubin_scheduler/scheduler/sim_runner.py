@@ -38,6 +38,7 @@ def sim_runner(
     telescope="rubin",
     snapshot_dir="",
     save_on_fail=True,
+    update_conditions_every_obs=False,
 ):
     """
     run a simulation
@@ -78,6 +79,10 @@ def sim_runner(
         observations, and desired observation in the event of a crash.
         Helpful for debugging surveys that are requesting out of
         bounds pointings.
+    update_conditions_every_obs : `bool`
+        Update the conditions after every observation. Useful for
+        checking if ToOs are causing proper queue flushes.
+        Default False.
     """
 
     if extra_info is None:
@@ -149,10 +154,16 @@ def sim_runner(
             with gzip.open(snapshot_fname, "wb", compresslevel=1) as pio:
                 pickle.dump([scheduler, observatory.return_conditions()], file=pio)
 
+        conditions_not_updated = True
         if not hasattr(scheduler, "conditions"):
             scheduler.update_conditions(observatory.return_conditions())
+            conditions_not_updated = False
 
         if not scheduler._check_queue_mjd_only(observatory.mjd):
+            scheduler.update_conditions(observatory.return_conditions())
+            conditions_not_updated = False
+
+        if update_conditions_every_obs & conditions_not_updated:
             scheduler.update_conditions(observatory.return_conditions())
 
         desired_obs = scheduler.request_observation(mjd=observatory.mjd)

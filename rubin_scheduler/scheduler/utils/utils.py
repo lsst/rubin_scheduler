@@ -987,7 +987,7 @@ class TargetoO:
         too_type=None,
         posterior_distance=None,
         interrupt_queue=True,
-        alt_limit=-20,
+        alt_limit=20,
     ):
         self.footprint = footprint
         self.duration = duration
