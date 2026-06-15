@@ -57,6 +57,8 @@ class CoreScheduler:
     queue_manager : `BaseQueueManager`
         A queue manager object. Default None will use the default
         base class.
+    flush_for_new_too : `bool`
+        Flush the queue if a new ToO alert comes in. Default True.
     """
 
     def __init__(
@@ -71,6 +73,7 @@ class CoreScheduler:
         band_to_filter=None,
         survey_start_mjd=SURVEY_START_MJD,
         queue_manager=None,
+        flush_for_new_too=True,
     ):
         if queue_manager is None:
             self.queue_manager = BaseQueueManager()
@@ -118,6 +121,9 @@ class CoreScheduler:
         # Set to something so it doesn't fail if never set later
         self.queue_fill_mjd_ns = -1
         self.queue_reward_df = None
+
+        self.flush_for_new_too = flush_for_new_too
+        self.too_alert_ids_set = set()
 
         # Set mapping of band to filter if filter is missing
         if band_to_filter is None:
@@ -244,6 +250,20 @@ class CoreScheduler:
             The current conditions of the telescope (pointing position,
             loaded filters, cloud-mask, etc)
         """
+
+        if self.flush_for_new_too:
+            if conditions_in.targets_of_opportunity is not None:
+                if len(conditions_in.targets_of_opportunity) > 0:
+                    current_ids = np.array([too.id for too in conditions_in.targets_of_opportunity])
+                    new_ids = set(current_ids).difference(self.too_alert_ids_set)
+                    for new_id in new_ids:
+                        self.too_alert_ids_set.add(new_id)
+                        # See if this ToO says we should flush the queue
+                        indx = np.where(current_ids == new_id)[0]
+                        for ind in indx:
+                            if conditions_in.targets_of_opportunity[ind].queue_should_flush(conditions_in):
+                                self.flush_queue()
+
         # Add the current queue and scheduled queue to the conditions
         self.conditions = conditions_in
 
