@@ -11,6 +11,7 @@ __all__ = (
     "MoonDownBasisFunction",
     "FractionOfObsBasisFunction",
     "CloudedOutBasisFunction",
+    "CloudsForbiddenBasisFunction",
     "RisingMoreBasisFunction",
     "SoftDelayBasisFunction",
     "LookAheadDdfBasisFunction",
@@ -29,6 +30,7 @@ __all__ = (
 
 import warnings
 
+import healpy as hp
 import numpy as np
 
 from rubin_scheduler.scheduler import features
@@ -687,6 +689,38 @@ class CloudedOutBasisFunction(BaseBasisFunction):
         result = True
         if conditions.bulk_cloud > self.cloud_limit:
             result = False
+        return result
+
+
+class CloudsForbiddenBasisFunction(BaseBasisFunction):
+    """Check cloud extinction map.
+
+    Parameters
+    ----------
+    extinction_limit : `float`
+        The extinction limit to consider too cloudy.
+        Default 1 (mags).
+    area_limit : `float`
+        The area to demand be above extinction_limit.
+        Default 100 (sq degrees).
+    """
+
+    def __init__(self, extinction_limit=1.0, area_limit=100):
+        super().__init__()
+        self.extinction_limit = extinction_limit
+        self.area_limit = area_limit
+
+    def check_feasibility(self, conditions):
+        result = True
+        if conditions.cloud_maps is not None:
+            extinction_map = conditions.cloud_maps.extinction_closest(conditions.mjd)
+            extinction_nside = conditions.cloud_maps.nside_out
+            area = hp.nside2pixarea(extinction_nside, degrees=True)
+
+            over_limit = np.where(extinction_map >= self.extinction_limit)[0]
+            area_over = area * over_limit.size
+            if area_over >= self.area_limit:
+                result = False
         return result
 
 

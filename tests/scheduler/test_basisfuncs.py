@@ -1,12 +1,14 @@
 import unittest
 import warnings
 
+import healpy as hp
 import numpy as np
 
 import rubin_scheduler.scheduler.basis_functions as basis_functions
 from rubin_scheduler.scheduler.features import Conditions
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
 from rubin_scheduler.scheduler.utils import ObservationArray
+from rubin_scheduler.site_models import CloudMap
 
 
 class TestBasis(unittest.TestCase):
@@ -45,6 +47,7 @@ class TestBasis(unittest.TestCase):
             basis_functions.HourAngleLimitBasisFunction,
             basis_functions.MoonDownBasisFunction,
             basis_functions.CloudedOutBasisFunction,
+            basis_functions.CloudsForbiddenBasisFunction,
             basis_functions.SoftDelayBasisFunction,
             basis_functions.SunAltLimitBasisFunction,
             basis_functions.NightModuloBasisFunction,
@@ -317,6 +320,38 @@ class TestBasis(unittest.TestCase):
         conditions.sun_n12_rising = conditions.mjd + 16.0 / 60 / 24
         conditions.sun_alt = np.radians(-20)
         assert bf.check_feasibility(conditions)
+
+    def test_cloud_forbidden(self):
+        conditions = Conditions()
+        nside = 32
+        conditions.mjd = 100.0
+        cloud_map = CloudMap(nside_out=nside)
+
+        bf = basis_functions.CloudsForbiddenBasisFunction(extinction_limit=1, area_limit=1000)
+
+        # All clear
+        frame = np.zeros(hp.nside2npix(nside))
+        cloud_map.add_frame(frame, conditions.mjd)
+        conditions.cloud_maps = cloud_map
+
+        # No clouds, should pass
+        assert bf.check_feasibility(conditions)
+
+        # Only 1 pixel cloudy, should still pass
+        frame[0] = 10
+        cloud_map = CloudMap(nside_out=nside)
+        cloud_map.add_frame(frame, conditions.mjd)
+        conditions.cloud_maps = cloud_map
+
+        assert bf.check_feasibility(conditions)
+
+        # All cloudy, should say not feasible
+        frame += 100
+        cloud_map = CloudMap(nside_out=nside)
+        cloud_map.add_frame(frame, conditions.mjd)
+        conditions.cloud_maps = cloud_map
+
+        assert not bf.check_feasibility(conditions)
 
     def test_AltAzShadowMask(self):
         nside = 32
