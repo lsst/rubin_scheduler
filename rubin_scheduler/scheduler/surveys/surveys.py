@@ -354,11 +354,12 @@ class BlobSurvey(GreedySurvey):
         # If we are trying to get things done before a scheduled simulation
         if self.check_scheduled:
             if len(conditions.scheduled_observations) > 0:
-                available_time = np.min(conditions.scheduled_observations) - conditions.mjd
-                available_time *= 24.0 * 60.0  # to minutes
-                n_blocks = np.round(available_time / self.ideal_pair_time)
+                available_time_sched = np.min(conditions.scheduled_observations) - conditions.mjd
+                available_time_sched *= 24.0 * 60.0  # to minutes
+                n_blocks = np.round(available_time_sched / self.ideal_pair_time)
                 if n_blocks < n_ideal_blocks:
                     n_ideal_blocks = n_blocks
+                    available_time = available_time_sched
 
         # If we are trying to complete before twilight ends or
         # the night ends

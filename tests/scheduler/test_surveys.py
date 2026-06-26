@@ -11,6 +11,7 @@ import rubin_scheduler.scheduler.detailers as detailers
 import rubin_scheduler.scheduler.detailers as dets
 import rubin_scheduler.scheduler.surveys as surveys
 from rubin_scheduler.scheduler.basis_functions import SimpleArrayBasisFunction
+from rubin_scheduler.scheduler.features import Conditions
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
 from rubin_scheduler.scheduler.schedulers import BaseQueueManager, CoreScheduler
 from rubin_scheduler.scheduler.utils import HpInLsstFov, ObservationArray, ScheduledObservationArray
@@ -394,6 +395,46 @@ class TestSurveys(unittest.TestCase):
         reward_df = survey.make_reward_df(conditions)
         for value, max_basis_reward in zip(bf_values.max(axis=1), reward_df["max_basis_reward"]):
             self.assertEqual(max_basis_reward, value)
+
+    def test_block_size(self):
+        """Check that pair times can scale properly"""
+
+        ideal_pair_time = 50
+        max_pair_time = 70.0
+        survey = surveys.BlobSurvey([], [], ideal_pair_time=ideal_pair_time, max_pair_time=max_pair_time)
+
+        visit_to_time = (survey.slew_approx + survey.exptime + survey.read_approx * (survey.nexp - 1)) / 60.0
+        conditions = Conditions()
+        conditions.scheduled_observations = []
+
+        # We have a whole day until twilight, so should set to ideal time
+        conditions.mjd = 0.0
+        conditions.sun_n18_rising = 1.0
+        survey._set_block_size(conditions)
+        approx_time = survey.nvisit_block * visit_to_time
+
+        assert np.abs(approx_time - ideal_pair_time) < 2
+
+        # Test that things expand and contract
+        for time_left in [60.0, 40.0, 10.0]:
+            conditions.sun_n18_rising = time_left / 60.0 / 24
+
+            survey._set_block_size(conditions)
+            approx_time = survey.nvisit_block * visit_to_time
+
+            assert np.abs(approx_time - time_left) < 2
+
+        conditions.mjd = 0.0
+        conditions.sun_n18_rising = 1.0
+
+        # Test we also expand and contract for scheduled_obs
+        for time_left in [60.0, 40.0, 10.0]:
+            conditions.scheduled_observations = [time_left / 60.0 / 24]
+
+            survey._set_block_size(conditions)
+            approx_time = survey.nvisit_block * visit_to_time
+
+            assert np.abs(approx_time - time_left) < 2
 
 
 if __name__ == "__main__":
