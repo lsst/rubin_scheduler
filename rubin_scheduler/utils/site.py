@@ -4,7 +4,10 @@ import warnings
 
 import astropy.units as u
 import numpy as np
+import numpy.typing as npt
 from astropy.coordinates import EarthLocation
+
+from .constants import DEFAULT_NSIDE
 
 
 class LsstSiteParameters:
@@ -302,3 +305,40 @@ class Site:
         temperature lapse rate (in Kelvin per meter)
         """
         return self._lapse_rate
+
+
+def seeing_limit_by_dec(
+    nside: int = DEFAULT_NSIDE, zenith_fwhm_limit: float = 1.0
+) -> npt.NDArray[np.float64]:
+    """
+    Convert a zenith FWHM value into a declination-dependent healpix map.
+
+    Parameters
+    ----------
+    nside
+        The nside for the returned healpix map of declination-dependent
+        fwhm values.
+    zenith_fwhm_limit
+        The zenith FWHM value to convert.
+
+    Returns
+    -------
+    min_fwhm : `np.ndarray`
+        The declination-dependent scaled FWHM values.
+
+    Notes
+    -----
+    For every point in the healpix map, the declination is converted to
+    the minimum airmass possible (e.g. the airmass when at the meridian).
+    The FWHM is then scaled by this minimum airmass according to X^0.6.
+    """
+    site = Site("LSST")
+    hpid = np.arange(hp.nside2npix(nside))
+    ra, dec = hpid2_ra_dec(nside, hpid)
+    min_z = np.radians(np.abs(dec - site.latitude))
+    min_airmass = 1 / np.cos(min_z)
+    min_fwhm = zenith_fwhm_limit * (np.power(min_airmass, 0.6))
+    # Get rid of NaNs or Infs that might be there
+    min_fwhm[~np.isfinite(min_fwhm)] = 0
+
+    return min_fwhm
