@@ -696,7 +696,7 @@ class CloudedOutMapBasisFunction(BaseBasisFunction):
     say things are not feasible.
     """
 
-    def __init__(self, median_cloud_limit=0.1):
+    def __init__(self, median_cloud_limit=1.0):
         super(CloudedOutMapBasisFunction, self).__init__()
         self.median_cloud_limit = median_cloud_limit
 
@@ -706,7 +706,7 @@ class CloudedOutMapBasisFunction(BaseBasisFunction):
         if conditions.cloud_maps is not None:
             extinction_map = conditions.cloud_maps.extinction_closest(conditions.mjd)
             above_hor_indx = np.where(conditions.alt > 0)[0]
-            median_extinction = np.median(extinction_map[above_hor_indx])
+            median_extinction = np.nanmedian(extinction_map[above_hor_indx])
             if median_extinction > self.median_cloud_limit:
                 result = False
 
