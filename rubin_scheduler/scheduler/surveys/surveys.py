@@ -373,7 +373,7 @@ class BlobSurvey(GreedySurvey):
             if n_blocks < n_ideal_blocks:
                 n_ideal_blocks = n_blocks
 
-        if n_ideal_blocks >= 3:
+        if n_ideal_blocks >= 2:
             self.nvisit_block = int(
                 np.floor(
                     self.ideal_pair_time_min
@@ -383,18 +383,13 @@ class BlobSurvey(GreedySurvey):
             )
         else:
             # Now we can stretch or contract the block size to
-            # allocate the
-            # remainder time until twilight starts
-            # We can take the remaining time and try 1-3 blocks
-            # XXX--magic number
-            possible_times = available_time / np.arange(1, 4)
-            diff = np.abs(self.time_needed - possible_times)
-            best_block_time = np.max(possible_times[np.where(diff == np.min(diff))])
-            if self.bandname2 is not None:
-                best_block_time = best_block_time / 2.0
-            if self.max_pair_time_min is not None:
-                if best_block_time > self.max_pair_time_min / 60 / 24:
-                    best_block_time = self.max_pair_time_min / 60 / 24
+            # allocate the remainder time available
+
+            # Can we stretch to fill the remaining time
+            if available_time <= self.max_time_needed:
+                best_block_time = available_time
+            else:
+                best_block_time = available_time / 2.
 
             self.nvisit_block = int(
                 np.floor(
@@ -402,6 +397,9 @@ class BlobSurvey(GreedySurvey):
                     / (self.slew_approx + self.exptime + self.read_approx * (self.nexp - 1))
                 )
             )
+            # We expect the observations to get paired
+            if self.bandname2 is not None:
+                self.nvisit_block = int(np.floor(self.nvisit_block / 2.0))
 
         # The floor can set block to zero, make it possible to to just one
         if self.nvisit_block <= 0:
