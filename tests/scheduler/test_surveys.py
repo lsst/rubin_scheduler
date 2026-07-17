@@ -401,7 +401,9 @@ class TestSurveys(unittest.TestCase):
 
         ideal_pair_time = 50
         max_pair_time = 70.0
-        survey = surveys.BlobSurvey([], [], ideal_pair_time=ideal_pair_time, max_pair_time=max_pair_time)
+        survey = surveys.BlobSurvey(
+            [], [], ideal_pair_time=ideal_pair_time, max_pair_time=max_pair_time, bandname2=None
+        )
 
         visit_to_time = (survey.slew_approx + survey.exptime + survey.read_approx * (survey.nexp - 1)) / 60.0
         conditions = Conditions()

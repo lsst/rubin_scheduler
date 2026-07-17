@@ -388,11 +388,14 @@ class BlobSurvey(GreedySurvey):
             # We can take the remaining time and try 1-3 blocks
             # XXX--magic number
             possible_times = available_time / np.arange(1, 4)
-            diff = np.abs(self.ideal_pair_time_min / 60 / 24 - possible_times)
+            diff = np.abs(self.time_needed - possible_times)
             best_block_time = np.max(possible_times[np.where(diff == np.min(diff))])
+            if self.bandname2 is not None:
+                best_block_time = best_block_time / 2.0
             if self.max_pair_time_min is not None:
-                if best_block_time > self.max_time_needed:
+                if best_block_time > self.max_pair_time_min / 60 / 24:
                     best_block_time = self.max_pair_time_min / 60 / 24
+
             self.nvisit_block = int(
                 np.floor(
                     (best_block_time * 3600 * 24)
