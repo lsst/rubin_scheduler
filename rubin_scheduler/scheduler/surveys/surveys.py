@@ -339,6 +339,10 @@ class BlobSurvey(GreedySurvey):
     def _set_block_size(self, conditions):
         """
         Update the block size if it's getting near a break point.
+
+        Sets self.nvisit_block which will be used to set the size of
+        the observation array. Note this observation array may then
+        grow due to looping over self.n_visits or a detailer.
         """
 
         # If we are trying to get things done before twilight
