@@ -1,13 +1,15 @@
-__all__ = ("Site",)
+__all__ = ("Site", "declination_dependent_fwhm")
 
 import warnings
 
 import astropy.units as u
+import healpy as hp
 import numpy as np
 import numpy.typing as npt
 from astropy.coordinates import EarthLocation
 
 from .constants import DEFAULT_NSIDE
+from .healpy_utils import hpid2_ra_dec
 
 
 class LsstSiteParameters:
@@ -307,7 +309,7 @@ class Site:
         return self._lapse_rate
 
 
-def seeing_limit_by_dec(
+def declination_dependent_fwhm(
     nside: int = DEFAULT_NSIDE, zenith_fwhm_limit: float = 1.0
 ) -> npt.NDArray[np.float64]:
     """
