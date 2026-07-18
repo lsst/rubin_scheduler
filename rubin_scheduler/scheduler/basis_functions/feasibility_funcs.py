@@ -395,7 +395,7 @@ class TimeToScheduledBasisFunction(BaseBasisFunction):
     Parameters
     ----------
     time_needed : float (30.)
-        The time needed to run a survey (mintues).
+        The time needed to run a survey (minutes).
     """
 
     def __init__(self, time_needed=30.0):

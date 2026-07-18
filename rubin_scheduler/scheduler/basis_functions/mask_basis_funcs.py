@@ -92,7 +92,7 @@ class MaskAfterNObsSeeingBasisFunction(BaseBasisFunction):
         The maximum number of times to obseve in a season. Default 3.
     bandname : `str`
         The bandname. Default None uses all bands.
-    seeing_fwhm_max : `float`
+    seeing_fwhm_max : `float` or `np.NDarray`
         The seeing limit to use when counting observations (arcsec).
     reset_per_season : `bool`
         Should the mask reset each season. Default True.

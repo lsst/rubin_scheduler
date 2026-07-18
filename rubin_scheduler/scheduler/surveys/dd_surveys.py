@@ -54,7 +54,7 @@ class DeepDrillingSurvey(BaseSurvey):
         nvis=[20, 10, 20, 26, 20],
         exptime=30.0,
         u_exptime=30.0,
-        nexp=2,
+        nexp=1,
         ignore_obs=None,
         survey_name="DD",
         reward_value=None,
