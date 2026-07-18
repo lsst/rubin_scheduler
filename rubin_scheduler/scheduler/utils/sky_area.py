@@ -1,4 +1,5 @@
 __all__ = (
+    "get_template_coverage",
     "get_current_footprint",
     "generate_all_sky",
     "band_count_ratios",
@@ -15,6 +16,7 @@ import warnings
 import astropy.units as u
 import healpy as hp
 import numpy as np
+import numpy.typing as npt
 from astropy.coordinates import SkyCoord
 from numpy.lib import recfunctions as rfn
 from shapely.geometry import Point
@@ -26,7 +28,47 @@ from rubin_scheduler.utils import DEFAULT_NSIDE, Site, _angular_separation, _hpi
 from .utils import IntRounded
 
 
-def get_current_footprint(nside):
+def get_template_coverage(
+    template_filedict: dict[str, str] | None = None, nside: int = DEFAULT_NSIDE
+) -> dict[str, npt.NDarray]:
+    """Read and return the current template coverage in a healpix map
+    at the desired nside.
+
+    Parameters
+    ----------
+    template_filedict :
+        A map of filepaths per bandpass.
+        If None, the default maps from rubin_sim_data are used.
+    nside :
+        The nside value for the returned maps.
+        If the map is to be downsampled, the downsampling unamasks any
+        pixels which are only partly covered.
+
+    Returns
+    -------
+    templates : `dict` [ `str` : `np.ndarray` (N, ) ]
+        A dictionary of bandpass : template healpix array pairs.
+    """
+    if template_filedict is None:
+        template_filedict = {}
+        for b in "ugrizy":
+            template_filedict[b] = os.path.join(
+                rs_data.get_data_dir(),
+                "scheduler",
+                "template_maps",
+                f"template_coverage_healpix_{b}_nside64.fits",
+            )
+    templates = {}
+    for b in template_filedict:
+        templates[b] = hp.read_map(template_filedict[b])
+        # We want to grow the not-yet-covered areas, so replace with NaN.
+        templates[b] = np.where(templates[b] == 0, hp.UNSEEN, 1)
+        templates[b] = hp.ud_grade(templates[b], nside_out=nside, pess=True)
+        templates[b] = np.where(templates[b] == hp.UNSEEN, 0, templates[b])
+    return templates
+
+
+def get_current_footprint(nside: int) -> tuple[npt.NDArray, npt.NDArray]:
     """Convenience method to return the current footprint.
 
     This is primarily a way to help rubin-sim users keep up to date
@@ -48,7 +90,9 @@ def get_current_footprint(nside):
     return footprints, labels
 
 
-def generate_all_sky(nside=DEFAULT_NSIDE, elevation_limit=20, mask=hp.UNSEEN):
+def generate_all_sky(
+    nside: int = DEFAULT_NSIDE, elevation_limit: float = 20, mask: float = hp.UNSEEN
+) -> dict[str, npt.NDArray]:
     """Set up a healpix map over the entire sky.
     Calculate RA & Dec, Galactic l & b, Ecliptic l & b, for all healpixels.
     Calculate max altitude, to define areas which LSST cannot reach.
