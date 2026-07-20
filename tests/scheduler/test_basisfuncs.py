@@ -1,12 +1,14 @@
 import unittest
 import warnings
 
+import healpy as hp
 import numpy as np
 
 import rubin_scheduler.scheduler.basis_functions as basis_functions
 from rubin_scheduler.scheduler.features import Conditions
 from rubin_scheduler.scheduler.model_observatory import ModelObservatory
 from rubin_scheduler.scheduler.utils import ObservationArray
+from rubin_scheduler.site_models import CloudMap
 
 
 class TestBasis(unittest.TestCase):
@@ -67,6 +69,7 @@ class TestBasis(unittest.TestCase):
             basis_functions.MaskAfterNObsBasisFunction,
             basis_functions.WindPressureBasisFunction,
             basis_functions.MaskDirectWindBasisFunction,
+            basis_functions.CloudedOutMapBasisFunction,
         ]
 
         obs = ObservationArray()
@@ -317,6 +320,29 @@ class TestBasis(unittest.TestCase):
         conditions.sun_n12_rising = conditions.mjd + 16.0 / 60 / 24
         conditions.sun_alt = np.radians(-20)
         assert bf.check_feasibility(conditions)
+
+    def test_cloud_feas(self):
+        bf = basis_functions.CloudedOutMapBasisFunction(median_cloud_limit=0.1)
+        mjd = 1000
+        conditions = Conditions()
+        conditions.mjd = mjd
+
+        # No map, should pass
+        assert bf.check_feasibility(conditions)
+
+        cloud_map = CloudMap()
+        clear = np.zeros(hp.nside2npix(nside=16))
+        cloud_map.add_frame(clear, mjd)
+        conditions.cloud_maps = cloud_map
+
+        # Clear clouds, should pass
+        assert bf.check_feasibility(conditions)
+
+        # Make a cloud map with 0.2 extinction
+        cloud_map = CloudMap()
+        cloud_map.add_frame(clear + 0.2, mjd)
+        conditions.cloud_maps = cloud_map
+        assert not bf.check_feasibility(conditions)
 
     def test_AltAzShadowMask(self):
         nside = 32

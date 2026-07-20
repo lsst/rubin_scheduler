@@ -11,6 +11,7 @@ __all__ = (
     "MoonDownBasisFunction",
     "FractionOfObsBasisFunction",
     "CloudedOutBasisFunction",
+    "CloudedOutMapBasisFunction",
     "RisingMoreBasisFunction",
     "SoftDelayBasisFunction",
     "LookAheadDdfBasisFunction",
@@ -687,6 +688,28 @@ class CloudedOutBasisFunction(BaseBasisFunction):
         result = True
         if conditions.bulk_cloud > self.cloud_limit:
             result = False
+        return result
+
+
+class CloudedOutMapBasisFunction(BaseBasisFunction):
+    """If the median of the current extinction map is above the limit
+    say things are not feasible.
+    """
+
+    def __init__(self, median_cloud_limit=1.0):
+        super(CloudedOutMapBasisFunction, self).__init__()
+        self.median_cloud_limit = median_cloud_limit
+
+    def check_feasibility(self, conditions):
+        result = True
+
+        if conditions.cloud_maps is not None:
+            extinction_map = conditions.cloud_maps.extinction_closest(conditions.mjd)
+            above_hor_indx = np.where(conditions.alt > 0)[0]
+            median_extinction = np.nanmedian(extinction_map[above_hor_indx])
+            if median_extinction > self.median_cloud_limit:
+                result = False
+
         return result
 
 
