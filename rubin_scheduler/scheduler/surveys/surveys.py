@@ -245,8 +245,8 @@ class BlobSurvey(GreedySurvey):
         self.bandname1 = bandname1
         self.bandname2 = bandname2
 
-        self.ideal_pair_time_min = ideal_pair_time
-        self.max_pair_time_min = max_pair_time
+        self.ideal_pair_time_minutes = ideal_pair_time
+        self.max_pair_time_minutes = max_pair_time
 
         if survey_name is None:
             self._generate_survey_name()
@@ -255,7 +255,7 @@ class BlobSurvey(GreedySurvey):
 
         if observation_reason == "generate_obs_reason":
             b2 = self.bandname2 if self.bandname2 is not None else ""
-            observation_reason = f"pairs_{self.bandname1}{b2}_{self.ideal_pair_time_min:0.1f}"
+            observation_reason = f"pairs_{self.bandname1}{b2}_{self.ideal_pair_time_minutes:0.1f}"
 
         super(BlobSurvey, self).__init__(
             basis_functions=basis_functions,
@@ -299,7 +299,7 @@ class BlobSurvey(GreedySurvey):
 
         if max_pair_time is None:
             max_pair_time = ideal_pair_time
-        self.max_pair_time_min = max_pair_time
+        self.max_pair_time_minutes = max_pair_time
 
         if bandname1 == bandname2:
             band_change_approx = 0
@@ -307,11 +307,11 @@ class BlobSurvey(GreedySurvey):
         # then repeat.)
         if bandname2 is not None:
             self.time_needed = (
-                (self.ideal_pair_time_min * 2.0 + band_change_approx / 60.0) / 60.0 / 24.0
+                (self.ideal_pair_time_minutes * 2.0 + band_change_approx / 60.0) / 60.0 / 24.0
             )  # Days
             self.max_time_needed = (max_pair_time * 2.0 + band_change_approx / 60.0) / 60.0 / 24.0  # Days
         else:
-            self.time_needed = self.ideal_pair_time_min / 24.0 / 60.0  # Days
+            self.time_needed = self.ideal_pair_time_minutes / 24.0 / 60.0  # Days
             self.max_time_needed = max_pair_time / 24.0 / 60.0  # Days
 
         self.ra, self.dec = _hpid2_ra_dec(self.nside, self.hpids)
@@ -329,7 +329,7 @@ class BlobSurvey(GreedySurvey):
 
     def _generate_survey_name(self):
         self.survey_name = "Pairs"
-        self.survey_name += f" {self.ideal_pair_time_min :.1f}"
+        self.survey_name += f" {self.ideal_pair_time_minutes :.1f}"
         self.survey_name += f" {self.bandname1}"
         if self.bandname2 is None:
             self.survey_name += f"_{self.bandname1}"
@@ -376,7 +376,7 @@ class BlobSurvey(GreedySurvey):
         if n_ideal_blocks >= 2:
             self.nvisit_block = int(
                 np.floor(
-                    self.ideal_pair_time_min
+                    self.ideal_pair_time_minutes
                     * 60.0
                     / (self.slew_approx + self.exptime + self.read_approx * (self.nexp - 1))
                 )
@@ -389,7 +389,7 @@ class BlobSurvey(GreedySurvey):
             if available_time <= self.max_time_needed:
                 best_block_time = available_time
             else:
-                best_block_time = available_time / 2.
+                best_block_time = available_time / 2.0
 
             self.nvisit_block = int(
                 np.floor(
