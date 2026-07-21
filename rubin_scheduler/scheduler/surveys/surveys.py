@@ -245,8 +245,8 @@ class BlobSurvey(GreedySurvey):
         self.bandname1 = bandname1
         self.bandname2 = bandname2
 
-        self.ideal_pair_time = ideal_pair_time
-        self.max_pair_time = max_pair_time
+        self.ideal_pair_time_minutes = ideal_pair_time
+        self.max_pair_time_minutes = max_pair_time
 
         if survey_name is None:
             self._generate_survey_name()
@@ -255,7 +255,7 @@ class BlobSurvey(GreedySurvey):
 
         if observation_reason == "generate_obs_reason":
             b2 = self.bandname2 if self.bandname2 is not None else ""
-            observation_reason = f"pairs_{self.bandname1}{b2}_{self.ideal_pair_time:0.1f}"
+            observation_reason = f"pairs_{self.bandname1}{b2}_{self.ideal_pair_time_minutes:0.1f}"
 
         super(BlobSurvey, self).__init__(
             basis_functions=basis_functions,
@@ -296,25 +296,23 @@ class BlobSurvey(GreedySurvey):
         self.check_scheduled = check_scheduled
         # If we are taking pairs in same band, no need to add band
         # change time.
+
+        if max_pair_time is None:
+            max_pair_time = ideal_pair_time
+        self.max_pair_time_minutes = max_pair_time
+
         if bandname1 == bandname2:
             band_change_approx = 0
         # Compute the minimum time needed to observe a blob (or observe,
         # then repeat.)
         if bandname2 is not None:
             self.time_needed = (
-                (self.ideal_pair_time * 60.0 * 2.0 + self.exptime + self.read_approx + band_change_approx)
-                / 24.0
-                / 3600.0
+                (self.ideal_pair_time_minutes * 2.0 + band_change_approx / 60.0) / 60.0 / 24.0
             )  # Days
+            self.max_time_needed = (max_pair_time * 2.0 + band_change_approx / 60.0) / 60.0 / 24.0  # Days
         else:
-            self.time_needed = (
-                (self.ideal_pair_time * 60.0 + self.exptime + self.read_approx) / 24.0 / 3600.0
-            )  # Days
-        self.band_set = set(bandname1)
-        if bandname2 is None:
-            self.band2_set = self.band_set
-        else:
-            self.band2_set = set(bandname2)
+            self.time_needed = self.ideal_pair_time_minutes / 24.0 / 60.0  # Days
+            self.max_time_needed = max_pair_time / 24.0 / 60.0  # Days
 
         self.ra, self.dec = _hpid2_ra_dec(self.nside, self.hpids)
 
@@ -331,7 +329,7 @@ class BlobSurvey(GreedySurvey):
 
     def _generate_survey_name(self):
         self.survey_name = "Pairs"
-        self.survey_name += f" {self.ideal_pair_time :.1f}"
+        self.survey_name += f" {self.ideal_pair_time_minutes :.1f}"
         self.survey_name += f" {self.bandname1}"
         if self.bandname2 is None:
             self.survey_name += f"_{self.bandname1}"
@@ -341,13 +339,16 @@ class BlobSurvey(GreedySurvey):
     def _set_block_size(self, conditions):
         """
         Update the block size if it's getting near a break point.
+
+        Sets self.nvisit_block which will be used to set the size of
+        the observation array. Note this observation array may then
+        grow due to looping over self.n_visits or a detailer.
         """
 
         # If we are trying to get things done before twilight
         if self.twilight_scale:
             available_time = conditions.sun_n18_rising - conditions.mjd
-            available_time *= 24.0 * 60.0  # to minutes
-            n_ideal_blocks = np.round(available_time / self.ideal_pair_time)
+            n_ideal_blocks = np.round(available_time / self.time_needed)
         else:
             n_ideal_blocks = 4
 
@@ -355,13 +356,12 @@ class BlobSurvey(GreedySurvey):
         if self.check_scheduled:
             if len(conditions.scheduled_observations) > 0:
                 available_time_sched = np.min(conditions.scheduled_observations) - conditions.mjd
-                available_time_sched *= 24.0 * 60.0  # to minutes
-                n_blocks = np.round(available_time_sched / self.ideal_pair_time)
+                n_blocks = np.round(available_time_sched / self.time_needed)
                 if n_blocks < n_ideal_blocks:
                     n_ideal_blocks = n_blocks
                     available_time = available_time_sched
 
-        # If we are trying to complete before twilight ends or
+        # # If we are trying to complete these blobs within twilight or
         # the night ends
         if self.in_twilight:
             at1 = conditions.sun_n12_rising - conditions.mjd
@@ -369,38 +369,37 @@ class BlobSurvey(GreedySurvey):
             times = np.array([at1, at2])
             times = times[np.where(times > 0)]
             available_time = np.min(times) if len(times) > 0 else 0.0
-            available_time *= 24.0 * 60.0  # to minutes
-            n_blocks = np.round(available_time / self.ideal_pair_time)
+            n_blocks = np.round(available_time / self.time_needed)
             if n_blocks < n_ideal_blocks:
                 n_ideal_blocks = n_blocks
 
-        if n_ideal_blocks >= 3:
+        if n_ideal_blocks >= 2:
             self.nvisit_block = int(
                 np.floor(
-                    self.ideal_pair_time
+                    self.ideal_pair_time_minutes
                     * 60.0
                     / (self.slew_approx + self.exptime + self.read_approx * (self.nexp - 1))
                 )
             )
         else:
             # Now we can stretch or contract the block size to
-            # allocate the
-            # remainder time until twilight starts
-            # We can take the remaining time and try 1-3 blocks
-            # XXX--magic number
-            possible_times = available_time / np.arange(1, 4)
-            diff = np.abs(self.ideal_pair_time - possible_times)
-            best_block_time = np.max(possible_times[np.where(diff == np.min(diff))])
-            if self.max_pair_time is not None:
-                if best_block_time > self.max_pair_time:
-                    best_block_time = self.max_pair_time
+            # allocate the remainder time available
+
+            # Can we stretch to fill the remaining time
+            if available_time <= self.max_time_needed:
+                best_block_time = available_time
+            else:
+                best_block_time = available_time / 2.0
+
             self.nvisit_block = int(
                 np.floor(
-                    best_block_time
-                    * 60.0
+                    (best_block_time * 3600 * 24)
                     / (self.slew_approx + self.exptime + self.read_approx * (self.nexp - 1))
                 )
             )
+            # We expect the observations to get paired
+            if self.bandname2 is not None:
+                self.nvisit_block = int(np.floor(self.nvisit_block / 2.0))
 
         # The floor can set block to zero, make it possible to to just one
         if self.nvisit_block <= 0:
@@ -540,18 +539,6 @@ class BlobSurvey(GreedySurvey):
         if self.note_block_size:
             observations["scheduler_note"] = np.char.add(
                 observations["scheduler_note"], ", bs %i" % observations.size
-            )
-
-        if self.n_visits > 1:
-            track_n_in_nvisit = np.concatenate(track_n_in_nvisit)
-            observations["scheduler_note"] = np.char.add(observations["scheduler_note"], ", ")
-            observations["scheduler_note"] = np.char.add(
-                observations["scheduler_note"], track_n_in_nvisit.astype(str)
-            )
-            # Update scheduler_note so order of visits tagged.
-            observations["scheduler_note"] = np.char.add(observations["scheduler_note"], ", ")
-            observations["scheduler_note"] = np.char.add(
-                observations["scheduler_note"], np.arange(observations.size).astype(str)
             )
 
         return observations
