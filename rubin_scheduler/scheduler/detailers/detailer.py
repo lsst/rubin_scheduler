@@ -1,6 +1,7 @@
 __all__ = (
     "BaseDetailer",
     "RotspUpdateDetailer",
+    "ExtinctionLimitDetailer",
     "ZeroRotDetailer",
     "BandSubstituteDetailer",
     "ChunkByHADetailer",
@@ -166,6 +167,23 @@ class RotspUpdateDetailer(BaseDetailer):
             observation_array["rotTelPos"][rot_too_far_indx], obs_pa[rot_too_far_indx]
         )
 
+        return observation_array
+
+
+class ExtinctionLimitDetailer(BaseDetailer):
+    """Add extinction_limit value to the observation array.
+
+    Parameters
+    ----------
+    extinction_limit : `float`
+        The extinction_limit value to set in the extinction_limit field.
+    """
+
+    def __init__(self, extinction_limit=1.5):
+        self.extinction_limit = extinction_limit
+
+    def __call__(self, observation_array, conditions):
+        observation_array["extinction_limit"] = self.extinction_limit
         return observation_array
 
 

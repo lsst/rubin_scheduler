@@ -51,7 +51,6 @@ class TestDetailers(unittest.TestCase):
             detailers.DitherDetailer,
             detailers.CameraRotDetailer,
             detailers.CameraSmallRotPerObservationListDetailer,
-            detailers.BandToFilterDetailer,
             detailers.TagRadialDetailer,
             detailers.LabelDDFDetailer,
             detailers.TruncatePreTwiDetailer,
@@ -59,6 +58,7 @@ class TestDetailers(unittest.TestCase):
             detailers.BandSubstituteDetailer,
             detailers.ChunkByHADetailer,
             detailers.RotspUpdateDetailer,
+            detailers.ExtinctionLimitDetailer,
         ]
 
         for det in det_list:
@@ -555,6 +555,16 @@ class TestDetailers(unittest.TestCase):
 
         for bn in orig_order:
             assert bn in o2["band"]
+
+    def test_extinction_limit(self):
+        # Set up and check observation_array
+        observation_array = ObservationArray(n=3, extinction_limit=20)
+        assert np.all(observation_array["extinction_limit"] == 20)
+        # Configure detailer
+        detailer = detailers.ExtinctionLimitDetailer(extinction_limit=0.8)
+        # Did we change the extinction limit?
+        obs_out = detailer(observation_array, None)
+        assert np.all(obs_out["extinction_limit"] == 0.8)
 
 
 if __name__ == "__main__":
