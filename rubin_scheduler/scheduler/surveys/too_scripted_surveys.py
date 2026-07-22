@@ -73,6 +73,10 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         If there are too many potential observations, how they should be
         sorted before truncating to return_n_limit. Possible values
         of "HA". Default None does no additional sorting.
+    update_mjd0 : `bool`
+        Should the times be from the listed event start (False), or
+        the current MJD (True). Useful for solar system events that
+        should probably use the current MJD.
     """
 
     def __init__(
@@ -115,6 +119,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         check_band_mounted=True,
         check_band_active=False,
         sort_potential_result="HA",
+        update_mjd0=False,
     ):
         if filters_at_times is not None:
             warnings.warn("filters_at_times deprecated in favor of bands_at_times", FutureWarning)
@@ -163,6 +168,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         self.dither_per_visit = dither_per_visit
         self.check_band_mounted = check_band_mounted
         self.check_band_active = check_band_active
+        self.update_mjd0 = update_mjd0
         # Attributes to cache results into
         self.observations_rough = []
         self.observations = []
@@ -379,7 +385,11 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
 
             # For now - just start asap.
             # Should revisit if block up RA values.
-            mjd0 = target_o_o.mjd_start
+            if self.update_mjd0:
+                if conditions.mjd > target_o_o.mjd_start:
+                    mjd0 = conditions.mjd
+            else:
+                mjd0 = target_o_o.mjd_start
 
             obs_list = []
             for time, bandnames, nv, exptime, index in zip(
