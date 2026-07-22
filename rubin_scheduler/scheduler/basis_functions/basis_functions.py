@@ -42,6 +42,7 @@ import healpy as hp
 import numpy as np
 from astropy import units as u
 from astropy.coordinates import SkyCoord
+from synphot import observation
 
 from rubin_scheduler.scheduler import features
 from rubin_scheduler.scheduler.utils import IntRounded, get_current_footprint
@@ -140,6 +141,7 @@ class BaseBasisFunction:
         return True
 
     def _calc_value(self, conditions, **kwargs):
+        """Use information from the conditions and kwargs to calculate value."""
         self.value = 0
         # Update the last time we had an mjd
         self.mjd_last = conditions.mjd + 0
@@ -165,11 +167,13 @@ class BaseBasisFunction:
         # If we are not feasible, return -inf
         if not self.check_feasibility(conditions):
             return -np.inf
+        # Check if we need to recalculate based on the mjd:
+        if not self.recalc and self.update_on_mjd:
+            if conditions.mjd != self.mjd_last:
+                self.recalc = True
+        # If we need to recalculate (might have anyway) - do that.
         if self.recalc:
             self.value = self._calc_value(conditions, **kwargs)
-        if self.update_on_mjd:
-            if conditions.mjd != self.mjd_last:
-                self.value = self._calc_value(conditions, **kwargs)
         return self.value
 
     def label(self):

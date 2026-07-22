@@ -1,10 +1,8 @@
 __all__ = (
-    "SolarElongMaskBasisFunction",
+    "SolarElongationMaskBasisFunction",
     "HaMaskBasisFunction",
     "MoonAvoidanceBasisFunction",
-    "MapCloudBasisFunction",
     "PlanetMaskBasisFunction",
-    "SolarElongationMaskBasisFunction",
     "AreaCheckMaskBasisFunction",
     "AltAzShadowMaskBasisFunction",
     "AltAzShadowTimeLimitedBasisFunction",
@@ -15,6 +13,7 @@ __all__ = (
     "MaskPoorSeeing",
     "MaskAfterNObsSeeingBasisFunction",
     "MaskDirectWindBasisFunction",
+    "MaskCloudMapBasisFunction",
 )
 
 import warnings
@@ -236,32 +235,6 @@ class MaskAfterNObsBasisFunction(BaseBasisFunction):
     def _calc_value(self, conditions, indx=None):
         result = self.result.copy()
         to_mask = np.where(self.survey_features["nobs"].feature >= self.n_max)[0]
-        result[to_mask] = np.nan
-        return result
-
-
-class SolarElongMaskBasisFunction(BaseBasisFunction):
-    """Mask regions larger than some solar elongation limit
-
-    Parameters
-    ----------
-    elong_limit : float (45)
-        The limit beyond which to mask (degrees)
-    """
-
-    def __init__(self, elong_limit=45.0, nside=DEFAULT_NSIDE):
-        msg = (
-            "SolarElongMaskBasisFunction is scheduled for"
-            " deprecation, swap to SolarElongationMaskBasisFunction."
-        )
-        warnings.warn(msg, DeprecationWarning)
-        super(SolarElongMaskBasisFunction, self).__init__(nside=nside)
-        self.elong_limit = IntRounded(np.radians(elong_limit))
-        self.result = np.zeros(hp.nside2npix(self.nside), dtype=float)
-
-    def _calc_value(self, conditions, indx=None):
-        result = self.result.copy()
-        to_mask = np.where(IntRounded(conditions.solar_elongation) > self.elong_limit)[0]
         result[to_mask] = np.nan
         return result
 
@@ -555,103 +528,57 @@ class MoonAvoidanceBasisFunction(BaseBasisFunction):
         return result
 
 
-class BulkCloudBasisFunction(BaseBasisFunction):
-    """Mark healpixels on a map if their cloud values are greater than
-    the same healpixels on a maximum cloud map.
+class MaskCloudMapBasisFunction(BaseBasisFunction):
+    """Mask healpix locations where the cloud map extinction is greater
+    than the minimum `extinction_limit` value in the ObserationArray.
+    Alternatively, the max_val can be provided at init, which will
+    then not require the observations.
 
     Parameters
     ----------
-    nside: int (default_nside)
+    nside: `int`
         The healpix resolution.
-    max_cloud_map : numpy array (None)
-        A healpix map showing the maximum allowed cloud values for all
-        points on the sky
-    out_of_bounds_val : float (10.)
-        Point value to give regions where there are no observations
-        requested
+    max_val : `float` or `np.ndarray`
+        Mask parts of the sky with cloud extinction more than max_val.
+    out_of_bounds_val : `float`
+        Value to place into masked areas. Generally should be np.nan
+        to mask parts of the sky. Could be a very negative number
+        to just de-weight them strongly but not mask.
     """
 
-    def __init__(self, nside=DEFAULT_NSIDE, max_cloud_map=None, max_val=0.7, out_of_bounds_val=np.nan):
-        super(BulkCloudBasisFunction, self).__init__(nside=nside)
-        self.update_on_newobs = False
-
-        if max_cloud_map is None:
-            self.max_cloud_map = np.zeros(hp.nside2npix(nside), dtype=float) + max_val
-        else:
-            self.max_cloud_map = max_cloud_map
-        self.out_of_bounds_area = np.where(self.max_cloud_map > 1.0)[0]
-        self.out_of_bounds_val = out_of_bounds_val
-        self.result = np.ones(hp.nside2npix(self.nside))
-
-    def _calc_value(self, conditions, indx=None):
-        """
-        Parameters
-        ----------
-        indx : list (None)
-            Index values to compute, if None, full map is computed
-        Returns
-        -------
-        Healpix map where pixels with a cloud value greater than the
-        max_cloud_map value are marked as unseen.
-        """
-
-        result = self.result.copy()
-
-        clouded = np.where(self.max_cloud_map <= conditions.bulk_cloud)
-        result[clouded] = self.out_of_bounds_val
-
-        return result
-
-
-class MapCloudBasisFunction(BaseBasisFunction):
-    """Mark healpixels on a map if their cloud values are greater than
-    the same healpixels on a maximum cloud map. Currently a placeholder for
-    when the telemetry stream can include a full sky cloud map.
-
-    Parameters
-    ----------
-    nside: int (default_nside)
-        The healpix resolution.
-    max_cloud_map : numpy array (None)
-        A healpix map showing the maximum allowed cloud values for all
-        points on the sky
-    out_of_bounds_val : float (10.)
-        Point value to give regions where there are no observations
-        requested
-    """
-
-    def __init__(self, nside=DEFAULT_NSIDE, max_cloud_map=None, max_val=0.7, out_of_bounds_val=np.nan):
+    def __init__(
+        self, nside=DEFAULT_NSIDE, extinction_limit=1.5, out_of_bounds_val=np.nan
+    ):
         super().__init__(nside=nside)
         self.update_on_newobs = False
 
-        if max_cloud_map is None:
-            self.max_cloud_map = np.zeros(hp.nside2npix(nside), dtype=float) + max_val
-        else:
-            self.max_cloud_map = max_cloud_map
-        self.out_of_bounds_area = np.where(self.max_cloud_map > 1.0)[0]
+        if np.size(extinction_limit) > 1:
+            if len(extinction_limit) != hp.nside2npix(nside):
+                extinction_limit = match_hp_resolution(extinction_limit, nside)
+
+        self.extinction_limit = extinction_limit
         self.out_of_bounds_val = out_of_bounds_val
-        self.result = np.ones(hp.nside2npix(self.nside))
 
     def _calc_value(self, conditions, indx=None):
-        """
+        """Calculate locations masked due to clouds.
+
         Parameters
         ----------
-        indx : list (None)
-            Index values to compute, if None, full map is computed
+        conditions : `Conditions`
+            The current telemetry information.
+        observation : `ObservationArray`
+            The current observation(s) to be checked - will set cloud
+            extinction max value based on extinction_limit.
+
         Returns
         -------
-        Healpix map where pixels with a cloud value greater than the
-        max_cloud_map value are marked as unseen.
+        mask : `numpy.ndarray`
+            Healpix map where pixels with a cloud value greater than the
+            max_cloud_map value are marked as unseen.
         """
-
-        result = self.result.copy()
-
         if conditions.cloud_maps is None:
-            return 1
-
-        extinction_map = conditions.cloud_maps.extinction_closest(conditions.mjd)
-
-        clouded = np.where(extinction_map >= self.max_cloud_map)
-        result[clouded] = self.out_of_bounds_val
-
-        return result
+            mask = 0
+        else:
+            extinction_map = conditions.cloud_maps.extinction_closest(conditions.mjd)
+            mask = np.where(extinction_map >= self.extinction_limit, self.out_of_bounds_val, 0)
+        return mask
