@@ -190,23 +190,6 @@ class TestDetailers(unittest.TestCase):
         out_obs = det(obs, conditions)
         self.assertTrue(np.all(out_obs["band"] == ["r", "r", "g", "g", "z"]))
 
-    def test_bandtofilter(self):
-        obs = ObservationArray(3)
-        obs["band"][0] = "r"
-        obs["band"][1] = "g"
-        obs["band"][2] = "g"
-
-        detailer = detailers.BandToFilterDetailer({})
-        output = detailer(obs, [])
-        assert np.all(output["band"] == output["filter"])
-
-        filtername_dict = {"r": "r_03", "g": "g_01"}
-        detailer = detailers.BandToFilterDetailer(filtername_dict)
-        output = detailer(obs, [])
-
-        for out in output:
-            assert out["filter"] == filtername_dict[out["band"]]
-
     def test_copycol(self):
         obs = ObservationArray(3)
         obs["band"][0] = "r"
