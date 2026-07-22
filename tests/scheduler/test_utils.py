@@ -334,6 +334,14 @@ class TestUtils(unittest.TestCase):
 
         assert np.array_equal(back, obs)
 
+        # Check that extinction_limit is present and set
+        obs = ObservationArray(n=2, extinction_limit=20)
+        assert np.all(obs["extinction_limit"] == 20)
+
+        # And for ScheduledObservationArray
+        obs = ScheduledObservationArray(n=2, extinction_limit=20)
+        assert np.all(obs["extinction_limit"] == 20)
+
     def test_schema_convert(self):
         sc = SchemaConverter()
 
