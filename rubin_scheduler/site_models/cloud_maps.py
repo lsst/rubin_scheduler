@@ -57,7 +57,11 @@ class CloudMap(object):
 
         # Set to the proper resolution.
         to_add = match_hp_resolution(to_add, self.nside_out)
+        # Fill any nans with median value
+        to_add = np.where(np.isnan(to_add), np.nanmedian(to_add), to_add)
+        # Resample the uncertainty
         to_add_uncert = match_hp_resolution(to_add_uncert, self.nside_out)
+        # Probably should fill any missing values here too.
 
         self.cloud_extinction_hparrays.append(to_add)
         self.cloud_extinction_uncerts.append(to_add_uncert)
