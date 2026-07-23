@@ -680,6 +680,8 @@ class LookAheadDdfBasisFunction(BaseBasisFunction):
 
 
 class CloudedOutBasisFunction(BaseBasisFunction):
+    """Check the bulk_cloud value in the conditions"""
+
     def __init__(self, cloud_limit=0.7):
         super(CloudedOutBasisFunction, self).__init__()
         self.cloud_limit = cloud_limit
@@ -692,8 +694,8 @@ class CloudedOutBasisFunction(BaseBasisFunction):
 
 
 class CloudedOutMapBasisFunction(BaseBasisFunction):
-    """If the median of the current extinction map is above the limit
-    say things are not feasible.
+    """If the median of the cloud_map is larger than median_cloud_limit,
+    return infeasible.
     """
 
     def __init__(self, median_cloud_limit=1.0):
@@ -705,8 +707,8 @@ class CloudedOutMapBasisFunction(BaseBasisFunction):
 
         if conditions.cloud_maps is not None:
             extinction_map = conditions.cloud_maps.extinction_closest(conditions.mjd)
-            above_hor_indx = np.where(conditions.alt > 0)[0]
-            median_extinction = np.nanmedian(extinction_map[above_hor_indx])
+            above_horizon_indx = np.where(conditions.alt > 0)[0]
+            median_extinction = np.nanmedian(extinction_map[above_horizon_indx])
             if median_extinction > self.median_cloud_limit:
                 result = False
 
