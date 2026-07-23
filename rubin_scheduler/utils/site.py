@@ -339,8 +339,9 @@ def declination_dependent_fwhm(
     ra, dec = hpid2_ra_dec(nside, hpid)
     min_z = np.radians(np.abs(dec - site.latitude))
     min_airmass = 1 / np.cos(min_z)
+    min_airmass = np.where(min_airmass < 1, np.nan, min_airmass)
     min_fwhm = zenith_fwhm_limit * (np.power(min_airmass, 0.6))
     # Get rid of NaNs or Infs that might be there
-    min_fwhm[~np.isfinite(min_fwhm)] = 0
+    min_fwhm[~np.isfinite(min_fwhm)] = np.nanmax(min_fwhm)
 
     return min_fwhm
