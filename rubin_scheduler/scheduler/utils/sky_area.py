@@ -30,7 +30,7 @@ from .utils import IntRounded
 
 def get_template_coverage(
     template_filedict: dict[str, str] | None = None, nside: int = DEFAULT_NSIDE
-) -> dict[str, npt.NDarray]:
+) -> dict[str, npt.NDArray]:
     """Read and return the current template coverage in a healpix map
     at the desired nside.
 

@@ -8,8 +8,8 @@ from rubin_scheduler.scheduler.detailers import RotspUpdateDetailer
 from rubin_scheduler.scheduler.features import Conditions
 from rubin_scheduler.scheduler.schedulers import BaseQueueManager
 from rubin_scheduler.scheduler.utils import Footprint, ObservationArray
-from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD, hpid2_ra_dec
 from rubin_scheduler.site_models import CloudMap
+from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD, hpid2_ra_dec
 
 
 class TestQM(unittest.TestCase):
@@ -160,6 +160,7 @@ class TestQM(unittest.TestCase):
         # We should have lost some observations (more than from footprint).
         all_valid_obs = qm.request_observation(conditions, whole_queue=True)
         assert np.size(all_valid_obs) == 1
+
 
 if __name__ == "__main__":
     unittest.main()

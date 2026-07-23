@@ -16,15 +16,13 @@ __all__ = (
     "MaskCloudMapBasisFunction",
 )
 
-import warnings
-
 import healpy as hp
 import numpy as np
 
 import rubin_scheduler.scheduler.features as features
 from rubin_scheduler.scheduler.basis_functions import BaseBasisFunction
 from rubin_scheduler.scheduler.utils import CurrentAreaMap, HpInLsstFov, IntRounded
-from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD, _angular_separation
+from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD, _angular_separation, match_hp_resolution
 
 
 class MaskDirectWindBasisFunction(BaseBasisFunction):
@@ -546,9 +544,7 @@ class MaskCloudMapBasisFunction(BaseBasisFunction):
         to just de-weight them strongly but not mask.
     """
 
-    def __init__(
-        self, nside=DEFAULT_NSIDE, extinction_limit=1.5, out_of_bounds_val=np.nan
-    ):
+    def __init__(self, nside=DEFAULT_NSIDE, extinction_limit=1.5, out_of_bounds_val=np.nan):
         super().__init__(nside=nside)
         self.update_on_newobs = False
 

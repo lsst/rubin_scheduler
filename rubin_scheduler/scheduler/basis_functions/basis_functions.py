@@ -42,7 +42,6 @@ import healpy as hp
 import numpy as np
 from astropy import units as u
 from astropy.coordinates import SkyCoord
-from synphot import observation
 
 from rubin_scheduler.scheduler import features
 from rubin_scheduler.scheduler.utils import IntRounded, get_current_footprint
@@ -96,8 +95,7 @@ class BaseBasisFunction:
         self.bandname = bandname
 
     def add_observations_array(self, observations_array, observations_hpid):
-        """Similar to add_observation, but for loading a whole
-        array of observations at a time.
+        """Add acquired observations in an array.
 
         Parameters
         ----------
@@ -118,7 +116,8 @@ class BaseBasisFunction:
             self.recalc = True
 
     def add_observation(self, observation, indx=None):
-        """
+        """Add acquired observation.
+
         Parameters
         ----------
         observation : `np.array`
@@ -141,7 +140,8 @@ class BaseBasisFunction:
         return True
 
     def _calc_value(self, conditions, **kwargs):
-        """Use information from the conditions and kwargs to calculate value."""
+        """Use the information from the conditions and kwargs to calculate
+        value."""
         self.value = 0
         # Update the last time we had an mjd
         self.mjd_last = conditions.mjd + 0

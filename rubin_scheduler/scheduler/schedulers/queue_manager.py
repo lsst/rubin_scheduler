@@ -7,7 +7,8 @@ import numpy as np
 
 from rubin_scheduler.scheduler.detailers import RotspUpdateDetailer
 from rubin_scheduler.scheduler.utils import IntRounded, ObservationArray
-from rubin_scheduler.utils import _ra_dec2_hpid, DEFAULT_NSIDE, match_hp_resolution
+from rubin_scheduler.utils import _ra_dec2_hpid, match_hp_resolution
+
 
 class BaseQueueManager:
     """Class for managing a queue of desired observations.
@@ -155,7 +156,7 @@ class BaseQueueManager:
             # Use extinction_limit in the observation array to define the
             # maximum extinction (to allow per-survey values).
             extinction_limit = np.nanmin(self.desired_observations_array[valid]["extinction_limit"])
-            cloud_mask = self.check_cloud_map(conditions, extinction_limit = extinction_limit)
+            cloud_mask = self.check_cloud_map(conditions, extinction_limit=extinction_limit)
             #  Add cloud mask to previous mask/reward.
             if np.size(cloud_mask) > 1:
                 nside = hp.npix2nside(reward.size)

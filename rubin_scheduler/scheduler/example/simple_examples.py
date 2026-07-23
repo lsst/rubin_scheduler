@@ -218,16 +218,12 @@ def standard_masks(
     """
     mask_bfs = []
     # Avoid the moon - too close to the moon will trip the REBs
-    mask_bfs.append(
-        basis_functions.MoonAvoidanceBasisFunction(nside=nside, moon_distance=moon_distance)
-    )
+    mask_bfs.append(basis_functions.MoonAvoidanceBasisFunction(nside=nside, moon_distance=moon_distance))
     # Avoid fast moving bright planets
     mask_bfs.append(basis_functions.PlanetMaskBasisFunction(nside=nside))
     # Avoid the wind (mask only)
     mask_bfs.append(
-        basis_functions.MaskDirectWindBasisFunction(
-            nside=nside, wind_speed_maximum=wind_speed_maximum
-        )
+        basis_functions.MaskDirectWindBasisFunction(nside=nside, wind_speed_maximum=wind_speed_maximum)
     )
     # Avoid the alt/az limits - this will pick up limits from the
     # yaml file configurations for the summit as well
