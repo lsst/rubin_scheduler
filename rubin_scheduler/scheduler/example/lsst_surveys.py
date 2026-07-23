@@ -114,7 +114,7 @@ def safety_masks(
     # Avoid bright planets
     mask_bfs.append(bf.PlanetMaskBasisFunction(nside=nside))
     # Avoid the wind
-    mask_bfs.append(bf.AvoidDirectWind(nside=nside, wind_speed_maximum=wind_speed_maximum))
+    mask_bfs.append(bf.MaskDirectWindBasisFunction(nside=nside, wind_speed_maximum=wind_speed_maximum))
     # Avoid the alt/az limits - this will pick up limits from the
     # yaml file configurations for the summit as well
     mask_bfs.append(
