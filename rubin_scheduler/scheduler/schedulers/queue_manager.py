@@ -143,6 +143,10 @@ class BaseQueueManager:
 
         valid = np.intersect1d(mjd_ok, valid)
 
+        # No need to proceed if there are no valid observations
+        if len(valid) == 0:
+            return valid
+
         # Compute reward from basis functions
         reward = self.compute_reward(conditions)
 
