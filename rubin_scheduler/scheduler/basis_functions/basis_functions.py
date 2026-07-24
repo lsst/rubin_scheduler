@@ -95,8 +95,7 @@ class BaseBasisFunction:
         self.bandname = bandname
 
     def add_observations_array(self, observations_array, observations_hpid):
-        """Similar to add_observation, but for loading a whole
-        array of observations at a time.
+        """Add acquired observations in an array.
 
         Parameters
         ----------
@@ -117,7 +116,8 @@ class BaseBasisFunction:
             self.recalc = True
 
     def add_observation(self, observation, indx=None):
-        """
+        """Add acquired observation.
+
         Parameters
         ----------
         observation : `np.array`
@@ -140,6 +140,8 @@ class BaseBasisFunction:
         return True
 
     def _calc_value(self, conditions, **kwargs):
+        """Use the information from the conditions and kwargs to calculate
+        value."""
         self.value = 0
         # Update the last time we had an mjd
         self.mjd_last = conditions.mjd + 0
@@ -165,11 +167,13 @@ class BaseBasisFunction:
         # If we are not feasible, return -inf
         if not self.check_feasibility(conditions):
             return -np.inf
+        # Check if we need to recalculate based on the mjd:
+        if not self.recalc and self.update_on_mjd:
+            if conditions.mjd != self.mjd_last:
+                self.recalc = True
+        # If we need to recalculate (might have anyway) - do that.
         if self.recalc:
             self.value = self._calc_value(conditions, **kwargs)
-        if self.update_on_mjd:
-            if conditions.mjd != self.mjd_last:
-                self.value = self._calc_value(conditions, **kwargs)
         return self.value
 
     def label(self):

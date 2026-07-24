@@ -177,6 +177,8 @@ def standard_masks(
     min_az: float = 0,
     max_az: float = 360,
     shadow_minutes: float = 30,
+    apply_cloud_mask: bool = False,
+    cloud_limit: float = 1.5,
 ) -> list[basis_functions.BaseBasisFunction]:
     """A set of standard mask functions.
 
@@ -214,16 +216,18 @@ def standard_masks(
         The masked (np.nan or -np.inf) regions will remain masked,
         but the basis function values won't influence the reward.
     """
-    masks = []
-    # Add the Moon avoidance mask
-    masks.append(basis_functions.MoonAvoidanceBasisFunction(nside=nside, moon_distance=moon_distance))
-    # Add a mask around bright planets
-    masks.append(basis_functions.PlanetMaskBasisFunction(nside=nside))
-    # Add the wind avoidance mask
-    masks.append(basis_functions.AvoidDirectWind(nside=nside, wind_speed_maximum=wind_speed_maximum))
-    # Avoid inaccessible parts of the sky, as well as places that will
-    # move into those places within shadow_minutes.
-    masks.append(
+    mask_bfs = []
+    # Avoid the moon - too close to the moon will trip the REBs
+    mask_bfs.append(basis_functions.MoonAvoidanceBasisFunction(nside=nside, moon_distance=moon_distance))
+    # Avoid fast moving bright planets
+    mask_bfs.append(basis_functions.PlanetMaskBasisFunction(nside=nside))
+    # Avoid the wind (mask only)
+    mask_bfs.append(
+        basis_functions.MaskDirectWindBasisFunction(nside=nside, wind_speed_maximum=wind_speed_maximum)
+    )
+    # Avoid the alt/az limits - this will pick up limits from the
+    # yaml file configurations for the summit as well
+    mask_bfs.append(
         basis_functions.AltAzShadowMaskBasisFunction(
             nside=nside,
             min_alt=min_alt,
@@ -233,7 +237,11 @@ def standard_masks(
             shadow_minutes=shadow_minutes,
         )
     )
-    return masks
+    # If there are only short sequences, adding a cloud map here is good.
+    if apply_cloud_mask:
+        mask_bfs.append(basis_functions.MapCloudBasisFunction(nside=nside, max_val=cloud_limit))
+
+    return mask_bfs
 
 
 def simple_rewards(

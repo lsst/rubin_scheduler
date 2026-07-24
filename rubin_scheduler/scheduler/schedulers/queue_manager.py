@@ -7,7 +7,7 @@ import numpy as np
 
 from rubin_scheduler.scheduler.detailers import RotspUpdateDetailer
 from rubin_scheduler.scheduler.utils import IntRounded, ObservationArray
-from rubin_scheduler.utils import _ra_dec2_hpid
+from rubin_scheduler.utils import _ra_dec2_hpid, match_hp_resolution
 
 
 class BaseQueueManager:
@@ -15,10 +15,11 @@ class BaseQueueManager:
 
     NOTE: If using masking basis functions, one should
     ensure Survey objects are using the same masks as the
-    QueueManager, else one will end up in a loop where
+    QueueManager, else one could end up in a loop where
     surveys propose visits that the QueueManager always rejects.
     E.g., if the surveys don't mask clouds, all their observations
     can be rejected by the QueueManager.
+    This is less likely if there is a long queue from the Survey.
 
     Parameters
     ----------
@@ -33,7 +34,7 @@ class BaseQueueManager:
 
     """
 
-    def __init__(self, detailers=None, basis_functions=None):
+    def __init__(self, detailers=None, basis_functions=None, check_clouds=True):
         if detailers is None:
             self.detailers = []
             msg = (
@@ -50,6 +51,10 @@ class BaseQueueManager:
             self.basis_functions = []
         else:
             self.basis_functions = basis_functions
+        # Add a check on the cloud conditions, using limits
+        # set by each survey in hte observations array:
+        self.check_clouds = check_clouds
+
         self.desired_observations_array = ObservationArray(n=0)
         # Array to track which desired_observations_array
         # have been observed
@@ -91,10 +96,20 @@ class BaseQueueManager:
                 detailer.add_observations_array(observation_array, observations_hpid)
 
     def compute_reward(self, conditions):
+        """Generate a mask (or reward) for the current conditions."""
         reward = 0
         for bf in self.basis_functions:
             reward += bf(conditions)
         return reward
+
+    def check_cloud_map(self, conditions, extinction_limit=1.5):
+        """Generate a mask based on cloud extinction."""
+        if conditions.cloud_maps is None:
+            mask = 0
+        else:
+            extinction_map = conditions.cloud_maps.extinction_closest(conditions.mjd)
+            mask = np.where(extinction_map >= extinction_limit, np.nan, 0)
+        return mask
 
     def _check_queue_mjd_only(self, mjd, conditions):
         """
@@ -129,8 +144,25 @@ class BaseQueueManager:
 
         valid = np.intersect1d(mjd_ok, valid)
 
+        # No need to proceed if there are no valid observations
+        if len(valid) == 0:
+            return valid
+
         # Compute reward from basis functions
         reward = self.compute_reward(conditions)
+
+        if self.check_clouds:
+            # Add cloud mask onto other basis function rewards.
+            # Use extinction_limit in the observation array to define the
+            # maximum extinction (to allow per-survey values).
+            extinction_limit = np.nanmin(self.desired_observations_array[valid]["extinction_limit"])
+            cloud_mask = self.check_cloud_map(conditions, extinction_limit=extinction_limit)
+            #  Add cloud mask to previous mask/reward.
+            if np.size(cloud_mask) > 1:
+                nside = hp.npix2nside(reward.size)
+                cloud_mask = match_hp_resolution(cloud_mask, nside)
+            reward = reward + cloud_mask
+
         # If reward is an array, then it's a HEALpy map and we
         # need to interpolate to the actual positions we want.
         # now to interpolate to the reward positions
