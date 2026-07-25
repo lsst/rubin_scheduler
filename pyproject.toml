@@ -16,8 +16,9 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: Astronomy",
  ]
 urls = {documentation = "https://rubin-scheduler.lsst.io", repository = "https://github.com/lsst/rubin_scheduler" }
@@ -40,7 +41,7 @@ dependencies = [
 [project.optional-dependencies]
 test = [
      "pytest",
-     "black>=25.0",
+     "black>=26,<27",
      "ruff",
      "isort",
      "pytest-cov",
@@ -86,7 +87,7 @@ exclude = [
     "__init__.py",
 ]
 line-length = 110
-target-version = "py313"
+target-version = "py314"
 [tool.ruff.lint]
 ignore = [
     "N802",
