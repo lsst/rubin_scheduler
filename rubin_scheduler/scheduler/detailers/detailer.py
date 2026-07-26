@@ -1089,6 +1089,8 @@ class LabelRegionDetailer(BaseDetailer):
                 new_values = prev_values.union(result).difference(self.remove_vals)
             else:
                 new_values = result.difference(self.remove_vals)
+            # Sort the values so that order is predictable.
+            new_values = sorted(new_values)
             obs_array[self.field_for_label][i] = self.separator.join(new_values)
         return obs_array
 
@@ -1152,6 +1154,8 @@ class LabelDDFDetailer(BaseDetailer):
                         new_values = prev_values.union(name_set).difference(self.remove_vals)
                     else:
                         new_values = name_set.difference(self.remove_vals)
+                    # Sort the values so that order is predictable.
+                    new_values = sorted(new_values)
                     obs_array[self.field_for_label][indx] = self.separator.join(new_values)
         return obs_array
 

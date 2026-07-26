@@ -392,6 +392,7 @@ class TestDetailers(unittest.TestCase):
             for res in output:
                 assert "dummy" in res["target_name"]
                 assert "lowdust" in res["target_name"]
+                assert res["target_name"][0][0] == "d"
 
         # Test that we clobber
         detailer = detailers.LabelRegionDetailer(labels, append=False)
@@ -410,6 +411,18 @@ class TestDetailers(unittest.TestCase):
             assert "dummy" not in res["target_name"]
             assert "lowdust" in res["target_name"]
             assert "nes" in res["target_name"]
+
+        # Test that labels are sorted
+        obs = ObservationArray(3)
+        obs["RA"] = np.radians(0.0)
+        obs["dec"] = np.radians(3.0)
+        detailer = detailers.LabelRegionDetailer(labels)
+        output = detailer(obs, None)
+        for res in output:
+            assert "dummy" not in res["target_name"]
+            assert "lowdust" in res["target_name"]
+            assert "nes" in res["target_name"]
+            assert res["target_name"] == "lowdust, nes"
 
     def test_euclid_dither(self):
         detailer = detailers.EuclidDitherDetailer(per_night=True)
