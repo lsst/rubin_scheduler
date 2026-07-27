@@ -330,12 +330,12 @@ class ModelObservatory:
         # want pointings to stray into, so add a pad around the values
         self.altaz_limit_pad = np.radians(2.0)
 
-        # Let's make sure we're at an openable MJD
-        good_mjd = False
-        to_set_mjd = mjd
-        while not good_mjd:
-            good_mjd, to_set_mjd = self.check_mjd(to_set_mjd)
-        self.mjd = to_set_mjd
+        # Try to set the initial MJD, but ok if it fails
+        # because a subclass might be doing different things
+        try:
+            self.set_initial_mjd(mjd)
+        except AttributeError:
+            pass
 
         # Create the map of the season offsets - this map is constant
         ra, dec = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(self.nside)))
@@ -353,6 +353,14 @@ class ModelObservatory:
         self.obs_id_counter = 0
 
         self.cloud_maps = cloud_maps
+
+    def set_initial_mjd(self, mjd):
+        # Let's make sure we're at an openable MJD
+        good_mjd = False
+        to_set_mjd = mjd
+        while not good_mjd:
+            good_mjd, to_set_mjd = self.check_mjd(to_set_mjd)
+        self.mjd = to_set_mjd
 
     def get_info(self):
         """

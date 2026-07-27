@@ -17,6 +17,7 @@ from .rotskypos import *
 from .sampling_functions import *
 from .season_utils import *
 from .site import *
+from .sun_position import *
 from .sys_eng_vals import *
 from .tree_utils import *
 from .zernike_module import *
