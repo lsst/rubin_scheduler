@@ -11,7 +11,6 @@ from astropy.time import Time
 import rubin_scheduler.skybrightness_pre as sb
 from rubin_scheduler.data import data_versions
 from rubin_scheduler.scheduler.features import Conditions
-from rubin_scheduler.scheduler.model_observatory import KinemModel
 from rubin_scheduler.scheduler.utils import smallest_signed_angle
 
 # For backwards compatibility
@@ -39,6 +38,8 @@ from rubin_scheduler.utils import (
     m5_flat_sed,
     rotation_converter,
 )
+
+from .kinem_model import KinemModel
 
 
 class ModelObservatory:
@@ -560,6 +561,15 @@ class ModelObservatory:
         lmst = calc_lmst(self.mjd, self.site.longitude_rad)
         observation["lmst"] = lmst
 
+        observation = self.add_sun_moon_data(observation)
+
+        observation["ID"] = self.obs_id_counter
+        self.obs_id_counter += 1
+
+        return observation
+
+    def add_sun_moon_data(self, observation):
+        """Add info about the sun and moon."""
         sun_moon_info = self.almanac.get_sun_moon_positions(self.mjd)
         observation["sunAlt"] = sun_moon_info["sun_alt"]
         observation["sunAz"] = sun_moon_info["sun_az"]
@@ -582,10 +592,6 @@ class ModelObservatory:
             observation["sunDec"],
         )
         observation["moonPhase"] = sun_moon_info["moon_phase"]
-
-        observation["ID"] = self.obs_id_counter
-        self.obs_id_counter += 1
-
         return observation
 
     def check_up(self, mjd):

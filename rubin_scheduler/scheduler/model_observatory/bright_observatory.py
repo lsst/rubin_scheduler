@@ -1,9 +1,11 @@
 __all__ = ("BrightObservatoryModel",)
 
-from .model_observatory import ModelObservatory
-from rubin_scheduler.utils import NextTimeSun
+import numpy as np
 from astropy.time import Time
-from rubin_scheduler.utils import SURVEY_START_MJD
+
+from rubin_scheduler.utils import SURVEY_START_MJD, NextTimeSun, _angular_separation
+
+from .model_observatory import ModelObservatory
 
 
 class BrightObservatoryModel(ModelObservatory):
@@ -43,8 +45,57 @@ class BrightObservatoryModel(ModelObservatory):
         self.sun_rise_limit_deg = sun_rise_limit_deg
         self.sun_set_limit_deg = sun_set_limit_deg
         self.delta_time_step = delta_time_step_sec / 3600 / 24  # to days
-        self.sun_alt_lookup = NextTimeSun(location=self.location)
+        self.sun_moon_lookup = NextTimeSun(location=self.location)
         self.set_initial_mjd(mjd)
+
+    def add_sun_moon_data(self, observation):
+        """Add info about the sun and moon. Not using interpolated
+        values from the almanac.
+        """
+        sun, sun_frame, moon, moon_frame = self.sun_moon_lookup.sun_moon(observation["mjd"])
+
+        observation["sunAlt"] = sun_frame.alt.rad
+        observation["sunAz"] = sun_frame.az.rad
+        observation["sunRA"] = sun.ra.rad
+        observation["sunDec"] = sun.dec.rad
+        observation["moonAlt"] = moon_frame.alt.rad
+        observation["moonAz"] = moon_frame.az.rad
+        observation["moonRA"] = moon.ra.rad
+        observation["moonDec"] = moon.dec.rad
+        observation["moonDist"] = _angular_separation(
+            observation["RA"],
+            observation["dec"],
+            observation["moonRA"],
+            observation["moonDec"],
+        )
+        observation["solarElong"] = _angular_separation(
+            observation["RA"],
+            observation["dec"],
+            observation["sunRA"],
+            observation["sunDec"],
+        )
+
+        # Moon phase from
+        # https://github.com/egemenimre/satstuff/blob/
+        # master/notebooks/astropy/moon_venus_phase.ipynb
+        sun_vec = sun.cartesian
+        moon_vec = moon.cartesian
+
+        gnd_loc = self.location.get_gcrs(
+            Time(observation["mjd"], format="mjd")
+        ).cartesian.without_differentials()
+
+        # Generate Sun, Moon-to-location vectors
+        sun_to_moon = sun_vec - moon_vec
+        gnd_to_moon = gnd_loc - moon_vec
+
+        sun_to_moon_unit = sun_to_moon / sun_to_moon.norm()
+        gnd_to_moon_unit = gnd_to_moon / gnd_to_moon.norm()
+
+        phase_angle_moon = np.arccos(sun_to_moon_unit.dot(gnd_to_moon_unit))
+        observation["moonPhase"] = phase_angle_moon / np.pi * 100
+
+        return observation
 
     def check_mjd(self, mjd, cloud_skip=20.0):
         """See if an mjd is ok to observe
@@ -72,10 +123,10 @@ class BrightObservatoryModel(ModelObservatory):
                 new_mjd = new_mjd + cloud_skip / 60.0 / 24.0
                 clouds = self.cloud_data(Time(new_mjd, format="mjd"))
         # at the end of the night, advance to the next setting twilight
-        sun_alt = self.sun_alt_lookup.alt_at_mjd(new_mjd)
+        sun_alt = self.sun_moon_lookup.alt_at_mjd(new_mjd)
         if sun_alt > self.sun_rise_limit_deg:
             passed = False
-            new_mjd = self.sun_alt_lookup.next_mjd_at_alt(
+            new_mjd = self.sun_moon_lookup.next_mjd_at_alt(
                 new_mjd, altitude=self.sun_set_limit_deg, rising=False
             )
             # Add a fudge since the new_mjd is from a fit that can be

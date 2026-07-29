@@ -5,9 +5,9 @@ from astropy.time import Time
 
 import rubin_scheduler.utils as utils
 from rubin_scheduler.scheduler.model_observatory import (
+    BrightObservatoryModel,
     KinemModel,
     ModelObservatory,
-    BrightObservatoryModel,
     acc_time,
     gen_altitudes,
     jerk_time,
@@ -384,11 +384,11 @@ class TestModelObservatory(unittest.TestCase):
     def test_bright_observatory(self):
         mjd_start = utils.SURVEY_START_MJD
         mo = BrightObservatoryModel(mjd_start=mjd_start, sun_rise_limit_deg=-9, sun_set_limit_deg=-9)
-        assert mo.sun_alt_lookup.alt_at_mjd(mo.mjd) < mo.sun_rise_limit_deg
+        assert mo.sun_moon_lookup.alt_at_mjd(mo.mjd) < mo.sun_rise_limit_deg
 
         # Can we set a different sun alt limit
         mo = BrightObservatoryModel(mjd_start=mjd_start, sun_rise_limit_deg=-12, sun_set_limit_deg=-12)
-        assert mo.sun_alt_lookup.alt_at_mjd(mo.mjd) < mo.sun_rise_limit_deg
+        assert mo.sun_moon_lookup.alt_at_mjd(mo.mjd) < mo.sun_rise_limit_deg
 
         # Can we have different limits
         mo = BrightObservatoryModel(mjd_start=mjd_start, sun_rise_limit_deg=-9, sun_set_limit_deg=-12)

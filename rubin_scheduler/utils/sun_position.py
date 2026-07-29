@@ -1,12 +1,11 @@
 __all__ = ("NextTimeSun",)
 
 import numpy as np
-
-from astropy.coordinates import get_sun, AltAz, EarthLocation
-
+from astropy.coordinates import AltAz, EarthLocation, get_body, get_sun
 from astropy.time import Time
-from rubin_scheduler.utils import Site
 from scipy.optimize import minimize
+
+from rubin_scheduler.utils import Site
 
 
 class NextTimeSun(object):
@@ -39,6 +38,13 @@ class NextTimeSun(object):
         sun_altaz = get_sun(Time(mjd, format="mjd")).transform_to(self.frame)
         return sun_altaz.alt.deg
 
+    def sun_moon(self, mjd):
+        sun = get_sun(Time(mjd, format="mjd"))
+        sun_frame = sun.transform_to(self.frame)
+        moon = get_body("moon", Time(mjd, format="mjd"))
+        moon_frame = moon.transform_to(self.frame)
+        return sun, sun_frame, moon, moon_frame
+
     def next_mjd_at_alt(
         self, mjd, altitude=-12.0, rising=True, time_steps=20, forward_check_length=1.5, **kwargs
     ):
@@ -61,6 +67,10 @@ class NextTimeSun(object):
             positions. Default 1.5 (days)
         **kwargs
             Passed to scipy.optimize.minimize.
+
+        Returns
+        -------
+        Time sun is at expected positions as MJD
         """
         self.altitude = altitude
         tsteps = np.linspace(0, forward_check_length, num=time_steps)
