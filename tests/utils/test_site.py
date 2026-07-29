@@ -1,9 +1,10 @@
 import unittest
 import warnings
 
+import healpy as hp
 import numpy as np
 
-from rubin_scheduler.utils import Site
+from rubin_scheduler.utils import DEFAULT_NSIDE, Site, declination_dependent_fwhm
 
 
 class SiteTest(unittest.TestCase):
@@ -368,6 +369,13 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(ref_site, other_site)
         self.assertTrue(ref_site == other_site)
         self.assertFalse(ref_site != other_site)
+
+
+class TestDecFwhm(unittest.TestCase):
+    def test_declination_dependent_fwhm(self):
+        fwhm = declination_dependent_fwhm(nside=DEFAULT_NSIDE, zenith_fwhm_limit=1.0)
+        self.assertEqual(fwhm.shape, (hp.nside2npix(DEFAULT_NSIDE),))
+        self.assertAlmostEqual(fwhm.min(), 1.0, places=4)
 
 
 if __name__ == "__main__":

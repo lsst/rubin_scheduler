@@ -7,6 +7,7 @@ __all__ = (
 import numpy as np
 
 HANDLED_FUNCTIONS = {}
+DEFAULT_EXTINCTION_LIMIT = 100.0
 
 
 def backfill_filter_from_band(observation_array):
@@ -99,6 +100,9 @@ class ObservationArray(np.ndarray):
         Most likely this is just "science" or "FBS" when using the FBS.
     cloud_extinction : float
         Cloud extinction that was applied by the model observatory (mags).
+    extinction_limit : `float`
+        Extinction_limit can be used for cloud masking, if an
+        appropriate basis function (MapCloudBasisFunction) is applied.
 
     Notes
     -----
@@ -115,7 +119,7 @@ class ObservationArray(np.ndarray):
 
     """
 
-    def __new__(cls, n=1):
+    def __new__(cls, n=1, extinction_limit=DEFAULT_EXTINCTION_LIMIT):
         dtypes = [
             ("ID", int),
             ("RA", float),
@@ -164,11 +168,13 @@ class ObservationArray(np.ndarray):
             ("observation_reason", "U60"),
             ("science_program", "U60"),
             ("cloud_extinction", float),
+            ("extinction_limit", float),
             # TODO : Remove this hack which is for use with ts_scheduler
             # version <=v2.3 .. remove ts_scheduler actually drops "note".
             ("note", "U60"),
         ]
         obj = np.zeros(n, dtype=dtypes).view(cls)
+        obj["extinction_limit"] = extinction_limit
         return obj
 
     def tolist(self):
@@ -244,13 +250,15 @@ class ScheduledObservationArray(ObservationArray):
         The sun must be below sun_alt_max to execute. (radians)
     moon_min_distance : `float`
         The minimum distance to demand the moon should be away (radians)
+    extinction_limit : `float`
+        The maximum cloud extinction allowable for this observation (mag).
     observed : `bool`
         If set to True, scheduler will probably consider this a
         completed observation and never attempt it.
 
     """
 
-    def __new__(cls, n=1):
+    def __new__(cls, n=1, extinction_limit=DEFAULT_EXTINCTION_LIMIT):
         # Standard things from the usual observations
         dtypes1 = [
             ("ID", int),
@@ -270,6 +278,7 @@ class ScheduledObservationArray(ObservationArray):
             ("target_name", "U60"),
             ("science_program", "U60"),
             ("observation_reason", "U60"),
+            ("extinction_limit", float),
         ]
 
         # New things not in standard ObservationArray
@@ -286,6 +295,7 @@ class ScheduledObservationArray(ObservationArray):
         ]
 
         obj = np.zeros(n, dtype=dtypes1 + dtype2).view(cls)
+        obj["extinction_limit"] = extinction_limit
         return obj
 
     def to_observation_array(self):

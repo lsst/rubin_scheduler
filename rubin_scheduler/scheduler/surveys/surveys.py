@@ -31,7 +31,7 @@ class GreedySurvey(BaseMarkovSurvey):
         target_name=None,
         observation_reason=None,
         science_program=None,
-        nexp=2,
+        nexp=1,
         exptime=30.0,
         detailers=None,
         camera="LSST",
@@ -168,7 +168,7 @@ class BlobSurvey(GreedySurvey):
         like 'pairs_{bandname1}{bandname2}_{ideal_pair_time}'.
     note_block_size : `bool`
         Add to the scheduler note what the final block size was for
-        the blob. Default True.
+        the blob.
 
     Notes
     -----
@@ -189,9 +189,9 @@ class BlobSurvey(GreedySurvey):
         band_change_approx=140.0,
         read_approx=2.4,
         exptime=30.0,
-        nexp=2,
+        nexp=1,
         nexp_dict=None,
-        ideal_pair_time=22.0,
+        ideal_pair_time=33.0,
         max_pair_time=None,
         flush_time=30.0,
         smoothing_kernel=None,
@@ -325,6 +325,8 @@ class BlobSurvey(GreedySurvey):
             self.bandname = self.bandname1
 
         # Value used by future subclasses
+        # For 'pairs' where the second pair is determined by a detailer,
+        # this value should be 1. For BlobPair etc, n_visits > 1.
         self.n_visits = 1
 
     def _generate_survey_name(self):
@@ -559,8 +561,12 @@ class BlobPairsSurvey(BlobSurvey):
         of "call" changes tesselation on each pass of the blob.
     additional_masks : `list`
         List of additional rubin_scheduler.scheduler.basis_functions
-        to be applied.
+        to be applied, in order to evaluate the `additional_area_limits`.
     additional_area_limits : `list`
+        If the full `area_required` cannot be met, then the
+        (necessarily smaller) `additional_area_limits` will be evaluated.
+        When evaluating the `additional_area_limits`, the `additional_masks`
+        will be applied.
         List of floats of minimum area requierments to apply after
         a mask from additional_masks is used on the reward function.
         Default None, should be in square degrees.

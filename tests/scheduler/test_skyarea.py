@@ -11,8 +11,11 @@ from rubin_scheduler.scheduler.utils import (
     SkyAreaGenerator,
     SkyAreaGeneratorGalplane,
     generate_all_sky,
+    get_current_footprint,
+    get_template_coverage,
     make_rolling_footprints,
 )
+from rubin_scheduler.utils import DEFAULT_NSIDE
 
 datadir = os.path.join(get_data_dir(), "scheduler")
 
@@ -20,6 +23,31 @@ datadir = os.path.join(get_data_dir(), "scheduler")
 class TestSkyArea(unittest.TestCase):
     def setUp(self):
         self.nside = 32
+
+    @unittest.skipUnless(os.path.isdir(datadir), "Test data not available.")
+    def test_get_template_coverage(self):
+        # Test defaults return as expected.
+        templates = get_template_coverage()
+        assert set(templates.keys()) == set(["u", "g", "r", "i", "z", "y"])
+        assert len(templates["r"]) == hp.nside2npix(DEFAULT_NSIDE)
+        # Test can return maps at a different nside.
+        templates = get_template_coverage(nside=64)
+        assert len(templates["r"]) == hp.nside2npix(64)
+        # Test that downsampled map contains less area.
+        tt = get_template_coverage(nside=16)
+        tt_area = len(np.where(tt["r"] > 0)[0]) * hp.nside2pixarea(16, degrees=True)
+        t_area = len(np.where(templates["r"] > 0)[0]) * hp.nside2pixarea(64, degrees=True)
+        assert tt_area < t_area
+
+    @unittest.skipUnless(os.path.isdir(datadir), "Test data not available.")
+    def test_get_current_footprint(self):
+        # Test with defaults.
+        footprint_hp, labels = get_current_footprint(nside=DEFAULT_NSIDE)
+        assert set(footprint_hp.dtype.names) == set(["u", "g", "r", "i", "z", "y"])
+        assert len(labels) == hp.nside2npix(DEFAULT_NSIDE)
+        # Test can return a different nside.
+        footprint_hp, labels = get_current_footprint(nside=64)
+        assert len(labels) == hp.nside2npix(64)
 
     def test_perfilterstep(self):
         survey_length = 13

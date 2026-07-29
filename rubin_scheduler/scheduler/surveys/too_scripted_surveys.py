@@ -105,7 +105,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         dither=True,
         seed=42,
         npositions=20000,
-        n_snaps=2,
+        n_snaps=1,
         n_usnaps=1,
         detailers=None,
         id_start=1,

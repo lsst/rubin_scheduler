@@ -56,7 +56,6 @@ class TestBasis(unittest.TestCase):
             basis_functions.InTimeWindowBasisFunction,
             basis_functions.HaMaskBasisFunction,
             basis_functions.MoonAvoidanceBasisFunction,
-            basis_functions.MapCloudBasisFunction,
             basis_functions.PlanetMaskBasisFunction,
             basis_functions.SolarElongationMaskBasisFunction,
             basis_functions.AltAzShadowMaskBasisFunction,
@@ -70,6 +69,7 @@ class TestBasis(unittest.TestCase):
             basis_functions.WindPressureBasisFunction,
             basis_functions.MaskDirectWindBasisFunction,
             basis_functions.CloudedOutMapBasisFunction,
+            basis_functions.MaskCloudMapBasisFunction,
         ]
 
         obs = ObservationArray()
@@ -344,6 +344,30 @@ class TestBasis(unittest.TestCase):
         conditions.cloud_maps = cloud_map
         assert not bf.check_feasibility(conditions)
 
+    def test_cloud_map_mask(self):
+        bf = basis_functions.MaskCloudMapBasisFunction(extinction_limit=0.5, out_of_bounds_val=np.nan)
+        mjd = 1000
+        conditions = Conditions()
+        conditions.mjd = mjd
+
+        # No map, should pass
+        assert bf(conditions) == 0
+
+        # Add a cloud map
+        cloud_map = CloudMap()
+        clear = np.zeros(hp.nside2npix(nside=16))
+        cloud_map.add_frame(clear, mjd)
+        conditions.cloud_maps = cloud_map
+
+        # Clear clouds, should pass
+        assert np.all(bf(conditions) == 0)
+
+        # Make a cloud map with 1.0 extinction everywhere
+        cloud_map = CloudMap()
+        cloud_map.add_frame(clear + 1.0, mjd)
+        conditions.cloud_maps = cloud_map
+        assert np.all(np.isnan(bf(conditions)))
+
     def test_AltAzShadowMask(self):
         nside = 32
         conditions = Conditions(nside=nside)
@@ -520,7 +544,6 @@ class TestBasis(unittest.TestCase):
     def test_deprecated(self):
         # Add to-be-deprecated functions here as they appear
         deprecated_basis_functions = [
-            basis_functions.SolarElongMaskBasisFunction,
             basis_functions.AzimuthBasisFunction,
             basis_functions.SeasonCoverageBasisFunction,
             basis_functions.TimeInTwilightBasisFunction,

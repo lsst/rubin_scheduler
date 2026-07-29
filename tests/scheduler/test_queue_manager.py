@@ -8,6 +8,7 @@ from rubin_scheduler.scheduler.detailers import RotspUpdateDetailer
 from rubin_scheduler.scheduler.features import Conditions
 from rubin_scheduler.scheduler.schedulers import BaseQueueManager
 from rubin_scheduler.scheduler.utils import Footprint, ObservationArray
+from rubin_scheduler.site_models import CloudMap
 from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD, hpid2_ra_dec
 
 
@@ -109,6 +110,56 @@ class TestQM(unittest.TestCase):
         rot_same_2 = np.all(result2["rotSkyPos"] == np.pi)
 
         assert rot_same_1 * rot_same_2 == 0
+
+        # Test queue manager with cloud dodging
+        qm = BaseQueueManager(detailers=[detailer], basis_functions=[fp_bf], check_clouds=True)
+
+        observations = ObservationArray(n=3)
+        observations["RA"] = np.radians(np.arange(0, 3, 90))
+        observations["dec"] = np.radians([-20, -30, -40])
+        observations["band"] = "r"
+        observations["target_id"] = np.arange(3)
+        observations["extinction_limit"] = 0.8
+
+        qm.set_queue(observations)
+
+        conditions = Conditions()
+        conditions.mjd = SURVEY_START_MJD + 10
+        # Add a cloud map
+        cloud_map = CloudMap()
+        clear = np.zeros(hp.nside2npix(nside=16))
+        cloud_map.add_frame(clear, conditions.mjd)
+        conditions.cloud_maps = cloud_map
+
+        # Check for valid observations - should be same as above
+        # when there are no clouds
+        all_valid_obs = qm.request_observation(conditions, whole_queue=True)
+        assert np.size(all_valid_obs) == 2
+
+        conditions = Conditions()
+        conditions.mjd = SURVEY_START_MJD + 10
+        # Add a cloud map
+        cloud_map = CloudMap()
+        cloudy = np.zeros(hp.nside2npix(nside=16)) + 2.0
+        cloud_map.add_frame(cloudy, conditions.mjd)
+        conditions.cloud_maps = cloud_map
+
+        # And all of these observations should be wiped out if cloudy
+        all_valid_obs = qm.request_observation(conditions, whole_queue=True)
+        assert np.size(all_valid_obs) == 0
+
+        conditions = Conditions()
+        conditions.mjd = SURVEY_START_MJD + 10
+        # Add a cloud map
+        cloud_map = CloudMap()
+        cloudy = np.zeros(hp.nside2npix(nside=DEFAULT_NSIDE)) + 2
+        cloudy[np.where(dec < -25)] = 0
+        cloud_map.add_frame(cloudy, conditions.mjd)
+        conditions.cloud_maps = cloud_map
+
+        # We should have lost some observations (more than from footprint).
+        all_valid_obs = qm.request_observation(conditions, whole_queue=True)
+        assert np.size(all_valid_obs) == 1
 
 
 if __name__ == "__main__":
