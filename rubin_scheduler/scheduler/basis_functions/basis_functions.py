@@ -868,11 +868,20 @@ class StrictBandBasisFunction(BaseBasisFunction):
         self.note_free = note_free
 
     def _calc_value(self, conditions, **kwargs):
+
+        # Is the band mounted?
+        mounted = self.bandname in conditions.mounted_bands
+        if not mounted:
+            return 0
+
         # Did the moon set or rise since last observation?
         moon_changed = conditions.moon_alt * self.survey_features["Last_observation"].feature["moonAlt"] < 0
 
-        # Are we already in the band (or at start of night)?
+        # Are we already in the band (or no filter loaded)
         in_band = (conditions.current_band == self.bandname) | (conditions.current_band is None)
+
+        # Are on a new night
+        start_of_night = conditions.night != self.survey_features["Last_observation"].feature["night"]
 
         # Has enough time past?
         time_past = IntRounded(
@@ -887,10 +896,7 @@ class StrictBandBasisFunction(BaseBasisFunction):
         # Did we just finish a DD sequence
         was_dd = self.note_free in self.survey_features["Last_observation"].feature["scheduler_note"]
 
-        # Is the band mounted?
-        mounted = self.bandname in conditions.mounted_bands
-
-        if (moon_changed | in_band | time_past | twi_changed | was_dd) & mounted:
+        if (moon_changed | in_band | start_of_night | time_past | twi_changed | was_dd):
             result = 1.0
         else:
             result = 0.0
