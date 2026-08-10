@@ -11,7 +11,6 @@ from astropy.time import Time
 import rubin_scheduler.skybrightness_pre as sb
 from rubin_scheduler.data import data_versions
 from rubin_scheduler.scheduler.features import Conditions
-from rubin_scheduler.scheduler.model_observatory import KinemModel
 from rubin_scheduler.scheduler.utils import smallest_signed_angle
 
 # For backwards compatibility
@@ -39,6 +38,8 @@ from rubin_scheduler.utils import (
     m5_flat_sed,
     rotation_converter,
 )
+
+from .kinem_model import KinemModel
 
 
 class ModelObservatory:
@@ -330,12 +331,12 @@ class ModelObservatory:
         # want pointings to stray into, so add a pad around the values
         self.altaz_limit_pad = np.radians(2.0)
 
-        # Let's make sure we're at an openable MJD
-        good_mjd = False
-        to_set_mjd = mjd
-        while not good_mjd:
-            good_mjd, to_set_mjd = self.check_mjd(to_set_mjd)
-        self.mjd = to_set_mjd
+        # Try to set the initial MJD, but ok if it fails
+        # because a subclass might be doing different things
+        try:
+            self.set_initial_mjd(mjd)
+        except AttributeError:
+            pass
 
         # Create the map of the season offsets - this map is constant
         ra, dec = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(self.nside)))
@@ -353,6 +354,14 @@ class ModelObservatory:
         self.obs_id_counter = 0
 
         self.cloud_maps = cloud_maps
+
+    def set_initial_mjd(self, mjd):
+        # Let's make sure we're at an openable MJD
+        good_mjd = False
+        to_set_mjd = mjd
+        while not good_mjd:
+            good_mjd, to_set_mjd = self.check_mjd(to_set_mjd)
+        self.mjd = to_set_mjd
 
     def get_info(self):
         """
@@ -552,6 +561,15 @@ class ModelObservatory:
         lmst = calc_lmst(self.mjd, self.site.longitude_rad)
         observation["lmst"] = lmst
 
+        observation = self.add_sun_moon_data(observation)
+
+        observation["ID"] = self.obs_id_counter
+        self.obs_id_counter += 1
+
+        return observation
+
+    def add_sun_moon_data(self, observation):
+        """Add info about the sun and moon."""
         sun_moon_info = self.almanac.get_sun_moon_positions(self.mjd)
         observation["sunAlt"] = sun_moon_info["sun_alt"]
         observation["sunAz"] = sun_moon_info["sun_az"]
@@ -574,10 +592,6 @@ class ModelObservatory:
             observation["sunDec"],
         )
         observation["moonPhase"] = sun_moon_info["moon_phase"]
-
-        observation["ID"] = self.obs_id_counter
-        self.obs_id_counter += 1
-
         return observation
 
     def check_up(self, mjd):
