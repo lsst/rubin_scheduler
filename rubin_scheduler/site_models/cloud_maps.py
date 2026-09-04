@@ -97,6 +97,14 @@ class CloudMap(object):
         Healpix array in ring order with cloud extinction in magnitudes.
 
         """
+
+        # No frames loaded, return zero
+        if np.size(self.mjds) == 0:
+            if uncert:
+                return 0, 0
+            else:
+                return 0
+
         diff = np.abs(np.array(self.mjds) - mjd)
         # If we don't have a close enough map, just return zero
         if np.min(diff) > self.time_limit:
