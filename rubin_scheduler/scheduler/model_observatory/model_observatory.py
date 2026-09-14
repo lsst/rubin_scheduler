@@ -554,7 +554,7 @@ class ModelObservatory:
         # If there is cloud extinction, apply it.
         if self.cloud_maps is not None:
             hpid = _ra_dec2_hpid(self.sky_model.nside, observation["RA"], observation["dec"])
-            cloud_extinction = self.cloud_maps.extinction_closest(self.mjd, hpid)
+            cloud_extinction = self.cloud_maps.extinction_forecast(self.mjd, hpid)
             observation["fivesigmadepth"] -= cloud_extinction
             observation["cloud_extinction"] = cloud_extinction
 
