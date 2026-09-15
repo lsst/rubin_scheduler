@@ -120,6 +120,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         check_band_active=False,
         sort_potential_result="HA",
         update_mjd0=False,
+        match_check_mjd=False,
     ):
         if filters_at_times is not None:
             warnings.warn("filters_at_times deprecated in favor of bands_at_times", FutureWarning)
@@ -169,6 +170,7 @@ class ToOScriptedSurvey(ScriptedSurvey, BaseMarkovSurvey):
         self.check_band_mounted = check_band_mounted
         self.check_band_active = check_band_active
         self.update_mjd0 = update_mjd0
+        self.match_check_mjd = match_check_mjd
         # Attributes to cache results into
         self.observations_rough = []
         self.observations = []
