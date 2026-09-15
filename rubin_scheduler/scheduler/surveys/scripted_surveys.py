@@ -50,6 +50,9 @@ class ScriptedSurvey(BaseSurvey):
         If there are too many potential observations, how they should be
         sorted before truncating to return_n_limit. Possible values
         of "HA". Default None does no additional sorting.
+    match_check_mjd : `bool`
+        Check that the MJD of the observation matches what was requested
+        in addition to checking scheduler_note field matches. Default True.
     """
 
     def __init__(
@@ -70,6 +73,7 @@ class ScriptedSurvey(BaseSurvey):
         check_band_mounted=True,
         check_band_active=False,
         sort_potential_result=None,
+        match_check_mjd=True,
     ):
         if filter_change_time is not None:
             warnings.warn("filter_change_time deprecated in favor of band_change_time", FutureWarning)
@@ -85,6 +89,7 @@ class ScriptedSurvey(BaseSurvey):
         self.check_band_active = check_band_active
         self.band_change_time = band_change_time / 3600 / 24.0  # to days
         self.sort_potential_result = sort_potential_result
+        self.match_check_mjd = match_check_mjd
         if basis_weights is None:
             self.basis_weights = np.zeros(len(basis_functions))
         else:
@@ -127,8 +132,30 @@ class ScriptedSurvey(BaseSurvey):
 
             if (self.obs_wanted is not None) & (np.size(self.obs_wanted) > 0):
                 indx = np.isin(self.obs_wanted["scheduler_note"], observations_array_in["scheduler_note"])
+                if self.match_check_mjd:
+                    indx2 = np.isin(
+                        observations_array_in["scheduler_note"], self.obs_wanted["scheduler_note"]
+                    )
 
-                self.obs_wanted["observed"][indx] = True
+                    order_array2 = np.argsort(observations_array_in[indx2], order=["scheduler_note", "mjd"])
+                    order_array = np.argsort(self.obs_wanted[indx], order=["scheduler_note", "mjd"])
+                    d1 = (
+                        self.obs_wanted[indx][order_array]["mjd"]
+                        - self.obs_wanted[indx][order_array]["mjd_tol"]
+                    )
+
+                    in_time_window = np.where(
+                        (d1 <= observations_array_in[indx2][order_array2]["mjd"])
+                        & (
+                            self.obs_wanted[indx][order_array]["flush_by_mjd"]
+                            > observations_array_in[indx2][order_array2]["mjd"]
+                        )
+                    )
+                    final_indx = np.arange(self.obs_wanted["observed"].size, dtype=int)
+                    final_indx = final_indx[indx][order_array[in_time_window]]
+                    self.obs_wanted["observed"][final_indx] = True
+                else:
+                    self.obs_wanted["observed"][indx] = True
                 self.scheduled_obs = self.obs_wanted["mjd"][~self.obs_wanted["observed"]]
 
     def add_observation(self, observation, indx=None, **kwargs):
@@ -144,11 +171,17 @@ class ScriptedSurvey(BaseSurvey):
                     (self.obs_wanted["scheduler_note"] == observation["scheduler_note"][0])
                     & (self.obs_wanted["observed"] == False)
                 )[0]
-
                 if np.size(indx) > 0:
                     # Could add an additional check here for if the observation
                     # is in the desired mjd window.
-                    self.obs_wanted["observed"][np.min(indx)] = True
+                    if self.match_check_mjd:
+                        if (
+                            (self.obs_wanted[indx]["mjd"] - self.obs_wanted[indx]["mjd_tol"])
+                            <= observation["mjd"]
+                        ) & (self.obs_wanted[indx]["flush_by_mjd"] > observation["mjd"]):
+                            self.obs_wanted["observed"][np.min(indx)] = True
+                    else:
+                        self.obs_wanted["observed"][np.min(indx)] = True
 
     def calc_reward_function(self, conditions):
         """If there is an observation ready to go, execute it,

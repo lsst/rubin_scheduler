@@ -289,6 +289,8 @@ class TestSurveys(unittest.TestCase):
         completed_observations = ObservationArray(n=3)
         completed_observations["band"] = survey.obs_wanted["band"][0:3]
         completed_observations["scheduler_note"] = survey.obs_wanted["scheduler_note"][0:3]
+        # Matching on MJD as well
+        completed_observations["mjd"] = observations["mjd"][0:3] - 0.5 * observations["mjd_tol"][0:3]
 
         # Add one at a time
         for obs in completed_observations:
