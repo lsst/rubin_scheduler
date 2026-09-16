@@ -797,6 +797,12 @@ class M5DiffBasisFunction(BaseBasisFunction):
         Default None uses `set_default_nside()`.
     apply_cloud_extinction : `bool`
         Apply extinction from cloud maps. Default False.
+    lead_time_days : `float`
+        If > 0 and apply_cloud_extinction is True, use the cloud
+        map's extinction_forecast projected lead_time_days ahead
+        of conditions.mjd instead of extinction_closest's
+        most-recently-observed extinction. Default 0. (i.e. use the
+        observed/"reactive" extinction, matching prior behavior).
     """
 
     def __init__(
@@ -806,6 +812,7 @@ class M5DiffBasisFunction(BaseBasisFunction):
         nside=DEFAULT_NSIDE,
         filtername=None,
         apply_cloud_extinction=False,
+        lead_time_days=0.0,
     ):
         if filtername is not None:
             warnings.warn("filtername deprecated in favor of bandname", FutureWarning)
@@ -816,6 +823,7 @@ class M5DiffBasisFunction(BaseBasisFunction):
         self.fiducial_FWHMEff = fiducial_FWHMEff
         self.bandname = bandname
         self.apply_cloud_extinction = apply_cloud_extinction
+        self.lead_time_days = lead_time_days
 
     def _calc_value(self, conditions, indx=None):
         if self.dark_map is None:
@@ -826,7 +834,12 @@ class M5DiffBasisFunction(BaseBasisFunction):
         result = conditions.m5_depth[self.bandname] - self.dark_map
         if self.apply_cloud_extinction:
             if conditions.cloud_maps is not None:
-                extinction = conditions.cloud_maps.extinction_closest(conditions.mjd)
+                if self.lead_time_days > 0:
+                    extinction = conditions.cloud_maps.extinction_forecast(
+                        conditions.mjd + self.lead_time_days
+                    )
+                else:
+                    extinction = conditions.cloud_maps.extinction_closest(conditions.mjd)
                 result -= extinction
         return result
 
