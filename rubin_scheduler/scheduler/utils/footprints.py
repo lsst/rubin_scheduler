@@ -82,9 +82,13 @@ def make_rolling_footprints(
     n_constant_end=6,
     verbose=False,
     uniform=True,
+    u5=False,
 ):
     """
     Generate rolling footprints
+    From https://github.com/beckermr/misc/blob/main/work/
+    2026_05_06_new_uniform_rolling/wfd_u2_uroll1_broll2_v1.ipynb
+
 
     Parameters
     ----------
@@ -114,6 +118,8 @@ def make_rolling_footprints(
         less than 2 will start rolling too early near Y1. Defaults to 2.
     n_constant_end : `int`
         The number of constant seasons to end the survey with. Defaults to 6.
+    u5 : `bool`
+        Flag to set season 5 as a uniform footprint year. Default False.
 
     Returns
     -------
@@ -161,6 +167,23 @@ def make_rolling_footprints(
         D: "D",
         U: "U",
     }
+    inv_dvals = {v: k for k, v in dvals.items()}
+
+    if u5:
+        # we want a survey that is
+        # - 2 years of uniform
+        # - one uniform rolling cycle
+        # - two baseline rolling cycles
+        str_all_slopes = [
+            "1 1 1 D U 1 D U D U 1 1 1 1 1 1 1",
+            "1 1 1 U D 1 U D U D 1 1 1 1 1 1 1",
+            "1 1 1 1 U D 1 U D U D 1 1 1 1 1 1",
+            "1 1 1 1 D U 1 D U D U 1 1 1 1 1 1",
+        ]
+
+        all_slopes = []
+        for sstr in str_all_slopes:
+            all_slopes.append([inv_dvals[s] for s in sstr.split(" ")])
 
     abc = ["a", "b", "c", "d", "e", "f", "g", "h"]
     slice_names = ["slice %s" % abc[i] for i in range(nslice)]
