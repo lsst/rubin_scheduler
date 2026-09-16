@@ -798,9 +798,9 @@ class M5DiffBasisFunction(BaseBasisFunction):
     apply_cloud_extinction : `bool`
         Apply extinction from cloud maps. Default False.
     lead_time_days : `float`
-        If > 0 and `apply_cloud_extinction` is True, use the cloud
-        map's `extinction_forecast` projected `lead_time_days` ahead
-        of `conditions.mjd` instead of `extinction_closest`'s
+        If > 0 and apply_cloud_extinction is True, use the cloud
+        map's extinction_forecast projected lead_time_days ahead
+        of conditions.mjd instead of extinction_closest's
         most-recently-observed extinction. Default 0. (i.e. use the
         observed/"reactive" extinction, matching prior behavior).
     """
