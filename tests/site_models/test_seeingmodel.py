@@ -75,7 +75,8 @@ class TestSeeingModel(unittest.TestCase):
         upwind = seeing_model(fwhm_500, airmass, wind_speed=10.0, wind_direction=0.0, azimuth=0.0)
         downwind = seeing_model(fwhm_500, airmass, wind_speed=10.0, wind_direction=0.0, azimuth=np.pi)
         self.assertTrue(np.all(upwind["fwhmEff"] < downwind["fwhmEff"]))
-        # Downwind at speed: unflushed dome term = d0 exactly (no wake by default).
+        # Downwind at speed: unflushed dome term = d0 exactly
+        # (no wake by default).
         expected = np.sqrt(base**2 + d0)
         self.assertTrue(np.allclose(downwind["fwhmEff"], expected))
         # Only a warm dome adds seeing; a cold dome is harmless.
