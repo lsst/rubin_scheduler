@@ -7,7 +7,8 @@ import numpy as np
 from rubin_scheduler.utils import SysEngVals
 
 # Default parameters for the wind + dome-temperature seeing term:
-#   FWHM_wind^2 = [d0 + d1 * max(deltaT, 0)^2] * exp(-v * (1 + cos(theta)) / 2 / v0)
+#   FWHM_wind^2 = [d0 + d1 * max(deltaT, 0)^2] *
+#                 exp(-v * (1 + cos(theta)) / 2 / v0)
 #                 + (t + s) * (v * (1 - cos(theta)))^2      [arcsec^2]
 # where v is the wind speed (m/s), deltaT the dome-minus-outdoor temperature
 # difference (K), and theta the angle between the pointing azimuth and the
