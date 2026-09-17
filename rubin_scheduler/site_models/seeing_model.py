@@ -164,9 +164,7 @@ class SeeingModel:
         params = self.wind_seeing_params
         cos_theta = np.cos(np.asarray(azimuth, dtype=float) - wind_direction)
         warm = np.clip(delta_t, 0, None) ** 2
-        dome = (params["d0"] + params["d1"] * warm) * np.exp(
-            -wind_speed * (1 + cos_theta) / 2 / params["v0"]
-        )
+        dome = (params["d0"] + params["d1"] * warm) * np.exp(-wind_speed * (1 + cos_theta) / 2 / params["v0"])
         wake = (params["t"] + params["s"]) * (wind_speed * (1 - cos_theta)) ** 2
         return dome + wake
 
