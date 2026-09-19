@@ -541,6 +541,23 @@ class TestBasis(unittest.TestCase):
 
         assert np.sum(np.isfinite(mask_gap)) > np.sum(np.isfinite(mask_filled))
 
+    def test_WindowFeasibilityBasisFunctions(self):
+        bf = basis_functions.OnlyBeforeNightBasisFunction(night_max=365)
+        mjd_start = 61328.5
+        conditions = Conditions(mjd=mjd_start + 2, survey_start_mjd=mjd_start)
+        print(conditions.night)
+        self.assertEqual(bf(conditions), 0)
+        conditions.mjd = mjd_start + 366
+        self.assertTrue(np.isinf(bf(conditions)))
+        bf = basis_functions.OnlyDuringNightsBasisFunction(night_min=366, night_max=365 * 2)
+        self.assertEqual(bf(conditions), 0)
+        conditions.mjd = mjd_start + 365
+        self.assertTrue(np.isinf(bf(conditions)))
+        conditions.mjd = mjd_start + 365 * 2
+        self.assertEqual(bf(conditions), 0)
+        conditions.mjd = mjd_start + 365 * 2 + 1
+        self.assertTrue(np.isinf(bf(conditions)))
+
     def test_deprecated(self):
         # Add to-be-deprecated functions here as they appear
         deprecated_basis_functions = [
