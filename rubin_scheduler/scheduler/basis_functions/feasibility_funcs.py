@@ -69,6 +69,7 @@ class OnlyBeforeNightBasisFunction(BaseBasisFunction):
             result = False
         return result
 
+
 class OnlyDuringNightsBasisFunction(BaseBasisFunction):
     """Only return feasible if current night between night_min and night_max,
     inclusive.
@@ -81,7 +82,7 @@ class OnlyDuringNightsBasisFunction(BaseBasisFunction):
         The maximum night for feasibility.
     """
 
-    def __init__(self, night_min: int = 0, night_max: int =366) -> None:
+    def __init__(self, night_min: int = 0, night_max: int = 366) -> None:
         super().__init__()
         self.night_min = night_min
         self.night_max = night_max
