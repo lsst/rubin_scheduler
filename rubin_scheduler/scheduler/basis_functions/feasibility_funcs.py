@@ -26,6 +26,7 @@ __all__ = (
     "InTimeWindowBasisFunction",
     "MoonAltLimitBasisFunction",
     "OnlyBeforeNightBasisFunction",
+    "OnlyDuringNightsBasisFunction",
 )
 
 import warnings
@@ -59,12 +60,36 @@ class OnlyBeforeNightBasisFunction(BaseBasisFunction):
     """
 
     def __init__(self, night_max=366):
-        super(OnlyBeforeNightBasisFunction, self).__init__()
+        super().__init__()
         self.night_max = night_max
 
     def check_feasibility(self, conditions, indx=None):
         result = True
         if conditions.night > self.night_max:
+            result = False
+        return result
+
+
+class OnlyDuringNightsBasisFunction(BaseBasisFunction):
+    """Only return feasible if current night between night_min and night_max,
+    inclusive.
+
+    Parameters
+    ----------
+    night_min : `int`
+        The minimum night for feasibility.
+    night_max : `int`
+        The maximum night for feasibility.
+    """
+
+    def __init__(self, night_min: int = 0, night_max: int = 366) -> None:
+        super().__init__()
+        self.night_min = night_min
+        self.night_max = night_max
+
+    def check_feasibility(self, conditions, indx=None):
+        result = True
+        if conditions.night > self.night_max or conditions.night < self.night_min:
             result = False
         return result
 
