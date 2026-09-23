@@ -77,7 +77,8 @@ class TestSeeingModel(unittest.TestCase):
         added_calm = calm["fwhmEff"] ** 2 - base**2
         added_upwind = upwind["fwhmEff"] ** 2 - base**2
         self.assertTrue(np.all(added_upwind < 0.1 * added_calm))
-        # Downwind the warm dome is never flushed: less seeing upwind than downwind.
+        # Downwind the warm dome is never flushed:
+        # less seeing upwind than downwind.
         downwind = seeing_model(
             fwhm_500, airmass, wind_speed=8.0, wind_direction=0.0, azimuth=np.pi, delta_t=1.5
         )
