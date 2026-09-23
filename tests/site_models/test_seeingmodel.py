@@ -66,18 +66,24 @@ class TestSeeingModel(unittest.TestCase):
         base = seeing_model(fwhm_500, airmass)["fwhmEff"]
         # No wind info -> identical to the historical call.
         self.assertTrue(np.array_equal(base, seeing_model(fwhm_500, airmass, delta_t=2.0)["fwhmEff"]))
-        # Calm limit: uniform d0 added in quadrature, any azimuth.
-        d0 = seeing_model.wind_seeing_params["d0"]
-        calm = seeing_model(fwhm_500, airmass, wind_speed=0.0, wind_direction=0.0, azimuth=1.0)
-        expected = np.sqrt(base**2 + d0)
+        params = seeing_model.wind_seeing_params
+        # Calm limit: uniform d0 + d1 * deltaT^2 added in quadrature, any azimuth.
+        calm = seeing_model(fwhm_500, airmass, wind_speed=0.0, wind_direction=0.0, azimuth=1.0, delta_t=1.5)
+        expected = np.sqrt(base**2 + params["d0"] + params["d1"] * 1.5**2)
         self.assertTrue(np.allclose(calm["fwhmEff"], expected))
-        # Upwind pointing flushes the dome: less added seeing than downwind.
-        upwind = seeing_model(fwhm_500, airmass, wind_speed=10.0, wind_direction=0.0, azimuth=0.0)
-        downwind = seeing_model(fwhm_500, airmass, wind_speed=10.0, wind_direction=0.0, azimuth=np.pi)
+        # Pointing into a moderate wind flushes the dome: the added seeing is
+        # a small fraction of the calm value.
+        upwind = seeing_model(fwhm_500, airmass, wind_speed=8.0, wind_direction=0.0, azimuth=0.0, delta_t=1.5)
+        added_calm = calm["fwhmEff"] ** 2 - base**2
+        added_upwind = upwind["fwhmEff"] ** 2 - base**2
+        self.assertTrue(np.all(added_upwind < 0.1 * added_calm))
+        # Downwind the warm dome is never flushed: less seeing upwind than downwind.
+        downwind = seeing_model(fwhm_500, airmass, wind_speed=8.0, wind_direction=0.0, azimuth=np.pi, delta_t=1.5)
         self.assertTrue(np.all(upwind["fwhmEff"] < downwind["fwhmEff"]))
-        # Downwind at speed: unflushed dome term = d0 exactly
-        # (no wake by default).
-        expected = np.sqrt(base**2 + d0)
+        # Downwind (cos theta = -1) the exponential is exactly 1 at any speed:
+        # unflushed dome term d0 + d1 * deltaT^2, plus the wake (t + s) (2 v)^2.
+        expected = np.sqrt(base**2 + params["d0"] + params["d1"] * 1.5**2
+                           + (params["t"] + params["s"]) * (2 * 8.0) ** 2)
         self.assertTrue(np.allclose(downwind["fwhmEff"], expected))
         # Only a warm dome adds seeing; a cold dome is harmless.
         warm = seeing_model(fwhm_500, airmass, wind_speed=0.5, wind_direction=0.0, azimuth=0.0, delta_t=2.0)
