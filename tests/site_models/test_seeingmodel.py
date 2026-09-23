@@ -67,7 +67,7 @@ class TestSeeingModel(unittest.TestCase):
         # No wind info -> identical to the historical call.
         self.assertTrue(np.array_equal(base, seeing_model(fwhm_500, airmass, delta_t=2.0)["fwhmEff"]))
         params = seeing_model.wind_seeing_params
-        # Calm limit: uniform d0 + d1 * deltaT^2 added in quadrature, any azimuth.
+        # Calm limit: uniform d0 + d1 * deltaT^2 added in quadrature.
         calm = seeing_model(fwhm_500, airmass, wind_speed=0.0, wind_direction=0.0, azimuth=1.0, delta_t=1.5)
         expected = np.sqrt(base**2 + params["d0"] + params["d1"] * 1.5**2)
         self.assertTrue(np.allclose(calm["fwhmEff"], expected))
@@ -84,7 +84,8 @@ class TestSeeingModel(unittest.TestCase):
         )
         self.assertTrue(np.all(upwind["fwhmEff"] < downwind["fwhmEff"]))
         # Downwind (cos theta = -1) the exponential is exactly 1 at any speed:
-        # unflushed dome term d0 + d1 * deltaT^2, plus the wake (t + s) (2 v)^2.
+        # unflushed dome term d0 + d1 * deltaT^2,
+        # plus the wake (t + s) (2 v)^2.
         expected = np.sqrt(
             base**2 + params["d0"] + params["d1"] * 1.5**2 + (params["t"] + params["s"]) * (2 * 8.0) ** 2
         )
