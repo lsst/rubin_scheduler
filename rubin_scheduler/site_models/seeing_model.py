@@ -14,15 +14,32 @@ from rubin_scheduler.utils import SysEngVals
 # difference (K), and theta the angle between the pointing azimuth and the
 # direction the wind comes from (theta=0 -> pointing into the wind, which
 # flushes the dome). The term combines with the atmospheric + system FWHM in
-# quadrature. Values are the "nightly-baseline" fit to LSSTCam ConsDB visits
-# (2025-10 .. 2026-06, science programs BLOCK-365/407/408/419/421, ~28k
-# visits with EFD dome/outdoor temperatures): each night's median measured
-# zenith/500nm-corrected seeing was profiled out, so the parameters are
-# identified purely from within-night contrasts in pointing-vs-wind angle,
-# wind speed and deltaT. Note the fit found no (v*(1-cos theta))^2 wake
-# signal at the wind speeds sampled (<~15 m/s), so t = s = 0; a cold dome
-# (deltaT < 0) adds no seeing.
-WIND_SEEING_DEFAULTS = dict(d0=0.341, d1=0.112, v0=5.85, t=0.0, s=0.0)
+# quadrature.
+#
+# Values are a DIMM-free fit to LSSTCam ConsDB visits (2025-10 .. 2026-06,
+# science programs BLOCK-365/407/408/419/421, ~42k visits with wind and EFD
+# dome/outdoor temperatures; notebooks/wind_terms_dimm_free.py). The
+# delivered PSF FWHM^2 is compared with its own per-night median (zenith /
+# 500 nm frame), so the parameters come purely from within-night contrasts in
+# pointing-vs-wind angle, wind speed and deltaT; the same signal is seen in
+# the AOS donut blur (atmosphere + dome + camera) and none of it in the AOS
+# optics FWHM, so it is dome / local seeing, not optics.
+# What the data need: a wind-direction term independent of dome warmth (d0:
+# the downwind - upwind contrast is ~0.15 arcsec^2 for every wind speed
+# above ~3 m/s, ~0 below), plus the warm-dome term (d1: the contrast grows
+# to ~0.3 arcsec^2 for deltaT > 0.5 K). The (v (1 - cos theta))^2 wake is
+# marginal (t + s ~ 1.5e-4: ~0.06 arcsec^2 at 10 m/s downwind) - the
+# contrast does not grow with wind speed. d0 and v0 are degenerate in the
+# per-visit fit; v0 = 2.5 m/s is chosen because it makes the residual
+# downwind - upwind contrast flat in wind speed (the contrast saturates by
+# ~4 m/s), with d0 = 0.20 (v0 = 5-6 m/s with d0 = 0.31 fits the per-visit
+# cost equally well but overpredicts the contrast above 8 m/s). Anything
+# constant within a night is not constrained by this fit: against a
+# DIMM-driven base (outer scale 25 m) the wind >= 6 m/s visits are
+# over-predicted by an azimuth-independent ~0.19 arcsec^2 (~0.12 at L0 =
+# 15 m), which has to be absorbed by the base (DIMM calibration / outer
+# scale), not by this term. A cold dome (deltaT < 0) adds no seeing.
+WIND_SEEING_DEFAULTS = dict(d0=0.20, d1=0.18, v0=2.5, t=7.5e-5, s=7.5e-5)
 
 
 class SeeingModel:
@@ -140,8 +157,9 @@ class SeeingModel:
         FWHM in quadrature: fwhm_eff = sqrt(fwhm_eff^2 + FWHM_wind^2).
         Pointing into the wind (theta = 0) flushes the dome; only a dome
         warmer than the outside air (deltaT > 0) adds dome seeing.
-        Parameters default to WIND_SEEING_DEFAULTS (the nightly-baseline fit
-        to ConsDB visits); override via the wind_seeing_params init argument.
+        Parameters default to WIND_SEEING_DEFAULTS (the DIMM-free per-night
+        baseline fit to ConsDB visits); override via the wind_seeing_params
+        init argument.
 
         Parameters
         ----------
