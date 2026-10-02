@@ -555,6 +555,9 @@ class ModelObservatory:
         if self.cloud_maps is not None:
             hpid = _ra_dec2_hpid(self.sky_model.nside, observation["RA"], observation["dec"])
             cloud_extinction = self.cloud_maps.extinction_forecast(self.mjd, hpid)
+            # Catch nans here.
+            if not np.isfinite(cloud_extinction):
+                cloud_extinction = 0
             observation["fivesigmadepth"] -= cloud_extinction
             observation["cloud_extinction"] = cloud_extinction
 
