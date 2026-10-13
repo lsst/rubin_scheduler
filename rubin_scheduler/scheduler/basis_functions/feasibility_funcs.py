@@ -34,7 +34,7 @@ import warnings
 import numpy as np
 
 from rubin_scheduler.scheduler import features
-from rubin_scheduler.scheduler.basis_functions import BaseBasisFunction
+from rubin_scheduler.scheduler.basis_functions import BaseBasisFunction, BaseHealBasisFunction
 from rubin_scheduler.scheduler.utils import IntRounded
 from rubin_scheduler.utils import DEFAULT_NSIDE, _angular_separation, match_hp_resolution, ra_dec2_hpid
 
@@ -169,7 +169,7 @@ class MoonAltLimitBasisFunction(BaseBasisFunction):
         return result
 
 
-class AirmassPointRangeBasisFunction(BaseBasisFunction):
+class AirmassPointRangeBasisFunction(BaseHealBasisFunction):
     """Set an airmass limit for a single point
     Maps the point to the nearest HEALpixel and uses
     the Conditions airmass map, so precision of the
@@ -187,7 +187,7 @@ class AirmassPointRangeBasisFunction(BaseBasisFunction):
     """
 
     def __init__(self, ra, dec, airmass_range=[1.05, 2.7], nside=DEFAULT_NSIDE):
-        super().__init__()
+        super().__init__(nside=nside)
         self.hpid = ra_dec2_hpid(nside, ra, dec)
         self.airmass_range = airmass_range
 

@@ -5,7 +5,7 @@ import warnings
 import numpy as np
 
 from rubin_scheduler.scheduler import features, utils
-from rubin_scheduler.scheduler.basis_functions import BaseBasisFunction
+from rubin_scheduler.scheduler.basis_functions import BaseBasisFunction, BaseHealBasisFunction
 from rubin_scheduler.scheduler.utils import ConstantFootprint
 from rubin_scheduler.utils import DEFAULT_NSIDE
 
@@ -20,7 +20,7 @@ def send_unused_deprecation_warning(name):
     warnings.warn(message, FutureWarning)
 
 
-class FootprintBasisFunction(BaseBasisFunction):
+class FootprintBasisFunction(BaseHealBasisFunction):
     """Basis function that tries to maintain a uniformly covered footprint
 
     Parameters
