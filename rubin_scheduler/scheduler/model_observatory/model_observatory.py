@@ -557,6 +557,11 @@ class ModelObservatory:
             cloud_extinction = self.cloud_maps.extinction_forecast(self.mjd, hpid)
             # Catch nans here.
             if not np.isfinite(cloud_extinction):
+                conditions = Conditions(nside=self.nside, mjd=self.mjd)
+                indx_above = np.where(conditions.alt > 0)
+                cloud_extinction = np.nanmedian(self.cloud_maps.extinction_forecast(self.mjd, indx_above))
+            # If the median was still nan, set to zero
+            if not np.isfinite(cloud_extinction):
                 cloud_extinction = 0
             observation["fivesigmadepth"] -= cloud_extinction
             observation["cloud_extinction"] = cloud_extinction
