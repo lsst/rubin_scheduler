@@ -1468,8 +1468,6 @@ class BalanceVisits(BaseBasisFunction):
         Note value for the current survey.
     note_interest : `str`
         Substring with the name of interested surveys to be accounted.
-    nside : `int`
-        Healpix map resolution.
 
     Notes
     -----
@@ -1485,7 +1483,8 @@ class BalanceVisits(BaseBasisFunction):
     to gain a reward boost in relative to it.
     """
 
-    def __init__(self, nobs_reference, note_survey, note_interest):
+    def __init__(self, nobs_reference, note_survey, note_interest, nside=DEFAULT_NSIDE):
+        warnings.warn("kwarg nside is deprecated.", FutureWarning)
         super().__init__()
 
         self.nobs_reference = nobs_reference
@@ -1520,7 +1519,8 @@ class RewardNObsSequence(BaseBasisFunction):
     If the sequence is programmed into the FieldSurvey, this isn't necessary.
     """
 
-    def __init__(self, n_obs_survey, note_survey):
+    def __init__(self, n_obs_survey, note_survey, nside=DEFAULT_NSIDE):
+        warnings.warn("kwarg nside is deprecated.", FutureWarning)
         super().__init__()
 
         self.n_obs_survey = n_obs_survey
@@ -1532,7 +1532,7 @@ class RewardNObsSequence(BaseBasisFunction):
         return self.survey_features["n_obs_survey"].feature % self.n_obs_survey
 
 
-class RewardRisingBasisFunction(BaseBasisFunction):
+class RewardRisingBasisFunction(BaseHealBasisFunction):
     """Reward parts of the sky that are rising.
     Optionally, mask out parts of the sky that are not rising.
 
@@ -1554,8 +1554,8 @@ class RewardRisingBasisFunction(BaseBasisFunction):
         a value of 0 will just make this non-rewarding.
     """
 
-    def __init__(self, slope=0.1, penalty_val=0):
-        super().__init__()
+    def __init__(self, slope=0.1, penalty_val=0, nside=DEFAULT_NSIDE):
+        super().__init__(nside=nside)
         self.slope = slope
         self.penalty_val = penalty_val
 

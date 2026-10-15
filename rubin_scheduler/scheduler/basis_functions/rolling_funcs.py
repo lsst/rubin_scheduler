@@ -5,7 +5,7 @@ import warnings
 import numpy as np
 
 from rubin_scheduler.scheduler import features, utils
-from rubin_scheduler.scheduler.basis_functions import BaseBasisFunction, BaseHealBasisFunction
+from rubin_scheduler.scheduler.basis_functions import BaseHealBasisFunction
 from rubin_scheduler.scheduler.utils import ConstantFootprint
 from rubin_scheduler.utils import DEFAULT_NSIDE
 

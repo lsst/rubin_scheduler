@@ -735,7 +735,7 @@ def simple_rewards_field_survey(
         # Avoid revisits within 30 minutes - but we'll have to replace "note"
         basis_functions.VisitGap(band_names=None, note=scheduler_note, gap_min=30.0),
         # reward fields which are rising, but don't mask out after zenith
-        basis_functions.RewardRisingBasisFunction(slope=0.1, penalty_val=0),
+        basis_functions.RewardRisingBasisFunction(nside=nside, slope=0.1, penalty_val=0),
         # Reward parts of the sky which are darker --
         # note that this is only for r band, so relying on skymap in r band.
         # if there isn't a strong reason to go with the darkest pointing,

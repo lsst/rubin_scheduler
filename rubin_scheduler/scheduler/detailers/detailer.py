@@ -68,7 +68,7 @@ class BaseDetailer:
     RA,Dec positions.
     """
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         """"""
         # Dict to hold all the features we want to track
         self.survey_features = {}
@@ -658,7 +658,8 @@ class ZeroRotDetailer(BaseDetailer):
         between rotTelPos and rotSkyPos. Default "rubin".
     """
 
-    def __init__(self, telescope="rubin"):
+    def __init__(self, telescope="rubin", nside=None):
+        warnings.warn("kwarg nside deprecated", FutureWarning)
         self.rc = rotation_converter(telescope=telescope)
         self.survey_features = {}
 
@@ -682,7 +683,8 @@ class Comcam90rotDetailer(BaseDetailer):
     270 degrees. Whatever is closest to rotTelPos of zero.
     """
 
-    def __init__(self, telescope="rubin"):
+    def __init__(self, telescope="rubin", nside=None):
+        warnings.warn("kwarg nside deprecated", FutureWarning)
         self.rc = rotation_converter(telescope=telescope)
         self.survey_features = {}
 
@@ -804,7 +806,8 @@ class FixedSkyAngleDetailer(BaseDetailer):
         Desired sky angle (default = 0, in degrees).
     """
 
-    def __init__(self, sky_angle=0.0):
+    def __init__(self, sky_angle=0.0, nside=None):
+        warnings.warn("kwarg nside deprecated", FutureWarning)
         super().__init__()
 
         self.sky_angle = np.radians(sky_angle)

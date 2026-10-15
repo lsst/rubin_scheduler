@@ -20,7 +20,7 @@ import healpy as hp
 import numpy as np
 
 import rubin_scheduler.scheduler.features as features
-from rubin_scheduler.scheduler.basis_functions import BaseBasisFunction, BaseHealBasisFunction
+from rubin_scheduler.scheduler.basis_functions import BaseHealBasisFunction
 from rubin_scheduler.scheduler.utils import CurrentAreaMap, HpInLsstFov, IntRounded
 from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD, _angular_separation, match_hp_resolution
 
