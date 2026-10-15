@@ -46,7 +46,6 @@ from rubin_scheduler.scheduler.utils import (
     order_observations,
 )
 from rubin_scheduler.utils import (
-    DEFAULT_NSIDE,
     _angular_separation,
     _approx_alt_az2_ra_dec,
     _approx_altaz2pa,
@@ -69,11 +68,10 @@ class BaseDetailer:
     RA,Dec positions.
     """
 
-    def __init__(self, nside=DEFAULT_NSIDE):
+    def __init__(self, **kwargs):
         """"""
         # Dict to hold all the features we want to track
         self.survey_features = {}
-        self.nside = nside
 
     def add_observations_array(self, observations_array, observations_hpid):
         """Like add_observation, but for loading a whole array of
@@ -660,7 +658,8 @@ class ZeroRotDetailer(BaseDetailer):
         between rotTelPos and rotSkyPos. Default "rubin".
     """
 
-    def __init__(self, telescope="rubin", nside=DEFAULT_NSIDE):
+    def __init__(self, telescope="rubin", nside=None):
+        warnings.warn("kwarg nside deprecated", FutureWarning)
         self.rc = rotation_converter(telescope=telescope)
         self.survey_features = {}
 
@@ -684,7 +683,8 @@ class Comcam90rotDetailer(BaseDetailer):
     270 degrees. Whatever is closest to rotTelPos of zero.
     """
 
-    def __init__(self, telescope="rubin", nside=DEFAULT_NSIDE):
+    def __init__(self, telescope="rubin", nside=None):
+        warnings.warn("kwarg nside deprecated", FutureWarning)
         self.rc = rotation_converter(telescope=telescope)
         self.survey_features = {}
 
@@ -806,8 +806,9 @@ class FixedSkyAngleDetailer(BaseDetailer):
         Desired sky angle (default = 0, in degrees).
     """
 
-    def __init__(self, sky_angle=0.0, nside=DEFAULT_NSIDE):
-        super().__init__(nside=nside)
+    def __init__(self, sky_angle=0.0, nside=None):
+        warnings.warn("kwarg nside deprecated", FutureWarning)
+        super().__init__()
 
         self.sky_angle = np.radians(sky_angle)
 

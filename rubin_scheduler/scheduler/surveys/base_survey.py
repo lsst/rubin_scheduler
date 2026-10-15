@@ -114,7 +114,7 @@ class BaseSurvey:
 
         # If there's no detailers, add one to set rotation to near zero
         if detailers is None:
-            self.detailers = [ZeroRotDetailer(nside=nside)]
+            self.detailers = [ZeroRotDetailer()]
         else:
             # If there are detailers -- copy them, because we're
             # about to change the list (and users can be reusing this list).

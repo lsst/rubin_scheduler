@@ -1,5 +1,6 @@
 __all__ = (
     "BaseBasisFunction",
+    "BaseHealBasisFunction",
     "HealpixLimitedBasisFunctionMixin",
     "ConstantBasisFunction",
     "SimpleArrayBasisFunction",
@@ -63,7 +64,7 @@ class BaseBasisFunction:
     """Class that takes features and computes a reward function when
     called."""
 
-    def __init__(self, nside=DEFAULT_NSIDE, bandname=None, filtername=None, **kwargs):
+    def __init__(self, bandname=None, filtername=None, **kwargs):
         # Set if basis function needs to be recalculated if there is a new
         # observation
         self.update_on_newobs = True
@@ -81,9 +82,6 @@ class BaseBasisFunction:
         self.attrs_to_compare = []
         # Do we need to recalculate the basis function
         self.recalc = True
-        # Basis functions don't technically all need an nside, but so
-        # many do might as well set it here
-        self.nside = nside
 
         if filtername is not None:
             warnings.warn(
@@ -195,6 +193,16 @@ class BaseBasisFunction:
         return label
 
 
+class BaseHealBasisFunction(BaseBasisFunction):
+    """Add nside kwarg. For basis functions that return
+    a HEALpix map.
+    """
+
+    def __init__(self, nside=DEFAULT_NSIDE, **kwargs):
+        self.nside = nside
+        super().__init__(**kwargs)
+
+
 class HealpixLimitedBasisFunctionMixin:
     """A mixin to limit a basis function to a set of Healpix pixels."""
 
@@ -250,7 +258,7 @@ class ConstantBasisFunction(BaseBasisFunction):
         return 1
 
 
-class SimpleArrayBasisFunction(BaseBasisFunction):
+class SimpleArrayBasisFunction(BaseHealBasisFunction):
     def __init__(self, value, *args, **kwargs):
         self.assigned_value = value
         super().__init__(*args, **kwargs)
@@ -309,7 +317,7 @@ class FilterDistBasisFunction(BandDistBasisFunction):
         super().__init__(bandname=filtername)
 
 
-class NObsPerYearBasisFunction(BaseBasisFunction):
+class NObsPerYearBasisFunction(BaseHealBasisFunction):
     """Reward areas that have not been observed N-times in the last year
 
     Parameters
@@ -390,7 +398,7 @@ class NObsPerYearBasisFunction(BaseBasisFunction):
         return result
 
 
-class NGoodSeeingBasisFunction(BaseBasisFunction):
+class NGoodSeeingBasisFunction(BaseHealBasisFunction):
     """Try to get N "good seeing" images each observing season.
 
     Parameters
@@ -490,7 +498,7 @@ def az_rel_point(azs, point_az):
     return az_rel_moon
 
 
-class EclipticBasisFunction(BaseBasisFunction):
+class EclipticBasisFunction(BaseHealBasisFunction):
     """Mark the area around the ecliptic"""
 
     def __init__(self, nside=DEFAULT_NSIDE, distance_to_eclip=25.0):
@@ -507,7 +515,7 @@ class EclipticBasisFunction(BaseBasisFunction):
         return self.result
 
 
-class CadenceInSeasonBasisFunction(BaseBasisFunction):
+class CadenceInSeasonBasisFunction(BaseHealBasisFunction):
     """Drive observations at least every N days in a given area
 
     Parameters
@@ -555,7 +563,7 @@ class CadenceInSeasonBasisFunction(BaseBasisFunction):
         return result
 
 
-class SeasonCoverageBasisFunction(BaseBasisFunction):
+class SeasonCoverageBasisFunction(BaseHealBasisFunction):
     """Basis function to encourage N observations per observing season.
 
     Parameters
@@ -640,7 +648,7 @@ class SeasonCoverageBasisFunction(BaseBasisFunction):
         return result
 
 
-class AvoidFastRevisitsBasisFunction(BaseBasisFunction):
+class AvoidFastRevisitsBasisFunction(BaseHealBasisFunction):
     """Marks targets as unseen if they are in a specified time window
     in order to avoid fast revisits.
 
@@ -681,7 +689,7 @@ class AvoidFastRevisitsBasisFunction(BaseBasisFunction):
         return result
 
 
-class NearSunHighAirmassBasisFunction(BaseBasisFunction):
+class NearSunHighAirmassBasisFunction(BaseHealBasisFunction):
     """Reward areas on the sky at high airmass, within 90 degrees azimuth
     of the Sun, such as suitable for the near-sun twilight microsurvey for
     near- or interior-to earth asteroids.
@@ -718,7 +726,7 @@ class NearSunHighAirmassBasisFunction(BaseBasisFunction):
         return result
 
 
-class VisitRepeatBasisFunction(BaseBasisFunction):
+class VisitRepeatBasisFunction(BaseHealBasisFunction):
     """
     Basis function to reward re-visiting an area on the sky.
     Looking for Solar System objects.
@@ -777,7 +785,7 @@ class VisitRepeatBasisFunction(BaseBasisFunction):
         return result
 
 
-class M5DiffBasisFunction(BaseBasisFunction):
+class M5DiffBasisFunction(BaseHealBasisFunction):
     """Basis function based on the 5-sigma depth.
     Look up the best depth a healpixel achieves, and compute
     the limiting depth difference given current conditions
@@ -945,7 +953,7 @@ class FilterChangeBasisFunction(BandChangeBasisFunction):
         super().__init__(bandname=filtername)
 
 
-class SlewtimeBasisFunction(BaseBasisFunction):
+class SlewtimeBasisFunction(BaseHealBasisFunction):
     """Reward slews that take little time
 
     Parameters
@@ -1001,7 +1009,7 @@ class SlewtimeBasisFunction(BaseBasisFunction):
         return result
 
 
-class CadenceEnhanceBasisFunction(BaseBasisFunction):
+class CadenceEnhanceBasisFunction(BaseHealBasisFunction):
     """Drive a certain cadence
 
     Parameters
@@ -1097,7 +1105,7 @@ def trapezoid(x, amplitude, x_0, width, slope):
     return result
 
 
-class CadenceEnhanceTrapezoidBasisFunction(BaseBasisFunction):
+class CadenceEnhanceTrapezoidBasisFunction(BaseHealBasisFunction):
     """Drive a certain cadence, like CadenceEnhanceBasisFunction
     but with smooth transitions
 
@@ -1199,9 +1207,9 @@ class AzimuthBasisFunction(BaseBasisFunction):
     large area of sky.
     """
 
-    def __init__(self, nside=DEFAULT_NSIDE):
+    def __init__(self):
         send_unused_deprecation_warning("AzimuthBasisFunction")
-        super(AzimuthBasisFunction, self).__init__(nside=nside)
+        super(AzimuthBasisFunction, self).__init__()
 
     def _calc_value(self, conditions, indx=None):
         az_dist = conditions.az - conditions.tel_az
@@ -1213,7 +1221,7 @@ class AzimuthBasisFunction(BaseBasisFunction):
         return result
 
 
-class AzModuloBasisFunction(BaseBasisFunction):
+class AzModuloBasisFunction(BaseHealBasisFunction):
     """Try to replicate the Rothchild et al cadence forcing by
     only observing on limited az ranges per night.
 
@@ -1223,8 +1231,8 @@ class AzModuloBasisFunction(BaseBasisFunction):
         The azimuth limits (degrees) to use.
     """
 
-    def __init__(self, nside=DEFAULT_NSIDE, az_limits=None, out_of_bounds_val=-1.0):
-        super(AzModuloBasisFunction, self).__init__(nside=nside)
+    def __init__(self, az_limits=None, out_of_bounds_val=-1.0, nside=DEFAULT_NSIDE):
+        super().__init__(nside=nside)
         self.result = np.ones(hp.nside2npix(self.nside))
         if az_limits is None:
             spread = 100.0 / 2.0
@@ -1258,7 +1266,7 @@ class AzModuloBasisFunction(BaseBasisFunction):
         return result
 
 
-class DecModuloBasisFunction(BaseBasisFunction):
+class DecModuloBasisFunction(BaseHealBasisFunction):
     """Emphasize dec bands on a nightly varying basis
 
     Parameters
@@ -1296,7 +1304,7 @@ class DecModuloBasisFunction(BaseBasisFunction):
         return result
 
 
-class MapModuloBasisFunction(BaseBasisFunction):
+class MapModuloBasisFunction(BaseHealBasisFunction):
     """Similar to Dec_modulo, but now use input masks
 
     Parameters
@@ -1372,7 +1380,7 @@ class VisitGap(BaseBasisFunction):
         return 1.0 if self.check_feasibility(conditions) else self.penalty_val
 
 
-class AvoidDirectWind(BaseBasisFunction):
+class AvoidDirectWind(BaseHealBasisFunction):
     """Mask the sky where the wind pressure exceeds `wind_speed_maximum`.
 
     Parameters
@@ -1408,7 +1416,7 @@ class AvoidDirectWind(BaseBasisFunction):
         return reward_map
 
 
-class WindPressureBasisFunction(BaseBasisFunction):
+class WindPressureBasisFunction(BaseHealBasisFunction):
     """Have negaitive reward for wind pressure squared.
 
     Parameters
@@ -1460,8 +1468,6 @@ class BalanceVisits(BaseBasisFunction):
         Note value for the current survey.
     note_interest : `str`
         Substring with the name of interested surveys to be accounted.
-    nside : `int`
-        Healpix map resolution.
 
     Notes
     -----
@@ -1478,7 +1484,8 @@ class BalanceVisits(BaseBasisFunction):
     """
 
     def __init__(self, nobs_reference, note_survey, note_interest, nside=DEFAULT_NSIDE):
-        super().__init__(nside=nside)
+        warnings.warn("kwarg nside is deprecated.", FutureWarning)
+        super().__init__()
 
         self.nobs_reference = nobs_reference
 
@@ -1503,8 +1510,6 @@ class RewardNObsSequence(BaseBasisFunction):
         Number of observations to reward.
     note_survey : `str`
         The value of the observation note, to take into account.
-    nside : `int`, optional
-        Healpix map resolution (ignored).
 
     Notes
     -----
@@ -1515,7 +1520,8 @@ class RewardNObsSequence(BaseBasisFunction):
     """
 
     def __init__(self, n_obs_survey, note_survey, nside=DEFAULT_NSIDE):
-        super().__init__(nside=nside)
+        warnings.warn("kwarg nside is deprecated.", FutureWarning)
+        super().__init__()
 
         self.n_obs_survey = n_obs_survey
 
@@ -1526,7 +1532,7 @@ class RewardNObsSequence(BaseBasisFunction):
         return self.survey_features["n_obs_survey"].feature % self.n_obs_survey
 
 
-class RewardRisingBasisFunction(BaseBasisFunction):
+class RewardRisingBasisFunction(BaseHealBasisFunction):
     """Reward parts of the sky that are rising.
     Optionally, mask out parts of the sky that are not rising.
 
@@ -1546,8 +1552,6 @@ class RewardRisingBasisFunction(BaseBasisFunction):
         not rising (hour angle between 0 and 180).
         Using a value of np.nan will mask this region of sky,
         a value of 0 will just make this non-rewarding.
-    nside : `int` or None, optional
-        Nside for the healpix map, default of None uses scheduler default.
     """
 
     def __init__(self, slope=0.1, penalty_val=0, nside=DEFAULT_NSIDE):
