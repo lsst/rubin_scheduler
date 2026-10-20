@@ -20,12 +20,12 @@ import healpy as hp
 import numpy as np
 
 import rubin_scheduler.scheduler.features as features
-from rubin_scheduler.scheduler.basis_functions import BaseBasisFunction
+from rubin_scheduler.scheduler.basis_functions import BaseHealBasisFunction
 from rubin_scheduler.scheduler.utils import CurrentAreaMap, HpInLsstFov, IntRounded
 from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD, _angular_separation, match_hp_resolution
 
 
-class MaskDirectWindBasisFunction(BaseBasisFunction):
+class MaskDirectWindBasisFunction(BaseHealBasisFunction):
     """Mask azimuth where effective wind speed exceeds the maximum.
 
     Parameters
@@ -54,7 +54,7 @@ class MaskDirectWindBasisFunction(BaseBasisFunction):
         return reward_map
 
 
-class MaskPoorSeeing(BaseBasisFunction):
+class MaskPoorSeeing(BaseHealBasisFunction):
     """Mask any part of the sky that is below a seeing limit
 
     Potential to update to take a declination-dependent seeing limit
@@ -80,7 +80,7 @@ class MaskPoorSeeing(BaseBasisFunction):
         return result
 
 
-class MaskAfterNObsSeeingBasisFunction(BaseBasisFunction):
+class MaskAfterNObsSeeingBasisFunction(BaseHealBasisFunction):
     """Mask after a HEALpix has been observed N times.
 
     Parameters
@@ -128,7 +128,7 @@ class MaskAfterNObsSeeingBasisFunction(BaseBasisFunction):
         return result
 
 
-class MaskAllButNES(BaseBasisFunction):
+class MaskAllButNES(BaseHealBasisFunction):
     """Mask everything but the NES region
 
     Parameters
@@ -156,7 +156,7 @@ class MaskAllButNES(BaseBasisFunction):
         return result
 
 
-class NInNightMaskBasisFunction(BaseBasisFunction):
+class NInNightMaskBasisFunction(BaseHealBasisFunction):
     """Mask a HEALpix for the rest of the night
     after it has been observed N times.
 
@@ -183,7 +183,7 @@ class NInNightMaskBasisFunction(BaseBasisFunction):
         return result
 
 
-class RevHaMaskBasisFunction(BaseBasisFunction):
+class RevHaMaskBasisFunction(BaseHealBasisFunction):
     """Limit the sky based on hour angle
 
     Parameters
@@ -195,7 +195,7 @@ class RevHaMaskBasisFunction(BaseBasisFunction):
     """
 
     def __init__(self, ha_min=None, ha_max=None, nside=DEFAULT_NSIDE):
-        super(RevHaMaskBasisFunction, self).__init__(nside=nside)
+        super().__init__(nside=nside)
         self.ha_max = ha_max
         self.ha_min = ha_min
         self.result = np.zeros(hp.nside2npix(self.nside), dtype=float) + np.nan
@@ -213,7 +213,7 @@ class RevHaMaskBasisFunction(BaseBasisFunction):
         return result
 
 
-class MaskAfterNObsBasisFunction(BaseBasisFunction):
+class MaskAfterNObsBasisFunction(BaseHealBasisFunction):
     """Mask after a HEALpix has been observed N times.
 
     Parameters
@@ -237,7 +237,7 @@ class MaskAfterNObsBasisFunction(BaseBasisFunction):
         return result
 
 
-class HaMaskBasisFunction(BaseBasisFunction):
+class HaMaskBasisFunction(BaseHealBasisFunction):
     """Limit the sky based on hour angle
 
     Parameters
@@ -267,7 +267,7 @@ class HaMaskBasisFunction(BaseBasisFunction):
         return result
 
 
-class AreaCheckMaskBasisFunction(BaseBasisFunction):
+class AreaCheckMaskBasisFunction(BaseHealBasisFunction):
     """Take a list of other mask basis functions, and do an additional
     check for area available"""
 
@@ -299,7 +299,7 @@ class AreaCheckMaskBasisFunction(BaseBasisFunction):
         return result
 
 
-class SolarElongationMaskBasisFunction(BaseBasisFunction):
+class SolarElongationMaskBasisFunction(BaseHealBasisFunction):
     """Mask things at various solar elongations
 
     Parameters
@@ -328,7 +328,7 @@ class SolarElongationMaskBasisFunction(BaseBasisFunction):
         return result
 
 
-class PlanetMaskBasisFunction(BaseBasisFunction):
+class PlanetMaskBasisFunction(BaseHealBasisFunction):
     """Mask the bright planets.
 
     Parameters
@@ -364,7 +364,7 @@ class PlanetMaskBasisFunction(BaseBasisFunction):
         return result
 
 
-class AltAzShadowMaskBasisFunction(BaseBasisFunction):
+class AltAzShadowMaskBasisFunction(BaseHealBasisFunction):
     """Mask out a range of altitudes and azimuths, including
      regions which will enter the mask within `shadow_minutes`.
 
@@ -488,7 +488,7 @@ class AltAzShadowTimeLimitedBasisFunction(AltAzShadowMaskBasisFunction):
             return 0
 
 
-class MoonAvoidanceBasisFunction(BaseBasisFunction):
+class MoonAvoidanceBasisFunction(BaseHealBasisFunction):
     """Avoid observing within `moon_distance` of the moon.
 
     Parameters
@@ -508,7 +508,7 @@ class MoonAvoidanceBasisFunction(BaseBasisFunction):
     """
 
     def __init__(self, nside=DEFAULT_NSIDE, moon_distance=30.0):
-        super(MoonAvoidanceBasisFunction, self).__init__(nside=nside)
+        super().__init__(nside=nside)
         self.update_on_newobs = False
 
         self.moon_distance = IntRounded(np.radians(moon_distance))
@@ -526,7 +526,7 @@ class MoonAvoidanceBasisFunction(BaseBasisFunction):
         return result
 
 
-class MaskCloudMapBasisFunction(BaseBasisFunction):
+class MaskCloudMapBasisFunction(BaseHealBasisFunction):
     """Mask healpix locations where the cloud map extinction is greater
     than the minimum `extinction_limit` value in the ObserationArray.
     Alternatively, the max_val can be provided at init, which will
