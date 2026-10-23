@@ -1,10 +1,45 @@
-__all__ = ("SeeingModel",)
+__all__ = ("SeeingModel", "WIND_SEEING_DEFAULTS")
 
 import warnings
 
 import numpy as np
 
 from rubin_scheduler.utils import SysEngVals
+
+# Default parameters for the wind + dome-temperature seeing term:
+#   FWHM_wind^2 = [d0 + d1 * max(deltaT, 0)^2] *
+#                 exp(-v * (1 + cos(theta)) / 2 / v0)
+#                 + (t + s) * (v * (1 - cos(theta)))^2      [arcsec^2]
+# where v is the wind speed (m/s), deltaT the dome-minus-outdoor temperature
+# difference (K), and theta the angle between the pointing azimuth and the
+# direction the wind comes from (theta=0 -> pointing into the wind, which
+# flushes the dome). The term combines with the atmospheric + system FWHM in
+# quadrature.
+#
+# Values are a DIMM-free fit to LSSTCam ConsDB visits (2025-10 .. 2026-06,
+# science programs BLOCK-365/407/408/419/421, ~42k visits with wind and EFD
+# dome/outdoor temperatures; notebooks/wind_terms_dimm_free.py). The
+# delivered PSF FWHM^2 is compared with its own per-night median (zenith /
+# 500 nm frame), so the parameters come purely from within-night contrasts in
+# pointing-vs-wind angle, wind speed and deltaT; the same signal is seen in
+# the AOS donut blur (atmosphere + dome + camera) and none of it in the AOS
+# optics FWHM, so it is dome / local seeing, not optics.
+# What the data need: a wind-direction term independent of dome warmth (d0:
+# the downwind - upwind contrast is ~0.15 arcsec^2 for every wind speed
+# above ~3 m/s, ~0 below), plus the warm-dome term (d1: the contrast grows
+# to ~0.3 arcsec^2 for deltaT > 0.5 K). The (v (1 - cos theta))^2 wake is
+# marginal (t + s ~ 1.5e-4: ~0.06 arcsec^2 at 10 m/s downwind) - the
+# contrast does not grow with wind speed. d0 and v0 are degenerate in the
+# per-visit fit; v0 = 2.5 m/s is chosen because it makes the residual
+# downwind - upwind contrast flat in wind speed (the contrast saturates by
+# ~4 m/s), with d0 = 0.20 (v0 = 5-6 m/s with d0 = 0.31 fits the per-visit
+# cost equally well but overpredicts the contrast above 8 m/s). Anything
+# constant within a night is not constrained by this fit: against a
+# DIMM-driven base (outer scale 25 m) the wind >= 6 m/s visits are
+# over-predicted by an azimuth-independent ~0.19 arcsec^2 (~0.12 at L0 =
+# 15 m), which has to be absorbed by the base (DIMM calibration / outer
+# scale), not by this term. A cold dome (deltaT < 0) adds no seeing.
+WIND_SEEING_DEFAULTS = dict(d0=0.20, d1=0.18, v0=2.5, t=7.5e-5, s=7.5e-5)
 
 
 class SeeingModel:
@@ -42,6 +77,17 @@ class SeeingModel:
     efd_seeing : `str`, opt
         The name of the DIMM FWHM measurements in the efd /
         conditions object. Default `FWHM_500`
+    wind_seeing_params : `dict` or None, opt
+        Parameters (d0, d1, v0, t, s) for the wind + dome-temperature
+        seeing term (see WIND_SEEING_DEFAULTS for the definition and
+        provenance). Default None uses WIND_SEEING_DEFAULTS. The term is
+        only applied when wind information is passed to __call__.
+    airmass_scale_system : `bool`, opt
+        If True (default, the historical behavior), the system
+        contribution to the FWHM scales with airmass^0.6 like the
+        atmosphere. If False, the system contribution is held at its
+        zenith value (the hardware does not know about airmass); fits to
+        LSSTCam ConsDB visits prefer this variant.
     filter_list : `list` [`str`], opt
         Deprecated version of band_list
     """
@@ -55,6 +101,8 @@ class SeeingModel:
         camera_seeing=0.30,
         raw_seeing_wavelength=500,
         efd_seeing="FWHM_500",
+        wind_seeing_params=None,
+        airmass_scale_system=True,
         filter_list=None,
     ):
         if filter_list is not None:
@@ -72,6 +120,10 @@ class SeeingModel:
         self.raw_seeing_wavelength = raw_seeing_wavelength
         self.efd_seeing = efd_seeing
         self.camera_seeing = camera_seeing
+        self.wind_seeing_params = (
+            dict(WIND_SEEING_DEFAULTS) if wind_seeing_params is None else dict(wind_seeing_params)
+        )
+        self.airmass_scale_system = airmass_scale_system
 
         self._set_fwhm_zenith_system()
 
@@ -94,7 +146,48 @@ class SeeingModel:
             self.telescope_seeing**2 + self.optical_design_seeing**2 + self.camera_seeing**2
         )
 
-    def __call__(self, fwhm_z, airmass):
+    def wind_seeing_squared(self, wind_speed, wind_direction, azimuth, delta_t=0.0):
+        """The squared wind + dome-temperature seeing term (arcsec^2).
+
+        FWHM_wind^2 = [d0 + d1 * max(deltaT, 0)^2]
+                          * exp(-v * (1 + cos(theta)) / 2 / v0)
+                      + (t + s) * (v * (1 - cos(theta)))^2
+
+        with theta = azimuth - wind_direction. Combines with the delivered
+        FWHM in quadrature: fwhm_eff = sqrt(fwhm_eff^2 + FWHM_wind^2).
+        Pointing into the wind (theta = 0) flushes the dome; only a dome
+        warmer than the outside air (deltaT > 0) adds dome seeing.
+        Parameters default to WIND_SEEING_DEFAULTS (the DIMM-free per-night
+        baseline fit to ConsDB visits); override via the wind_seeing_params
+        init argument.
+
+        Parameters
+        ----------
+        wind_speed : `float` or `np.ndarray`
+            Wind speed (m/s).
+        wind_direction : `float` or `np.ndarray`
+            Direction the wind originates from, in radians
+            (0 = from the north, pi/2 = from the east - the same
+            convention as Conditions.wind_direction).
+        azimuth : `float` or `np.ndarray`
+            Pointing azimuth, in radians.
+        delta_t : `float` or `np.ndarray`, opt
+            Dome-minus-outdoor temperature difference (K). Default 0.
+
+        Returns
+        -------
+        fwhm_wind_squared : `float` or `np.ndarray`
+            Squared seeing contribution (arcsec^2), broadcast over the
+            inputs.
+        """
+        params = self.wind_seeing_params
+        cos_theta = np.cos(np.asarray(azimuth, dtype=float) - wind_direction)
+        warm = np.clip(delta_t, 0, None) ** 2
+        dome = (params["d0"] + params["d1"] * warm) * np.exp(-wind_speed * (1 + cos_theta) / 2 / params["v0"])
+        wake = (params["t"] + params["s"]) * (wind_speed * (1 - cos_theta)) ** 2
+        return dome + wake
+
+    def __call__(self, fwhm_z, airmass, wind_speed=None, wind_direction=None, azimuth=None, delta_t=0.0):
         """Calculate the seeing values FWHM_eff and FWHM_geom at the
         given airmasses, for the specified effective wavelengths, given
         FWHM_zenith (typically FWHM_500).
@@ -112,12 +205,27 @@ class SeeingModel:
         airmass^0.6 and with (500(nm)/wavelength(nm))^0.3.
         FWHM_eff = 1.16 * sqrt(FWHM_sys**2 + 1.04*FWHM_atm**2)
 
+        If wind information is supplied (wind_speed, wind_direction and
+        azimuth all not None), the wind + dome-temperature seeing term
+        (see wind_seeing_squared) is combined in quadrature with the
+        atmospheric + system FWHM.
+
         Parameters
         ----------
         fwhm_z: `float`, or efdData `dict`
             FWHM at zenith (arcsec).
         airmass: `float`, `np.array`, or targetDict `dict`
             Airmass (unitless).
+        wind_speed : `float` or `np.ndarray`, opt
+            Wind speed (m/s). Default None (no wind term applied).
+        wind_direction : `float` or `np.ndarray`, opt
+            Direction the wind originates from, in radians (0 = from N,
+            pi/2 = from E). Default None (no wind term applied).
+        azimuth : `float` or `np.ndarray`, opt
+            Pointing azimuth in radians, matching the airmass values.
+            Default None (no wind term applied).
+        delta_t : `float` or `np.ndarray`, opt
+            Dome-minus-outdoor temperature difference (K). Default 0.
 
         Returns
         -------
@@ -136,16 +244,28 @@ class SeeingModel:
             airmass = airmass["airmass"]
         airmass_correction = np.power(airmass, 0.6)
         wavelen_correction = np.power(self.raw_seeing_wavelength / self.eff_wavelens, 0.3)
+        # The system contribution scales with airmass only in the historical
+        # configuration (airmass_scale_system=True).
+        if self.airmass_scale_system:
+            system_correction = airmass_correction
+        else:
+            system_correction = np.ones_like(np.asarray(airmass, dtype=float))
         if isinstance(airmass, np.ndarray):
             fwhm_system = self.fwhm_system_zenith * np.outer(
-                np.ones(len(wavelen_correction)), airmass_correction
+                np.ones(len(wavelen_correction)), system_correction
             )
             fwhm_atmo = fwhm_z * np.outer(wavelen_correction, airmass_correction)
         else:
-            fwhm_system = self.fwhm_system_zenith * airmass_correction
+            fwhm_system = self.fwhm_system_zenith * system_correction
             fwhm_atmo = fwhm_z * wavelen_correction * airmass_correction
         # Calculate combined FWHMeff.
         fwhm_eff = 1.16 * np.sqrt(fwhm_system**2 + 1.04 * fwhm_atmo**2)
+        # Add the wind + dome-temperature seeing in quadrature, if wind
+        # information was provided. The term is achromatic and broadcasts
+        # over the band dimension.
+        if wind_speed is not None and wind_direction is not None and azimuth is not None:
+            fwhm_wind_sq = self.wind_seeing_squared(wind_speed, wind_direction, azimuth, delta_t=delta_t)
+            fwhm_eff = np.sqrt(fwhm_eff**2 + fwhm_wind_sq)
         # Translate to FWHMgeom.
         fwhm_geom = self.fwhm_eff_to_fwhm_geom(fwhm_eff)
         return {"fwhmEff": fwhm_eff, "fwhmGeom": fwhm_geom}
