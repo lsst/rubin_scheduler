@@ -1,3 +1,4 @@
+import copy
 import unittest
 import warnings
 
@@ -437,6 +438,44 @@ class TestSurveys(unittest.TestCase):
             approx_time = survey.nvisit_block * visit_to_time
 
             assert np.abs(approx_time - time_left) < 2
+
+    def test_spin_fields(self):
+        """Check that tesselations spin correctly"""
+
+        survey = surveys.BaseMarkovSurvey([], [], dither="night")
+
+        conditions = Conditions()
+        conditions.mjd = 65984
+
+        _temp = survey.generate_observations_rough(conditions)
+        internal_ra = copy.copy(survey.fields["RA"])
+
+        # Call again, same night, so dither should stay the same
+        _temp = survey.generate_observations_rough(conditions)
+        assert np.all(internal_ra == survey.fields["RA"])
+        # Advance night
+        conditions.mjd += 1
+        _temp = survey.generate_observations_rough(conditions)
+        # Positions should have changed
+        assert np.all(internal_ra != survey.fields["RA"])
+
+        # Check we can advance per call
+        survey = surveys.BaseMarkovSurvey([], [], dither="call")
+        conditions = Conditions()
+        conditions.mjd = 65984
+        _temp = survey.generate_observations_rough(conditions)
+        internal_ra = copy.copy(survey.fields["RA"])
+
+        # Advance mjd a small amount
+        conditions.mjd += 1e-5
+        _temp = survey.generate_observations_rough(conditions)
+        # Positions should have changed
+        assert np.all(internal_ra != survey.fields["RA"])
+
+        # Call again, no mjd change, positions should change
+        _temp = survey.generate_observations_rough(conditions)
+        # Positions should have changed
+        assert np.all(internal_ra != survey.fields["RA"])
 
 
 if __name__ == "__main__":
