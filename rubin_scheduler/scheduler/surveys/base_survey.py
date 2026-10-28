@@ -684,6 +684,7 @@ class BaseMarkovSurvey(BaseSurvey):
 
         # If we are spinning per call.
         if self.dither == "call":
+            # Multiply by 10000 to get on second timescale.
             rng = np.random.default_rng(int(self.current_mjd * 10000) + self.call_num)
             self.lon = rng.random(1) * np.pi * 2
             # Make sure latitude points spread correctly
