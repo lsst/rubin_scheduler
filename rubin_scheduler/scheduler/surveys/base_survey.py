@@ -609,19 +609,19 @@ class BaseMarkovSurvey(BaseSurvey):
         # Generate and store rotation positions to use.
         # This way, if different survey objects are seeded the same,
         # they will use the same dither positions each night
-        if dither == "call":
-            npositions = (npositions, npositions)
-        rng = np.random.default_rng(seed)
-        self.lon = rng.random(npositions) * np.pi * 2
-        # Make sure latitude points spread correctly
-        # http://mathworld.wolfram.com/SpherePointPicking.html
-        self.lat = np.arccos(2.0 * rng.random(npositions) - 1.0)
-        self.lon2 = rng.random(npositions) * np.pi * 2
+        if dither != "call":
+            rng = np.random.default_rng(seed)
+            self.lon = rng.random(npositions) * np.pi * 2
+            # Make sure latitude points spread correctly
+            # http://mathworld.wolfram.com/SpherePointPicking.html
+            self.lat = np.arccos(2.0 * rng.random(npositions) - 1.0)
+            self.lon2 = rng.random(npositions) * np.pi * 2
 
     def _check_feasibility(self, conditions):
         """
         Check if the survey is feasable in the current conditions
         """
+        result = True
         for bf in self.basis_functions:
             result = bf.check_feasibility(conditions)
             if not result:
@@ -681,6 +681,17 @@ class BaseMarkovSurvey(BaseSurvey):
         lon2 : float (None)
             The amount to rotate the pole in longitude (radians).
         """
+
+        # If we are spinning per call.
+        if self.dither == "call":
+            # Multiply by 10000 to get on second timescale.
+            rng = np.random.default_rng(int(self.current_mjd * 10000) + self.call_num)
+            self.lon = rng.random(1) * np.pi * 2
+            # Make sure latitude points spread correctly
+            # http://mathworld.wolfram.com/SpherePointPicking.html
+            self.lat = np.arccos(2.0 * rng.random(1) - 1.0)
+            self.lon2 = rng.random(1) * np.pi * 2
+
         if lon is None:
             lon = self.lon[indx]
         if lat is None:
@@ -756,9 +767,10 @@ class BaseMarkovSurvey(BaseSurvey):
             self.night = copy(conditions.night)
         elif self.dither == "call":
             if conditions.night != self.current_night:
-                self.current_night = conditions.night
+                self.current_night = copy(conditions.night)
                 self.call_num = 0
-            self._spin_fields((conditions.night, self.call_num))
+            self.current_mjd = copy(conditions.mjd)
+            self._spin_fields(0)
             self.call_num += 1
 
         # XXX Use self.reward to decide what to observe.
