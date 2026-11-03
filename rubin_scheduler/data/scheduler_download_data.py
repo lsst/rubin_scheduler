@@ -28,7 +28,7 @@ def data_dict():
         "version" - Versioned file name (`str`).
     """
     file_dict = {
-        "scheduler": "scheduler_2026_07_23.tgz",
+        "scheduler": "scheduler_2026_10_03.tgz",
         "site_models": "site_models_2023_10_02.tgz",
         "skybrightness_pre": "skybrightness_pre_2026_07_24.tgz",
         "utils": "utils_2023_11_02.tgz",

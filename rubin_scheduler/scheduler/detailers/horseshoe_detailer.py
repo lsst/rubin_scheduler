@@ -1,9 +1,12 @@
+import os
 from pathlib import Path
+
 import numpy as np
 import pandas as pd
 from astropy.io import fits
 from scipy.spatial import cKDTree
 
+from rubin_scheduler.data import get_data_dir
 from rubin_scheduler.scheduler.detailers import BaseDetailer
 from rubin_scheduler.scheduler.utils import wrap_ra_dec
 from rubin_scheduler.utils import (
@@ -78,6 +81,9 @@ class HorseshoeAvoidanceDetailer(BaseDetailer):
         If True, appends `note_tag` to `observation_array['scheduler_note']`
         or `observation_array['note']` when an observation is shifted.
         Default True.
+    log_offsets : `bool`, optional
+        Log the offsets that have been applied in shifted_history
+        attribute. Default False.
     note_tag : `str`, optional
         Substring tag added to the observation note. Default "hs_avoid".
     nside : `int`, optional
@@ -99,6 +105,7 @@ class HorseshoeAvoidanceDetailer(BaseDetailer):
         max_offset_deg=None,
         n_ring_bearings=12,
         annotate_note=True,
+        log_offsets=False,
         note_tag="hs_avoid",
         nside=DEFAULT_NSIDE,
     ):
@@ -112,10 +119,7 @@ class HorseshoeAvoidanceDetailer(BaseDetailer):
             )
 
         if catalog_path is None:
-            catalog_path = (
-                Path(__file__).resolve().parent
-                / "ybsc_v5.fits"
-            )
+            catalog_path = os.path.join(get_data_dir(), "scheduler/ybsc_v5.fits")
         self.catalog_path = Path(catalog_path)
 
         self.mag_limit = mag_limit
@@ -126,6 +130,8 @@ class HorseshoeAvoidanceDetailer(BaseDetailer):
         self.annotate_note = bool(annotate_note)
         self.note_tag = str(note_tag)
 
+        self.log_offsets = bool(log_offsets)
+
         # Adaptive offset configuration
         self.escape_margin_deg = float(escape_margin_deg)
         self.escape_margin_rad = float(np.radians(self.escape_margin_deg))
@@ -135,11 +141,7 @@ class HorseshoeAvoidanceDetailer(BaseDetailer):
         # (outer - inner) + margin; double that gives the ring search room to
         # work when a single push-away direction is blocked.
         if max_offset_deg is None:
-            max_offset_deg = 2.0 * (
-                self.outer_radius_deg
-                - self.inner_radius_deg
-                + self.escape_margin_deg
-            )
+            max_offset_deg = 2.0 * (self.outer_radius_deg - self.inner_radius_deg + self.escape_margin_deg)
         self.max_offset_deg = float(max_offset_deg)
         self.max_offset_rad = float(np.radians(self.max_offset_deg))
 
@@ -171,9 +173,7 @@ class HorseshoeAvoidanceDetailer(BaseDetailer):
     def _load_catalog(self):
         """Load star catalog, compute multi-band magnitudes, and build KD-tree."""
         if not self.catalog_path.exists():
-            raise FileNotFoundError(
-                f"Star catalog FITS file not found: {self.catalog_path}"
-            )
+            raise FileNotFoundError(f"Star catalog FITS file not found: {self.catalog_path}")
 
         with fits.open(self.catalog_path) as hdul:
             data = hdul[1].data
@@ -252,11 +252,13 @@ class HorseshoeAvoidanceDetailer(BaseDetailer):
         self.star_ra_rad = np.radians(ra_deg)
         self.star_dec_rad = np.radians(dec_deg)
 
-        self.xyz_stars = np.column_stack([
-            np.cos(self.star_dec_rad) * np.cos(self.star_ra_rad),
-            np.cos(self.star_dec_rad) * np.sin(self.star_ra_rad),
-            np.sin(self.star_dec_rad),
-        ])
+        self.xyz_stars = np.column_stack(
+            [
+                np.cos(self.star_dec_rad) * np.cos(self.star_ra_rad),
+                np.cos(self.star_dec_rad) * np.sin(self.star_ra_rad),
+                np.sin(self.star_dec_rad),
+            ]
+        )
         self.tree = cKDTree(self.xyz_stars)
 
     def check_pointings(self, ra_rad, dec_rad, bands=None):
@@ -293,11 +295,13 @@ class HorseshoeAvoidanceDetailer(BaseDetailer):
         else:
             band_list = [str(b).lower() for b in bands]
 
-        xyz_obs = np.column_stack([
-            np.cos(dec_rad) * np.cos(ra_rad),
-            np.cos(dec_rad) * np.sin(ra_rad),
-            np.sin(dec_rad),
-        ])
+        xyz_obs = np.column_stack(
+            [
+                np.cos(dec_rad) * np.cos(ra_rad),
+                np.cos(dec_rad) * np.sin(ra_rad),
+                np.sin(dec_rad),
+            ]
+        )
 
         candidates = self.tree.query_ball_point(xyz_obs, r=self.d_max)
 
@@ -308,9 +312,7 @@ class HorseshoeAvoidanceDetailer(BaseDetailer):
             cand_indices = candidates[i]
             cand_info = []
             if len(cand_indices) > 0:
-                dists = np.linalg.norm(
-                    self.xyz_stars[cand_indices] - xyz_obs[i], axis=1
-                )
+                dists = np.linalg.norm(self.xyz_stars[cand_indices] - xyz_obs[i], axis=1)
                 annulus_mask = dists >= self.d_min
                 if np.any(annulus_mask):
                     annulus_stars = np.array(cand_indices)[annulus_mask]
@@ -341,16 +343,18 @@ class HorseshoeAvoidanceDetailer(BaseDetailer):
                                 self.star_ra_rad[s_idx],
                                 self.star_dec_rad[s_idx],
                             )
-                            cand_info.append({
-                                "star_idx": int(s_idx),
-                                "band": obs_b,
-                                "star_mag_band": float(mag_ref_array[s_idx]),
-                                "star_vmag": float(self.star_mags["V"][s_idx]),
-                                "mag_threshold": float(mag_thresh),
-                                "sep_deg": float(np.degrees(sep_rad)),
-                                "sep_rad": float(sep_rad),
-                                "bearing_rad": float(star_bearing),
-                            })
+                            cand_info.append(
+                                {
+                                    "star_idx": int(s_idx),
+                                    "band": obs_b,
+                                    "star_mag_band": float(mag_ref_array[s_idx]),
+                                    "star_vmag": float(self.star_mags["V"][s_idx]),
+                                    "mag_threshold": float(mag_thresh),
+                                    "sep_deg": float(np.degrees(sep_rad)),
+                                    "sep_rad": float(sep_rad),
+                                    "bearing_rad": float(star_bearing),
+                                }
+                            )
             hit_info.append(cand_info)
 
         return compromised, hit_info
@@ -389,17 +393,13 @@ class HorseshoeAvoidanceDetailer(BaseDetailer):
 
             # 1. Primary push: directly away from the brightest offender.
             i_bright = int(np.argmin(mags))
-            candidates.append(
-                (float(needed[i_bright]), float(bearings[i_bright] + np.pi))
-            )
+            candidates.append((float(needed[i_bright]), float(bearings[i_bright] + np.pi)))
 
             # 2. Per-star pushes, in case the brightest star is already near
             #    the outer edge while another sits mid-annulus.
             for k in range(len(stars)):
                 if k != i_bright:
-                    candidates.append(
-                        (float(needed[k]), float(bearings[k] + np.pi))
-                    )
+                    candidates.append((float(needed[k]), float(bearings[k] + np.pi)))
 
             # 3. Consensus push: away from the mean direction of all
             #    offenders, far enough to clear the worst of them. Handles the
@@ -409,28 +409,20 @@ class HorseshoeAvoidanceDetailer(BaseDetailer):
                 mean_y = np.mean(np.sin(bearings))
                 if np.hypot(mean_x, mean_y) > 1e-9:
                     consensus = np.arctan2(mean_y, mean_x) + np.pi
-                    candidates.append(
-                        (float(np.max(needed)), float(consensus))
-                    )
+                    candidates.append((float(np.max(needed)), float(consensus)))
 
         # 4. Ring fallback: sweep bearings at a few radii. Covers geometries
         #    where offenders straddle the field and no push-away direction
         #    works on its own.
         if self.n_ring_bearings > 0 and self.max_offset_rad > 0:
-            ring_bearings = np.linspace(
-                0.0, 2.0 * np.pi, self.n_ring_bearings, endpoint=False
-            )
+            ring_bearings = np.linspace(0.0, 2.0 * np.pi, self.n_ring_bearings, endpoint=False)
             for frac in (0.5, 0.75, 1.0):
                 dist = frac * self.max_offset_rad
                 for b in ring_bearings:
                     candidates.append((float(dist), float(b)))
 
         # Keep only physically useful moves inside the budget, cheapest first.
-        candidates = [
-            (d, b)
-            for d, b in candidates
-            if 0.0 < d <= self.max_offset_rad
-        ]
+        candidates = [(d, b) for d, b in candidates if 0.0 < d <= self.max_offset_rad]
         candidates.sort(key=lambda c: c[0])
 
         return candidates
@@ -490,9 +482,7 @@ class HorseshoeAvoidanceDetailer(BaseDetailer):
             np.asarray(trial_dec, dtype=float).copy(),
         )
 
-        compromised, hit_info = self.check_pointings(
-            trial_ra, trial_dec, bands=[obs_band] * len(candidates)
-        )
+        compromised, hit_info = self.check_pointings(trial_ra, trial_dec, bands=[obs_band] * len(candidates))
 
         # Enforce outward-only escapes. `check_pointings` reports a pointing as
         # clean whenever no bright star sits in the annulus, which includes
@@ -520,20 +510,18 @@ class HorseshoeAvoidanceDetailer(BaseDetailer):
             escaped = True
         else:
             # Best effort: minimize the remaining in-annulus flux.
-            flux = np.array([
-                np.sum([10.0 ** (-0.4 * s["star_mag_band"]) for s in info])
-                if len(info) > 0
-                else 0.0
-                for info in hit_info
-            ])
+            flux = np.array(
+                [
+                    np.sum([10.0 ** (-0.4 * s["star_mag_band"]) for s in info]) if len(info) > 0 else 0.0
+                    for info in hit_info
+                ]
+            )
             pick = int(np.argmin(flux))
             escaped = False
 
         info = {
             "offset_dist_deg": float(np.degrees(dists[pick])),
-            "offset_bearing_deg": float(
-                np.degrees(bearings[pick]) % 360.0
-            ),
+            "offset_bearing_deg": float(np.degrees(bearings[pick]) % 360.0),
             "escaped": escaped,
             "n_candidates_tried": len(candidates),
         }
@@ -563,11 +551,7 @@ class HorseshoeAvoidanceDetailer(BaseDetailer):
         ra = observation_array["RA"]
         dec = observation_array["dec"]
 
-        bands = (
-            observation_array["band"]
-            if "band" in observation_array.dtype.names
-            else None
-        )
+        bands = observation_array["band"] if "band" in observation_array.dtype.names else None
 
         compromised, hit_info = self.check_pointings(ra, dec, bands=bands)
 
@@ -583,31 +567,27 @@ class HorseshoeAvoidanceDetailer(BaseDetailer):
         for idx in comp_indices:
             orig_ra = float(ra[idx])
             orig_dec = float(dec[idx])
-            obs_band = str(observation_array["band"][idx]).lower() if "band" in observation_array.dtype.names else "v"
+            obs_band = (
+                str(observation_array["band"][idx]).lower()
+                if "band" in observation_array.dtype.names
+                else "v"
+            )
 
             if obs_band in self.n_shifted_by_band:
                 self.n_shifted_by_band[obs_band] += 1
             else:
                 self.n_shifted_by_band["other"] += 1
 
-            new_ra, new_dec, offset_info = self._adaptive_offset(
-                orig_ra, orig_dec, obs_band, hit_info[idx]
-            )
+            new_ra, new_dec, offset_info = self._adaptive_offset(orig_ra, orig_dec, obs_band, hit_info[idx])
             if not offset_info["escaped"]:
                 self.n_failed += 1
 
-            wrapped_ra, wrapped_dec = wrap_ra_dec(
-                np.array([new_ra]), np.array([new_dec])
-            )
+            wrapped_ra, wrapped_dec = wrap_ra_dec(np.array([new_ra]), np.array([new_dec]))
             observation_array["RA"][idx] = wrapped_ra[0]
             observation_array["dec"][idx] = wrapped_dec[0]
 
             # Annotate scheduler notes to trace which visits were modified
-            tag = (
-                self.note_tag
-                if offset_info["escaped"]
-                else f"{self.note_tag}_fail"
-            )
+            tag = self.note_tag if offset_info["escaped"] else f"{self.note_tag}_fail"
             if self.annotate_note:
                 for col in ["observation_reason"]:
                     if col in observation_array.dtype.names:
@@ -615,57 +595,54 @@ class HorseshoeAvoidanceDetailer(BaseDetailer):
                         if tag not in current:
                             max_len = 59
                             separator = ", " if current else ""
-                            combined = f"{current}{separator}{tag}"[
-                                :max_len
-                            ]
+                            combined = f"{current}{separator}{tag}"[:max_len]
                             observation_array[col][idx] = combined
 
             # Record shift history
             # Realized per-axis offsets, recorded for analysis alongside the
             # great-circle distance/bearing that actually produced the move.
-            realized_ra_deg = float(
-                np.degrees(wrapped_ra[0] - orig_ra)
-            )
+            realized_ra_deg = float(np.degrees(wrapped_ra[0] - orig_ra))
             # Unwrap the RA difference into (-180, 180].
             realized_ra_deg = (realized_ra_deg + 180.0) % 360.0 - 180.0
             realized_dec_deg = float(np.degrees(wrapped_dec[0] - orig_dec))
 
-            self.shifted_history.append({
-                "orig_ra_deg": float(np.degrees(orig_ra)),
-                "orig_dec_deg": float(np.degrees(orig_dec)),
-                "new_ra_deg": float(np.degrees(wrapped_ra[0])),
-                "new_dec_deg": float(np.degrees(wrapped_dec[0])),
-                "offset_ra_deg": realized_ra_deg,
-                "offset_dec_deg": realized_dec_deg,
-                "offset_dist_deg": offset_info["offset_dist_deg"],
-                "offset_bearing_deg": offset_info["offset_bearing_deg"],
-                "escaped": offset_info["escaped"],
-                "n_candidates_tried": offset_info["n_candidates_tried"],
-                "band": obs_band,
-                "stars": hit_info[idx],
-                "night": getattr(conditions, "night", None)
-                if conditions
-                else None,
-                "mjd": float(observation_array["mjd"][idx])
-                if "mjd" in observation_array.dtype.names
-                else None,
-            })
+            if self.log_offsets:
+                self.shifted_history.append(
+                    {
+                        "orig_ra_deg": float(np.degrees(orig_ra)),
+                        "orig_dec_deg": float(np.degrees(orig_dec)),
+                        "new_ra_deg": float(np.degrees(wrapped_ra[0])),
+                        "new_dec_deg": float(np.degrees(wrapped_dec[0])),
+                        "offset_ra_deg": realized_ra_deg,
+                        "offset_dec_deg": realized_dec_deg,
+                        "offset_dist_deg": offset_info["offset_dist_deg"],
+                        "offset_bearing_deg": offset_info["offset_bearing_deg"],
+                        "escaped": offset_info["escaped"],
+                        "n_candidates_tried": offset_info["n_candidates_tried"],
+                        "band": obs_band,
+                        "stars": hit_info[idx],
+                        "night": getattr(conditions, "night", None) if conditions else None,
+                        "mjd": (
+                            float(observation_array["mjd"][idx])
+                            if "mjd" in observation_array.dtype.names
+                            else None
+                        ),
+                    }
+                )
 
         return observation_array
 
     def summary(self):
         """Print a summary of the detailer's actions."""
-        pct = (
-            (self.n_shifted / self.n_evaluated * 100.0)
-            if self.n_evaluated > 0
-            else 0.0
-        )
+        pct = (self.n_shifted / self.n_evaluated * 100.0) if self.n_evaluated > 0 else 0.0
         print("=" * 65)
         print("HorseshoeAvoidanceDetailer Summary:")
         print(f"  HEALPix NSIDE:      {self.nside}")
         print(f"  Catalog:            {self.catalog_path.name}")
         print(f"  Stars indexed:      {len(self.xyz_stars)}")
-        print(f"  Evaluation Mode:    {'Per-Observation Filter' if self.use_observation_band else 'V-band Only'}")
+        print(
+            f"  Evaluation Mode:    {'Per-Observation Filter' if self.use_observation_band else 'V-band Only'}"
+        )
         if isinstance(self.mag_limit, dict):
             print(f"  Magnitude Limits:   {self.mag_limit}")
         else:
@@ -687,11 +664,7 @@ class HorseshoeAvoidanceDetailer(BaseDetailer):
             )
         print(f"  Evaluated visits:   {self.n_evaluated}")
         print(f"  Shifted visits:     {self.n_shifted} ({pct:.3f}%)")
-        fail_pct = (
-            (self.n_failed / self.n_shifted * 100.0)
-            if self.n_shifted > 0
-            else 0.0
-        )
+        fail_pct = (self.n_failed / self.n_shifted * 100.0) if self.n_shifted > 0 else 0.0
         print(f"  Failed to escape:   {self.n_failed} ({fail_pct:.3f}% of shifted)")
         print("  Shifted by band:")
         for b in ["u", "g", "r", "i", "z", "y"]:

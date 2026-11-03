@@ -59,6 +59,7 @@ class TestDetailers(unittest.TestCase):
             detailers.ChunkByHADetailer,
             detailers.RotspUpdateDetailer,
             detailers.ExtinctionLimitDetailer,
+            detailers.HorseshoeAvoidanceDetailer,
         ]
 
         for det in det_list:
