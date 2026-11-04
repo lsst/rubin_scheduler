@@ -12,9 +12,11 @@ from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD, _angular_sepa
 
 # Expected start and end for observing run 5
 # See: https://observing.docs.ligo.org/plan/
-O5_START_MJD = 61557
-O5_END_MJD = 62502
+O5_START_MJD = 62137 
+O5_END_MJD = 63110
 
+IR1_START_MJD = 61423 
+IR1_END_MJD = 61603
 
 def gen_gw_events(mjd_start=O5_START_MJD, mjd_end=O5_END_MJD, scale=1, seed=42):
     """Generate gravitational wave events
