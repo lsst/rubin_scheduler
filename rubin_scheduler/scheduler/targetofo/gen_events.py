@@ -314,76 +314,80 @@ def gen_neutrino_events(
 
     return events
 
- # def gen_lensed_BNS(mjd_start=O5_START_MJD, mjd_end=O5_END_MJD, scale=1, seed=45):
- #     """Generate lensed black hole - neutron star GW events.
- # 
- #     Parameters
- #     ----------
- #     scale : `float`
- #         How much to scale number of events by. Default 1.
- #         Expect 15 events with default scale.
- #     mjd_start : `float`
- #         Starting MJD. Default O5_START_MJD
- #     mjd_end : `float`
- #         Ending MJD. Defualt O5_END_MJD
- #     """
- # 
- #     rng = np.random.default_rng(seed=seed)
- # 
- #     """
- #     Case A) 9 triggers with 10 sq deg area -> yields 3 observable
- #     Case B) 6 triggers with 20 sq deg area -> yields 2 observable
- #     """
- # 
- #     case_2_area = {"A": 900, "B": 15}
- #     case_2_nt = {"A": 1, "B": 1}
- # 
- #     n_events = 0
- #     for case in case_2_nt:
- #         n_events += case_2_nt[case] * scale
- # 
- #     event_tables = []
- #     names = ["mjd_start", "ra", "dec", "expires", "radius", "ToO_label"]
- #     types = [float] * 5 + ["<U50"]
- # 
- #     for case in case_2_area:
- #         n = case_2_nt[case] * scale
- #         event_table = np.zeros(int(n), dtype=list(zip(names, types)))
- #         event_table["radius"] = (case_2_area[case] / np.pi) ** 0.5 * np.pi / 180.0
- #         event_table["ToO_label"] = "lensed_BNS_case_%s" % case
- #         event_tables.append(event_table)
- # 
- #     events = np.concatenate(event_tables)
- #     n_events = np.size(events)
- # 
- #     # Make sure latitude points spread correctly
- #     # http://mathworld.wolfram.com/SpherePointPicking.html
- #     events["ra"] = rng.random(n_events) * np.pi * 2
- #     events["dec"] = np.arccos(2.0 * rng.random(n_events) - 1.0) - np.pi / 2.0
- #     events["mjd_start"] = rng.random(n_events) * (mjd_end - mjd_start) + mjd_start
- #     events["expires"] = events["mjd_start"] + 3
- # 
- #     return events
+# Dropping lensed events pending further review
+# def gen_lensed_BNS(mjd_start=O5_START_MJD, mjd_end=O5_END_MJD, scale=1, seed=45):
+#     """Generate lensed black hole - neutron star GW events.
+# 
+#     Parameters
+#     ----------
+#     scale : `float`
+#         How much to scale number of events by. Default 1.
+#         Expect 15 events with default scale.
+#     mjd_start : `float`
+#         Starting MJD. Default O5_START_MJD
+#     mjd_end : `float`
+#         Ending MJD. Defualt O5_END_MJD
+#     """
+# 
+#     rng = np.random.default_rng(seed=seed)
+# 
+#     """
+#     Case A) 9 triggers with 10 sq deg area -> yields 3 observable
+#     Case B) 6 triggers with 20 sq deg area -> yields 2 observable
+#     """
+# 
+#     case_2_area = {"A": 900, "B": 15}
+#     case_2_nt = {"A": 1, "B": 1}
+# 
+#     n_events = 0
+#     for case in case_2_nt:
+#         n_events += case_2_nt[case] * scale
+# 
+#     event_tables = []
+#     names = ["mjd_start", "ra", "dec", "expires", "radius", "ToO_label"]
+#     types = [float] * 5 + ["<U50"]
+# 
+#     for case in case_2_area:
+#         n = case_2_nt[case] * scale
+#         event_table = np.zeros(int(n), dtype=list(zip(names, types)))
+#         event_table["radius"] = (case_2_area[case] / np.pi) ** 0.5 * np.pi / 180.0
+#         event_table["ToO_label"] = "lensed_BNS_case_%s" % case
+#         event_tables.append(event_table)
+# 
+#     events = np.concatenate(event_tables)
+#     n_events = np.size(events)
+# 
+#     # Make sure latitude points spread correctly
+#     # http://mathworld.wolfram.com/SpherePointPicking.html
+#     events["ra"] = rng.random(n_events) * np.pi * 2
+#     events["dec"] = np.arccos(2.0 * rng.random(n_events) - 1.0) - np.pi / 2.0
+#     events["mjd_start"] = rng.random(n_events) * (mjd_end - mjd_start) + mjd_start
+#     events["expires"] = events["mjd_start"] + 3
+# 
+#     return events
 
 
 def gen_sso_events(
-    n_events=900,
+    n_events=None,
     twi_fraction=0.75,
     seed=52,
-    radius=2.0,
+    radius=1.5,
     mjd_start=SURVEY_START_MJD,
     mjd_end=SURVEY_START_MJD + 3652,
+    rate=2.0,
+    scale=1,
 ):
     """Generate solar system ToO events
 
-    Originally set to 300 events, swapped to a more approximate
-    generation of events and increased number of events to 900 to
-    ensure enough trigger.
+    The ToO report (Sec. 6) expects ~1-2 small-PHA triggers per year.
+    By default the number of events is a Poisson draw around ``rate``
+    per year; pass ``n_events`` to fix the count instead.
 
     Parameters
     ----------
     n_events : `int`
-        The number of events to generate. Default 900
+        Fixed number of events to generate. Default None, which draws
+        from a Poisson distribution with mean rate * years * scale.
     twi_fraction : `float`
         Fraction of events to set as earth-interior alerts,
         e.g., events that are near the sun and only visible at
@@ -391,10 +395,18 @@ def gen_sso_events(
     seed : `float`
         Random number seed. Default 52.
     radius : `float`
-        Search radius on sky for events. Default 2 (degrees).
+        Search radius on sky for events. Default 1.5 (degrees).
     mjd_start : `float`
         MJD of when to start generating events.
         Default SURVEY_START_MJD.
+    mjd_end : `float`
+        MJD of when to stop generating events.
+        Default SURVEY_START_MJD + 3652.
+    rate : `float`
+        Expected triggers per year when n_events is None. Default 2.
+    scale : `float`
+        Multiplier on the expected number of events when n_events
+        is None. Default 1.
     """
 
     # Seems like solar elongations are around 43.3 degrees
@@ -408,6 +420,9 @@ def gen_sso_events(
     # Then ecliptic latitude between -40 and +15
 
     rng = np.random.default_rng(seed=seed)
+
+    if n_events is None:
+        n_events = rng.poisson(rate * (mjd_end - mjd_start) / 365.25 * scale)
 
     nside = 128
     ra_rad, dec_rad = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(nside)))
