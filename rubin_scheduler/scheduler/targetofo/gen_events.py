@@ -10,58 +10,93 @@ from astropy.time import Time
 from rubin_scheduler.scheduler.utils import SimTargetooServer, TargetoO
 from rubin_scheduler.utils import DEFAULT_NSIDE, SURVEY_START_MJD, _angular_separation, _hpid2_ra_dec
 
+# Annual all-sky public-alert rates (median) for NS-bearing mergers.
+# https://rtd.igwn.org/projects/userguide/en/stable/capabilities.html
+# IR1 uses the O4 HLV row; O5a/b/c are the three O5 sensitivity scenarios.
+GW_NS_ALERT_RATES = {
+    "IR1": {"BNS": 2, "NSBH": 4},
+    "O5a": {"BNS": 5, "NSBH": 11},
+    "O5b": {"BNS": 10, "NSBH": 21},
+    "O5c": {"BNS": 15, "NSBH": 25},
+}
+
+# (Gold, Silver) fraction of alerts; Bronze is the remainder. Read from the
+# cumulative-rate curves in
+# https://rtd.igwn.org/projects/userguide/en/stable/_images/annual-predictions.svg
+# at 90% area of 100 and 500 deg2. The Bronze remainder is every alert above
+# 500 deg2, which the ToO report trims to 1500 deg2.
+GW_NS_TIER_FRACTIONS = {
+    "IR1": {"BNS": (0.069, 0.165), "NSBH": (0.030, 0.117)},
+    "O5a": {"BNS": (0.115, 0.187), "NSBH": (0.143, 0.151)},
+    "O5b": {"BNS": (0.073, 0.173), "NSBH": (0.079, 0.127)},
+    "O5c": {"BNS": (0.103, 0.199), "NSBH": (0.107, 0.161)},
+}
+
+# Localization area bounds per tier (deg2); events are drawn uniformly in area.
+GW_TIER_AREA_BOUNDS = {"Gold": (10.0, 100.0), "Silver": (100.0, 500.0), "Bronze": (500.0, 1500.0)}
+
 # Expected start and end for observing run 5
 # See: https://observing.docs.ligo.org/plan/
 O5_START_MJD = 62137 
 O5_END_MJD = 63110
 
+# Expected start and end for intermediate run 1
+# See: https://observing.docs.ligo.org/plan/
 IR1_START_MJD = 61423 
 IR1_END_MJD = 61603
 
-def gen_gw_events(mjd_start=O5_START_MJD, mjd_end=O5_END_MJD, scale=1, seed=42):
-    """Generate gravitational wave events
+def gen_gw_events(mjd_start=IR1_START_MJD, mjd_end=O5_END_MJD, scale=1, seed=42):
+    """Generate gravitational wave events from neutron star-bearing mergers
+    (BNS and NSBH), labeled by observing-strategy tier.
+
+    Counts are Poisson draws around the expected IGWN public-alert rate for
+    each epoch (IR1, then O5a/b/c as sequential thirds of O5), split into
+    Gold/Silver/Bronze by 90% localization area (<100, <500, >500 deg2).
+    Events are all-sky; visibility is applied by the simulation.
 
     Parameters
     ----------
     mjd_start : `float`
-        MJD to start creating events. Default O5_START_MJD set to
-        expected O5 run from GW detectors.
+        MJD to start creating events. Default IR1_START_MJD.
     mjd_end : `float`
-        MJD to stop creating events. Default O5_END_MJD set to
-        expected end of O5 run from GW detectors.
+        MJD to stop creating events. Default O5_END_MJD. Epochs are
+        clipped to [mjd_start, mjd_end].
     scale : `float`
-        How much to scale the expected number of evenets.
-        Expect 22 events if set to default of 1.
+        Multiplier on the expected number of events. Default 1.
     seed : `float`
         Random number generator seed. Default 42.
     """
-
-    """
-    Case A) 9 triggers with 30 sq deg area -> should yield 3 visible.
-    Case B) 15 triggers with 50 sq deg area -> should yield 5 observable.
-    Case C) 24 triggers with 100 sq deg area -> should yield 8 observable.
-    Case D) 6 triggers with 250 sq deg area -> should yield 4 observable.
-    Case E) 12 triggers with 500 sq deg area -> should yield 2 observable.
-    """
-    case_2_area = {"A": 30.0, "B": 50, "C": 100, "D": 250, "E": 500}
-    case_2_nt = {"A": 9, "B": 15, "C": 24, "D": 6, "E": 12}
-
     rng = np.random.default_rng(seed=seed)
 
-    n_events = 0
-    for case in case_2_nt:
-        n_events += case_2_nt[case] * scale
+    o5_edges = np.linspace(O5_START_MJD, O5_END_MJD, 4)
+    epochs = {
+        "IR1": (IR1_START_MJD, IR1_END_MJD),
+        "O5a": (o5_edges[0], o5_edges[1]),
+        "O5b": (o5_edges[1], o5_edges[2]),
+        "O5c": (o5_edges[2], o5_edges[3]),
+    }
 
-    event_tables = []
     names = ["mjd_start", "ra", "dec", "expires", "radius", "ToO_label"]
     types = [float] * 5 + ["<U50"]
+    dtype = list(zip(names, types))
 
-    for case in case_2_area:
-        n = case_2_nt[case] * scale
-        event_table = np.zeros(int(n), dtype=list(zip(names, types)))
-        event_table["radius"] = (case_2_area[case] / np.pi) ** 0.5 * np.pi / 180.0
-        event_table["ToO_label"] = "GW_case_%s" % case
-        event_tables.append(event_table)
+    event_tables = [np.zeros(0, dtype=dtype)]
+    for epoch, (t0, t1) in epochs.items():
+        t0, t1 = max(t0, mjd_start), min(t1, mjd_end)
+        if t1 <= t0:
+            continue
+        years = (t1 - t0) / 365.25
+        for source in ("BNS", "NSBH"):
+            gold, silver = GW_NS_TIER_FRACTIONS[epoch][source]
+            fractions = {"Gold": gold, "Silver": silver, "Bronze": 1.0 - gold - silver}
+            for tier, frac in fractions.items():
+                n = rng.poisson(GW_NS_ALERT_RATES[epoch][source] * frac * years * scale)
+                event_table = np.zeros(n, dtype=dtype)
+                area = rng.uniform(*GW_TIER_AREA_BOUNDS[tier], size=n)
+                event_table["radius"] = np.radians((area / np.pi) ** 0.5)
+                event_table["mjd_start"] = rng.uniform(t0, t1, size=n)
+                event_table["ToO_label"] = "GW_%s_%s" % (source, tier)
+                event_tables.append(event_table)
 
     events = np.concatenate(event_tables)
     n_events = np.size(events)
@@ -70,7 +105,6 @@ def gen_gw_events(mjd_start=O5_START_MJD, mjd_end=O5_END_MJD, scale=1, seed=42):
     # http://mathworld.wolfram.com/SpherePointPicking.html
     events["ra"] = rng.random(n_events) * np.pi * 2
     events["dec"] = np.arccos(2.0 * rng.random(n_events) - 1.0) - np.pi / 2.0
-    events["mjd_start"] = rng.random(n_events) * (mjd_end - mjd_start) + mjd_start
     events["expires"] = events["mjd_start"] + 3
 
     return events
