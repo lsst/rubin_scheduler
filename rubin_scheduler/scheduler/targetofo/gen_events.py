@@ -615,6 +615,61 @@ def gen_grb_events(
     return events
 
 
+# Galactic core-collapse supernova rate (per year): 1-2 per century, or a
+# nominal ~2% chance per year of LSST (ToO report Sec. 7.2).
+GALACTIC_SN_RATE = 0.02
+
+
+def gen_galactic_sn_events(
+    scale=1,
+    seed=47,
+    mjd_start=SURVEY_START_MJD,
+    mjd_end=SURVEY_START_MJD + 3652.5,
+    radius=5.0,
+):
+    """Generate Galactic supernova ToO events.
+
+    The count is a Poisson draw around GALACTIC_SN_RATE, so most simulations
+    contain no event. Events are uniform in time and placed in the Galactic
+    plane (longitude uniform, latitude normal with a 2 degree standard
+    deviation).
+
+    Parameters
+    ----------
+    scale : `float`
+        Multiplier on the expected number of events. Default 1.
+    seed : `float`
+        Random number generator seed. Default 47.
+    mjd_start : `float`
+        Starting MJD. Default SURVEY_START_MJD.
+    mjd_end : `float`
+        Ending MJD. Default SURVEY_START_MJD + 3652.5.
+    radius : `float`
+        The search radius of the events on the sky.
+        Default 5 (degrees).
+    """
+    rng = np.random.default_rng(seed=seed)
+    years = (mjd_end - mjd_start) / 365.25
+    n_events = rng.poisson(GALACTIC_SN_RATE * years * scale)
+
+    names = ["mjd_start", "ra", "dec", "expires", "radius", "ToO_label"]
+    types = [float] * 5 + ["<U50"]
+    events = np.zeros(n_events, dtype=list(zip(names, types)))
+
+    events["mjd_start"] = rng.uniform(mjd_start, mjd_end, size=n_events)
+    events["ToO_label"] = "SN_Galactic"
+
+    gal_l = rng.uniform(0, 360, size=n_events)
+    gal_b = rng.normal(0, 2.0, size=n_events)
+    coord = SkyCoord(l=gal_l * u.deg, b=gal_b * u.deg, frame="galactic").icrs
+    events["ra"] = coord.ra.rad
+    events["dec"] = coord.dec.rad
+    events["radius"] = np.radians(radius)
+    events["expires"] = events["mjd_start"] + 3
+
+    return events
+
+
 def gen_all_events(
     scale=1,
     nside=DEFAULT_NSIDE,
@@ -624,6 +679,7 @@ def gen_all_events(
     mjd_start=SURVEY_START_MJD,
     mjd_end=SURVEY_START_MJD + 3652.5,
     include_grb=True,
+    include_sn=True,
 ):
     """Function to generate ToO events
 
@@ -648,6 +704,8 @@ def gen_all_events(
         End of the window to generate events in.
     include_grb : `bool`
         Include gamma-ray burst events. Default True.
+    include_sn : `bool`
+        Include galactic SN events. Default True.
     """
 
     if scale == 0:
@@ -668,6 +726,8 @@ def gen_all_events(
         events.append(gen_sso_events(scale=scale, **window))
     if include_grb:
         events.append(gen_grb_events(scale=scale, **window))
+    if include_sn:
+        events.append(gen_galactic_sn_events(scale=scale, **window))
     event_table = np.concatenate(events)
 
     events = []
