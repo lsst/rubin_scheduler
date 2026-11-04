@@ -184,22 +184,38 @@ def gen_bbh_events(mjd_start=IR1_START_MJD, mjd_end=O5_END_MJD, scale=1, seed=43
     return events
 
 
+# Expected all-sky neutrino trigger rates (per year) before visibility, from the
+# ToO report (Sec. 3, Fig. 4). Rates are the Rubin-selected IceCube alerts
+# (Pastro, single-pointing localization, |b| > 10 deg, airmass < 2 declination
+# range) divided by the 75% of a uniform sky at Dec < +30 deg. The sun-pointing
+# (~2/3) and weather losses are left to the simulation, which brings the
+# standard rate to the report's ~5/yr. The three classes are mutually exclusive.
+NEUTRINO_RATES = {
+    "neutrino_standard": 12.0,
+    "neutrino_extreme": 0.5,
+    "neutrino_coinc": 0.5,
+}
+
+
 def gen_neutrino_events(
     scale=1,
     seed=44,
-    n_trigger=160,
     mjd_start=SURVEY_START_MJD,
     mjd_end=SURVEY_START_MJD + 3652.5,
     radius=0.0,
 ):
-    """Generate neutrino ToO events
+    """Generate neutrino ToO events (standard, extremely-high-energy and
+    coincident with a GW/GRB trigger).
+
+    Counts are Poisson draws around NEUTRINO_RATES, uniform in time and on the
+    sky. Visibility is applied by the simulation.
 
     Parameters
     ----------
     scale : `float`
-        How much to scale number of events by. Defualt 1.
-    n_trigger : `int`
-        Number of events to trigger. Default 160.
+        Multiplier on the expected number of events. Default 1.
+    seed : `float`
+        Random number generator seed. Default 44.
     mjd_start : `float`
         Starting MJD. Default SURVEY_START_MJD.
     mjd_end : `float`
@@ -209,22 +225,31 @@ def gen_neutrino_events(
         Default 0 (degrees).
     """
     rng = np.random.default_rng(seed=seed)
-    n_events = int(n_trigger * scale)
+    years = (mjd_end - mjd_start) / 365.25
 
     names = ["mjd_start", "ra", "dec", "expires", "radius", "ToO_label"]
     types = [float] * 5 + ["<U50"]
+    dtype = list(zip(names, types))
 
-    events = np.zeros(n_events, dtype=list(zip(names, types)))
+    event_tables = [np.zeros(0, dtype=dtype)]
+    for label, rate in NEUTRINO_RATES.items():
+        n = rng.poisson(rate * years * scale)
+        event_table = np.zeros(n, dtype=dtype)
+        event_table["mjd_start"] = rng.uniform(mjd_start, mjd_end, size=n)
+        event_table["ToO_label"] = label
+        event_tables.append(event_table)
 
+    events = np.concatenate(event_tables)
+    n_events = np.size(events)
+
+    # Make sure latitude points spread correctly
+    # http://mathworld.wolfram.com/SpherePointPicking.html
     events["ra"] = rng.random(n_events) * np.pi * 2
     events["dec"] = np.arccos(2.0 * rng.random(n_events) - 1.0) - np.pi / 2.0
-    events["mjd_start"] = rng.random(n_events) * (mjd_end - mjd_start) + mjd_start
-    events["ToO_label"] = "neutrino"
-    events["expires"] = events["mjd_start"] + 3
     events["radius"] = np.radians(radius)
+    events["expires"] = events["mjd_start"] + 3
 
     return events
-
 
  # def gen_lensed_BNS(mjd_start=O5_START_MJD, mjd_end=O5_END_MJD, scale=1, seed=45):
  #     """Generate lensed black hole - neutron star GW events.
