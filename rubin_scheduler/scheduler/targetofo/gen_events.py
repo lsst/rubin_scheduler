@@ -729,6 +729,7 @@ def gen_all_events(
     if include_sn:
         events.append(gen_galactic_sn_events(scale=scale, **window))
     event_table = np.concatenate(events)
+    event_table.sort(order="mjd_start")
 
     events = []
     for i, event_time in enumerate(event_table["mjd_start"]):
