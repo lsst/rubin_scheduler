@@ -498,6 +498,117 @@ def gen_sso_events(
 
     return events
 
+# Expected all-sky GRB trigger rates (per year) before visibility. These are the
+# ToO report (Sec. 4) trigger rates divided by 0.4, the fraction of the sky the
+# report assumes Rubin can access (LAT: 18 bursts/yr x 30% larger than 1 deg2).
+GRB_RATES = {
+    "GRB_short": 15.0,
+    "GRB_mergerlong": 5.0,
+    "GRB_VHE_GBM": 2.5,
+    "GRB_VHE_LAT": 5.4,
+    "GRB_polarization": 10.0,
+    "GRB_ultralong": 2.5,
+    "GRB_cluster": 7.5,
+}
+
+# Largest 50% localization area (deg2) that passes each trigger; the 90% area
+# must be larger than 1 deg2, so areas are drawn log-uniformly in [1, max].
+GRB_MAX_AREA = {
+    "GRB_short": 360.0,
+    "GRB_mergerlong": 360.0,
+    "GRB_VHE_GBM": 360.0,
+    "GRB_VHE_LAT": 20.0,
+    "GRB_polarization": 50.0,
+    "GRB_ultralong": 360.0,
+    "GRB_cluster": 50.0,
+}
+
+# These classes trigger any time except when the GW network is observing.
+GRB_AVOID_GW_RUNS = ("GRB_short", "GRB_mergerlong")
+
+
+def _available_segments(mjd_start, mjd_end, excluded):
+    """Return the (t0, t1) pieces of [mjd_start, mjd_end] outside the
+    excluded (t0, t1) windows.
+    """
+    segments = [(mjd_start, mjd_end)]
+    for e0, e1 in excluded:
+        remaining = []
+        for s0, s1 in segments:
+            if e1 <= s0 or e0 >= s1:
+                remaining.append((s0, s1))
+                continue
+            if s0 < e0:
+                remaining.append((s0, e0))
+            if e1 < s1:
+                remaining.append((e1, s1))
+        segments = remaining
+    return segments
+
+
+def gen_grb_events(
+    scale=1,
+    seed=48,
+    mjd_start=SURVEY_START_MJD,
+    mjd_end=SURVEY_START_MJD + 3652.5,
+):
+    """Generate GRB ToO events.
+
+    Counts are Poisson draws around GRB_RATES, uniform in time and on the
+    sky; visibility is applied by the simulation. Short and merger-driven
+    long GRBs are not generated while the GW network is observing
+    (IR1 and O5).
+
+    Parameters
+    ----------
+    scale : `float`
+        Multiplier on the expected number of events. Default 1.
+    seed : `float`
+        Random number generator seed. Default 48.
+    mjd_start : `float`
+        Starting MJD. Default SURVEY_START_MJD.
+    mjd_end : `float`
+        Ending MJD. Default SURVEY_START_MJD + 3652.5.
+    """
+    rng = np.random.default_rng(seed=seed)
+
+    names = ["mjd_start", "ra", "dec", "expires", "radius", "ToO_label"]
+    types = [float] * 5 + ["<U50"]
+    dtype = list(zip(names, types))
+
+    gw_runs = [(IR1_START_MJD, IR1_END_MJD), (O5_START_MJD, O5_END_MJD)]
+
+    event_tables = [np.zeros(0, dtype=dtype)]
+    for label, rate in GRB_RATES.items():
+        excluded = gw_runs if label in GRB_AVOID_GW_RUNS else []
+        segments = _available_segments(mjd_start, mjd_end, excluded)
+        starts = np.array([s0 for s0, s1 in segments])
+        lengths = np.array([s1 - s0 for s0, s1 in segments])
+
+        n = rng.poisson(rate * lengths.sum() / 365.25 * scale)
+        event_table = np.zeros(n, dtype=dtype)
+
+        # Uniform over the available time, mapped back into the segments
+        draw = rng.uniform(0, lengths.sum(), size=n)
+        ends = np.cumsum(lengths)
+        idx = np.searchsorted(ends, draw, side="right")
+        event_table["mjd_start"] = starts[idx] + draw - (ends[idx] - lengths[idx])
+
+        area = np.exp(rng.uniform(0, np.log(GRB_MAX_AREA[label]), size=n))
+        event_table["radius"] = np.radians((area / np.pi) ** 0.5)
+        event_table["ToO_label"] = label
+        event_tables.append(event_table)
+
+    events = np.concatenate(event_tables)
+    n_events = np.size(events)
+
+    # Make sure latitude points spread correctly
+    # http://mathworld.wolfram.com/SpherePointPicking.html
+    events["ra"] = rng.random(n_events) * np.pi * 2
+    events["dec"] = np.arccos(2.0 * rng.random(n_events) - 1.0) - np.pi / 2.0
+    events["expires"] = events["mjd_start"] + 3
+
+    return events
 
 def gen_all_events(
     scale=1,
