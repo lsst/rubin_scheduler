@@ -183,6 +183,69 @@ def gen_bbh_events(mjd_start=IR1_START_MJD, mjd_end=O5_END_MJD, scale=1, seed=43
 
     return events
 
+# Expected all-sky SSM public-alert rates (per year). ToO report Sec. 2.3 gives
+# 1-2 alerts in the 6-month IR1 (two O4c candidates); no O5 rate exists, so the
+# IR1 midpoint is held constant. Edit an epoch to change or switch it off.
+GW_SSM_ALERT_RATES = {"IR1": 2.0, "O5a": 3.0, "O5b": 3.0, "O5c": 3.0}
+
+
+def gen_ssm_events(mjd_start=IR1_START_MJD, mjd_end=O5_END_MJD, scale=1, seed=46):
+    """Generate sub-solar-mass merger events.
+
+    Counts are Poisson draws around GW_SSM_ALERT_RATES in each epoch. SSM
+    skymap sizes are unknown, so the BNS Gold/Silver/Bronze fractions are used.
+    Following the ToO report, Bronze-sized skymaps are trimmed to 500 deg2 and
+    triggered as Silver, and no Bronze SSM events are generated.
+
+    Parameters
+    ----------
+    mjd_start : `float`
+        MJD to start creating events. Default IR1_START_MJD.
+    mjd_end : `float`
+        MJD to stop creating events. Default O5_END_MJD.
+    scale : `float`
+        Multiplier on the expected number of events. Default 1.
+    seed : `float`
+        Random number generator seed. Default 46.
+    """
+    rng = np.random.default_rng(seed=seed)
+
+    names = ["mjd_start", "ra", "dec", "expires", "radius", "ToO_label"]
+    types = [float] * 5 + ["<U50"]
+    dtype = list(zip(names, types))
+
+    event_tables = [np.zeros(0, dtype=dtype)]
+    for epoch, t0, t1, years in _gw_epochs(mjd_start, mjd_end):
+        gold, silver = GW_NS_TIER_FRACTIONS[epoch]["BNS"]
+        n = rng.poisson(GW_SSM_ALERT_RATES[epoch] * years * scale)
+        event_table = np.zeros(n, dtype=dtype)
+
+        u = rng.random(n)
+        is_gold = u < gold
+        area = np.where(
+            is_gold,
+            rng.uniform(*GW_TIER_AREA_BOUNDS["Gold"], size=n),
+            np.where(
+                u < gold + silver,
+                rng.uniform(*GW_TIER_AREA_BOUNDS["Silver"], size=n),
+                GW_TIER_AREA_BOUNDS["Silver"][1],  # trimmed to 500 deg2
+            ),
+        )
+        event_table["radius"] = np.radians((area / np.pi) ** 0.5)
+        event_table["mjd_start"] = rng.uniform(t0, t1, size=n)
+        event_table["ToO_label"] = np.where(is_gold, "GW_SSM_Gold", "GW_SSM_Silver")
+        event_tables.append(event_table)
+
+    events = np.concatenate(event_tables)
+    n_events = np.size(events)
+
+    # Make sure latitude points spread correctly
+    # http://mathworld.wolfram.com/SpherePointPicking.html
+    events["ra"] = rng.random(n_events) * np.pi * 2
+    events["dec"] = np.arccos(2.0 * rng.random(n_events) - 1.0) - np.pi / 2.0
+    events["expires"] = events["mjd_start"] + 3
+
+    return events
 
 # Expected all-sky neutrino trigger rates (per year) before visibility, from the
 # ToO report (Sec. 3, Fig. 4). Rates are the Rubin-selected IceCube alerts
