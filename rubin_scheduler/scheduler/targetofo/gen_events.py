@@ -610,6 +610,7 @@ def gen_grb_events(
 
     return events
 
+
 def gen_all_events(
     scale=1,
     nside=DEFAULT_NSIDE,
@@ -618,22 +619,31 @@ def gen_all_events(
     include_ss=True,
     mjd_start=SURVEY_START_MJD,
     mjd_end=SURVEY_START_MJD + 3652.5,
+    include_grb=True,
 ):
     """Function to generate ToO events
 
     Parameters
     ----------
     scale : `float`
-        Amount to scale the total number of events. Default 1.
+        Multiplier on the expected number of events from every generator.
+        Default 1 gives the rates from the ToO report and the IGWN
+        public-alert predictions.
     nside : `int`
         HEALpix nside. Default set to DEAFAULT_NSIDE.
     include_gw : `bool`
-        Include gravitational wave events (GW, BH-BH, and lensed BH-NS events).
-        Default True.
+        Include gravitational wave events (BNS and NSBH mergers, BH-BH
+        mergers, and sub-solar-mass mergers). Default True.
     include_neutrino : `bool`
         Include neutrino events. Default True.
     include_ss : `bool`
         Include solar system events. Default True.
+    mjd_start : `float`
+        Start of the window to generate events in.
+    mjd_end : `float`
+        End of the window to generate events in.
+    include_grb : `bool`
+        Include gamma-ray burst events. Default True.
     """
 
     if scale == 0:
@@ -641,22 +651,20 @@ def gen_all_events(
 
     ra, dec = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(nside)))
 
+    window = {"mjd_start": mjd_start, "mjd_end": mjd_end}
+
     events = []
     if include_gw:
-        events.append(gen_gw_events(scale=3.0 * scale))
-        events.append(gen_bbh_events(scale=3.0 * scale))
-        events.append(gen_lensed_BNS(scale=3.0 * scale))
-    # Not varying the number of neutrino events
+        events.append(gen_gw_events(scale=scale, **window))
+        events.append(gen_bbh_events(scale=scale, **window))
+        events.append(gen_ssm_events(scale=scale, **window))
     if include_neutrino:
-        n_events = np.round(160 / 3652.5 * (mjd_end - mjd_start))
-        events.append(gen_neutrino_events(mjd_start=mjd_start, mjd_end=mjd_end))
-    # Not varying the number of SSO events
+        events.append(gen_neutrino_events(scale=scale, **window))
     if include_ss:
-        n_events = np.round(900 / 3652.5 * (mjd_end - mjd_start))
-        events.append(gen_sso_events(n_events=n_events, mjd_start=mjd_start, mjd_end=mjd_end))
+        events.append(gen_sso_events(scale=scale, **window))
+    if include_grb:
+        events.append(gen_grb_events(scale=scale, **window))
     event_table = np.concatenate(events)
-
-    event_table.sort(order="mjd_start")
 
     events = []
     for i, event_time in enumerate(event_table["mjd_start"]):
