@@ -249,12 +249,13 @@ def gen_ssm_events(mjd_start=IR1_START_MJD, mjd_end=O5_END_MJD, scale=1, seed=46
     return events
 
 
-# Expected all-sky neutrino trigger rates (per year) before visibility, from the
-# ToO report (Sec. 3, Fig. 4). Rates are the Rubin-selected IceCube alerts
+# Expected all-sky neutrino trigger rates (per year) before visibility, from
+# the ToO report (Sec. 3, Fig. 4). Rates are the Rubin-selected IceCube alerts
 # (Pastro, single-pointing localization, |b| > 10 deg, airmass < 2 declination
 # range) divided by the 75% of a uniform sky at Dec < +30 deg. The sun-pointing
 # (~2/3) and weather losses are left to the simulation, which brings the
-# standard rate to the report's ~5/yr. The three classes are mutually exclusive.
+# standard rate to the report's ~5/yr. The three classes are mutually
+# exclusive.
 NEUTRINO_RATES = {
     "neutrino_standard": 12.0,
     "neutrino_extreme": 0.5,
@@ -317,57 +318,49 @@ def gen_neutrino_events(
     return events
 
 
-# Dropping lensed events pending further review
-# def gen_lensed_BNS(mjd_start=O5_START_MJD, mjd_end=O5_END_MJD, scale=1, seed=45):
-#     """Generate lensed black hole - neutron star GW events.
-#
-#     Parameters
-#     ----------
-#     scale : `float`
-#         How much to scale number of events by. Default 1.
-#         Expect 15 events with default scale.
-#     mjd_start : `float`
-#         Starting MJD. Default O5_START_MJD
-#     mjd_end : `float`
-#         Ending MJD. Defualt O5_END_MJD
-#     """
-#
-#     rng = np.random.default_rng(seed=seed)
-#
-#     """
-#     Case A) 9 triggers with 10 sq deg area -> yields 3 observable
-#     Case B) 6 triggers with 20 sq deg area -> yields 2 observable
-#     """
-#
-#     case_2_area = {"A": 900, "B": 15}
-#     case_2_nt = {"A": 1, "B": 1}
-#
-#     n_events = 0
-#     for case in case_2_nt:
-#         n_events += case_2_nt[case] * scale
-#
-#     event_tables = []
-#     names = ["mjd_start", "ra", "dec", "expires", "radius", "ToO_label"]
-#     types = [float] * 5 + ["<U50"]
-#
-#     for case in case_2_area:
-#         n = case_2_nt[case] * scale
-#         event_table = np.zeros(int(n), dtype=list(zip(names, types)))
-#         event_table["radius"] = (case_2_area[case] / np.pi) ** 0.5 * np.pi / 180.0
-#         event_table["ToO_label"] = "lensed_BNS_case_%s" % case
-#         event_tables.append(event_table)
-#
-#     events = np.concatenate(event_tables)
-#     n_events = np.size(events)
-#
-#     # Make sure latitude points spread correctly
-#     # http://mathworld.wolfram.com/SpherePointPicking.html
-#     events["ra"] = rng.random(n_events) * np.pi * 2
-#     events["dec"] = np.arccos(2.0 * rng.random(n_events) - 1.0) - np.pi / 2.0
-#     events["mjd_start"] = rng.random(n_events) * (mjd_end - mjd_start) + mjd_start
-#     events["expires"] = events["mjd_start"] + 3
-#
-#     return events
+def gen_lensed_BNS(mjd_start=O5_START_MJD, mjd_end=O5_END_MJD, scale=1, seed=45):
+    """Generate lensed black hole - neutron star GW events.
+
+    XXX--Not currently part of gen_all_events pending further review
+
+    Parameters
+    ----------
+    scale : `float`
+        How much to scale number of events by. Default 1.
+        Expect 15 events with default scale.
+    mjd_start : `float`
+        Starting MJD. Default O5_START_MJD
+    mjd_end : `float`
+        Ending MJD. Defualt O5_END_MJD
+    """
+    rng = np.random.default_rng(seed=seed)
+    """
+    Case A) 9 triggers with 10 sq deg area -> yields 3 observable
+    Case B) 6 triggers with 20 sq deg area -> yields 2 observable
+    """
+    case_2_area = {"A": 900, "B": 15}
+    case_2_nt = {"A": 1, "B": 1}
+    n_events = 0
+    for case in case_2_nt:
+        n_events += case_2_nt[case] * scale
+    event_tables = []
+    names = ["mjd_start", "ra", "dec", "expires", "radius", "ToO_label"]
+    types = [float] * 5 + ["<U50"]
+    for case in case_2_area:
+        n = case_2_nt[case] * scale
+        event_table = np.zeros(int(n), dtype=list(zip(names, types)))
+        event_table["radius"] = (case_2_area[case] / np.pi) ** 0.5 * np.pi / 180.0
+        event_table["ToO_label"] = "lensed_BNS_case_%s" % case
+        event_tables.append(event_table)
+    events = np.concatenate(event_tables)
+    n_events = np.size(events)
+    # Make sure latitude points spread correctly
+    # http://mathworld.wolfram.com/SpherePointPicking.html
+    events["ra"] = rng.random(n_events) * np.pi * 2
+    events["dec"] = np.arccos(2.0 * rng.random(n_events) - 1.0) - np.pi / 2.0
+    events["mjd_start"] = rng.random(n_events) * (mjd_end - mjd_start) + mjd_start
+    events["expires"] = events["mjd_start"] + 3
+    return events
 
 
 def gen_sso_events(
@@ -502,9 +495,10 @@ def gen_sso_events(
     return events
 
 
-# Expected all-sky GRB trigger rates (per year) before visibility. These are the
-# ToO report (Sec. 4) trigger rates divided by 0.4, the fraction of the sky the
-# report assumes Rubin can access (LAT: 18 bursts/yr x 30% larger than 1 deg2).
+# Expected all-sky GRB trigger rates (per year) before visibility. These are
+# the ToO report (Sec. 4) trigger rates divided by 0.4, the fraction of the
+# sky the report assumes Rubin can access (LAT: 18 bursts/yr x 30% larger
+# than 1 deg2).
 GRB_RATES = {
     "GRB_short": 15.0,
     "GRB_mergerlong": 5.0,
