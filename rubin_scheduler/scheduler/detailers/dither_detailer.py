@@ -40,7 +40,7 @@ class DitherDetailer(BaseDetailer):
     per_night : `bool` (True)
         If true, use the same dither offset for an entire night. If False,
         generate a dither position per visit.
-    n_in_night : `int` (1200)
+    n_in_night : `int` (5000)
         The number of unique positions to generate in a night.
         Only used if per_night is False.
     big_int : `int`
@@ -49,7 +49,7 @@ class DitherDetailer(BaseDetailer):
     """
 
     def __init__(
-        self, max_dither=0.7, per_night=True, n_in_night=1200, nnights=None, big_int=700000, seed=None
+        self, max_dither=0.7, per_night=True, n_in_night=5000, nnights=None, big_int=700000, seed=None
     ):
 
         if nnights is not None:
@@ -107,6 +107,8 @@ class DitherDetailer(BaseDetailer):
                 self._new_ang_rad(night)
                 self.current_night = night
             indx_in_night = self.survey_features["n_in_night"].feature
+            if indx_in_night > self.n_in_night:
+                raise ValueError("Out of dither positions. Consider larger n_in_night value")
             angle = self.angles[indx_in_night : indx_in_night + n_offsets]
             radius = self.radii[indx_in_night : indx_in_night + n_offsets]
             self.offsets_ra = radius * np.cos(angle)
