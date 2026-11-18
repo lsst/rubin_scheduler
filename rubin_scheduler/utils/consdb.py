@@ -41,6 +41,63 @@ DEFAULT_EXTINCTION_COEFFICIENTS: dict[str, float] = {
     "y": -0.0947,
 }
 
+QUICKLOOK_COLUMNS = [
+    "visit_id",
+    "day_obs",
+    "seq_num",
+    "n_inputs",
+    "pixel_scale_median",
+    "astrom_offset_mean_median",
+    "astrom_offset_std_median",
+    "eff_time_median",
+    "eff_time_psf_sigma_scale_median",
+    "eff_time_sky_bg_scale_median",
+    "eff_time_zero_point_scale_median",
+    "stats_mag_lim_median",
+    "psf_ap_flux_delta_median",
+    "psf_ap_corr_sigma_scaled_delta_median",
+    "mean_var_median",
+    "n_psf_star_median",
+    "n_psf_star_total",
+    "psf_area_median",
+    "psf_sigma_median",
+    "sky_bg_median",
+    "sky_noise_median",
+    "seeing_zenith_500nm_median",
+    "zero_point_median",
+    "low_snr_source_count_median",
+    "low_snr_source_count_total",
+    "high_snr_source_count_median",
+    "high_snr_source_count_total",
+    "ringss_seeing",
+    "aos_fwhm",
+    "donut_blur_fwhm",
+    "physical_rotator_angle",
+    "astrom_ra",
+    "astrom_dec",
+    "astrom_sky_rotation",
+    "pixel_scale",
+    "astrom_offset_mean",
+    "astrom_offset_std",
+    "eff_time",
+    "eff_time_psf_sigma_scale",
+    "eff_time_sky_bg_scale",
+    "eff_time_zero_point_scale",
+    "stats_mag_lim",
+    "psf_ap_flux_delta",
+    "psf_ap_corr_sigma_scaled_delta",
+    "mean_var",
+    "n_psf_star",
+    "psf_area",
+    "psf_sigma",
+    "sky_bg",
+    "sky_noise",
+    "seeing_zenith_500nm",
+    "zero_point",
+    "low_snr_source_count",
+    "high_snr_source_count",
+]
+
 try:
     import lsst.rsp
 
@@ -366,9 +423,14 @@ class ConsDBVisits(ABC):
             .loc[:, "column_name"]
             .values
         )
+
         visit_query_visit_columns = ", ".join([f"v.{c} AS {c}" for c in visit_columns])
         visit_query_ql_columns = ", ".join(
-            [f"v{self.num_exposures}q.{c} AS {c}" for c in ql_columns if c not in visit_columns]
+            [
+                f"v{self.num_exposures}q.{c} AS {c}"
+                for c in ql_columns
+                if c not in visit_columns and c in QUICKLOOK_COLUMNS
+            ]
         )
         visit_query_columns = ", ".join([visit_query_visit_columns, visit_query_ql_columns])
 
